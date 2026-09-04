@@ -2,6 +2,10 @@
 from flask import Blueprint, request, jsonify, render_template, make_response
 from flask_cors import cross_origin
 import logging
+from printful_catalog import (
+    printful_dashboard_urls_by_product_name,
+    printful_catalog_titles_by_product_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -563,6 +567,9 @@ def process_thumbnail_print_quality():
         add_white_background = data.get("add_white_background", False)
         print_area_width = data.get("print_area_width")
         print_area_height = data.get("print_area_height")
+        image_orientation = data.get("image_orientation") or data.get("imageOrientation")
+        fit_mode = data.get("fit_mode") or data.get("fitMode")
+        preserve_edits = bool(data.get("preserve_edits"))
         
         frame_width = max(1, min(100, frame_width))
         text_size = max(12, min(200, text_size))
@@ -609,7 +616,10 @@ def process_thumbnail_print_quality():
             text_offset_y=text_offset_y,
             add_white_background=add_white_background,
             print_area_width=print_area_width,
-            print_area_height=print_area_height
+            print_area_height=print_area_height,
+            image_orientation=image_orientation,
+            fit_mode=fit_mode,
+            preserve_edits=preserve_edits
         )
         
         if result.get('success'):
@@ -738,7 +748,12 @@ def optimize_pending_videos():
 def print_quality_page():
     """Serve the print quality image generator page"""
     order_id = request.args.get('order_id')
-    response = make_response(render_template('print_quality.html', order_id=order_id))
+    response = make_response(render_template(
+        'print_quality.html',
+        order_id=order_id,
+        printful_dashboard_urls=printful_dashboard_urls_by_product_name(),
+        printful_catalog_titles=printful_catalog_titles_by_product_name(),
+    ))
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "

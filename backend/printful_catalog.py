@@ -123,6 +123,102 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Jigsaw Puzzle with Tin": 906,
 }
 
+# Printful dashboard customizer pages (logged-in catalog product URLs).
+# /dashboard/custom/products/{id} redirects to a generic catalog, so these must
+# use the pretty path (e.g. Women's Shirt → Bella + Canvas 6400).
+PRINTFUL_DASHBOARD_URLS_BY_CATALOG_ID: Dict[int, str] = {
+    71: "https://www.printful.com/dashboard/custom/mens/t-shirts/unisex-staple-t-shirt-bella-canvas-3001",
+    108: "https://www.printful.com/dashboard/custom/mens/t-shirts/mens-fitted-t-shirt-next-level-3600",
+    116: "https://www.printful.com/dashboard/custom/mens/long-sleeve-shirts/mens-fitted-long-sleeve-shirt-next-level-3601",
+    880: "https://www.printful.com/dashboard/custom/womens/t-shirts/unisex-oversized-garment-dyed-t-shirt-bella-canvas-4810",
+    57: "https://www.printful.com/dashboard/custom/mens/long-sleeve-shirts/mens-long-sleeve-shirt-gildan-2400",
+    248: "https://www.printful.com/dashboard/custom/mens/tank-tops/unisex-staple-tank-top-bella-canvas-3480",
+    307: "https://www.printful.com/dashboard/custom/kids-teen/shirts/youth-staple-tee-bella-canvas-3001y",
+    511: "https://www.printful.com/dashboard/custom/kids-teen/shirts/youth-long-sleeve-tee-bella-canvas-3501y",
+    689: "https://www.printful.com/dashboard/custom/kids-teen/hoodies/youth-heavy-blend-hoodie-gildan-18500-b",
+    677: "https://www.printful.com/dashboard/custom/kids-teen/hoodies/youth-crew-neck-sweatshirt-gildan-18000b",
+    294: "https://www.printful.com/dashboard/custom/mens/hoodies-sweatshirts/unisex-pullover-hoodie-bella-canvas-3719",
+    380: "https://www.printful.com/dashboard/custom/mens/hoodies/unisex-premium-hoodie-cotton-heritage-m2580",
+    317: "https://www.printful.com/dashboard/custom/womens/hoodies-sweatshirts/womens-cropped-hoodie-bella-canvas-7502",
+    586: "https://www.printful.com/dashboard/custom/womens/t-shirts/unisex-garment-dyed-heavyweight-shirt-comfort-colors-1717",
+    360: "https://www.printful.com/dashboard/custom/womens/t-shirts/womens-relaxed-t-shirt-bella-canvas-6400",
+    818: "https://www.printful.com/dashboard/custom/mens/shirts/unisex-organic-ribbed-neck-t-shirt-stanley-stella-satu001",
+    857: "https://www.printful.com/dashboard/custom/womens/tank-tops/womens-ideal-racerback-tank-top-next-level-1533",
+    780: "https://www.printful.com/dashboard/custom/womens/tank-tops/womens-micro-rib-tank-top-bella-canvas-1012",
+    636: "https://www.printful.com/dashboard/custom/womens/crop-tops/womens-crop-top-as-colour-4062",
+    842: "https://www.printful.com/dashboard/custom/mens/hoodies/unisex-champion-hoodie",
+    305: "https://www.printful.com/dashboard/custom/kids-teen/shirts/baby-staple-tee-bella-canvas-3001b",
+    854: "https://www.printful.com/dashboard/custom/kids-teen/t-shirts/baby-jersey-t-shirt-rabbit-skins-3322",
+    234: "https://www.printful.com/dashboard/custom/kids-teen/baby-bodysuits/baby-short-sleeve-bodysuit-rabbit-skins-4400",
+    489: "https://www.printful.com/dashboard/custom/kids-teen/shirts/toddler-jersey-t-shirt-rabbit-skins-3321",
+    19: "https://www.printful.com/dashboard/custom/mugs/personalized/white-glossy-mug",
+    663: "https://www.printful.com/dashboard/custom/mugs/personalized/travel-mug-with-a-handle",
+    407: "https://www.printful.com/dashboard/custom/mugs/personalized/enamel-mug",
+    403: "https://www.printful.com/dashboard/custom/mugs/personalized/ceramic-mug",
+    396: "https://www.printful.com/dashboard/custom/embroidered/hats/distressed-dad-hat-otto-cap-104-1018",
+    140: "https://www.printful.com/dashboard/custom/embroidered/dad-hats/closed-back-cap-flexfit-6277",
+    100: "https://www.printful.com/dashboard/custom/embroidered/trucker-hats/5-panel-trucker-cap-yupoong-6006",
+    394: "https://www.printful.com/dashboard/custom/bags/laptop-cases/laptop-sleeve",
+    262: "https://www.printful.com/dashboard/custom/bags/drawstring/all-over-print-drawstring-bag",
+    274: "https://www.printful.com/dashboard/custom/bags/totes/all-over-print-large-tote-bag",
+    744: "https://www.printful.com/dashboard/custom/bags/handbags/all-over-print-utility-crossbody-bag",
+    678: "https://www.printful.com/dashboard/custom/pet-products/personalized/pet-bowl",
+    902: "https://www.printful.com/dashboard/custom/pet-products/personalized/pet-bandana-collar",
+    568: "https://www.printful.com/dashboard/custom/stationery/greeting-cards/greeting-card",
+    682: "https://www.printful.com/dashboard/custom/stationery/notebooks/hardcover-bound-notebook-journalbook",
+    611: "https://www.printful.com/dashboard/custom/drinkware/coasters/cork-back-coaster",
+    894: "https://www.printful.com/dashboard/custom/aprons/personalized/all-over-print-apron",
+    630: "https://www.printful.com/dashboard/custom/hair-accessories/personalized/all-over-print-bandana",
+    906: "https://www.printful.com/dashboard/custom/toys-and-games/personalized/jigsaw-puzzle-with-tin",
+}
+
+# Printful catalog titles shown on the product page (for admin confirmation).
+PRINTFUL_CATALOG_TITLES_BY_ID: Dict[int, str] = {
+    71: "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    108: "Men's Fitted T-Shirt | Next Level 3600",
+    116: "Men's Fitted Long Sleeve Shirt | Next Level 3601",
+    880: "Unisex Oversized Garment-Dyed T-Shirt | Bella + Canvas 4810",
+    57: "Unisex Long Sleeve Shirt | Gildan 2400",
+    248: "Men's Staple Tank Top | Bella + Canvas 3480",
+    307: "Youth Staple Tee | Bella + Canvas 3001Y",
+    511: "Youth Long Sleeve Tee | Bella + Canvas 3501Y",
+    689: "Youth Heavy Blend Hoodie | Gildan 18500B",
+    677: "Youth Crew Neck Sweatshirt | Gildan 18000B",
+    294: "Unisex Pullover Hoodie | Bella + Canvas 3719",
+    380: "Unisex Premium Pullover Hoodie | Cotton Heritage M2580",
+    317: "Women's Cropped Hoodie | Bella + Canvas 7502",
+    586: "Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717",
+    360: "Women's Relaxed T-Shirt | Bella + Canvas 6400",
+    818: "Unisex Organic Ribbed Neck Creator 2.0 T-Shirt | Stanley/Stella SATU001",
+    857: "Women's Ideal Racerback Tank Top | Next Level 1533",
+    780: "Women's Micro-Rib Tank Top | Bella Canvas 1012",
+    636: "Women's Crop Top | AS Colour 4062",
+    842: "Unisex Champion Powerblend Hoodie | S700",
+    305: "Baby Staple Tee | Bella + Canvas 3001B",
+    854: "Baby Jersey T-Shirt | Rabbit Skins 3322",
+    234: "Baby Short Sleeve Bodysuit | Rabbit Skins 4400",
+    489: "Toddler Jersey T-Shirt | Rabbit Skins 3321",
+    19: "White Glossy Mug",
+    663: "Travel Mug with a Handle",
+    407: "Enamel Mug",
+    403: "White Ceramic Mug with Color Inside",
+    396: "Distressed Dad Hat | Otto Cap 104-1018",
+    140: "Closed-Back Structured Cap | Flexfit 6277",
+    100: "5 Panel Trucker Cap | Yupoong 6006",
+    394: "Laptop Sleeve",
+    262: "All-Over Print Drawstring Bag",
+    274: "All-Over Print Large Tote Bag w/ Pocket",
+    678: "Pet Bowl",
+    902: "Pet Bandana Collar",
+    568: "Greeting Card",
+    682: "Hardcover Bound Notebook | JournalBook",
+    611: "Cork-Back Coaster",
+    894: "All-Over Print Apron",
+    630: "All-Over Print Bandana",
+    906: "Jigsaw Puzzle with Tin",
+    744: "All-Over Print Utility Crossbody Bag",
+}
+
 # When storefront ``color`` labels differ from Printful catalog variant ``color`` strings.
 # Key: catalog product id. Inner key: storefront color (matched case-insensitively).
 CATALOG_COLOR_ALIASES: Dict[int, Dict[str, str]] = {
@@ -325,6 +421,32 @@ def catalog_product_id_for_product_name(name: str) -> Optional[int]:
     if not name:
         return None
     return PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME.get(str(name).strip())
+
+
+def printful_dashboard_url_for_product_name(name: str) -> Optional[str]:
+    """Logged-in Printful catalog page for a ScreenMerch product name."""
+    cid = catalog_product_id_for_product_name(name)
+    if cid is None:
+        return None
+    return PRINTFUL_DASHBOARD_URLS_BY_CATALOG_ID.get(int(cid))
+
+
+def printful_dashboard_urls_by_product_name() -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    for pname, cid in PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME.items():
+        url = PRINTFUL_DASHBOARD_URLS_BY_CATALOG_ID.get(int(cid))
+        if url:
+            out[pname] = url
+    return out
+
+
+def printful_catalog_titles_by_product_name() -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    for pname, cid in PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME.items():
+        title = PRINTFUL_CATALOG_TITLES_BY_ID.get(int(cid))
+        if title:
+            out[pname] = title
+    return out
 
 
 # Catalog-variants defaults to selling_region_name=worldwide, which 400s

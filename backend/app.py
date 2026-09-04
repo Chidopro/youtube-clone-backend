@@ -36,7 +36,12 @@ import google.auth
 
 # NEW: Import Printful integration
 from printful_integration import ScreenMerchPrintfulIntegration
-from printful_catalog import attach_printful_catalog_data_list, resolve_cart_item_unit_price
+from printful_catalog import (
+    attach_printful_catalog_data_list,
+    resolve_cart_item_unit_price,
+    printful_dashboard_urls_by_product_name,
+    printful_catalog_titles_by_product_name,
+)
 
 # NEW: Import video screenshot capture
 from video_screenshot import screenshot_capture
@@ -69,6 +74,8 @@ from services.order_email import (
     build_admin_order_email,
     build_customer_order_email,
     get_order_screenshot as get_order_screenshot_for_email,
+    get_item_image_orientation,
+    get_item_tool_settings,
     resend_attachments_from_builder,
 )
 from services.order_email import _fetch_image_as_base64 as fetch_screenshot_url
@@ -76,6 +83,7 @@ from utils.stripe_checkout import (
     fetch_full_checkout_session,
     build_shipping_address_payload,
     merge_shipping_address_records,
+    customer_info_from_order,
     session_amount_total_usd,
     session_customer_email,
     session_shipping_cost_usd,
@@ -5326,6 +5334,9 @@ def process_thumbnail_print_quality():
         # Print area dimensions (in inches) - if provided, will be used to set exact output size
         print_area_width = data.get("print_area_width")
         print_area_height = data.get("print_area_height")
+        image_orientation = data.get("image_orientation") or data.get("imageOrientation")
+        fit_mode = data.get("fit_mode") or data.get("fitMode")
+        preserve_edits = bool(data.get("preserve_edits"))
         
         # Validate frame_width is within reasonable bounds (1-100px)
         frame_width = max(1, min(100, frame_width))
@@ -5361,7 +5372,10 @@ def process_thumbnail_print_quality():
             double_frame=double_frame,
             add_white_background=add_white_background,
             print_area_width=print_area_width,
-            print_area_height=print_area_height
+            print_area_height=print_area_height,
+            image_orientation=image_orientation,
+            fit_mode=fit_mode,
+            preserve_edits=preserve_edits
         )
         
         if result['success']:
@@ -5682,9 +5696,12 @@ def get_order_screenshot(order_id):
                     "index": idx,
                     "product": product_name,
                     "screenshot": screenshot_data,
+                    "original_screenshot": item.get("original_screenshot") or item.get("originalScreenshot") or "",
                     "color": color,
                     "size": size,
-                    "preview_image_url": preview_image_url
+                    "preview_image_url": preview_image_url,
+                    "image_orientation": get_item_image_orientation(item),
+                    "toolSettings": get_item_tool_settings(item)
                 })
             else:
                 # Even if no screenshot found, add product so user knows it exists (they can still process it)
@@ -5693,9 +5710,12 @@ def get_order_screenshot(order_id):
                     "index": idx,
                     "product": product_name,
                     "screenshot": order_level_screenshot or '',  # Use order-level or empty
+                    "original_screenshot": item.get("original_screenshot") or item.get("originalScreenshot") or "",
                     "color": color,
                     "size": size,
-                    "preview_image_url": preview_image_url
+                    "preview_image_url": preview_image_url,
+                    "image_orientation": get_item_image_orientation(item),
+                    "toolSettings": get_item_tool_settings(item)
                 })
         
         # If no products found but we have order-level screenshot, create a single product entry
@@ -5721,7 +5741,8 @@ def get_order_screenshot(order_id):
                 "products": products,  # All products with their screenshots
                 "order_id": order_id,
                 "video_title": order_data.get('video_title', 'Unknown Video'),
-                "creator_name": order_data.get('creator_name', 'Unknown Creator')
+                "creator_name": order_data.get('creator_name', 'Unknown Creator'),
+                "customer": customer_info_from_order(order_data),
             })
             # Add CORS headers for image tool
             origin = request.headers.get('Origin')
@@ -5760,11 +5781,77 @@ def get_order_screenshot(order_id):
         })
         return response, 500
 
+
+def _order_id_candidates(order_id):
+    raw = (order_id or "").strip()
+    candidates = []
+    if raw:
+        candidates.append(raw)
+        upper = raw.upper()
+        if upper.startswith("ORD-"):
+            bare = raw[4:]
+            if bare:
+                candidates.append(bare)
+                candidates.append("ORD-" + bare.upper())
+        else:
+            candidates.append("ORD-" + upper)
+    seen = set()
+    id_list = []
+    for c in candidates:
+        if c and c not in seen:
+            seen.add(c)
+            id_list.append(c)
+    return id_list
+
+
+def _load_order_record(order_id):
+    """In-memory store first, then Supabase. Returns a dict or None."""
+    id_list = _order_id_candidates(order_id)
+    for c in id_list:
+        if c in order_store:
+            return dict(order_store[c])
+    db_client = supabase_admin if supabase_admin else supabase
+    if not db_client:
+        return None
+    for c in id_list:
+        for col in ("order_id", "id", "order_number"):
+            try:
+                result = db_client.table("orders").select("*").eq(col, c).limit(1).execute()
+                if result.data:
+                    return result.data[0]
+            except Exception:
+                continue
+    return None
+
+
+@app.route("/api/order-customer/<order_id>")
+def get_order_customer(order_id):
+    """Shipping + contact for Print Quality CUSTOMER INFO copy (Printful paste)."""
+    try:
+        order_data = _load_order_record(order_id)
+        if not order_data:
+            return jsonify({"success": False, "error": "Order not found"}), 404
+        info = customer_info_from_order(order_data)
+        return jsonify({
+            "success": True,
+            "order_id": order_data.get("order_id") or order_id,
+            "customer": info,
+        })
+    except Exception as e:
+        logger.error("Error getting order customer: %s", e)
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+
 @app.route("/print-quality")
 def print_quality_page():
     """Serve the print quality image generator page"""
     order_id = request.args.get('order_id')
-    response = make_response(render_template('print_quality.html', order_id=order_id))
+    response = make_response(render_template(
+        'print_quality.html',
+        order_id=order_id,
+        printful_dashboard_urls=printful_dashboard_urls_by_product_name(),
+        printful_catalog_titles=printful_catalog_titles_by_product_name(),
+    ))
     # Set permissive CSP for this page since it needs to make API calls to the same domain
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "

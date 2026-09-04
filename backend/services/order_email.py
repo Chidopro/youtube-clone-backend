@@ -20,6 +20,25 @@ EDIT_TOOLS_BASE_URL = "https://screenmerch.com/tools"
 MAX_INLINE_BASE64_LEN = 100000  # Inline in body when under ~100KB; over that use cid (attachment)
 
 
+def get_item_tool_settings(item):
+    if not isinstance(item, dict):
+        return {}
+    ts = item.get("toolSettings")
+    return ts if isinstance(ts, dict) else {}
+
+
+def get_item_image_orientation(item):
+    """Portrait/landscape from cart tool settings (defaults to portrait)."""
+    ts = get_item_tool_settings(item)
+    raw = (
+        ts.get("imageOrientation")
+        or item.get("image_orientation")
+        or item.get("imageOrientation")
+        or "portrait"
+    )
+    return "landscape" if str(raw).lower() == "landscape" else "portrait"
+
+
 def _fetch_image_as_base64(url, timeout=10):
     """Fetch image from HTTP(S) URL and return as data:image/...;base64,... or None on failure."""
     if not url or not isinstance(url, str) or not url.strip().startswith(("http://", "https://")):

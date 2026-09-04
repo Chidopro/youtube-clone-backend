@@ -656,7 +656,107 @@ def apply_corner_radius_only(image_data, corner_radius=15):
         logger.error(f"Error applying corner radius: {str(e)}")
         return {"success": False, "error": f"Failed to apply corner radius: {str(e)}"}
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=False, print_area_width=None, print_area_height=None):
+def _cover_crop_to_aspect(image, target_aspect):
+    """Center cover-crop so the result matches target_aspect (width/height)."""
+    if image is None or not target_aspect or target_aspect <= 0:
+        return image
+    height, width = image.shape[:2]
+    if width <= 0 or height <= 0:
+        return image
+    img_aspect = width / float(height)
+    if abs(img_aspect - target_aspect) < 0.02:
+        return image
+    if img_aspect > target_aspect:
+        new_w = max(1, int(round(height * target_aspect)))
+        x = max(0, (width - new_w) // 2)
+        return image[:, x:x + new_w]
+    new_h = max(1, int(round(width / target_aspect)))
+    y = max(0, (height - new_h) // 2)
+    return image[y:y + new_h, :]
+
+
+def _distance_inside_including_canvas_border(binary_mask):
+    """Distance to nearest transparent pixel, treating the image border as outside.
+
+    cv2.distanceTransform only sees zeros *inside* the array. A rounded rectangle
+    that extends to the canvas edge has no zeros along the straight sides, so
+    feather would only appear at the rounded corners.
+    """
+    padded = cv2.copyMakeBorder(binary_mask, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+    dist = cv2.distanceTransform(padded, cv2.DIST_L2, 5)
+    return dist[1:-1, 1:-1]
+
+
+def _tools_matching_feather_factor(width, height, feather_percent, corner_radius_px=0, is_circle=False):
+    """Inward linear fade matching ToolsPage rasterize (overlayFeatherMaskStyle).
+
+    Tools uses (percent/100)*(width/2) on left/right and (percent/100)*(height/2)
+    on top/bottom, fully transparent at the edge and fully opaque at that depth.
+    The print-quality path used to split the fade half-outside the shape (then
+    cover it with the frame), which made 300 DPI look like a thinner band.
+    """
+    width = int(width)
+    height = int(height)
+    pct = max(0.0, float(feather_percent))
+    y = np.arange(height, dtype=np.float32)[:, None]
+    x = np.arange(width, dtype=np.float32)[None, :]
+    if is_circle:
+        outer = min(width, height) / 2.0
+        inner = max(0.0, outer * (1.0 - pct / 100.0))
+        span = max(1.0, outer - inner)
+        dist = np.hypot(x - (width / 2.0), y - (height / 2.0))
+        return np.clip((outer - dist) / span, 0.0, 1.0).astype(np.float32)
+
+    fade_x = max(1.0, (pct / 100.0) * (width * 0.5))
+    fade_y = max(1.0, (pct / 100.0) * (height * 0.5))
+    dist_left = x
+    dist_right = (width - 1) - x
+    dist_top = y
+    dist_bottom = (height - 1) - y
+    dx = np.minimum(dist_left, dist_right)
+    dy = np.minimum(dist_top, dist_bottom)
+    edge_fade = np.clip(dx / fade_x, 0.0, 1.0) * np.clip(dy / fade_y, 0.0, 1.0)
+
+    r = int(corner_radius_px) if corner_radius_px else 0
+    if r > 0:
+        in_tl = (dist_left < r) & (dist_top < r)
+        in_tr = (dist_right < r) & (dist_top < r)
+        in_bl = (dist_left < r) & (dist_bottom < r)
+        in_br = (dist_right < r) & (dist_bottom < r)
+        in_corner = in_tl | in_tr | in_bl | in_br
+        cx = np.where(in_tl | in_bl, float(r), float(width - r))
+        cy = np.where(in_tl | in_tr, float(r), float(height - r))
+        min_dist = np.maximum(0.0, r - np.hypot(x - cx, y - cy))
+        corner_feather = max(fade_x, fade_y)
+        corner_fade = np.clip(min_dist / corner_feather, 0.0, 1.0)
+        edge_fade = np.where(in_corner, corner_fade, edge_fade)
+    return edge_fade.astype(np.float32)
+
+
+def _orientation_print_area(image_orientation, print_area_width, print_area_height):
+    """Portrait uses the product print box. Landscape uses the wide band inside it."""
+    try:
+        width = float(print_area_width) if print_area_width else 0
+        height = float(print_area_height) if print_area_height else 0
+    except (TypeError, ValueError):
+        width, height = 0, 0
+    ori = str(image_orientation or "").strip().lower()
+    if ori == "landscape":
+        if width <= 0:
+            width = 11.5
+        if height <= 0 or height > width / 1.45:
+            height = width / 1.5
+        return width, height
+    if ori == "portrait":
+        if width <= 0 or height <= 0:
+            return 11.5, 13.8
+        return width, height
+    if width > 0 and height > 0:
+        return width, height
+    return None, None
+
+
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=False, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -733,6 +833,38 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             w = int(crop_area['width'] * image.shape[1])
             h = int(crop_area['height'] * image.shape[0])
             image = image[y:y+h, x:x+w]
+
+        ori = str(image_orientation or "").strip().lower()
+        if ori not in ("portrait", "landscape"):
+            ori = None
+        preserve = bool(preserve_edits) or str(fit_mode or "").strip().lower() in ("preserve", "none")
+        if preserve:
+            # Keep baked feather/frame/radius. Cover-crop and print-area stretch
+            # clip those edges (often leaving only a corner of the fade).
+            logger.info("📐 [PRINT_QUALITY] preserve_edits: skip cover-crop and print-area stretch")
+            ori = None
+            print_area_width = None
+            print_area_height = None
+        cover_fit = (not preserve) and (str(fit_mode or "").strip().lower() == "cover" or bool(ori))
+        oriented_w, oriented_h = _orientation_print_area(ori, print_area_width, print_area_height)
+        if cover_fit and not crop_area:
+            target_aspect = None
+            if oriented_w and oriented_h:
+                target_aspect = oriented_w / oriented_h
+            elif ori == "landscape":
+                target_aspect = 1.5
+            elif ori == "portrait":
+                target_aspect = 11.5 / 13.8
+            if target_aspect:
+                before_h, before_w = image.shape[:2]
+                image = _cover_crop_to_aspect(image, target_aspect)
+                after_h, after_w = image.shape[:2]
+                logger.info(
+                    f"📐 [PRINT_QUALITY] Cover-crop {ori or fit_mode}: {before_w}x{before_h} → {after_w}x{after_h} (aspect {target_aspect:.3f})"
+                )
+        if oriented_w and oriented_h:
+            print_area_width = oriented_w
+            print_area_height = oriented_h
         
         # Calculate target dimensions for print quality
         # Preserve aspect ratio but scale to print quality
@@ -886,182 +1018,34 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             else:
                 logger.info(f"Applying feather effect to HIGH-RESOLUTION print quality image {target_width}x{target_height}")
             
-            # Get the current alpha channel (which may already have corner radius applied)
-            alpha_channel = image[:, :, 3].copy() if image.shape[2] == 4 else np.full((target_height, target_width), 255, dtype=np.uint8)
-            
-            # Create a binary mask from the existing alpha channel
-            # This preserves the exact shape including corner radius
-            binary_mask = (alpha_channel > 0).astype(np.uint8) * 255
-            
-            # Check if we have a fully opaque image (no corner radius applied)
-            # Use faster check: if any pixel in alpha is 0, we have transparency
-            has_transparency = np.any(alpha_channel == 0)
-            
-            # Calculate feather radius (0-100% maps to 0-50% of smallest dimension)
-            min_dimension = min(target_width, target_height)
-            feather_radius = max(1, int((feather_value / 100) * (min_dimension * 0.5)))  # avoid 0 for division safety
-            
-            # Removed verbose logging for performance
-            
-            if not has_transparency:
-                # No corner radius - use vectorized operations for fast distance calculation
-                # This is MUCH faster than nested loops (100x+ speedup for high-res images)
-                
-                # Create coordinate grids using vectorized operations
-                y_coords, x_coords = np.meshgrid(
-                    np.arange(target_height, dtype=np.float32),
-                    np.arange(target_width, dtype=np.float32),
-                    indexing='ij'
-                )
-                
-                # Calculate distance to each edge using vectorized operations
-                dist_to_top = y_coords
-                dist_to_bottom = float(target_height - 1) - y_coords
-                dist_to_left = x_coords
-                dist_to_right = float(target_width - 1) - x_coords
-                
-                # Distance to nearest edge (minimum of all four)
-                min_edge_dist = np.minimum(
-                    np.minimum(dist_to_top, dist_to_bottom),
-                    np.minimum(dist_to_left, dist_to_right)
-                )
-                
-                # Use simple edge distance for faster processing
-                # The smoothstep function will handle corner smoothing naturally
-                dist_transform = min_edge_dist
-                
-                # Normalize and apply smoothstep function
-                normalized_dist = np.clip(dist_transform / feather_radius, 0.0, 1.0)
-                feather_factor = normalized_dist * normalized_dist * (3.0 - 2.0 * normalized_dist)
-                
-                # Apply feather to BOTH RGB and alpha channels when no transparency exists
-                # RGB channels fade to white (255) at edges, alpha fades to transparent (0)
-                for channel in range(3):
-                    rgb_float = image[:, :, channel].astype(np.float32)
-                    # Fade RGB to white (255) at edges
-                    final_rgb = (rgb_float + (255.0 - rgb_float) * (1.0 - feather_factor)).astype(np.uint8)
-                    image[:, :, channel] = final_rgb
-                
-                # Apply feather to alpha channel
-                alpha_float = alpha_channel.astype(np.float32)
-                final_alpha = (alpha_float * feather_factor).astype(np.uint8)
-                
-                # Update the image alpha channel
-                if image.shape[2] == 4:
-                    image[:, :, 3] = final_alpha
-                
+            if image.shape[2] == 3:
+                alpha_channel = np.full((target_height, target_width), 255, dtype=np.uint8)
+                image = np.dstack([image, alpha_channel])
             else:
-                # Has corner radius - calculate distance to perimeter explicitly for uniform feathering
-                # We need to ensure feather works uniformly on BOTH straight edges AND rounded corners (including circles)
-                # CRITICAL: Feather must extend BEYOND the shape boundary to be visible in "deleted" areas
-                binary_mask = (alpha_channel > 0).astype(np.uint8) * 255
-                inside_shape = binary_mask > 0
-                
-                # Calculate distance from edge INTO the shape (for pixels inside)
-                dist_from_edge_inside = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 5)
-                
-                # Calculate distance from edge OUTSIDE the shape (for pixels outside)
-                # Invert the mask to get distances from the shape edge outward
-                inverted_mask = 255 - binary_mask
-                dist_from_edge_outside = cv2.distanceTransform(inverted_mask, cv2.DIST_L2, 5)
-                
-                # Create a combined distance map:
-                # - For pixels inside: distance from edge INTO shape (positive)
-                # - For pixels outside: distance from edge OUTSIDE shape (negative, for feather extension)
-                # We'll use this to create a feather that extends beyond the shape boundary
-                height, width = alpha_channel.shape
-                dist_map = np.zeros((height, width), dtype=np.float32)
-                
-                # For pixels inside shape: use positive distance (distance into shape)
-                dist_map[inside_shape] = dist_from_edge_inside[inside_shape]
-                
-                # For pixels outside shape: use negative distance (distance outside shape, for feather extension)
-                # This allows feather to extend beyond the rounded corners
-                outside_shape = ~inside_shape
-                dist_map[outside_shape] = -dist_from_edge_outside[outside_shape]
-                
-                # Create feather factor that extends beyond the shape boundary
-                # Feather should fade from full opacity (center) to transparent (beyond feather_radius)
-                # We want feather to extend feather_radius pixels BEYOND the edge
-                
-                # For pixels inside: feather_factor increases from edge (0) to center (1)
-                # For pixels outside: feather_factor decreases from edge (1) to beyond feather_radius (0)
-                # This creates a smooth fade that extends beyond the rounded corners
-                
-                # Normalize: distance from -feather_radius (outside) to +feather_radius (inside)
-                # At distance = 0 (edge): feather_factor = 0.5 (half opacity for smooth transition)
-                # At distance = -feather_radius (outside): feather_factor = 0 (fully transparent)
-                # At distance = +feather_radius (inside): feather_factor = 1 (fully opaque)
-                
-                # Map distance range [-feather_radius, feather_radius] to [0, 1]
-                normalized_dist = np.clip((dist_map + feather_radius) / (2.0 * feather_radius), 0.0, 1.0)
-                
-                # Apply smoothstep function for smoother transitions
-                # smoothstep: 3t^2 - 2t^3 (ease-in-out curve)
-                feather_factor = normalized_dist * normalized_dist * (3.0 - 2.0 * normalized_dist)
-                feather_factor = feather_factor.astype(np.float32)
-                
-                # Create new alpha channel that extends beyond the original shape
-                # Start with the original alpha channel
-                alpha_float = alpha_channel.astype(np.float32)
-                
-                # For pixels inside the original shape: apply feather based on distance from edge
-                # For pixels outside the original shape: create feather extension (fade from edge outward)
-                final_alpha = np.zeros((height, width), dtype=np.float32)
-                
-                # Inside shape: multiply original alpha by feather_factor
-                final_alpha[inside_shape] = alpha_float[inside_shape] * feather_factor[inside_shape]
-                
-                # Outside shape (within feather_radius): create fade from edge
-                # This extends the feather beyond the rounded corners - CRITICAL for visible feather in deleted areas
-                outside_within_feather = outside_shape & (dist_from_edge_outside <= feather_radius)
-                
-                if np.any(outside_within_feather):
-                    # For outside pixels, create a fade from the edge
-                    # Pixels at edge (dist=0) get full feather, pixels at feather_radius get 0
-                    outside_dist_feather = dist_from_edge_outside[outside_within_feather]
-                    outside_feather_factor = np.clip(1.0 - (outside_dist_feather / max(feather_radius, 1.0)), 0.0, 1.0)
-                    # Apply smoothstep to outside feather for smoother transition
-                    outside_feather_factor = outside_feather_factor * outside_feather_factor * (3.0 - 2.0 * outside_feather_factor)
-                    
-                    # CRITICAL: Copy RGB values from edge pixels to create visible feather extension
-                    # Find edge pixels (pixels inside shape that are adjacent to outside pixels)
-                    kernel = np.ones((3, 3), np.uint8)
-                    eroded = cv2.erode(binary_mask, kernel, iterations=1)
-                    edge_pixels = (binary_mask > 0) & (eroded == 0)
-                    
-                    if np.any(edge_pixels) and image.shape[2] >= 3:
-                        # Get average RGB values from edge pixels for feather extension
-                        edge_rgb = image[edge_pixels, :3].mean(axis=0)
-                        
-                        # For each outside feather pixel, use edge color scaled by feather factor
-                        # Don't blend with existing pixel values (which may be black) - just use edge color
-                        # This creates a visible feather that extends beyond the rounded corners
-                        # without adding black background
-                        for i in range(3):
-                            # Use edge RGB directly, scaled by feather factor
-                            # This ensures no black pixels are introduced
-                            image[outside_within_feather, i] = edge_rgb[i] * outside_feather_factor
-                    
-                    # Set alpha for outside feather pixels - make it stronger to be more visible
-                    # Use 0.9 multiplier to ensure feather is clearly visible in deleted corner areas
-                    final_alpha[outside_within_feather] = (255.0 * outside_feather_factor * 0.9).astype(np.uint8)
-                
-                # Convert to uint8
-                final_alpha = np.clip(final_alpha, 0.0, 255.0).astype(np.uint8)
-                
-                # Update the image alpha channel to include the extended feather
-                image[:, :, 3] = final_alpha
-                
-                # CRITICAL: Zero out RGB values where alpha is 0 to prevent black background artifacts
-                # This ensures transparent pixels don't show any color
-                zero_alpha_mask = final_alpha == 0
-                if np.any(zero_alpha_mask) and image.shape[2] >= 3:
-                    for i in range(3):
-                        image[zero_alpha_mask, i] = 0
-                
-                # Removed verbose logging for performance
-            
+                alpha_channel = image[:, :, 3].copy()
+
+            max_radius = min(target_width, target_height) / 2.0
+            is_circle = corner_radius_value >= 100
+            if is_circle:
+                corner_px = int(max_radius)
+            elif corner_radius_value > 0:
+                corner_px = int((corner_radius_value / 100.0) * max_radius)
+            else:
+                corner_px = 0
+
+            feather_factor = _tools_matching_feather_factor(
+                target_width,
+                target_height,
+                feather_value,
+                corner_radius_px=corner_px,
+                is_circle=is_circle,
+            )
+            final_alpha = np.clip(alpha_channel.astype(np.float32) * feather_factor, 0.0, 255.0).astype(np.uint8)
+            image[:, :, 3] = final_alpha
+            zero_alpha_mask = final_alpha == 0
+            if np.any(zero_alpha_mask):
+                image[zero_alpha_mask, :3] = 0
+ 
             # If we applied feather at reduced resolution, upscale back to original size for frame step
             if need_upscale:
                 image = cv2.resize(image, (orig_w, orig_h), interpolation=cv2.INTER_LINEAR)

@@ -996,7 +996,7 @@ class VideoScreenshotCapture:
         except Exception as e:
             logger.error(f"Error cleaning up: {e}")
     
-    def process_thumbnail_for_print(self, image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=False, print_area_width=None, print_area_height=None):
+    def process_thumbnail_for_print(self, image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=False, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False):
         """Process a thumbnail image for print quality output"""
         try:
             # Import the function from the screenshot_capture module
@@ -1022,7 +1022,10 @@ class VideoScreenshotCapture:
                 text_offset_y=text_offset_y,
                 add_white_background=add_white_background,
                 print_area_width=print_area_width,
-                print_area_height=print_area_height
+                print_area_height=print_area_height,
+                image_orientation=image_orientation,
+                fit_mode=fit_mode,
+                preserve_edits=preserve_edits
             )
         except Exception as e:
             logger.error(f"Error processing thumbnail for print: {str(e)}")

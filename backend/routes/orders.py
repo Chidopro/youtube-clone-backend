@@ -4,6 +4,7 @@ from utils.stripe_checkout import (
     fetch_full_checkout_session,
     build_shipping_address_payload,
     merge_shipping_address_records,
+    customer_info_from_order,
     session_amount_total_usd,
     session_customer_email,
     session_shipping_cost_usd,
@@ -34,6 +35,8 @@ from services.order_email import (
     build_admin_order_email,
     resend_attachments_from_builder,
     get_order_screenshot as get_screenshot_for_order,
+    get_item_image_orientation,
+    get_item_tool_settings,
     _compress_for_inline,
 )
 from checkout_countries import (
@@ -1745,8 +1748,11 @@ def get_order_screenshot(order_id):
                 "index": idx,
                 "product": product_name,
                 "screenshot": screenshot_data or "",
+                "original_screenshot": item.get("original_screenshot") or item.get("originalScreenshot") or "",
                 "color": color,
-                "size": size
+                "size": size,
+                "image_orientation": get_item_image_orientation(item),
+                "toolSettings": get_item_tool_settings(item)
             })
         
         response = jsonify({
@@ -1756,7 +1762,8 @@ def get_order_screenshot(order_id):
             "video_url": order_data.get('video_url', ''),
             "video_title": order_data.get('video_title', ''),
             "creator_name": order_data.get('creator_name', ''),
-            "screenshot_timestamp": order_data.get('screenshot_timestamp', '')
+            "screenshot_timestamp": order_data.get('screenshot_timestamp', ''),
+            "customer": customer_info_from_order(order_data),
         })
         origin = request.headers.get('Origin')
         if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
@@ -1769,6 +1776,62 @@ def get_order_screenshot(order_id):
         logger.error(f"Error in get_order_screenshot: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
         return _allow_origin(response), 500
+
+
+@orders_bp.route("/api/order-customer/<order_id>")
+def get_order_customer(order_id):
+    """Shipping + contact for Print Quality CUSTOMER INFO copy (Printful paste)."""
+    try:
+        client = _get_supabase_admin() or _get_supabase_client()
+        order_store = _get_order_store()
+        candidates = []
+        raw = (order_id or "").strip()
+        if raw:
+            candidates.append(raw)
+            upper = raw.upper()
+            if upper.startswith("ORD-"):
+                bare = raw[4:]
+                if bare:
+                    candidates.append(bare)
+                    candidates.append("ORD-" + bare.upper())
+            else:
+                candidates.append("ORD-" + upper)
+        seen = set()
+        id_list = []
+        for c in candidates:
+            if c and c not in seen:
+                seen.add(c)
+                id_list.append(c)
+
+        order_data = None
+        for c in id_list:
+            if c in order_store:
+                order_data = dict(order_store[c])
+                break
+        if not order_data and client:
+            for c in id_list:
+                for col in ("order_id", "order_number", "id"):
+                    try:
+                        result = client.table("orders").select("*").eq(col, c).limit(1).execute()
+                        if result.data:
+                            order_data = result.data[0]
+                            break
+                    except Exception as lookup_err:
+                        logger.warning("Order customer lookup %s=%s: %s", col, c, lookup_err)
+                if order_data:
+                    break
+        if not order_data:
+            return _allow_origin(jsonify({"success": False, "error": "Order not found"})), 404
+        info = customer_info_from_order(order_data)
+        response = jsonify({
+            "success": True,
+            "order_id": order_data.get("order_id") or order_id,
+            "customer": info,
+        })
+        return _allow_origin(response)
+    except Exception as e:
+        logger.error("Error in get_order_customer: %s", e)
+        return _allow_origin(jsonify({"success": False, "error": "Internal server error"})), 500
 
 
 @orders_bp.route("/api/test-order-email", methods=["POST"])

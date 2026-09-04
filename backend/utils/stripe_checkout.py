@@ -262,6 +262,81 @@ def merge_shipping_address_records(
     return out
 
 
+_PLACEHOLDER_STREETS = frozenset({"", "\u2014", "-", "–", "—", "Address", "Not provided"})
+
+
+def customer_info_from_order(order_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Printful-ready customer/shipping block from a stored order row."""
+    order = order_data if isinstance(order_data, dict) else {}
+    sa = _parse_maybe_json(order.get("shipping_address"))
+    if not isinstance(sa, dict):
+        sa = {}
+
+    def pick(*keys: str) -> str:
+        for k in keys:
+            v = sa.get(k)
+            if v is not None and str(v).strip() and str(v).strip() not in _PLACEHOLDER_STREETS:
+                return str(v).strip()
+        for k in keys:
+            v = order.get(k)
+            if v is not None and str(v).strip() and str(v).strip() not in _PLACEHOLDER_STREETS:
+                return str(v).strip()
+        return ""
+
+    name = pick("name", "customer_name")
+    line1 = pick("line1", "address1", "address_line1")
+    line2 = pick("line2", "address2", "address_line2")
+    # Stripe/Link sometimes leaves line1 empty or placeholder and puts the street in line2.
+    if not line1 and line2:
+        line1, line2 = line2, ""
+    city = pick("city")
+    state = pick("state", "state_code")
+    zipc = pick("zip", "postal_code")
+    country = pick("country_code", "country")
+    email = pick("customer_email", "email")
+    if email.lower() == "not provided":
+        email = ""
+    phone = pick("customer_phone", "phone")
+
+    lines = []
+    if name:
+        lines.append(name)
+    if line1:
+        lines.append(line1)
+    if line2:
+        lines.append(line2)
+    if city and state:
+        city_state = f"{city}, {state}"
+    else:
+        city_state = city or state
+    if city_state and zipc:
+        lines.append(f"{city_state} {zipc}")
+    elif city_state:
+        lines.append(city_state)
+    elif zipc:
+        lines.append(zipc)
+    if country:
+        lines.append(country)
+    if email:
+        lines.append(email)
+    if phone:
+        lines.append(phone)
+
+    return {
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "line1": line1,
+        "line2": line2,
+        "city": city,
+        "state": state,
+        "zip": zipc,
+        "country": country,
+        "paste_text": "\n".join(lines),
+        "has_street": bool(line1),
+    }
+
+
 # Backwards-compatible name used by webhooks
 def build_shipping_address_payload(session_dict: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     return build_stripe_shipping_address_payload(session_dict)

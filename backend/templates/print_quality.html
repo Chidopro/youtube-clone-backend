@@ -230,16 +230,25 @@
             font-weight: bold;
             color: #555;
         }
-        /* Interactive crop tool (like screenshot selection page) */
+        /* Interactive crop tool — button lives in the heading row, never on the photo */
+        .active-image-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+        .active-image-header label { margin: 0; }
         .active-image-wrap { position: relative; display: inline-block; max-width: 100%; }
         .active-image-wrap img { display: block; max-width: 100%; max-height: 280px; border-radius: 5px; }
         .crop-tool-btn {
-            position: absolute; top: 8px; left: 8px;
-            background: rgba(255,255,255,0.95); border: 2px solid #333; border-radius: 6px;
-            padding: 6px 10px; font-size: 13px; font-weight: 600; cursor: pointer;
-            color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            background: #fff; border: 2px solid #333; border-radius: 6px;
+            padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+            color: #333; box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+            flex: 0 0 auto; white-space: nowrap;
         }
-        .crop-tool-btn:hover { background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .crop-tool-btn:hover { background: #f4f4f4; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
         .crop-overlay {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.4); cursor: crosshair;
@@ -261,6 +270,32 @@
         .crop-overlay-actions button { padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; }
         .crop-overlay-actions .apply-crop { background: #28a745; color: #fff; }
         .crop-overlay-actions .cancel-crop { background: #6c757d; color: #fff; }
+        .compact-tool-row {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0 8px;
+            flex-wrap: wrap;
+        }
+        .compact-tool-btn {
+            flex: 1;
+            min-width: 200px;
+            width: auto;
+            padding: 14px 18px;
+            font-weight: bold;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+        }
+        .compact-tool-btn.fit-btn { background: #0066cc; }
+        .compact-tool-btn.fit-btn:hover { background: #0052a3; }
+        .compact-tool-btn.tools-btn { background: #6f42c1; }
+        .compact-tool-btn.tools-btn:hover { background: #5a32a3; }
+        .compact-tool-btn[aria-expanded="true"] {
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.85), 0 2px 6px rgba(0,0,0,0.12);
+        }
+        .compact-panel { display: none; }
+        .compact-panel.open { display: block; }
     </style>
 </head>
 <body>
@@ -268,20 +303,33 @@
         <h1>🖨️ Print Quality Image Generator</h1>
         
         <!-- Product Information Display (always visible) -->
-        <div id="productInfoDisplay" style="background: #e7f3ff; border: 2px solid #0066cc; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: none;">
+        <div id="productInfoDisplay" style="background: #e7f3ff; border: 2px solid #0066cc; padding: 16px 20px; border-radius: 8px; margin-bottom: 16px; display: none;">
             <h3 style="margin-top: 0; color: #0066cc; font-size: 18px;">🛍️ Order Item Information</h3>
             <div id="productInfoContent" style="font-size: 16px; line-height: 1.8;">
+                <div><strong>Order ID:</strong> <span id="displayOrderId">-</span></div>
                 <div><strong>Product:</strong> <span id="productName">-</span></div>
+                <div><strong>Printful:</strong> <span id="printfulProductName">-</span></div>
                 <div><strong>Color:</strong> <span id="productColor">-</span></div>
                 <div><strong>Size:</strong> <span id="productSize">-</span></div>
+            </div>
+            <div id="orderFulfillActions" style="margin-top: 14px;">
+                <div class="action-buttons" style="justify-content: flex-start; flex-wrap: wrap;">
+                    <button type="button" class="customer-info-btn" onclick="copyCustomerInfo()">📋 CUSTOMER INFO</button>
+                    <button type="button" class="printful-btn" onclick="openPrintful()">🎨 PRINTFUL</button>
+                </div>
+                <div id="customerCopyStatus" style="margin-top: 8px; font-size: 14px; color: #155724;"></div>
+            </div>
+            <div id="customerInfoPanel" style="display: none; margin-top: 14px; padding: 12px 14px; background: #fff; border: 1px solid #99c2e8; border-radius: 6px; font-size: 16px; line-height: 1.8;">
+                <div style="font-weight: bold; color: #0066cc; margin-bottom: 6px;">📦 Customer / shipping</div>
+                <div id="customerInfoLines"></div>
             </div>
         </div>
         
         <form id="printQualityForm">
             <!-- Image Mode Fields (Default) -->
             <div id="imageModeFields">
-                <div class="form-group">
-                    <label for="orderIdInput">📸 Order ID:</label>
+                <div class="form-group" id="orderIdLoadGroup">
+                    <label for="orderIdInput">Order ID</label>
                     <input type="text" id="orderIdInput" placeholder="Enter order ID (e.g. ORD-5D1495E2 from your email)" style="width: 100%; padding: 8px; margin-bottom: 10px;">
                     <button type="button" onclick="loadOrderScreenshot()" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Load Screenshots from Order</button>
                 </div>
@@ -293,11 +341,14 @@
                 </div>
                 
                 <div class="form-group" id="activeImageContainer">
-                    <label>🖼️ Active image for editing</label>
-                    <div id="screenshotPreview" style="margin: 10px 0; padding: 10px; border: 2px dashed #ccc; text-align: center; background: #f9f9f9; min-height: 80px;">
-                        <p style="color: #666;">Load screenshots with Order ID above, or use video/upload below. Click a screenshot in the queue to edit it.</p>
+                    <div class="active-image-header">
+                        <label>🖼️ Active image for editing</label>
+                        <button type="button" class="crop-tool-btn" id="cropToolBtn" title="Crop before Fit to Print" hidden>++ Crop Tool</button>
                     </div>
-                    <small>Select an image from the queue above; then generate 300 DPI first, then use the tools below (feather, corner radius, frame, text).</small>
+                    <div id="screenshotPreview" style="margin: 10px 0; padding: 10px; border: 2px dashed #ccc; text-align: center; background: #f9f9f9; min-height: 80px;">
+                        <p style="color: #666;">Select a screenshot in the queue to edit it, or use video/upload below.</p>
+                    </div>
+                    <small>Select an image from the queue above; then generate 300 DPI. Use Fit to Print Area or Optional Tools if you need them.</small>
                 </div>
                 
                 <!-- Generate 300 DPI Image - FIRST ACTION (before any tools) -->
@@ -324,16 +375,11 @@
                 </div>
             </div>
             
-            <div class="form-group">
-                <label for="cropX">Crop Area (optional):</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <input type="number" id="cropX" name="cropX" placeholder="X (0-1)" step="0.01" min="0" max="1">
-                    <input type="number" id="cropY" name="cropY" placeholder="Y (0-1)" step="0.01" min="0" max="1">
-                    <input type="number" id="cropWidth" name="cropWidth" placeholder="Width (0-1)" step="0.01" min="0" max="1">
-                    <input type="number" id="cropHeight" name="cropHeight" placeholder="Height (0-1)" step="0.01" min="0" max="1">
-                </div>
-                <small>Leave blank for full frame. Values are normalized (0-1). Or use the <strong>++ Crop Tool</strong> on the active image above to set the crop visually before Fit to Print.</small>
-            </div>
+            <!-- Crop params stay hidden; ++ Crop Tool on the active image is the only crop UI. -->
+            <input type="hidden" id="cropX" name="cropX" value="">
+            <input type="hidden" id="cropY" name="cropY" value="">
+            <input type="hidden" id="cropWidth" name="cropWidth" value="">
+            <input type="hidden" id="cropHeight" name="cropHeight" value="">
             
             <div class="form-group">
                 <label for="dpi">Print DPI:</label>
@@ -364,8 +410,17 @@
             </div>
             -->
             
-            <!-- Fit to Print Area (above Step 1): product dropdown + screenshot size so admin can fit landscape image to product -->
-            <div id="fitToPrintAreaSection" style="background: #f0f7ff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #0066cc;">
+            <div class="compact-tool-row">
+                <button type="button" class="compact-tool-btn fit-btn" id="fitToPrintToggleBtn" aria-expanded="false" aria-controls="fitToPrintAreaSection">
+                    📐 Fit to Print Area
+                </button>
+                <button type="button" class="compact-tool-btn tools-btn" id="optionalToolsToggleBtn" aria-expanded="false" aria-controls="optionalToolsPanel">
+                    ✨ Optional Tools
+                </button>
+            </div>
+
+            <!-- Fit to Print Area: product dropdown + screenshot size (collapsed until the button is clicked) -->
+            <div id="fitToPrintAreaSection" class="compact-panel" style="background: #f0f7ff; padding: 20px; border-radius: 10px; margin: 8px 0 16px; border: 2px solid #0066cc;">
                 <h3 style="margin-top: 0; color: #0066cc; font-size: 18px;">📐 Fit to Print Area</h3>
                 <p style="color: #555; margin-bottom: 16px; font-size: 14px;">Select a product to resize the image to that product’s print area (e.g. hoodie vs mug). Use when the email image is landscape and needs to fit apparel.</p>
                 <div class="form-group">
@@ -384,7 +439,8 @@
                     <small style="color: #666;">Scale the image within the print area (100% = full print area).</small>
                 </div>
             </div>
-            
+
+            <div id="optionalToolsPanel" class="compact-panel">
             <!-- STEP 2: FEATHER EDGE TOOL (OPTIONAL) - First tool after Generate 300 DPI -->
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #17a2b8;">
                 <h3 style="margin-top: 0; color: #17a2b8;">✨ STEP 2: Feather Edge Tool (Optional)</h3>
@@ -571,14 +627,6 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- STEP 6: READY FOR DOWNLOAD -->
-            <div id="downloadSection" style="background: #fff3cd; padding: 20px; border-radius: 10px; margin: 20px 0; border: 3px solid #ffc107; text-align: center; display: none;">
-                <h2 style="margin-top: 0; color: #856404; font-size: 24px;">📥 STEP 6: Ready for Download</h2>
-                <p style="color: #856404; margin-bottom: 20px; font-size: 16px;">Your print-quality image is ready! Download the high-resolution file for production.</p>
-                <div id="downloadButtons" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                    <!-- Download buttons will be added here by JavaScript -->
-                </div>
             </div>
         </form>
         
@@ -598,6 +646,9 @@
         let currentImageDimensions = { width: 0, height: 0 };
         let currentFeatherValue = 0;  // Track current feather value
         let currentCornerRadiusValue = 0;  // Track current corner radius value
+        let loadedCustomer = null;
+        const PRINTFUL_DASHBOARD_URLS = {{ printful_dashboard_urls | default({}) | tojson }};
+        const PRINTFUL_CATALOG_TITLES = {{ printful_catalog_titles | default({}) | tojson }};
         
         // Helper function to get image dimensions from base64 data URL
         function getImageDimensions(imageDataUrl) {
@@ -613,7 +664,11 @@
             });
         }
         let allProducts = [];  // Store all products from order
+        let selectedQueueIndex = 0;
         let printAreaProductsList = [];  // From /api/print-area-products for fit-to-print dropdown
+        let currentImageOrientation = '';
+        let currentToolSettings = {};
+        let currentOriginalScreenshot = '';
         
         // Load print area products for fit-to-print dropdown
         (function loadPrintAreaProducts() {
@@ -630,6 +685,11 @@
                                 opt.textContent = p.name + (p.description ? ' — ' + p.description : '');
                                 sel.appendChild(opt);
                             });
+                        }
+                        if (allProducts && allProducts.length) {
+                            var selectedCard = document.querySelector('.screenshot-queue-card.selected');
+                            var idx = selectedCard ? parseInt(selectedCard.getAttribute('data-index'), 10) : 0;
+                            if (!isNaN(idx) && allProducts[idx]) applyFitProductForOrderItem(allProducts[idx]);
                         }
                     }
                 })
@@ -660,7 +720,57 @@
             var el = document.getElementById('screenshotSizeValue');
             if (el) el.textContent = this.value;
         });
+
+        function bindCompactToggle(btnId, panelId) {
+            var btn = document.getElementById(btnId);
+            var panel = document.getElementById(panelId);
+            if (!btn || !panel) return;
+            btn.addEventListener('click', function() {
+                var open = !panel.classList.contains('open');
+                panel.classList.toggle('open', open);
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        }
+        bindCompactToggle('fitToPrintToggleBtn', 'fitToPrintAreaSection');
+        bindCompactToggle('optionalToolsToggleBtn', 'optionalToolsPanel');
         
+        function matchPrintAreaProduct(name) {
+            if (!name || !printAreaProductsList.length) return null;
+            var n = String(name).toLowerCase().trim();
+            var exact = printAreaProductsList.find(function(p) { return p.name.toLowerCase() === n; });
+            if (exact) return exact;
+            return printAreaProductsList.find(function(p) {
+                var pn = p.name.toLowerCase();
+                return n.indexOf(pn) >= 0 || pn.indexOf(n) >= 0;
+            }) || null;
+        }
+
+        function matchPrintAreaSize(product, sizeLabel) {
+            if (!product || !product.sizes || !product.sizes.length || !sizeLabel) return null;
+            var label = String(sizeLabel).toUpperCase().trim();
+            var exact = product.sizes.find(function(s) { return String(s.label).toUpperCase() === label; });
+            if (exact) return exact;
+            return product.sizes.find(function(s) {
+                var g = String(s.label).toUpperCase();
+                return g.indexOf(label) >= 0 || label.indexOf(g.split('-')[0]) >= 0;
+            }) || null;
+        }
+
+        function applyFitProductForOrderItem(product) {
+            var sel = document.getElementById('fitProductSelect');
+            if (!sel || !product) return;
+            var matched = matchPrintAreaProduct(product.product);
+            if (!matched) return;
+            sel.value = matched.name;
+            sel.dispatchEvent(new Event('change'));
+            var sizeMatch = matchPrintAreaSize(matched, product.size);
+            var sizeSelect = document.getElementById('fitSizeSelect');
+            if (sizeMatch && sizeSelect) {
+                sizeSelect.value = sizeMatch.label;
+            }
+        }
+
         // Return { width, height } in inches for current fit product/size and screenshot scale, or null
         function getFitPrintAreaDimensions() {
             var productName = document.getElementById('fitProductSelect').value;
@@ -678,17 +788,46 @@
             return { width: w * scale, height: h * scale };
         }
         
+        function setLoadedOrderId(id) {
+            var display = document.getElementById('displayOrderId');
+            var box = document.getElementById('productInfoDisplay');
+            var loadGroup = document.getElementById('orderIdLoadGroup');
+            var input = document.getElementById('orderIdInput');
+            var value = (id || '').trim();
+            if (display && value) display.textContent = value;
+            if (input && value) input.value = value;
+            if (box && value) box.style.display = 'block';
+            if (loadGroup && value) loadGroup.style.display = 'none';
+        }
+
+        function printfulLookup(map, productName) {
+            if (!productName || !map) return '';
+            if (map[productName]) return map[productName];
+            var lower = String(productName).toLowerCase();
+            var keys = Object.keys(map);
+            for (var i = 0; i < keys.length; i++) {
+                if (keys[i].toLowerCase() === lower) return map[keys[i]];
+            }
+            return '';
+        }
+
         // Function to update product info display
         function updateProductInfoDisplay(product) {
             const productInfoDisplay = document.getElementById('productInfoDisplay');
             const productName = document.getElementById('productName');
+            const printfulProductName = document.getElementById('printfulProductName');
             const productColor = document.getElementById('productColor');
             const productSize = document.getElementById('productSize');
             
             if (product && productInfoDisplay && productName && productColor && productSize) {
-                productName.textContent = product.product || 'N/A';
+                var name = product.product || 'N/A';
+                productName.textContent = name;
+                if (printfulProductName) {
+                    printfulProductName.textContent = printfulLookup(PRINTFUL_CATALOG_TITLES, name) || name;
+                }
                 productColor.textContent = product.color || 'N/A';
                 productSize.textContent = product.size || 'N/A';
+                setLoadedOrderId(currentOrderIdValue());
                 productInfoDisplay.style.display = 'block';
             }
         }
@@ -698,18 +837,28 @@
             if (!allProducts || allProducts.length === 0 || productIndex == null || productIndex === undefined) return;
             const selectedProduct = allProducts[productIndex];
             if (!selectedProduct) return;
+            selectedQueueIndex = productIndex;
             // Update active image and editor state
             updateProductInfoDisplay(selectedProduct);
             currentFeatherValue = 0;
             currentCornerRadiusValue = 0;
+            currentImageOrientation = (selectedProduct.image_orientation || selectedProduct.toolSettings && selectedProduct.toolSettings.imageOrientation || 'portrait').toLowerCase() === 'landscape'
+                ? 'landscape'
+                : 'portrait';
+            currentToolSettings = (selectedProduct.toolSettings && typeof selectedProduct.toolSettings === 'object')
+                ? selectedProduct.toolSettings
+                : {};
+            currentOriginalScreenshot = selectedProduct.original_screenshot || '';
+            applyFitProductForOrderItem(selectedProduct);
             if (selectedProduct.screenshot && selectedProduct.screenshot.trim() !== '') {
                 orderScreenshot = selectedProduct.screenshot;
                 originalScreenshot = selectedProduct.screenshot;
                 const preview = document.getElementById('screenshotPreview');
+                const cropToolBtn = document.getElementById('cropToolBtn');
+                if (cropToolBtn) cropToolBtn.hidden = false;
                 preview.innerHTML = `
                     <div class="active-image-wrap">
                         <img id="activeEditImage" alt="Active screenshot">
-                        <button type="button" class="crop-tool-btn" id="cropToolBtn" title="Crop before Fit to Print">++ Crop Tool</button>
                         <div id="cropOverlay" class="crop-overlay">
                             <div id="cropBox" class="crop-box" style="left:0;top:0;width:100%;height:100%;">
                                 <span class="handle nw" data-handle="nw"></span>
@@ -739,6 +888,8 @@
                 document.getElementById('screenshotPreview').innerHTML = `
                     <p style="color: orange;">⚠️ No image for this item. Use video/upload below or select another from the queue.</p>
                 `;
+                const cropToolBtnOff = document.getElementById('cropToolBtn');
+                if (cropToolBtnOff) cropToolBtnOff.hidden = true;
             }
             // Update selected state on queue cards
             document.querySelectorAll('.screenshot-queue-card').forEach((el, i) => {
@@ -802,6 +953,8 @@
                             allProducts = [{ product: 'Order Screenshot', screenshot: data.screenshot, color: 'N/A', size: 'N/A' }];
                         }
                         console.log(`📦 Loaded ${allProducts.length} screenshot(s) from order (same as email)`);
+                        loadedCustomer = data.customer || null;
+                        setLoadedOrderId(data.order_id || currentOrderId);
                         renderScreenshotQueue();
                         selectQueueIndex(0);
                     } else {
@@ -861,6 +1014,7 @@
         const generate300dpiBtn = document.getElementById('generate300dpiBtn');
         if (orderId && orderId !== 'None' && orderId !== '' && orderId !== 'null') {
             orderIdInput.value = orderId;
+            setLoadedOrderId(orderId);
             if (generate300dpiBtn) generate300dpiBtn.disabled = true;
             document.getElementById('screenshotPreview').innerHTML = '<p style="color: #0066cc;">⏳ Loading screenshots from order (same as in your email)...</p>';
             document.getElementById('screenshotQueueContainer').style.display = 'none';
@@ -888,19 +1042,51 @@
             
             try {
                 const dpi = parseInt(document.getElementById('dpi').value);
+                const hasOriginal = currentOriginalScreenshot && String(currentOriginalScreenshot).trim();
+                const sourceImage = hasOriginal ? currentOriginalScreenshot : orderScreenshot;
+                const ts = currentToolSettings || {};
+                const hasBakedEdits = !hasOriginal && (
+                    Number(ts.featherEdge) > 0 ||
+                    Number(ts.cornerRadius) > 0 ||
+                    Boolean(ts.frameEnabled) ||
+                    (Boolean(ts.textEnabled) && String(ts.textContent || '').trim())
+                );
+                const applyStoredTools = Boolean(hasOriginal);
                 
                 const payload = {
-                    thumbnail_data: orderScreenshot,
+                    thumbnail_data: sourceImage,
                     print_dpi: dpi,
-                    soft_corners: false,  // No effects in step 1
-                    edge_feather: false   // No effects in step 1
+                    soft_corners: applyStoredTools && Number(ts.cornerRadius) > 0,
+                    edge_feather: applyStoredTools && Number(ts.featherEdge) > 0,
+                    corner_radius_percent: applyStoredTools ? Number(ts.cornerRadius || 0) : 0,
+                    feather_edge_percent: applyStoredTools ? Number(ts.featherEdge || 0) : 0,
+                    frame_enabled: applyStoredTools && Boolean(ts.frameEnabled),
+                    frame_color: ts.frameColor || '#FF0000',
+                    frame_width: parseInt(ts.frameWidth, 10) || 10,
+                    double_frame: applyStoredTools && Boolean(ts.doubleFrame),
+                    text_enabled: applyStoredTools && Boolean(ts.textEnabled) && Boolean(String(ts.textContent || '').trim()),
+                    text_content: applyStoredTools ? (ts.textContent || '') : '',
+                    text_font: ts.textFont || 'Arial',
+                    text_color: ts.textColor || '#000000',
+                    text_size: parseInt(ts.textSize, 10) || 24,
+                    text_offset_x: parseInt(ts.textOffsetX, 10) || 50,
+                    text_offset_y: parseInt(ts.textOffsetY, 10) || 50
                 };
-                
-                // Fit to print area: when product is selected, send dimensions so image is resized to fit (e.g. hoodie vs mug)
-                const fitDims = getFitPrintAreaDimensions();
-                if (fitDims) {
-                    payload.print_area_width = fitDims.width;
-                    payload.print_area_height = fitDims.height;
+                if (hasBakedEdits) {
+                    // Screenshot already includes Tools edits. Cover-crop / stretch
+                    // clips the feathered edges down to a sliver.
+                    payload.preserve_edits = true;
+                    payload.fit_mode = 'preserve';
+                } else {
+                    payload.fit_mode = 'cover';
+                    if (currentImageOrientation === 'landscape' || currentImageOrientation === 'portrait') {
+                        payload.image_orientation = currentImageOrientation;
+                    }
+                    const fitDims = getFitPrintAreaDimensions();
+                    if (fitDims) {
+                        payload.print_area_width = fitDims.width;
+                        payload.print_area_height = fitDims.height;
+                    }
                 }
                 
                 // Build crop area if provided
@@ -924,10 +1110,6 @@
                     if (result.screenshot) {
                         original300DpiImage = result.screenshot;
                     }
-                    // Show download section
-                    document.getElementById('downloadSection').style.display = 'block';
-                    // Enable optional tools (buttons will show when checkboxes are checked)
-                    // Don't force display here - let checkbox handlers control visibility
                 } else {
                     const error = await response.json();
                     displayError(error.error || 'Failed to generate 300 DPI image');
@@ -1888,13 +2070,17 @@
             const resultDiv = document.getElementById('result');
             resultDiv.className = 'result success';
             resultDiv.style.display = 'block';
+            var dims = result.dimensions || {};
+            var fileMb = result.file_size ? (result.file_size / 1024 / 1024).toFixed(1) + ' MB' : '';
+            var specParts = [];
+            if (dims.width && dims.height) specParts.push(dims.width + ' x ' + dims.height + ' px');
+            if (fileMb) specParts.push(fileMb);
+            if (dims.dpi) specParts.push(dims.dpi + ' DPI');
+            if (result.format) specParts.push(result.format);
+            if (result.quality) specParts.push(result.quality);
+            var specTitle = specParts.join(' · ');
             resultDiv.innerHTML = `
-                <h3>✅ Print Quality Image Generated!</h3>
-                <p><strong>Dimensions:</strong> ${result.dimensions.width} x ${result.dimensions.height} pixels</p>
-                <p><strong>File Size:</strong> ${(result.file_size / 1024 / 1024).toFixed(1)} MB</p>
-                <p><strong>DPI:</strong> ${result.dimensions.dpi}</p>
-                <p><strong>Format:</strong> ${result.format}</p>
-                <p><strong>Quality:</strong> ${result.quality}</p>
+                <h3 style="margin:0 0 8px 0;" title="${escapeHtml(specTitle)}">✅ Print Quality Image Generated!</h3>
                 
                 <div class="image-preview-wrap">
                     <img src="${result.screenshot}" alt="Print Quality Preview" class="image-preview">
@@ -1904,15 +2090,6 @@
                     <a href="${result.screenshot}" download="print_quality_${Date.now()}.png" class="download-btn">
                         📥 Download Print Quality Image
                     </a>
-                    
-                    <div class="action-buttons">
-                        <button onclick="copyCustomerInfo()" class="customer-info-btn">
-                            📋 CUSTOMER INFO
-                        </button>
-                        <button onclick="openPrintful()" class="printful-btn">
-                            🎨 PRINTFUL
-                        </button>
-                    </div>
                 </div>
             `;
         }
@@ -1948,25 +2125,134 @@
         }
         
         // Customer Info and Printful functions
-        async function copyCustomerInfo() {
+        function setCustomerCopyStatus(message, isError) {
+            var el = document.getElementById('customerCopyStatus');
+            if (!el) return;
+            el.style.color = isError ? '#721c24' : '#155724';
+            el.textContent = message || '';
+        }
+
+        async function copyTextToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                } catch (e) { /* fall through */ }
+            }
             try {
-                // Use test data for demonstration
-                const customerInfo = `Alan Armstrong
-8765 Liny Dr.
-El Cerrito, CA 98765`;
-                
-                // Copy to clipboard silently
-                await navigator.clipboard.writeText(customerInfo);
-                console.log('Customer information copied to clipboard:', customerInfo);
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                var ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+                return ok;
+            } catch (e2) {
+                return false;
+            }
+        }
+
+        function currentOrderIdValue() {
+            return (orderId || (document.getElementById('orderIdInput') && document.getElementById('orderIdInput').value) || '').trim();
+        }
+
+        async function fetchOrderCustomer(currentOrderId) {
+            var response = await fetch('/api/order-customer/' + encodeURIComponent(currentOrderId));
+            var data = {};
+            try { data = await response.json(); } catch (e) { data = {}; }
+            if (!response.ok || !data.success) {
+                throw new Error((data && data.error) || 'Could not load customer info');
+            }
+            return data.customer || {};
+        }
+
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function showCustomerInfoInPanel(customer) {
+            var panel = document.getElementById('customerInfoPanel');
+            var linesEl = document.getElementById('customerInfoLines');
+            if (!panel || !linesEl) return;
+            var rows = [
+                ['Name', customer.name],
+                ['Address', customer.line1],
+                ['Address 2', customer.line2],
+                ['City', customer.city],
+                ['State', customer.state],
+                ['ZIP', customer.zip],
+                ['Country', customer.country],
+                ['Email', customer.email],
+                ['Phone', customer.phone]
+            ];
+            var html = '';
+            rows.forEach(function(row) {
+                var val = (row[1] && String(row[1]).trim()) ? String(row[1]).trim() : '';
+                if (!val) return;
+                html += '<div><strong>' + escapeHtml(row[0]) + ':</strong> ' + escapeHtml(val) + '</div>';
+            });
+            if (!html && customer.paste_text) {
+                html = '<pre style="margin:0;white-space:pre-wrap;font-family:inherit;">' + escapeHtml(customer.paste_text) + '</pre>';
+            }
+            linesEl.innerHTML = html || '<div>No shipping address on this order yet.</div>';
+            panel.style.display = 'block';
+        }
+
+        async function copyCustomerInfo() {
+            var currentOrderId = currentOrderIdValue();
+            if (!currentOrderId) {
+                setCustomerCopyStatus('Enter an order ID and load the order first.', true);
+                alert('Enter an order ID and load the order first.');
+                return;
+            }
+            setCustomerCopyStatus('Loading shipping info…', false);
+            try {
+                var customer = await fetchOrderCustomer(currentOrderId);
+                loadedCustomer = customer;
+                showCustomerInfoInPanel(customer);
+                var text = (customer && customer.paste_text) ? String(customer.paste_text).trim() : '';
+                if (!text) {
+                    setCustomerCopyStatus('No shipping address on this order yet (it is saved after Stripe Checkout).', true);
+                    return;
+                }
+                var copied = await copyTextToClipboard(text);
+                setCustomerCopyStatus(copied
+                    ? 'Customer info shown below. Also copied — paste into Printful.'
+                    : 'Customer info shown below.', false);
             } catch (error) {
-                console.error('Error copying customer info:', error);
+                console.error('Error loading customer info:', error);
+                setCustomerCopyStatus(error.message || 'Could not load customer info', true);
+                alert(error.message || 'Could not load customer info');
             }
         }
         
         function openPrintful() {
-            // Open Printful My products page in new tab
-            // Use the direct URL to the products section to avoid redirects
-            window.open('https://www.printful.com/dashboard/order/update', '_blank');
+            var name = '';
+            if (allProducts && allProducts[selectedQueueIndex]) {
+                name = (allProducts[selectedQueueIndex].product || '').trim();
+            }
+            if (!name) {
+                var el = document.getElementById('productName');
+                name = (el && el.textContent) ? el.textContent.trim() : '';
+            }
+            if (!name || name === '-' || name === 'N/A') {
+                alert('Load an order item first so Printful can open the matching product.');
+                return;
+            }
+            var url = printfulLookup(PRINTFUL_DASHBOARD_URLS, name);
+            if (!url) {
+                alert('No Printful product page is mapped for "' + name + '". Opening the Printful catalog.');
+                window.open('https://www.printful.com/dashboard/custom', '_blank');
+                return;
+            }
+            window.open(url, '_blank');
         }
         
     </script>
