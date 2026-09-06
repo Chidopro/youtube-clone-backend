@@ -10,6 +10,7 @@ Do not edit app.py email HTML; edit this module only.
 """
 import json
 import logging
+from html import escape
 from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
@@ -28,15 +29,264 @@ def get_item_tool_settings(item):
 
 
 def get_item_image_orientation(item):
-    """Portrait/landscape from cart tool settings (defaults to portrait)."""
+    """Portrait/landscape from the shopper's checkout/Tools choice (defaults to portrait)."""
     ts = get_item_tool_settings(item)
-    raw = (
-        ts.get("imageOrientation")
-        or item.get("image_orientation")
-        or item.get("imageOrientation")
-        or "portrait"
+    for raw in (
+        ts.get("imageOrientation"),
+        item.get("image_orientation") if isinstance(item, dict) else None,
+        item.get("imageOrientation") if isinstance(item, dict) else None,
+    ):
+        val = str(raw or "").strip().lower()
+        if val == "landscape":
+            return "landscape"
+        if val == "portrait":
+            return "portrait"
+    return "portrait"
+
+
+def orientation_display_label(orientation):
+    return "Landscape" if str(orientation).strip().lower() == "landscape" else "Portrait"
+
+
+def _flag_on(value):
+    return value is True or value == 1 or str(value).strip().lower() in ("true", "1")
+
+
+def item_has_baked_edits(item):
+    """True when Tools already baked a frame/feather/crop into the stored screenshot."""
+    if not isinstance(item, dict):
+        return False
+    if item.get("edited"):
+        return True
+    ts = get_item_tool_settings(item)
+    if _flag_on(ts.get("frameEnabled")):
+        return True
+    try:
+        if float(ts.get("featherEdge") or 0) > 0 or float(ts.get("cornerRadius") or 0) > 0:
+            return True
+    except (TypeError, ValueError):
+        pass
+    if _flag_on(ts.get("textEnabled")) and str(ts.get("textContent") or "").strip():
+        return True
+    orig = str(item.get("original_screenshot") or item.get("originalScreenshot") or "").strip()
+    shot = str(_get_item_screenshot(item) or "").strip()
+    return bool(orig and shot and orig != shot)
+
+
+def _num(value, default=0):
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _px_pair(x, y):
+    a = round(_num(x), 1)
+    b = round(_num(y), 1)
+    if a == b:
+        return f"{a:g}px"
+    return f"{a:g}px H × {b:g}px V"
+
+
+def item_edit_log(item):
+    """Structured edit recipe from toolSettings.editLog or flat toolSettings."""
+    ts = get_item_tool_settings(item)
+    log = ts.get("editLog") if isinstance(ts.get("editLog"), dict) else {}
+    src = log or ts
+    feather = _num(src.get("featherPercent", src.get("featherEdge")))
+    corner = _num(src.get("cornerRadiusPercent", src.get("cornerRadius")))
+    text_on = _flag_on(src.get("textEnabled")) and str(src.get("textContent") or "").strip()
+    fit = str(src.get("printAreaFit") or "").strip()
+    orientation = str(src.get("imageOrientation") or get_item_image_orientation(item) or "portrait").lower()
+    has_entries = bool(
+        feather > 0
+        or corner > 0
+        or _flag_on(src.get("frameEnabled"))
+        or _flag_on(src.get("blackAndWhite"))
+        or _flag_on(src.get("featherFadeEnabled"))
+        or text_on
+        or orientation == "landscape"
+        or (fit and fit != "none")
     )
-    return "landscape" if str(raw).lower() == "landscape" else "portrait"
+    if not has_entries:
+        return None
+    return {
+        "imageWidth": int(_num(src.get("imageWidth"))),
+        "imageHeight": int(_num(src.get("imageHeight"))),
+        "printWidth": int(_num(src.get("printWidth"))),
+        "printHeight": int(_num(src.get("printHeight"))),
+        "featherPercent": feather,
+        "featherPxX": _num(src.get("featherPxX")),
+        "featherPxY": _num(src.get("featherPxY")),
+        "featherPrintPxX": _num(src.get("featherPrintPxX")),
+        "featherPrintPxY": _num(src.get("featherPrintPxY")),
+        "cornerRadiusPercent": corner,
+        "cornerRadiusPx": _num(src.get("cornerRadiusPx")),
+        "cornerRadiusPrintPx": _num(src.get("cornerRadiusPrintPx")),
+        "frameEnabled": _flag_on(src.get("frameEnabled")),
+        "frameColor": str(src.get("frameColor") or "#FF0000"),
+        "frameWidthPx": _num(src.get("frameWidthPx", src.get("frameWidth"))),
+        "frameWidthPrintPx": _num(src.get("frameWidthPrintPx")),
+        "doubleFrame": _flag_on(src.get("doubleFrame")),
+        "blackAndWhite": _flag_on(src.get("blackAndWhite")),
+        "featherFadeEnabled": _flag_on(src.get("featherFadeEnabled")),
+        "featherFadeColor": "black" if str(src.get("featherFadeColor") or "").strip().lower() == "black" else "white",
+        "textEnabled": bool(text_on),
+        "textContent": str(src.get("textContent") or "").strip(),
+        "textFont": str(src.get("textFont") or "Arial"),
+        "textColor": str(src.get("textColor") or "#000000"),
+        "textSize": _num(src.get("textSize"), 24),
+        "textOffsetX": _num(src.get("textOffsetX"), 50),
+        "textOffsetY": _num(src.get("textOffsetY"), 50),
+        "printAreaFit": fit or "none",
+        "imageOrientation": "landscape" if orientation == "landscape" else "portrait",
+        "imageOffsetX": _num(src.get("imageOffsetX", src.get("offsetX"))),
+        "imageOffsetY": _num(src.get("imageOffsetY", src.get("offsetY"))),
+        "screenshotScale": _num(src.get("screenshotScale"), 100),
+        "selectedProductName": str(src.get("selectedProductName") or ""),
+    }
+
+
+def format_item_edit_log_rows(log):
+    if not log:
+        return []
+    rows = []
+    img_w, img_h = log.get("imageWidth") or 0, log.get("imageHeight") or 0
+    if img_w and img_h:
+        rows.append(("Edited image", f"{int(img_w)} × {int(img_h)} px"))
+    print_w, print_h = log.get("printWidth") or 0, log.get("printHeight") or 0
+    if print_w and print_h:
+        rows.append(("300 DPI target", f"{int(print_w)} × {int(print_h)} px"))
+    rows.append(("Orientation", "Landscape" if log.get("imageOrientation") == "landscape" else "Portrait"))
+    if log.get("selectedProductName"):
+        rows.append(("Product", str(log.get("selectedProductName"))))
+    fit = str(log.get("printAreaFit") or "")
+    if fit and fit != "none":
+        rows.append(("Fit", "Product specific" if fit == "product" else fit))
+    scale = _num(log.get("screenshotScale"), 100)
+    if scale and scale != 100:
+        rows.append(("Screenshot size", f"{scale:g}%"))
+    ox, oy = _num(log.get("imageOffsetX")), _num(log.get("imageOffsetY"))
+    if ox or oy:
+        rows.append(("Offset", f"H {ox:g}% · V {oy:g}%"))
+    feather = _num(log.get("featherPercent"))
+    if feather > 0:
+        baked = _px_pair(log.get("featherPxX"), log.get("featherPxY"))
+        print_px = ""
+        if _num(log.get("featherPrintPxX")) or _num(log.get("featherPrintPxY")):
+            print_px = f" → 300 DPI {_px_pair(log.get('featherPrintPxX'), log.get('featherPrintPxY'))}"
+        fade = ""
+        if log.get("featherFadeEnabled"):
+            fade = " · fade black" if str(log.get("featherFadeColor") or "").strip().lower() == "black" else " · fade white"
+        rows.append(("Feather", f"{feather:g}% ({baked}{print_px}){fade}"))
+    corner = _num(log.get("cornerRadiusPercent"))
+    if corner > 0:
+        baked_px = round(_num(log.get("cornerRadiusPx")), 1)
+        print_corner = round(_num(log.get("cornerRadiusPrintPx")), 1)
+        circle = " · circle" if corner >= 100 else ""
+        print_bit = f" → 300 DPI {print_corner:g}px" if print_corner else ""
+        rows.append(("Corner", f"{corner:g}% ({baked_px:g}px{print_bit}){circle}"))
+    if log.get("frameEnabled"):
+        print_frame = ""
+        if _num(log.get("frameWidthPrintPx")):
+            print_frame = f" → 300 DPI {round(_num(log.get('frameWidthPrintPx')), 1):g}px"
+        dbl = " · double" if log.get("doubleFrame") else ""
+        rows.append((
+            "Frame",
+            f"{round(_num(log.get('frameWidthPx')), 1):g}px {log.get('frameColor') or ''}{print_frame}{dbl}".strip(),
+        ))
+    if log.get("blackAndWhite"):
+        rows.append(("Color", "Black and white"))
+    if log.get("textEnabled") and log.get("textContent"):
+        snippet = str(log.get("textContent"))
+        if len(snippet) > 60:
+            snippet = snippet[:57] + "..."
+        rows.append((
+            "Text",
+            f'"{snippet}" · {log.get("textFont") or "Arial"} · {log.get("textColor") or "#000"} · {int(_num(log.get("textSize"), 24))}px',
+        ))
+    return rows
+
+
+def format_item_edit_log_html(item):
+    """HTML block so admin can replay Tools after generating 300 DPI from the original."""
+    log = item_edit_log(item)
+    rows = format_item_edit_log_rows(log)
+    if not rows:
+        return ""
+    lines = [
+        "<div style='margin:10px 0 0 0;padding:10px;background:#fff7ed;border:1px solid #fd7e14;border-radius:6px;'>",
+        "<p style='margin:0 0 6px 0;font-weight:bold;color:#c2410c;'>Edit log — generate 300 DPI from the original, then replicate:</p>",
+    ]
+    for label, value in rows:
+        lines.append(
+            f"<p style='margin:0 0 4px 0;font-size:13px;line-height:1.4;'><strong>{escape(str(label))}:</strong> {escape(str(value))}</p>"
+        )
+    lines.append("</div>")
+    return "".join(lines)
+
+
+
+def orientation_layout_aspect(orientation):
+    """Match print-quality cover-crop: shirt chest vs wide landscape band."""
+    if str(orientation).strip().lower() == "landscape":
+        return 1.5
+    return 11.5 / 13.8
+
+
+def _cover_crop_pil_image(img, aspect):
+    w, h = img.size
+    if w <= 0 or h <= 0 or not aspect or aspect <= 0:
+        return img
+    current = w / float(h)
+    if abs(current - aspect) < 0.03:
+        return img
+    if current > aspect:
+        new_w = max(1, int(round(h * aspect)))
+        x = max(0, (w - new_w) // 2)
+        return img.crop((x, 0, x + new_w, h))
+    new_h = max(1, int(round(w / aspect)))
+    y = max(0, (h - new_h) // 2)
+    return img.crop((0, y, w, y + new_h))
+
+
+def layout_screenshot_for_orientation(screenshot, orientation):
+    """Cover-crop a data-URL or fetched image so email/order previews match the chosen layout."""
+    if not screenshot or not isinstance(screenshot, str) or not screenshot.strip():
+        return screenshot
+    img_data = screenshot.strip()
+    if img_data.startswith(("http://", "https://")):
+        fetched = _fetch_image_as_base64(img_data)
+        if not fetched:
+            return screenshot
+        img_data = fetched
+    if "data:image" not in img_data or "," not in img_data:
+        return screenshot
+    try:
+        import base64
+        from io import BytesIO
+        from PIL import Image
+        header, b64 = img_data.split(",", 1)
+        raw = base64.b64decode(b64)
+        img = Image.open(BytesIO(raw))
+        if img.mode not in ("RGB", "RGBA"):
+            img = img.convert("RGBA") if "A" in (img.mode or "") else img.convert("RGB")
+        cropped = _cover_crop_pil_image(img, orientation_layout_aspect(orientation))
+        out = BytesIO()
+        if cropped.mode == "RGBA":
+            cropped.save(out, "PNG", optimize=True)
+            mime = "image/png"
+        else:
+            cropped = cropped.convert("RGB")
+            cropped.save(out, "JPEG", quality=85, optimize=True)
+            mime = "image/jpeg"
+        encoded = base64.b64encode(out.getvalue()).decode("ascii")
+        return f"data:{mime};base64,{encoded}"
+    except Exception as e:
+        logger.warning("Failed to layout screenshot for %s: %s", orientation, e)
+        return screenshot
 
 
 def _fetch_image_as_base64(url, timeout=10):
@@ -161,18 +411,23 @@ def get_order_screenshot(order_data, cart):
     return (screenshot or "", ts)
 
 
-def _screenshot_img_html(screenshot_str, cid=None):
-    """Build the single 'Order Screenshot' block. Prefer CID (attachment) so Proton Mail and strict clients display the image."""
+def _screenshot_img_html(screenshot_str, cid=None, orientation="portrait"):
+    """Build the screenshot img tag. Size follows the shopper's portrait/landscape choice."""
     if not screenshot_str or not isinstance(screenshot_str, str) or not screenshot_str.strip():
         return "<p><em>Screenshot available in order details</em></p>"
-    # Use CID first when we have an attachment (Proton and many clients strip inline data: images)
+    layout = "landscape" if str(orientation).strip().lower() == "landscape" else "portrait"
+    if layout == "landscape":
+        size_style = "max-width: 320px; width: 320px; height: auto;"
+    else:
+        size_style = "max-width: 210px; width: 210px; height: auto;"
+    style = f"{size_style} border-radius: 6px; border: 1px solid #ddd; display: block;"
     if cid:
-        return f"<img src='cid:{cid}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
+        return f"<img src='cid:{cid}' alt='Product Screenshot' style='{style}'>"
     if screenshot_str.startswith("data:image") and len(screenshot_str) < MAX_INLINE_BASE64_LEN:
         safe_src = screenshot_str.replace('"', "&quot;")
-        return '<img src="' + safe_src + '" alt="Product Screenshot" style="max-width: 300px; border-radius: 6px; border: 1px solid #ddd;">'
+        return f'<img src="{safe_src}" alt="Product Screenshot" style="{style}">'
     if screenshot_str.startswith("http"):
-        return f"<img src='{screenshot_str}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
+        return f"<img src='{screenshot_str}' alt='Product Screenshot' style='{style}'>"
     return "<p><em>Screenshot available in order details</em></p>"
 
 
@@ -276,20 +531,24 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
         size = (item.get("variants") or {}).get("size", "N/A")
         note = item.get("note", "None")
         price = item.get("price", 0)
-        # Image orientation (portrait/landscape) and text tool from tool settings
-        tool_settings = item.get("toolSettings") or {}
-        image_orientation = (tool_settings.get("imageOrientation") or item.get("image_orientation") or "portrait").lower()
-        image_orientation_label = "Landscape" if image_orientation == "landscape" else "Portrait"
+        tool_settings = get_item_tool_settings(item)
+        image_orientation = get_item_image_orientation(item)
+        orient_label = orientation_display_label(image_orientation)
         text_enabled = tool_settings.get("textEnabled", False) and (tool_settings.get("textContent") or "").strip()
         text_line = ""
         if text_enabled:
             tc = (tool_settings.get("textContent") or "").strip()[:50]
             if len((tool_settings.get("textContent") or "").strip()) > 50:
                 tc += "..."
-            text_line = f"<p><strong>Text:</strong> {tc} (font: {tool_settings.get('textFont', 'Arial')}, color: {tool_settings.get('textColor', '#000000')}, size: {tool_settings.get('textSize', 24)}px)</p>"
+            text_line = f"<p><strong>Text:</strong> {escape(tc)} (font: {escape(str(tool_settings.get('textFont', 'Arial')))}, color: {escape(str(tool_settings.get('textColor', '#000000')))}, size: {tool_settings.get('textSize', 24)}px)</p>"
+        edit_log_html = format_item_edit_log_html(item)
         # Per-product screenshot (item's selected_screenshot or fallback to order/first)
         item_img = _get_item_screenshot(item, fallback=fallback_screenshot)
         item_img = _ensure_base64(item_img)
+        # Framed/edited screenshots already match the Tools print box. Cover-cropping
+        # again clips the left/right border and makes vertical thickness look thinner.
+        if not item_has_baked_edits(item):
+            item_img = layout_screenshot_for_orientation(item_img, image_orientation)
         # Compress for inline so each product's screenshot shows in body
         screenshot_for_body = item_img
         if item_img and isinstance(item_img, str) and "data:image" in item_img:
@@ -298,7 +557,7 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
                 if compressed and len(compressed) < MAX_INLINE_BASE64_LEN:
                     screenshot_for_body = compressed
                     break
-        product_img_tag = _screenshot_img_html(screenshot_for_body, cid=None)
+        product_img_tag = _screenshot_img_html(screenshot_for_body, cid=None, orientation=image_orientation)
         # One attachment for first product only (so email has at least one attachment for clients that strip inline)
         if idx == 0 and item_img and "data:image" in str(item_img):
             atts, _ = _screenshot_attachments(order_id, item_img, index=0)
@@ -308,8 +567,9 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
             <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
                 <p style='margin-top:0;'><strong>📸 {product_name} — Screenshot</strong></p>
                 {product_img_tag}
-                <p><strong>Image:</strong> {image_orientation_label}</p>
+                <p><strong>Image:</strong> {orient_label}</p>
                 {text_line}
+                {edit_log_html}
                 <p><strong>Color:</strong> {color}</p>
                 <p><strong>Size:</strong> {size}</p>
                 <p><strong>Note:</strong> {note}</p>
@@ -358,13 +618,23 @@ def build_customer_order_email(order_id, order_data, cart, order_number, total_a
     html += """
         <h2 style="color: #333;">🛍️ Products</h2>
     """
+    first_orientation = get_item_image_orientation(cart[0]) if cart else "portrait"
     # Order screenshot first under Products (same spot as admin email – red box area)
     if screenshot and isinstance(screenshot, str) and screenshot.strip():
-        if "data:image" in screenshot and len(screenshot) < MAX_INLINE_BASE64_LEN:
-            safe_src = screenshot.replace('"', "&quot;")
-            html += '<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;"><p style="margin-top:0;"><strong>📸 Order Screenshot</strong></p><img src="' + safe_src + '" alt="Product Screenshot" style="max-width: 300px; border-radius: 6px; border: 1px solid #ddd;"></div>'
-        elif screenshot.startswith("http") or screenshot.startswith("https"):
-            html += f'<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;"><p style="margin-top:0;"><strong>📸 Order Screenshot</strong></p><img src="{screenshot}" alt="Product Screenshot" style="max-width: 300px; border-radius: 6px; border: 1px solid #ddd;"></div>'
+        first_item = cart[0] if cart and isinstance(cart[0], dict) else {}
+        laid_out = screenshot
+        if laid_out.strip().startswith(("http://", "https://")):
+            laid_out = _fetch_image_as_base64(laid_out) or laid_out
+        if not item_has_baked_edits(first_item):
+            laid_out = layout_screenshot_for_orientation(laid_out, first_orientation)
+        if laid_out and isinstance(laid_out, str) and "data:image" in laid_out and len(laid_out) >= MAX_INLINE_BASE64_LEN:
+            for max_bytes, max_width in [(95000, 600), (80000, 500), (60000, 400), (45000, 320), (35000, 280)]:
+                compressed = _compress_for_inline(laid_out, max_bytes=max_bytes, max_width=max_width)
+                if compressed and len(compressed) < MAX_INLINE_BASE64_LEN:
+                    laid_out = compressed
+                    break
+        product_img_tag = _screenshot_img_html(laid_out, cid=None, orientation=first_orientation)
+        html += f'<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;"><p style="margin-top:0;"><strong>📸 Order Screenshot</strong></p>{product_img_tag}</div>'
     else:
         html += '<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;"><p style="margin-top:0;"><strong>📸 Order Screenshot</strong></p><p><em>Screenshot available in order details</em></p></div>'
     for item in cart:
@@ -373,9 +643,9 @@ def build_customer_order_email(order_id, order_data, cart, order_number, total_a
         size = (item.get("variants") or {}).get("size", "N/A")
         price = item.get("price", 0)
         note = item.get("note", "")
-        tool_settings = item.get("toolSettings") or {}
-        image_orientation = (tool_settings.get("imageOrientation") or item.get("image_orientation") or "portrait").lower()
-        image_orientation_label = "Landscape" if image_orientation == "landscape" else "Portrait"
+        tool_settings = get_item_tool_settings(item)
+        image_orientation = get_item_image_orientation(item)
+        orient_label = orientation_display_label(image_orientation)
         text_enabled = tool_settings.get("textEnabled", False) and (tool_settings.get("textContent") or "").strip()
         text_p = ""
         if text_enabled:
@@ -387,7 +657,7 @@ def build_customer_order_email(order_id, order_data, cart, order_number, total_a
         html += f"""
         <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
             <h3 style="margin-top: 0; color: #333;">{product_name}</h3>
-            <p><strong>Image:</strong> {image_orientation_label}</p>
+            <p><strong>Image:</strong> {orient_label}</p>
             {text_p}
             <p><strong>Color:</strong> {color}</p>
             <p><strong>Size:</strong> {size}</p>

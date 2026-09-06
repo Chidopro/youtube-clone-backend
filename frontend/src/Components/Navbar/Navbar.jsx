@@ -1051,8 +1051,6 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                                             e.target.style.display = 'block';
                                             e.target.style.visibility = 'visible';
                                             e.target.style.opacity = '1';
-                                            e.target.style.width = '35px';
-                                            e.target.style.height = '35px';
                                             e.target.style.objectFit = 'cover';
                                             e.target.style.borderRadius = '50%';
                                             // Ensure image is above any background or text

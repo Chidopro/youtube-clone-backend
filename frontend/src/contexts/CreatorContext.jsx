@@ -158,7 +158,7 @@ export const CreatorProvider = ({ children }) => {
   useEffect(() => {
     if (!currentCreator) return;
     const sub = getSubdomain() || currentCreator.subdomain;
-    if (sub) fetchPublicFavoriteLists(sub);
+    if (sub) fetchPublicFavoriteLists(sub, { lite: true });
   }, [currentCreator?.id, currentCreator?.subdomain]);
 
   return (

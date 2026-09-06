@@ -8,11 +8,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 28px;
+  box-sizing: border-box;
+  width: 34px;
+  height: 26px;
   padding: 0;
   border: 1px solid #d0d7de;
-  border-radius: 6px;
+  border-radius: 5px;
   background: #fff;
   color: #222;
   cursor: pointer;
@@ -80,9 +81,9 @@
 
 @media (max-width: 900px) {
   .ship-to-picker-btn {
-    width: 32px;
-    height: 26px;
-    border-radius: 5px;
+    width: 30px;
+    height: 24px;
+    border-radius: 4px;
   }
 
   .ship-to-flag-svg {

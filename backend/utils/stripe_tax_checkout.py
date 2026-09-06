@@ -80,6 +80,25 @@ def fulfillment_tax_product_data(name: str = "Fulfillment tax") -> dict:
     }
 
 
+def shipping_usable_for_stripe_tax_customer(ship_for_tax: Optional[Dict[str, Any]]) -> bool:
+    """
+    Only attach a Stripe Customer shipping address when it has a real street.
+    A placeholder line1 (em dash) makes Stripe Tax treat the ship-to as invalid
+    and return $0 even after Link fills the visible Checkout address.
+    """
+    if not isinstance(ship_for_tax, dict):
+        return False
+    addr = ship_for_tax.get("address")
+    if not isinstance(addr, dict):
+        return False
+    line1 = str(addr.get("line1") or "").strip()
+    if not line1 or line1 in ("\u2014", "-", "—", "Address", "Not provided"):
+        return False
+    postal = str(addr.get("postal_code") or "").strip()
+    country = str(addr.get("country") or "").strip()
+    return bool(postal and country)
+
+
 def apply_automatic_tax_to_checkout_session(
     session_params: Dict[str, Any],
     shipping_address: Dict[str, Any],
@@ -99,7 +118,10 @@ def apply_automatic_tax_to_checkout_session(
     try:
         session_params["billing_address_collection"] = "required"
         session_params["automatic_tax"] = {"enabled": True}
-        if ship_for_tax:
+        session_params["shipping_address_collection"] = {
+            "allowed_countries": list(CHECKOUT_ALLOWED_COUNTRIES),
+        }
+        if shipping_usable_for_stripe_tax_customer(ship_for_tax):
             cust_kw: dict = {"shipping": ship_for_tax}
             if user_email:
                 cust_kw["email"] = user_email
@@ -110,18 +132,13 @@ def apply_automatic_tax_to_checkout_session(
                 "name": "auto",
                 "address": "auto",
             }
-            session_params["shipping_address_collection"] = {
-                "allowed_countries": list(CHECKOUT_ALLOWED_COUNTRIES),
-            }
             logger.info(
                 "Stripe Tax: automatic_tax enabled (Customer ship-to prefilled from checkout)"
             )
         else:
-            session_params["shipping_address_collection"] = {
-                "allowed_countries": list(CHECKOUT_ALLOWED_COUNTRIES),
-            }
             logger.info(
-                "Stripe Tax: automatic_tax enabled with shipping_address_collection"
+                "Stripe Tax: automatic_tax enabled; waiting for Checkout/Link shipping address "
+                "(ZIP-only checkout address is not used as Customer.shipping — that yielded $0 tax)"
             )
     except Exception as tax_err:
         logger.error("Stripe Tax / Customer setup failed: %s", tax_err)

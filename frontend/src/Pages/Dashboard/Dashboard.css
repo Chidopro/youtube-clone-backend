@@ -1096,9 +1096,35 @@
 
 .owner-purchase-log-details .owner-purchase-log {
     margin: 0;
-    padding: 0 14px 8px;
+    padding: 0 14px 8px 20px;
     max-height: 280px;
     overflow-y: auto;
+}
+
+.owner-earnings-log .owner-earnings-log-totals {
+    margin: 0;
+    padding: 0 14px 0 20px;
+}
+
+.owner-earnings-log > summary {
+    font-size: 1rem;
+}
+
+.owner-earnings-log-totals .collab-payout-row-main strong {
+    font-size: 0.95rem;
+}
+
+.owner-earnings-log-totals .collab-payout-row-main span {
+    padding-left: 12px;
+}
+
+.owner-earnings-log-totals li {
+    border-bottom: 1px solid #d7e8df;
+}
+
+.owner-earnings-log .owner-purchase-log {
+    margin-top: 4px;
+    padding-top: 4px;
 }
 
 .collab-purchase-log-details {
@@ -1284,10 +1310,30 @@
 }
 
 .screenmerch-paid-total {
-    margin: 10px 0 0;
+    margin: 8px 14px 12px;
+    padding-top: 8px;
+    border-top: 1px solid #d7e8df;
     color: #198754;
     font-weight: 700;
     font-size: 0.95rem;
+}
+
+.screenmerch-all-payments {
+    margin-top: 10px;
+}
+
+.screenmerch-all-payments .screenmerch-payment-list {
+    margin-top: 0;
+}
+
+.screenmerch-all-payments .screenmerch-payment-list li.screenmerch-payment-row:first-child {
+    margin-top: 0;
+}
+
+.screenmerch-all-payments-empty {
+    margin: 0 14px 8px;
+    color: #5f6b66;
+    font-size: 0.9rem;
 }
 
 .umbrella-analytics-payout-note,

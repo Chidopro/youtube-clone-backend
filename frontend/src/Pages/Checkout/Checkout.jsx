@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
-import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
+import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot, resolveItemImageOrientation, withItemImageOrientation } from '../../utils/merchSession';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
@@ -17,6 +17,28 @@ import {
 import { readShipToCountry, writeShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
 import { repriceCartItems } from '../../utils/regionalAvailability';
 import './Checkout.css';
+
+function cartItemToolSettings(item) {
+  return (item && item.toolSettings && typeof item.toolSettings === 'object') ? item.toolSettings : {};
+}
+
+function cartItemHasFrame(item) {
+  const ts = cartItemToolSettings(item);
+  const flag = ts.frameEnabled;
+  return flag === true || flag === 1 || flag === '1' || String(flag || '').toLowerCase() === 'true';
+}
+
+function cartItemHasToolsEdit(item) {
+  if (!item) return false;
+  const ts = cartItemToolSettings(item);
+  if (item.edited || item.tools_acknowledged) return true;
+  if (cartItemHasFrame(item)) return true;
+  if (Number(ts.featherEdge) > 0 || Number(ts.cornerRadius) > 0) return true;
+  if (ts.textEnabled && String(ts.textContent || '').trim()) return true;
+  const original = String(item.originalScreenshot || item.original_screenshot || '').trim();
+  const shot = String(item.screenshot || item.selected_screenshot || '').trim();
+  return Boolean(original && shot && original !== shot);
+}
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -96,10 +118,13 @@ const Checkout = () => {
     }
   }, [signedIn, items.length]);
 
-  // When design modal opens, init per-item preferences (orientation left empty so user must choose)
+  // When design modal opens, keep a prior Tools/checkout choice; otherwise the shopper must pick.
   useEffect(() => {
     if (showDesignModal && items.length > 0) {
-      setDesignPreferences(items.map(() => ({ orientation: '' })));
+      setDesignPreferences(items.map((it) => {
+        const o = resolveItemImageOrientation(it);
+        return { orientation: o === 'landscape' || o === 'portrait' ? o : '' };
+      }));
     }
   }, [showDesignModal, items.length]);
 
@@ -420,6 +445,21 @@ const Checkout = () => {
       }
       if (it.toolSettings && typeof it.toolSettings === 'object') {
         cleanItem.toolSettings = it.toolSettings;
+      }
+      const ori = resolveItemImageOrientation(it);
+      if (ori === 'landscape' || ori === 'portrait') {
+        cleanItem.image_orientation = ori;
+        cleanItem.imageOrientation = ori;
+        cleanItem.toolSettings = {
+          ...(cleanItem.toolSettings || {}),
+          imageOrientation: ori,
+        };
+      }
+      if (it.originalScreenshot && String(it.originalScreenshot).trim()) {
+        cleanItem.original_screenshot = it.originalScreenshot;
+      }
+      if (it.edited) {
+        cleanItem.edited = true;
       }
       return cleanItem;
     });
@@ -1031,6 +1071,10 @@ const Checkout = () => {
                 const itemName = item.name || item.product || `Item ${i + 1}`;
                 const itemSize = (item.size || '').trim();
                 const isShirt = SHIRT_CATEGORIES.includes(item.category);
+                const itemShot = item.screenshot || item.selected_screenshot || item.thumbnail;
+                const hasFrame = cartItemHasFrame(item);
+                const hasEdit = cartItemHasToolsEdit(item);
+                const frameColor = cartItemToolSettings(item).frameColor || '#FF0000';
                 return (
                   <div key={i} className="design-modal-item-block">
                     <div className="design-modal-item-header">
@@ -1059,6 +1103,30 @@ const Checkout = () => {
                         </button>
                       </div>
                     </div>
+                    {(itemShot || hasEdit) && (
+                      <div className="design-modal-edit-row">
+                        {itemShot ? (
+                          <img
+                            src={itemShot}
+                            alt=""
+                            className={`design-modal-item-shot${hasFrame ? ' design-modal-item-shot--framed' : ''}`}
+                            style={hasFrame ? { borderColor: frameColor } : undefined}
+                          />
+                        ) : null}
+                        {hasEdit && (
+                          <span className="design-modal-edit-mark">
+                            {hasFrame ? (
+                              <>
+                                <span className="design-modal-edit-swatch" style={{ background: frameColor }} />
+                                Border added
+                              </>
+                            ) : (
+                              'Edit added'
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {isShirt && (
                     <div className="design-modal-field">
                       <div className="design-modal-options design-modal-orientation-options">
@@ -1094,7 +1162,7 @@ const Checkout = () => {
                 const currentPrefs = designPreferencesRef.current;
                 const hasOrientation = items.every((it, i) => {
                   if (!SHIRT_CATEGORIES.includes(it.category)) return true;
-                  const o = (currentPrefs[i] ?? {}).orientation || it.toolSettings?.imageOrientation || '';
+                  const o = (currentPrefs[i] ?? {}).orientation || resolveItemImageOrientation(it);
                   return o === 'portrait' || o === 'landscape';
                 });
                 if (!hasOrientation) {
@@ -1103,13 +1171,10 @@ const Checkout = () => {
                 }
                 const updated = items.map((it, idx) => {
                   if (!SHIRT_CATEGORIES.includes(it.category)) return it;
-                  return {
-                    ...it,
-                    toolSettings: {
-                      ...(it.toolSettings || {}),
-                      imageOrientation: ((currentPrefs[idx] ?? {}).orientation || it.toolSettings?.imageOrientation) === 'landscape' ? 'landscape' : 'portrait',
-                    },
-                  };
+                  const chosen = ((currentPrefs[idx] ?? {}).orientation || resolveItemImageOrientation(it)) === 'landscape'
+                    ? 'landscape'
+                    : 'portrait';
+                  return withItemImageOrientation(it, chosen);
                 });
                 setItems(updated);
                 writeCartItems(updated);

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { AdminService } from '../../utils/adminService';
 import { getPrintAreaDimensions } from '../../config/printAreaConfig';
 import { API_CONFIG } from '../../config/apiConfig';
+import { editLogFromToolSettings, editLogHasEntries, formatEditLogLines } from '../../utils/editLog';
 import './Admin.css';
 
 const DEFAULT_AVATAR = '/default-avatar.svg';
@@ -120,7 +121,8 @@ const Admin = () => {
     frame_color: '#FF0000',
     frame_width: 10,
     double_frame: false,
-    add_white_background: false
+    add_white_background: true,
+    feather_fade_color: 'white'
   });
   const navigate = useNavigate();
 
@@ -239,7 +241,8 @@ const Admin = () => {
     printQualitySettings.frame_width,
     printQualitySettings.frame_color,
     printQualitySettings.double_frame,
-    printQualitySettings.add_white_background
+    printQualitySettings.add_white_background,
+    printQualitySettings.feather_fade_color
   ]);
 
   const checkAdminStatus = async () => {
@@ -712,7 +715,7 @@ const Admin = () => {
     }
     
     const item = selectedOrder.cart[selectedCartItemIndex];
-    if (!item || (!item.img && !item.selected_screenshot)) {
+    if (!item || (!item.img && !item.selected_screenshot && !item.original_screenshot && !item.originalScreenshot)) {
       alert('No screenshot found for this item');
       return;
     }
@@ -722,7 +725,8 @@ const Admin = () => {
     setOriginal300DpiImage(null);
 
     try {
-      const screenshotData = item.selected_screenshot || item.img;
+      const originalShot = String(item.original_screenshot || item.originalScreenshot || '').trim();
+      const screenshotData = originalShot || item.selected_screenshot || item.img;
       const apiUrl = process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev';
       
       // Get print area dimensions for this product
@@ -737,11 +741,16 @@ const Admin = () => {
         edge_feather: false,  // No effects in step 1
         frame_enabled: false, // No frame in step 1
         corner_radius_percent: 0,
-        feather_edge_percent: 0
+        feather_edge_percent: 0,
+        preserve_edits: !originalShot,
+        fit_mode: originalShot ? 'cover' : 'preserve',
       };
+      if (originalShot) {
+        requestBody.image_orientation = item.image_orientation || item.toolSettings?.imageOrientation || 'portrait';
+      }
       
-      // Add print area dimensions if available
-      if (printDimensions) {
+      // Add print area dimensions if available (only when starting from the original)
+      if (originalShot && printDimensions) {
         requestBody.print_area_width = printDimensions.width;
         requestBody.print_area_height = printDimensions.height;
         console.log(`📐 [PRINT_QUALITY] Using print area dimensions for ${productName} (${productSize || 'default'}): ${printDimensions.width}"x${printDimensions.height}"`);
@@ -834,7 +843,8 @@ const Admin = () => {
         frame_color: frameColor, // Pass frame color
         frame_width: frameWidth, // Pass frame width
         double_frame: doubleFrame, // Pass double frame flag
-        add_white_background: settings.add_white_background || false // Pass white background flag
+        add_white_background: Boolean(settings.add_white_background),
+        feather_fade_color: settings.feather_fade_color === 'black' ? 'black' : 'white'
       };
       
       // Add print area dimensions if available (to maintain exact size)
@@ -2806,7 +2816,8 @@ const Admin = () => {
                                             frame_color: '#FF0000',
                                             frame_width: 10,
                                             double_frame: false,
-                                            add_white_background: false
+                                            add_white_background: true,
+                                            feather_fade_color: 'white'
                                           });
                                         }}
                                         style={{
@@ -3664,21 +3675,29 @@ const Admin = () => {
                           frame_color: '#FF0000',
                           frame_width: 10,
                           double_frame: false,
-                          add_white_background: false
+                          add_white_background: true,
+                          feather_fade_color: 'white'
                         };
                         
                         if (item.toolSettings) {
+                          const log = item.toolSettings.editLog && typeof item.toolSettings.editLog === 'object'
+                            ? item.toolSettings.editLog
+                            : {};
+                          const fadeOn = Boolean(item.toolSettings.featherFadeEnabled || log.featherFadeEnabled);
+                          const fadeColor = (item.toolSettings.featherFadeColor || log.featherFadeColor) === 'black' ? 'black' : 'white';
                           savedSettings = {
                             print_dpi: 300,
-                            edge_feather: item.toolSettings.featherEdge > 0,
+                            edge_feather: item.toolSettings.featherEdge > 0 || fadeOn,
                             soft_corners: item.toolSettings.cornerRadius > 0,
                             crop_area: { x: '', y: '', width: '', height: '' },
-                            feather_edge_percent: item.toolSettings.featherEdge || 0,
+                            feather_edge_percent: item.toolSettings.featherEdge || (fadeOn ? 20 : 0),
                             corner_radius_percent: item.toolSettings.cornerRadius || 0,
                             frame_enabled: item.toolSettings.frameEnabled || false,
                             frame_color: item.toolSettings.frameColor || '#FF0000',
                             frame_width: item.toolSettings.frameWidth || 10,
-                            double_frame: item.toolSettings.doubleFrame || false
+                            double_frame: item.toolSettings.doubleFrame || false,
+                            add_white_background: fadeOn,
+                            feather_fade_color: fadeOn && fadeColor === 'black' ? 'black' : 'white'
                           };
                           console.log('📦 Loaded saved tool settings from cart item:', savedSettings);
                         }
@@ -3738,6 +3757,23 @@ const Admin = () => {
                         {item.creatorName && (
                           <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}><strong>Creator:</strong> {item.creatorName}</p>
                         )}
+                        {(() => {
+                          const log = editLogFromToolSettings(item.toolSettings);
+                          const lines = formatEditLogLines(log);
+                          if (!editLogHasEntries(log) && !lines.length) return null;
+                          return (
+                            <div style={{ marginTop: '10px', padding: '10px', background: '#fff7ed', border: '1px solid #fd7e14', borderRadius: '6px' }}>
+                              <p style={{ margin: '0 0 6px 0', fontWeight: 'bold', color: '#c2410c', fontSize: '13px' }}>
+                                Edit log — generate 300 DPI from original, then replicate
+                              </p>
+                              {lines.map((row) => (
+                                <p key={row.label} style={{ margin: '0 0 4px 0', fontSize: '12px' }}>
+                                  <strong>{row.label}:</strong> {row.value}
+                                </p>
+                              ))}
+                            </div>
+                          );
+                        })()}
                         {selectedCartItemIndex === idx && (
                           <p style={{ margin: '8px 0 0 0', fontSize: '14px', fontWeight: 'bold', color: '#007bff' }}>
                             ✓ Selected for Processing

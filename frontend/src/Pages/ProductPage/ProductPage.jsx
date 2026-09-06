@@ -8,7 +8,7 @@ import { getBackendUrl } from '../../config/apiConfig';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
-import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, rememberArtworkOrientation } from '../../utils/merchSession';
+import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
@@ -92,6 +92,180 @@ const preloadImageUrls = (urls) => {
   });
 };
 
+const STATIC_CATEGORY_PRODUCT_NAMES = {
+  mens: [
+    'T-Shirt',
+    "Men's Long Sleeve Shirt",
+    'Mens Fitted T-Shirt',
+    "Men's Tank Top",
+    'Oversized T-Shirt',
+    "Men's Fitted Long Sleeve",
+    'Hoodie',
+    'Champion Hoodie',
+  ],
+  womens: [
+    "Women's Shirt",
+    'Heavyweight T-Shirt',
+    "Women's Ribbed Neck",
+    'Micro-Rib Tank Top',
+    'Racerback Tank',
+    "Women's Crop Top",
+    'Pullover Hoodie',
+    'Cropped Hoodie',
+  ],
+  kids: [
+    'Youth Heavy Blend Hoodie',
+    'Kids Shirt',
+    'Kids Long Sleeve',
+    'Toddler Short Sleeve T-Shirt',
+    'Toddler Jersey T-Shirt',
+    'Kids Sweatshirt',
+    'Youth All Over Print Swimsuit',
+    'Girls Leggings',
+    'Baby Staple Tee',
+    'Baby Jersey T-Shirt',
+    'Baby Body Suit',
+  ],
+  bags: [
+    'Laptop Sleeve',
+    'All-Over Print Drawstring',
+    'All Over Print Tote Pocket',
+    'All-Over Print Crossbody Bag',
+    'All-Over Print Utility Bag',
+  ],
+  hats: [
+    'Distressed Dad Hat',
+    'Closed Back Cap',
+    'Five Panel Trucker Hat',
+    'Five Panel Baseball Cap',
+  ],
+  mugs: ['White Glossy Mug', 'Travel Mug', 'Enamel Mug', 'Colored Mug'],
+  pets: ['Pet Bowl All-Over Print', 'Pet Bandana Collar'],
+  misc: ['Hardcover Bound Notebook', 'Apron', 'Jigsaw Puzzle with Tin', 'Greeting Card'],
+  'all-products': [],
+  thumbnails: [],
+};
+
+const STATIC_PRODUCT_IMAGE_MAP = {
+  Hoodie: { filename: 'tested.png', preview: 'testedpreview.png', price: 35.35 },
+  "Men's Tank Top": { filename: 'random.png', preview: 'randompreview.png', price: 26.23 },
+  'Mens Fitted T-Shirt': { filename: 'mensfittedtshirt.png', preview: 'mensfittedtshirtpreview.png', price: 28.58 },
+  "Men's Fitted Long Sleeve": { filename: 'mensfittedlongsleeve.png', preview: 'mensfittedlongsleevepreview.png', price: 31.33 },
+  'T-Shirt': { filename: 'guidontee.png', preview: 'guidonteepreview.png', price: 23.69 },
+  'Oversized T-Shirt': { filename: 'unisexoversizedtshirt.png', preview: 'unisexoversizedtshirtpreview.png', price: 28.49 },
+  "Men's Long Sleeve Shirt": { filename: 'menslongsleeve.png', preview: 'menslongsleevepreview.png', price: 26.79 },
+  'Champion Hoodie': { filename: 'hoodiechampion.png', preview: 'hoodiechampionpreview.png', price: 47.00 },
+  'Cropped Hoodie': { filename: 'womenscroppedhoodiepreview.png', preview: 'womenscroppedhoodiepreview.png', price: 45.15 },
+  'Racerback Tank': { filename: 'womenstankpreview.png', preview: 'womenstankpreview.png', price: 22.95 },
+  'Micro-Rib Tank Top': { filename: 'womensmicroribtanktoppreview.png', preview: 'womensmicroribtanktoppreview.png', price: 27.81 },
+  "Women's Ribbed Neck": { filename: 'womensribbedneckpreview.png', preview: 'womensribbedneckpreview.png', price: 27.60 },
+  "Women's Shirt": { filename: 'womenshirtpreview.png', preview: 'womenshirtpreview.png', price: 25.69 },
+  'Heavyweight T-Shirt': { filename: 'womenshdshirtpreview.png', preview: 'womenshdshirtpreview.png', price: 27.29 },
+  'Pullover Hoodie': { filename: 'womensunisexpulloverhoodiepreview.png', preview: 'womensunisexpulloverhoodiepreview.png', price: 43.06 },
+  "Women's Crop Top": { filename: 'womenscroptoppreview.png', preview: 'womenscroptoppreview.png', price: 30.55 },
+  'Youth Heavy Blend Hoodie': { filename: 'kidhoodie.png', preview: 'kidhoodiepreview.png', price: 31.33 },
+  'Kids Shirt': { filename: 'kidshirt.png', preview: 'kidshirtpreview.png', price: 25.49 },
+  'Kids Long Sleeve': { filename: 'kidlongsleeve.png', preview: 'kidlongsleevepreview.png', price: 28.49 },
+  'Toddler Short Sleeve T-Shirt': { filename: 'toddlershortsleevet.png', preview: 'toddlershortsleevetpreview.png', price: 24.75 },
+  'Toddler Jersey T-Shirt': { filename: 'toddlerjerseytshirt.png', preview: 'toddlerjerseytshirtpreview.png', price: 22.29 },
+  'Baby Staple Tee': { filename: 'babystapletshirt.png', preview: 'babystapletshirtpreview.png', price: 24.19 },
+  'Baby Jersey T-Shirt': { filename: 'toddlershortsleevet.png', preview: 'toddlershortsleevetpreview.png', price: 22.29 },
+  'Baby Body Suit': { filename: 'youthalloverprintswimsuit.png', preview: 'youthalloverprintswimsuitpreview.png', price: 22.90 },
+  'Kids Sweatshirt': { filename: 'kidssweatshirt.png', preview: 'kidssweatshirtpreview.png', price: 29.29 },
+  'Youth All Over Print Swimsuit': { filename: 'youthalloverprintswimsuit.png', preview: 'youthalloverprintswimsuitpreview.png', price: 35.95 },
+  'Girls Leggings': { filename: 'girlsleggings.png', preview: 'girlsleggingspreview.png', price: 30.31 },
+  'Laptop Sleeve': { filename: 'laptopsleeve.png', preview: 'laptopsleevepreview.png', price: 33.16 },
+  'All-Over Print Drawstring': { filename: 'drawstringbag.png', preview: 'drawstringbagpreview.png', price: 27.25 },
+  'All-Over Print Utility Bag': { filename: 'crossbodybag.png', preview: 'crossbodybagpreview.png', price: 33.79 },
+  'All Over Print Tote Pocket': { filename: 'largecanvasbag.png', preview: 'largecanvasbagpreview.png', price: 35.41 },
+  'All-Over Print Crossbody Bag': { filename: 'crossbodybag.png', preview: 'crossbodybagpreview.png', price: 30.95 },
+  'Distressed Dad Hat': { filename: 'distresseddadhat.png', preview: 'distresseddadhatpreview.png', price: 26.95 },
+  'Closed Back Cap': { filename: 'closedbackcap.png', preview: 'hatsclosedbackcappreview.png', price: 24.91 },
+  'Five Panel Trucker Hat': { filename: 'fivepaneltruckerhat.png', preview: 'fivepaneltruckerhatpreview.png', price: 26.95 },
+  'Five Panel Baseball Cap': { filename: 'youthbaseballcap.png', preview: 'youthbaseballcappreview.png', price: 26.95 },
+  'White Glossy Mug': { filename: 'mug1.png', preview: 'mug1preview.png', price: 17.95 },
+  'Travel Mug': { filename: 'travelmug.png', preview: 'travelmugpreview.png', price: 21.95 },
+  'Enamel Mug': { filename: 'enamalmug.png', preview: 'enamalmugpreview.png', price: 20.95 },
+  'Colored Mug': { filename: 'coloredmug.png', preview: 'coloredmugpreview.png', price: 19.95 },
+  'Pet Bowl All-Over Print': { filename: 'dogbowl.png', preview: 'dogbowlpreview.png', price: 33.49 },
+  'Pet Bandana Collar': { filename: 'scarfcollar.png', preview: 'scarfcollarpreview.png', price: 21.95 },
+  'Greeting Card': { filename: 'greetingcard.png', preview: 'greetingcardpreview.png', price: 9.99 },
+  'Hardcover Bound Notebook': { filename: 'hardcovernotebook.png', preview: 'hardcovernotebookpreview.png', price: 23.05 },
+  Apron: { filename: 'apron.png', preview: 'apronpreview.png', price: 28.90 },
+  'Jigsaw Puzzle with Tin': { filename: 'jigsawpuzzle.png', preview: 'jigsawpuzzlepreview.png', price: 25.40 },
+};
+
+function getStaticProductsForCategory(category) {
+  const categoryProducts = STATIC_CATEGORY_PRODUCT_NAMES[category] || [];
+  if (!category || category === 'all' || category === 'all-products') return [];
+  return categoryProducts
+    .map((productName) => {
+      const productMeta = STATIC_PRODUCT_IMAGE_MAP[productName] || {
+        filename: 'placeholder.png',
+        preview: 'placeholder.png',
+        price: 25.00,
+      };
+      return {
+        name: productName,
+        price: productMeta.price,
+        main_image: `${getImgBase()}/${productMeta.filename}`,
+        preview_image: `${getImgBase()}/${productMeta.preview}`,
+        options: {
+          color: ['Black', 'White', 'Hazy Pink', 'Pale Pink', 'Orchid', 'Ecru', 'White', 'Bubblegum', 'Bone', 'Mineral', 'Natural'],
+          size: ['XS', 'S', 'M', 'L', 'XL'],
+        },
+      };
+    })
+    .sort(
+      (a, b) =>
+        (Number(a.price) || 0) - (Number(b.price) || 0) || String(a.name).localeCompare(String(b.name)),
+    );
+}
+
+function decorateBrowseData(data, isShopCatalog) {
+  const base = getBackendUrl().replace(/\/$/, '');
+  const imgBase = `${base}/static/images`;
+  const productsWithUrls = (data.products || []).map((p) => {
+    if (!p) return p;
+    const previewUrl = p.preview_image_url || (p.preview_image ? (p.preview_image.startsWith('/') ? base + p.preview_image : (p.preview_image.startsWith('http') ? ensureHttps(p.preview_image) : `${imgBase}/${p.preview_image}`)) : '');
+    const mainUrl = p.main_image_url || (p.main_image ? (p.main_image.startsWith('/') ? base + p.main_image : (p.main_image.startsWith('http') ? ensureHttps(p.main_image) : `${imgBase}/${p.main_image}`)) : '');
+    return { ...p, _displayImageUrl: previewUrl || mainUrl || `${imgBase}/placeholder.png` };
+  });
+  const next = { ...data, products: productsWithUrls };
+  if (!isShopCatalog) return next;
+  return {
+    ...next,
+    img_url: '',
+    product: { thumbnail_url: '', screenshots: [] },
+  };
+}
+
+function buildInitialProductData() {
+  let category = '';
+  let isShopCatalog = false;
+  try {
+    const qs = new URLSearchParams(window.location.search);
+    category = (qs.get('category') || '').trim();
+    isShopCatalog = qs.get('from') === 'shop';
+  } catch {
+    /* ignore */
+  }
+  if (!category || category === 'all' || category === 'all-products') return null;
+  const cached = readBrowseCache(category);
+  if (cached?.products?.length) return decorateBrowseData(cached, isShopCatalog);
+  const staticProducts = getStaticProductsForCategory(category);
+  if (!staticProducts.length) return null;
+  return decorateBrowseData(
+    {
+      success: true,
+      products: staticProducts,
+      category,
+      product: { thumbnail_url: '', screenshots: [] },
+    },
+    isShopCatalog,
+  );
+}
+
 const PRODUCT_IMAGE_RETRY_DELAYS_MS = [400, 1200, 2800];
 
 /** Fly static files can 502 on a cold start; retry before locking in the gray placeholder. */
@@ -129,8 +303,8 @@ const ProductPage = ({ sidebar }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { creatorSettings } = useCreator();
-  const [productData, setProductData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [productData, setProductData] = useState(buildInitialProductData);
+  const [loading, setLoading] = useState(() => !buildInitialProductData());
   const [error, setError] = useState(null);
   const [selectedScreenshot, setSelectedScreenshot] = useState(null);
   /** Actual URL/data of the selected screenshot (set on click). Used for add-to-cart so the exact chosen image is sent, not a fallback. */
@@ -159,6 +333,7 @@ const ProductPage = ({ sidebar }) => {
   const productCardRefs = useRef([]);
   const editPrefillKeyRef = useRef('');
   const lastTouchedCartIndexRef = useRef(null);
+  const lastPickedProductRef = useRef(null);
 
   // Read from query first
   const qsCategory = searchParams.get('category');
@@ -252,146 +427,6 @@ const ProductPage = ({ sidebar }) => {
       window.history.replaceState({}, '', newUrl);
     }
   }, [qsCategory, category, openCart, searchParams]);
-
-  const getStaticProductsForCategory = (category) => {
-    // Use same category_mappings logic as backend
-    const category_mappings = {
-      'mens': [
-        "T-Shirt",
-        "Men's Long Sleeve Shirt",
-        "Mens Fitted T-Shirt",
-        "Men's Tank Top",
-        "Oversized T-Shirt",
-        "Men's Fitted Long Sleeve",
-        "Hoodie",
-        "Champion Hoodie"
-      ],
-      'womens': [
-        "Women's Shirt",
-        "Heavyweight T-Shirt",
-        "Women's Ribbed Neck",
-        "Micro-Rib Tank Top",
-        "Racerback Tank",
-        "Women's Crop Top",
-        "Pullover Hoodie",
-        "Cropped Hoodie"
-      ],
-      'kids': [
-        "Youth Heavy Blend Hoodie",
-        "Kids Shirt",
-        "Kids Long Sleeve",
-        "Toddler Short Sleeve T-Shirt",
-        "Toddler Jersey T-Shirt",
-        "Kids Sweatshirt",
-        "Youth All Over Print Swimsuit",
-        "Girls Leggings",
-        "Baby Staple Tee",
-        "Baby Jersey T-Shirt",
-        "Baby Body Suit"
-      ],
-      'bags': [
-        "Laptop Sleeve",
-        "All-Over Print Drawstring", 
-        "All Over Print Tote Pocket",
-        "All-Over Print Crossbody Bag",
-        "All-Over Print Utility Bag"
-      ],
-      'hats': [
-        "Distressed Dad Hat",
-        "Closed Back Cap",
-        "Five Panel Trucker Hat",
-        "Five Panel Baseball Cap"
-      ],
-      'mugs': [
-        "White Glossy Mug",
-        "Travel Mug",
-        "Enamel Mug",
-        "Colored Mug"
-      ],
-      'pets': [
-        "Pet Bowl All-Over Print",
-        "Pet Bandana Collar"
-      ],
-      'misc': [
-        "Hardcover Bound Notebook", 
-        "Apron",
-        "Jigsaw Puzzle with Tin",
-        "Greeting Card"
-      ],
-      'all-products': [],  // All Products category - will contain all products eventually
-      'thumbnails': []  // Coming Soon - no products yet
-    };
-
-    // Get product names for the selected category
-    const category_products = category_mappings[category] || [];
-    
-    // For "all" or "all-products", return empty array - backend will handle it
-    if (!category || category === "all" || category === "all-products") {
-      return [];
-    }
-    
-    // Map product names to actual product data from backend (using exact filenames from PRODUCTS list)
-    const productImageMap = {
-      "Hoodie": { filename: "tested.png", preview: "testedpreview.png", price: 35.35 },
-      "Men's Tank Top": { filename: "random.png", preview: "randompreview.png", price: 26.23 },
-      "Mens Fitted T-Shirt": { filename: "mensfittedtshirt.png", preview: "mensfittedtshirtpreview.png", price: 28.58 },
-      "Men's Fitted Long Sleeve": { filename: "mensfittedlongsleeve.png", preview: "mensfittedlongsleevepreview.png", price: 31.33 },
-      "T-Shirt": { filename: "guidontee.png", preview: "guidonteepreview.png", price: 23.69 },
-      "Oversized T-Shirt": { filename: "unisexoversizedtshirt.png", preview: "unisexoversizedtshirtpreview.png", price: 28.49 },
-      "Men's Long Sleeve Shirt": { filename: "menslongsleeve.png", preview: "menslongsleevepreview.png", price: 26.79 },
-      "Champion Hoodie": { filename: "hoodiechampion.png", preview: "hoodiechampionpreview.png", price: 47.00 },
-      "Cropped Hoodie": { filename: "womenscroppedhoodiepreview.png", preview: "womenscroppedhoodiepreview.png", price: 45.15 },
-      "Racerback Tank": { filename: "womenstankpreview.png", preview: "womenstankpreview.png", price: 22.95 },
-      "Micro-Rib Tank Top": { filename: "womensmicroribtanktoppreview.png", preview: "womensmicroribtanktoppreview.png", price: 27.81 },
-      "Women's Ribbed Neck": { filename: "womensribbedneckpreview.png", preview: "womensribbedneckpreview.png", price: 27.60 },
-      "Women's Shirt": { filename: "womenshirtpreview.png", preview: "womenshirtpreview.png", price: 25.69 },
-      "Heavyweight T-Shirt": { filename: "womenshdshirtpreview.png", preview: "womenshdshirtpreview.png", price: 27.29 },
-      "Pullover Hoodie": { filename: "womensunisexpulloverhoodiepreview.png", preview: "womensunisexpulloverhoodiepreview.png", price: 43.06 },
-      "Women's Crop Top": { filename: "womenscroptoppreview.png", preview: "womenscroptoppreview.png", price: 30.55 },
-      "Youth Heavy Blend Hoodie": { filename: "kidhoodie.png", preview: "kidhoodiepreview.png", price: 31.33 },
-      "Kids Shirt": { filename: "kidshirt.png", preview: "kidshirtpreview.png", price: 25.49 },
-      "Kids Long Sleeve": { filename: "kidlongsleeve.png", preview: "kidlongsleevepreview.png", price: 28.49 },
-      "Toddler Short Sleeve T-Shirt": { filename: "toddlershortsleevet.png", preview: "toddlershortsleevetpreview.png", price: 24.75 },
-      "Toddler Jersey T-Shirt": { filename: "toddlerjerseytshirt.png", preview: "toddlerjerseytshirtpreview.png", price: 22.29 },
-      "Baby Staple Tee": { filename: "babystapletshirt.png", preview: "babystapletshirtpreview.png", price: 24.19 },
-      "Baby Jersey T-Shirt": { filename: "toddlershortsleevet.png", preview: "toddlershortsleevetpreview.png", price: 22.29 },
-      "Baby Body Suit": { filename: "youthalloverprintswimsuit.png", preview: "youthalloverprintswimsuitpreview.png", price: 22.90 },
-      "Kids Sweatshirt": { filename: "kidssweatshirt.png", preview: "kidssweatshirtpreview.png", price: 29.29 },
-      "Youth All Over Print Swimsuit": { filename: "youthalloverprintswimsuit.png", preview: "youthalloverprintswimsuitpreview.png", price: 35.95 },
-      "Girls Leggings": { filename: "girlsleggings.png", preview: "girlsleggingspreview.png", price: 30.31 },
-      "Laptop Sleeve": { filename: "laptopsleeve.png", preview: "laptopsleevepreview.png", price: 33.16 },
-      "All-Over Print Drawstring": { filename: "drawstringbag.png", preview: "drawstringbagpreview.png", price: 27.25 },
-      "All-Over Print Utility Bag": { filename: "crossbodybag.png", preview: "crossbodybagpreview.png", price: 33.79 },
-      "All Over Print Tote Pocket": { filename: "largecanvasbag.png", preview: "largecanvasbagpreview.png", price: 35.41 },
-      "All-Over Print Crossbody Bag": { filename: "crossbodybag.png", preview: "crossbodybagpreview.png", price: 30.95 },
-      "Distressed Dad Hat": { filename: "distresseddadhat.png", preview: "distresseddadhatpreview.png", price: 26.95 },
-      "Closed Back Cap": { filename: "closedbackcap.png", preview: "hatsclosedbackcappreview.png", price: 24.91 },
-      "Five Panel Trucker Hat": { filename: "fivepaneltruckerhat.png", preview: "fivepaneltruckerhatpreview.png", price: 26.95 },
-      "Five Panel Baseball Cap": { filename: "youthbaseballcap.png", preview: "youthbaseballcappreview.png", price: 26.95 },
-      "White Glossy Mug": { filename: "mug1.png", preview: "mug1preview.png", price: 17.95 },
-      "Travel Mug": { filename: "travelmug.png", preview: "travelmugpreview.png", price: 21.95 },
-      "Enamel Mug": { filename: "enamalmug.png", preview: "enamalmugpreview.png", price: 20.95 },
-      "Colored Mug": { filename: "coloredmug.png", preview: "coloredmugpreview.png", price: 19.95 },
-      "Pet Bowl All-Over Print": { filename: "dogbowl.png", preview: "dogbowlpreview.png", price: 33.49 },
-      "Pet Bandana Collar": { filename: "scarfcollar.png", preview: "scarfcollarpreview.png", price: 21.95 },
-      "Greeting Card": { filename: "greetingcard.png", preview: "greetingcardpreview.png", price: 9.99 },
-      "Hardcover Bound Notebook": { filename: "hardcovernotebook.png", preview: "hardcovernotebookpreview.png", price: 23.05 },
-      "Apron": { filename: "apron.png", preview: "apronpreview.png", price: 28.90 },
-      "Jigsaw Puzzle with Tin": { filename: "jigsawpuzzle.png", preview: "jigsawpuzzlepreview.png", price: 25.40 }
-    };
-
-    // Same cheapest → most expensive order as the browse API.
-    return category_products.map(productName => {
-      const productData = productImageMap[productName] || { filename: "placeholder.png", preview: "placeholder.png", price: 25.00 };
-      return {
-        name: productName,
-        price: productData.price,
-        main_image: `${getImgBase()}/${productData.filename}`,
-        preview_image: `${getImgBase()}/${productData.preview}`,
-        options: { color: ["Black", "White", "Hazy Pink", "Pale Pink", "Orchid", "Ecru", "White", "Bubblegum", "Bone", "Mineral", "Natural"], size: ["XS", "S", "M", "L", "XL"] }
-      };
-    }).sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0) || String(a.name).localeCompare(String(b.name)));
-  };
 
   const getVisibleScreenshots = () => {
     const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
@@ -560,6 +595,36 @@ const ProductPage = ({ sidebar }) => {
     }
   };
 
+  const rememberPickedProduct = (product, index) => {
+    if (!product) return;
+    lastPickedProductRef.current = { product, index };
+    rememberToolsProductName(product?.name);
+  };
+
+  const cartLineMatchesPick = (item, product, color, size) => {
+    if (!item || !product) return false;
+    if (String(item.name || '') !== String(product.name || '')) return false;
+    return String(item.color || '') === String(color || '') && String(item.size || '') === String(size || '');
+  };
+
+  const screenshotForNewCartItem = () => {
+    const pending = readPendingMerchData() || {};
+    const fromPicker = selectedScreenshotUrl || getSelectedScreenshotUrl();
+    if (fromPicker) return fromPicker;
+    if (editingCartItem?.selected_screenshot || editingCartItem?.screenshot) {
+      return editingCartItem.selected_screenshot || editingCartItem.screenshot;
+    }
+    if (pending.selected_screenshot || pending.edited_screenshot) {
+      return pending.selected_screenshot || pending.edited_screenshot;
+    }
+    const cartNow = Array.isArray(cartItems) && cartItems.length ? cartItems : readCartItems();
+    for (let i = (cartNow || []).length - 1; i >= 0; i--) {
+      const shot = cartNow[i]?.screenshot || cartNow[i]?.selected_screenshot;
+      if (shot) return shot;
+    }
+    return '';
+  };
+
   const checkSelectionAvailability = async (product, index, color, size) => {
     const effectiveColor = (color && String(color).trim())
       ? String(color).trim()
@@ -612,7 +677,8 @@ const ProductPage = ({ sidebar }) => {
     }
   };
 
-  const handleAddToCart = async (product, index) => {
+  const handleAddToCart = async (product, index, options = {}) => {
+    const showModal = options.showModal !== false;
     const chosenColor = selectedColors[index] || (product?.options?.color?.[0] || 'Default');
     const chosenSize = selectedSizes[index] || (product?.options?.size?.[0] || 'One Size');
     if (!productShipsToCountry(product, shipToCountry)) {
@@ -624,7 +690,7 @@ const ProductPage = ({ sidebar }) => {
           message: `This item is not available to ship to ${shipToCountryName(shipToCountry)}.`,
         },
       }));
-      return;
+      return null;
     }
     if (isShopCatalog) {
       saveShopAddIntent({
@@ -635,22 +701,23 @@ const ProductPage = ({ sidebar }) => {
       });
       navigate('/favorites?from=shop');
       window.scrollTo(0, 0);
-      return;
+      return null;
     }
-    rememberToolsProductName(product?.name);
+    rememberPickedProduct(product, index);
     const isAvailable = await checkSelectionAvailability(product, index, chosenColor, chosenSize);
-    if (!isAvailable) return;
+    if (!isAvailable) return null;
     // Use the URL stored when user clicked a screenshot so we send the exact image they selected (not thumbnail by mistake)
-    const screenshotUrl = selectedScreenshotUrl || getSelectedScreenshotUrl()
-      || editingCartItem?.selected_screenshot || editingCartItem?.screenshot;
+    const screenshotUrl = screenshotForNewCartItem();
 
     // Get video metadata from merch session (including screenshot_timestamp for email/order)
     let videoMetadata = {};
     let pendingOrientation;
     try {
       const merchData = readPendingMerchData();
-      pendingOrientation = 'portrait';
       if (merchData && typeof merchData === 'object') {
+        if (merchData.imageOrientation === 'landscape' || merchData.imageOrientation === 'portrait') {
+          pendingOrientation = merchData.imageOrientation;
+        }
         videoMetadata = {
           video_url: merchData.videoUrl,
           video_title: merchData.videoTitle,
@@ -692,7 +759,7 @@ const ProductPage = ({ sidebar }) => {
         imageOrientation: pendingOrientation
       };
     }
-    const next = [...cartItems];
+    const next = [...(readCartItems() || cartItems || [])];
     if (isEditingCart) {
       next[editingCartIndex] = item;
     } else {
@@ -709,52 +776,101 @@ const ProductPage = ({ sidebar }) => {
       setHighlightedProductIndex(null);
     }
     console.log(isEditingCart ? '✅ Cart item updated' : '✅ Item added to cart, showing modal...');
-    setCartModalMode(isEditingCart ? 'update' : 'add');
-    setShowAddedToCartModal(true);
+    if (showModal) {
+      setCartModalMode(isEditingCart ? 'update' : 'add');
+      setShowAddedToCartModal(true);
+    }
+    return focusIndex;
   };
 
   const goToToolsPage = async () => {
-    const cartNow = readCartItems();
-    if (!Array.isArray(cartNow) || cartNow.length === 0) {
-      setIsCartOpen(true);
-      return;
-    }
-    // Prefer the item being edited or last updated, then the most recently added cart item.
+    // Prefer the item being edited or last picked, then the most recently added cart item.
     try {
+      let items = readCartItems();
+      const picked = lastPickedProductRef.current;
+      const pickedColor = picked
+        ? (selectedColors[picked.index] || picked.product?.options?.color?.[0] || 'Default')
+        : '';
+      const pickedSize = picked
+        ? (selectedSizes[picked.index] || picked.product?.options?.size?.[0] || 'One Size')
+        : '';
+
       if (isEditingCart) {
         setToolsFocusCartIndex(editingCartIndex);
         setToolsPreviewNewest(false);
-      } else if (lastTouchedCartIndexRef.current != null) {
-        setToolsFocusCartIndex(lastTouchedCartIndexRef.current);
-        setToolsPreviewNewest(true);
       } else {
-        const items = readCartItems();
-        if (Array.isArray(items) && items.length > 0) {
-          setToolsFocusCartIndex(items.length - 1);
+        let focusIndex = Array.isArray(items) && items.length ? items.length - 1 : -1;
+        let openedNewSelection = Boolean(peekToolsPreviewNewest());
+
+        if (picked?.product && !isShopCatalog) {
+          let matchIdx = -1;
+          for (let i = (items || []).length - 1; i >= 0; i--) {
+            if (cartLineMatchesPick(items[i], picked.product, pickedColor, pickedSize)) {
+              matchIdx = i;
+              break;
+            }
+          }
+          if (matchIdx >= 0) {
+            focusIndex = matchIdx;
+            openedNewSelection = lastTouchedCartIndexRef.current === matchIdx;
+          } else {
+            const added = await handleAddToCart(picked.product, picked.index, { showModal: false });
+            items = readCartItems();
+            if (Number.isInteger(added) && added >= 0) {
+              focusIndex = added;
+              openedNewSelection = true;
+            } else if (Array.isArray(items) && items.length) {
+              focusIndex = items.length - 1;
+            }
+          }
+        } else if (lastTouchedCartIndexRef.current != null) {
+          focusIndex = lastTouchedCartIndexRef.current;
+          openedNewSelection = true;
         }
-        setToolsPreviewNewest(true);
-      }
-      let urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();
-      if (!urlToSave) {
-        const merch = readPendingMerchData() || {};
-        const productShots = productData?.product?.screenshots;
-        urlToSave =
-          merch.selected_screenshot ||
-          merch.edited_screenshot ||
-          merch.thumbnail ||
-          (Array.isArray(merch.screenshots) && merch.screenshots[0]) ||
-          productData?.product?.thumbnail_url ||
-          fallbackImages.thumbnail ||
-          (Array.isArray(productShots) && productShots[0]) ||
-          (Array.isArray(fallbackImages.screenshots) && fallbackImages.screenshots[0]) ||
-          '';
-      }
-      if (urlToSave) {
-        applySelectedScreenshot(urlToSave);
-        rememberArtworkOrientation('portrait');
+
+        if (!Array.isArray(items) || items.length === 0 || focusIndex < 0) {
+          setIsCartOpen(true);
+          return;
+        }
+
+        setToolsFocusCartIndex(focusIndex);
+        setToolsPreviewNewest(openedNewSelection);
+        items = readCartItems();
+
+        let urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();
+        if (!urlToSave) {
+          const merch = readPendingMerchData() || {};
+          const productShots = productData?.product?.screenshots;
+          urlToSave =
+            merch.selected_screenshot ||
+            merch.edited_screenshot ||
+            merch.thumbnail ||
+            (Array.isArray(merch.screenshots) && merch.screenshots[0]) ||
+            productData?.product?.thumbnail_url ||
+            fallbackImages.thumbnail ||
+            (Array.isArray(productShots) && productShots[0]) ||
+            (Array.isArray(fallbackImages.screenshots) && fallbackImages.screenshots[0]) ||
+            '';
+        }
+        const focused = items[focusIndex];
+        const currentShot = focused?.screenshot || focused?.selected_screenshot || '';
+        if (urlToSave && !currentShot && focused) {
+          const nextItems = items.map((item, i) => (
+            i === focusIndex
+              ? { ...item, screenshot: urlToSave, selected_screenshot: urlToSave }
+              : item
+          ));
+          persistCart(nextItems);
+          if (openedNewSelection) setToolsPreviewNewest(true);
+        }
       }
     } catch (e) {
       console.warn('Could not prepare tools focus:', e);
+      const cartNow = readCartItems();
+      if (!Array.isArray(cartNow) || cartNow.length === 0) {
+        setIsCartOpen(true);
+        return;
+      }
     }
     navigate('/tools');
   };
@@ -815,7 +931,8 @@ const ProductPage = ({ sidebar }) => {
     }
   }, [productId, creatorMode, category, isShopCatalog]);
 
-  // When there is only one image on this page, select it automatically.
+  // Keep the picker highlight in sync with the chosen image. A cart that already
+  // has artwork must not block the highlight — only skip overwriting that art.
   useEffect(() => {
     if (isShopCatalog || selectedScreenshot != null) return;
     const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
@@ -825,13 +942,53 @@ const ProductPage = ({ sidebar }) => {
     (shots || []).forEach((s, i) => {
       options.push({ key: i, url: s });
     });
-    if (options.length !== 1) return;
-    const only = options[0];
-    setSelectedScreenshot(only.key);
-    setSelectedScreenshotUrl(only.url);
-    applySelectedScreenshot(only.url);
-    if (creatorMode) setSelectedScreenshotForFavorite(only.key);
-  }, [isShopCatalog, selectedScreenshot, productData, fallbackImages, creatorMode]);
+    if (options.length === 0) return;
+
+    const strip = (u) => String(u || '').split('?')[0];
+    const matchUrl = (url) => {
+      if (!url) return null;
+      const target = strip(url);
+      return options.find((opt) => opt.url === url || strip(opt.url) === target) || null;
+    };
+
+    let match = options.length === 1 ? options[0] : null;
+    if (!match) {
+      try {
+        const merch = readPendingMerchData() || {};
+        const cartNow = readCartItems({ ignoreMemory: true }) || [];
+        const focused = isEditingCart ? editingCartItem : null;
+        const lastCart = Array.isArray(cartNow) && cartNow.length ? cartNow[cartNow.length - 1] : null;
+        const candidates = [
+          selectedScreenshotUrl,
+          focused?.selected_screenshot,
+          focused?.screenshot,
+          merch.selected_screenshot,
+          merch.edited_screenshot,
+          lastCart?.selected_screenshot,
+          lastCart?.screenshot,
+        ];
+        for (const candidate of candidates) {
+          match = matchUrl(candidate);
+          if (match) break;
+        }
+      } catch (_) {}
+    }
+    if (!match) return;
+
+    setSelectedScreenshot(match.key);
+    setSelectedScreenshotUrl(match.url);
+    if (creatorMode) setSelectedScreenshotForFavorite(match.key);
+
+    try {
+      const cartNow = readCartItems({ ignoreMemory: true });
+      const cartHasArt = Array.isArray(cartNow) && cartNow.some(
+        (it) => it && String(it.screenshot || it.selected_screenshot || '').trim()
+      );
+      if (!cartHasArt) applySelectedScreenshot(match.url);
+    } catch (_) {
+      applySelectedScreenshot(match.url);
+    }
+  }, [isShopCatalog, selectedScreenshot, productData, fallbackImages, creatorMode, isEditingCart, editingCartIndex]);
 
   useEffect(() => {
     const wantedCategory = category;
@@ -842,38 +999,11 @@ const ProductPage = ({ sidebar }) => {
     console.log('🔄 useEffect triggered with:', { productId, category, authenticated, email });
     }
 
-    const withDisplayUrls = (data) => {
-      const base = getBackendUrl().replace(/\/$/, '');
-      const imgBase = `${base}/static/images`;
-      const productsWithUrls = (data.products || []).map((p) => {
-        if (!p) return p;
-        const previewUrl = p.preview_image_url || (p.preview_image ? (p.preview_image.startsWith('/') ? base + p.preview_image : (p.preview_image.startsWith('http') ? ensureHttps(p.preview_image) : `${imgBase}/${p.preview_image}`)) : '');
-        const mainUrl = p.main_image_url || (p.main_image ? (p.main_image.startsWith('/') ? base + p.main_image : (p.main_image.startsWith('http') ? ensureHttps(p.main_image) : `${imgBase}/${p.main_image}`)) : '');
-        return { ...p, _displayImageUrl: previewUrl || mainUrl || `${imgBase}/placeholder.png` };
-      });
-      const next = { ...data, products: productsWithUrls };
-      if (!isShopCatalog) return next;
-      return {
-        ...next,
-        img_url: '',
-        product: { thumbnail_url: '', screenshots: [] },
-      };
-    };
-
     const paintProducts = (data) => {
-      const next = withDisplayUrls(data);
+      const next = decorateBrowseData(data, isShopCatalog);
       setProductData(next);
       preloadImageUrls((next.products || []).map((p) => p._displayImageUrl));
     };
-
-    const cached = readBrowseCache(wantedCategory);
-    if (cached) {
-      paintProducts(cached);
-      setLoading(false);
-      setError(null);
-    } else if (!productData) {
-      setLoading(true);
-    }
 
     const paintFallbackCatalog = () => {
       const cachedFallback = readBrowseCache(wantedCategory);
@@ -891,6 +1021,18 @@ const ProductPage = ({ sidebar }) => {
       });
       return true;
     };
+
+    const cached = readBrowseCache(wantedCategory);
+    if (cached) {
+      paintProducts(cached);
+      setLoading(false);
+      setError(null);
+    } else if (paintFallbackCatalog()) {
+      setLoading(false);
+      setError(null);
+    } else if (!productData) {
+      setLoading(true);
+    }
 
     const fetchProductData = async () => {
       setError(null);
@@ -1489,6 +1631,7 @@ const ProductPage = ({ sidebar }) => {
                   className={`product-card${highlightedProductIndex === index ? ' product-card-editing' : ''}`}
                   ref={(el) => { productCardRefs.current[index] = el; }}
                   onPointerDown={() => rememberToolsProductName(product?.name)}
+                  onClick={() => rememberPickedProduct(product, index)}
                 >
                   {/* Product Image - always show; stable URL so images load despite re-renders */}
                   {(() => {
@@ -1540,6 +1683,7 @@ const ProductPage = ({ sidebar }) => {
                           className="color-select"
                           value={displayColor}
                           onChange={async (e) => {
+                            rememberPickedProduct(product, index);
                             const newSelectedColors = { ...selectedColors };
                             const newColor = e.target.value;
                             newSelectedColors[index] = newColor;
@@ -1576,6 +1720,7 @@ const ProductPage = ({ sidebar }) => {
                           className="color-select"
                           value={selectedColors[index] || product.options.handle_color[0]}
                           onChange={(e) => {
+                            rememberPickedProduct(product, index);
                             const newSelectedColors = { ...selectedColors };
                             newSelectedColors[index] = e.target.value;
                             setSelectedColors(newSelectedColors);
@@ -1614,6 +1759,7 @@ const ProductPage = ({ sidebar }) => {
                             className="size-select"
                             value={displaySize}
                             onChange={async (e) => {
+                              rememberPickedProduct(product, index);
                               const newSelectedSizes = { ...selectedSizes };
                               const nextSize = e.target.value;
                               newSelectedSizes[index] = nextSize;

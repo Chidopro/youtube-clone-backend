@@ -687,13 +687,28 @@ def _distance_inside_including_canvas_border(binary_mask):
     return dist[1:-1, 1:-1]
 
 
+def _rounded_rect_sdf(x, y, center_x, center_y, half_w, half_h, radius):
+    """Signed distance to a rounded rectangle: negative inside, zero on the edge."""
+    hw = max(0.0, float(half_w))
+    hh = max(0.0, float(half_h))
+    radius = min(max(0.0, float(radius)), hw, hh)
+    qx = np.abs(x - center_x) - (hw - radius)
+    qy = np.abs(y - center_y) - (hh - radius)
+    return (
+        np.minimum(np.maximum(qx, qy), 0.0)
+        + np.hypot(np.maximum(qx, 0.0), np.maximum(qy, 0.0))
+        - radius
+    )
+
+
 def _tools_matching_feather_factor(width, height, feather_percent, corner_radius_px=0, is_circle=False):
-    """Inward linear fade matching ToolsPage rasterize (overlayFeatherMaskStyle).
+    """Inward fade matching Tools: full amount on each axis, rounded inner corners.
 
     Tools uses (percent/100)*(width/2) on left/right and (percent/100)*(height/2)
     on top/bottom, fully transparent at the edge and fully opaque at that depth.
-    The print-quality path used to split the fade half-outside the shape (then
-    cover it with the frame), which made 300 DPI look like a thinner band.
+    Axis-aligned X*Y ramps meet at a right angle; this interpolates between the
+    outer rounded rect and a concentric inner rounded rect so iso-contours follow
+    the frame curve instead of leaving a square opening.
     """
     width = int(width)
     height = int(height)
@@ -709,28 +724,131 @@ def _tools_matching_feather_factor(width, height, feather_percent, corner_radius
 
     fade_x = max(1.0, (pct / 100.0) * (width * 0.5))
     fade_y = max(1.0, (pct / 100.0) * (height * 0.5))
-    dist_left = x
-    dist_right = (width - 1) - x
-    dist_top = y
-    dist_bottom = (height - 1) - y
-    dx = np.minimum(dist_left, dist_right)
-    dy = np.minimum(dist_top, dist_bottom)
-    edge_fade = np.clip(dx / fade_x, 0.0, 1.0) * np.clip(dy / fade_y, 0.0, 1.0)
+    cx = (width - 1) * 0.5
+    cy = (height - 1) * 0.5
+    half_w = (width - 1) * 0.5
+    half_h = (height - 1) * 0.5
+    r_outer = min(max(0.0, float(corner_radius_px or 0)), half_w, half_h)
+    sdf_outer = _rounded_rect_sdf(x, y, cx, cy, half_w, half_h, r_outer)
 
-    r = int(corner_radius_px) if corner_radius_px else 0
-    if r > 0:
-        in_tl = (dist_left < r) & (dist_top < r)
-        in_tr = (dist_right < r) & (dist_top < r)
-        in_bl = (dist_left < r) & (dist_bottom < r)
-        in_br = (dist_right < r) & (dist_bottom < r)
-        in_corner = in_tl | in_tr | in_bl | in_br
-        cx = np.where(in_tl | in_bl, float(r), float(width - r))
-        cy = np.where(in_tl | in_tr, float(r), float(height - r))
-        min_dist = np.maximum(0.0, r - np.hypot(x - cx, y - cy))
-        corner_feather = max(fade_x, fade_y)
-        corner_fade = np.clip(min_dist / corner_feather, 0.0, 1.0)
-        edge_fade = np.where(in_corner, corner_fade, edge_fade)
+    half_w_in = max(0.5, half_w - fade_x)
+    half_h_in = max(0.5, half_h - fade_y)
+    fade_min = min(fade_x, fade_y)
+    r_inner = max(0.0, r_outer - fade_min)
+    if r_inner < fade_min:
+        r_inner = fade_min
+    r_inner = min(r_inner, half_w_in, half_h_in)
+    sdf_inner = _rounded_rect_sdf(x, y, cx, cy, half_w_in, half_h_in, r_inner)
+
+    dist_from_outer = np.maximum(0.0, -sdf_outer)
+    dist_from_inner = np.maximum(0.0, sdf_inner)
+    between = dist_from_outer / np.maximum(dist_from_outer + dist_from_inner, 1e-6)
+    edge_fade = np.where(
+        sdf_outer >= 0.0,
+        0.0,
+        np.where(sdf_inner <= 0.0, 1.0, between),
+    )
     return edge_fade.astype(np.float32)
+
+
+def _needs_alpha_pipeline(soft_corners=False, edge_feather=False, corner_radius_percent=0, feather_edge_percent=0, add_white_background=True):
+    """True when rounded corners, feather, or kept transparency require a BGRA buffer."""
+    try:
+        corner = float(corner_radius_percent or 0)
+    except (TypeError, ValueError):
+        corner = 0
+    try:
+        feather = float(feather_edge_percent or 0)
+    except (TypeError, ValueError):
+        feather = 0
+    if corner > 0 or bool(soft_corners):
+        return True
+    if feather > 0 or bool(edge_feather):
+        return True
+    return not bool(add_white_background)
+
+
+def _composite_on_white(image, fill=255):
+    """Flatten BGRA onto a solid color without allocating full-image float32 copies.
+
+    The previous implementation built several 14MP float32 arrays (~400MB) and
+    OOM-killed the 1GB Fly VM, returning an empty 502 to Generate 300 DPI.
+    fill=255 is white; fill=0 is black.
+    """
+    if image is None:
+        return image
+    if len(image.shape) == 2:
+        return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    channels = image.shape[2]
+    if channels == 3:
+        return image
+    if channels != 4:
+        return image
+    height, width = image.shape[:2]
+    alpha = image[:, :, 3]
+    if not alpha.size or np.min(alpha) == 255:
+        return np.ascontiguousarray(image[:, :, :3])
+    fill = 0 if int(fill) <= 0 else 255
+    out = np.empty((height, width, 3), dtype=np.uint8)
+    step = 256
+    for y in range(0, height, step):
+        y2 = min(height, y + step)
+        sl = image[y:y2]
+        a = sl[:, :, 3].astype(np.uint16)
+        inv = 255 - a
+        out[y:y2] = (
+            (sl[:, :, :3].astype(np.uint16) * a[:, :, None] + fill * inv[:, :, None]) // 255
+        ).astype(np.uint8)
+    return out
+
+
+def _feather_fade_fill_value(feather_fade_color):
+    raw = str(feather_fade_color or "white").strip().lower()
+    return 0 if raw == "black" else 255
+
+
+def _flatten_alpha_to_white_inside_shape(image, shape_mask, fill=255):
+    """Composite partial alpha onto white or black inside the print shape; keep outside transparent.
+
+    Feather uses alpha. If those pixels stay semi-transparent, Printful shows the
+    garment through them. Flattening inside the rounded rect makes the fade an
+    opaque color. Corner pixels outside the mask stay fully transparent so they
+    do not print as a box.
+    """
+    if image is None or shape_mask is None:
+        return image
+    if len(image.shape) < 3:
+        return image
+    if image.shape[2] == 3:
+        height, width = image.shape[:2]
+        image = np.dstack([image, np.full((height, width), 255, dtype=np.uint8)])
+    if image.shape[2] != 4:
+        return image
+    height, width = image.shape[:2]
+    if shape_mask.shape[:2] != (height, width):
+        logger.warning(
+            "Shape mask %s does not match image %sx%s; skip in-shape flatten",
+            shape_mask.shape[:2],
+            width,
+            height,
+        )
+        return image
+
+    fill = 0 if int(fill) <= 0 else 255
+    step = 256
+    for y in range(0, height, step):
+        y2 = min(height, y + step)
+        sl = image[y:y2]
+        inside = shape_mask[y:y2] > 0
+        a = sl[:, :, 3].astype(np.uint16)
+        inv = 255 - a
+        blended = (
+            (sl[:, :, :3].astype(np.uint16) * a[:, :, None] + fill * inv[:, :, None]) // 255
+        ).astype(np.uint8)
+        for c in range(3):
+            sl[:, :, c] = np.where(inside, blended[:, :, c], np.uint8(0))
+        sl[:, :, 3] = np.where(inside, np.uint8(255), np.uint8(0))
+    return image
 
 
 def _orientation_print_area(image_orientation, print_area_width, print_area_height):
@@ -756,7 +874,7 @@ def _orientation_print_area(image_orientation, print_area_width, print_area_heig
     return None, None
 
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=False, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False):
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white'):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -807,24 +925,36 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
         nparr = np.frombuffer(image_bytes, np.uint8)
         # Use IMREAD_UNCHANGED to preserve alpha channel if present
         image = cv2.imdecode(nparr, cv2.IMREAD_UNCHANGED)
+        del nparr
         
         if image is None:
             logger.error(f"❌ [PRINT_QUALITY] cv2.imdecode returned None - invalid image format or corrupted data")
             logger.error(f"❌ [PRINT_QUALITY] Image bytes length: {len(image_bytes)}, first 20 bytes: {image_bytes[:20]}")
             return {"success": False, "error": "Failed to decode image - invalid format or corrupted data"}
         
-        # Check if image has alpha channel, if not convert to BGRA
+        need_alpha = _needs_alpha_pipeline(
+            soft_corners=soft_corners,
+            edge_feather=edge_feather,
+            corner_radius_percent=corner_radius_percent,
+            feather_edge_percent=feather_edge_percent,
+            add_white_background=add_white_background,
+        )
+        # Generate 300 DPI (no feather/corners) flattens at source size, then
+        # upscales BGR. Expanding to BGRA first made the 3450x4140 composite OOM.
         if len(image.shape) == 2:
-            # Grayscale - convert to BGR then BGRA
-            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGRA)
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGRA if need_alpha else cv2.COLOR_GRAY2BGR)
         elif image.shape[2] == 3:
-            # BGR - convert to BGRA (add alpha channel)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+            if need_alpha:
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
         elif image.shape[2] == 4:
-            # Already has alpha channel (BGRA)
-            pass
+            if not need_alpha:
+                image = _composite_on_white(image)
         else:
             return {"success": False, "error": "Unsupported image format"}
+        logger.info(
+            f"📐 [PRINT_QUALITY] Working buffer: {image.shape[1]}x{image.shape[0]}x{image.shape[2]} "
+            f"(need_alpha={need_alpha})"
+        )
         
         # Apply crop if specified
         if crop_area:
@@ -1220,36 +1350,23 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             
             logger.info("Corner radius mask reapplied - transparency preserved outside rounded rectangle")
         
-        # Add white background if requested (for Printful compatibility)
+        # White/black flatten is for the print *inside* the shape (feather should
+        # look like a solid fade, not shirt-colored). Rounded corners stay
+        # fully transparent.
+        fade_fill = _feather_fade_fill_value(feather_fade_color)
         if add_white_background:
-            height, width = image.shape[:2]
-            
-            # Create white background (BGR = 255, 255, 255)
-            white_background = np.ones((height, width, 3), dtype=np.uint8) * 255
-            
-            # If image has alpha channel, composite over white background
-            if image.shape[2] == 4:
-                alpha = image[:, :, 3:4].astype(np.float32) / 255.0
-                rgb = image[:, :, :3].astype(np.float32)
-                
-                # Composite: result = alpha * rgb + (1 - alpha) * white
-                composite = alpha * rgb + (1.0 - alpha) * 255.0
-                image = composite.astype(np.uint8)
+            if corner_radius_mask is not None:
+                image = _flatten_alpha_to_white_inside_shape(image, corner_radius_mask, fade_fill)
+                logger.info("Feather flattened inside shape fill=%s; corners stay transparent", fade_fill)
             else:
-                # No alpha channel, just use RGB channels
-                image = image[:, :, :3]
-            
-            logger.info("White background added for Printful compatibility")
+                image = _composite_on_white(image, fade_fill)
+                logger.info("Solid background added for rectangular print file fill=%s", fade_fill)
         else:
-            # When white background is NOT added, ensure transparency is preserved
-            # Make sure image has alpha channel (BGRA format)
             if image.shape[2] == 3:
-                # Convert BGR to BGRA by adding fully opaque alpha channel
                 height, width = image.shape[:2]
                 alpha_channel = np.ones((height, width), dtype=np.uint8) * 255
                 image = np.dstack([image, alpha_channel])
             
-            # Ensure RGB values are zero where alpha is 0 (prevent black background artifacts)
             if image.shape[2] == 4:
                 alpha = image[:, :, 3]
                 zero_alpha_mask = alpha == 0
@@ -1257,7 +1374,7 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                     image[zero_alpha_mask, 0] = 0  # B channel
                     image[zero_alpha_mask, 1] = 0  # G channel
                     image[zero_alpha_mask, 2] = 0  # R channel
-                logger.info("Transparency preserved - RGB values zeroed where alpha is 0")
+                logger.info("Transparency preserved outside print shape (no white corner fill)")
         
         # Convert to PNG with proper DPI metadata using PIL
         # If white background was added, image is now BGR (3 channels), otherwise it's BGRA (4 channels)
@@ -1267,13 +1384,9 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             
             # Convert OpenCV image (BGR/BGRA) to PIL Image (RGB/RGBA)
             if image.shape[2] == 4:  # BGRA
-                # Convert BGRA to RGBA
-                rgba_image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
-                pil_image = Image.fromarray(rgba_image, 'RGBA')
+                pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA), 'RGBA')
             else:  # BGR (white background added)
-                # Convert BGR to RGB
-                rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                pil_image = Image.fromarray(rgb_image, 'RGB')
+                pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), 'RGB')
             
             # Draw text overlay if enabled (after all other effects)
             if text_enabled and text_content and text_content.strip():
@@ -1345,11 +1458,17 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             # Set DPI metadata (300 DPI for print quality)
             pil_image.save(buffer, format='PNG', dpi=(print_dpi, print_dpi))
             buffer.seek(0)
-            processed_image_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            png_bytes = buffer.getvalue()
+            buffer = None
+            pil_image = None
+            image = None
+            processed_image_data = base64.b64encode(png_bytes).decode('utf-8')
             
             logger.info(f"✅ [PRINT_QUALITY] PNG encoded with {print_dpi} DPI metadata using PIL")
         except Exception as pil_error:
             logger.warning(f"⚠️ [PRINT_QUALITY] PIL encoding failed, falling back to cv2 (no DPI metadata): {str(pil_error)}")
+            if image is None:
+                raise
             # Fallback to cv2 - encode as PNG (but without DPI metadata)
             _, buffer = cv2.imencode('.png', image, [cv2.IMWRITE_PNG_COMPRESSION, 1])
             processed_image_data = base64.b64encode(buffer).decode('utf-8')

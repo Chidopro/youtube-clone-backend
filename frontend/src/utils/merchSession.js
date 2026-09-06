@@ -90,6 +90,27 @@ export function detectArtworkOrientation(url) {
   });
 }
 
+export function resolveItemImageOrientation(item) {
+  if (!item || typeof item !== 'object') return '';
+  const ts = item.toolSettings && typeof item.toolSettings === 'object' ? item.toolSettings : {};
+  const raw = ts.imageOrientation || item.imageOrientation || item.image_orientation || '';
+  if (raw === 'landscape' || raw === 'portrait') return raw;
+  return '';
+}
+
+export function withItemImageOrientation(item, orientation) {
+  const ori = orientation === 'landscape' ? 'landscape' : 'portrait';
+  return {
+    ...item,
+    imageOrientation: ori,
+    image_orientation: ori,
+    toolSettings: {
+      ...(item?.toolSettings || {}),
+      imageOrientation: ori,
+    },
+  };
+}
+
 export function readArtworkOrientation() {
   try {
     const data = readPendingMerchData() || {};
@@ -130,7 +151,21 @@ function maybeDetectPendingOrientation(_clean) {
 
 const TOOLS_EDITOR_RESET_KEY = 'tools_editor_reset';
 
-function clearToolsPageState() {
+function cartHasArtwork() {
+  try {
+    const cart = readCartItems({ ignoreMemory: true }) || [];
+    return Array.isArray(cart) && cart.some(
+      (item) => item && String(item.screenshot || item.selected_screenshot || '').trim()
+    );
+  } catch {
+    return false;
+  }
+}
+
+function clearToolsPageState(options = {}) {
+  if (!options.force && cartHasArtwork()) {
+    return;
+  }
   try {
     localStorage.removeItem('tools_page_state');
     localStorage.removeItem('tools_focus_cart_index');
@@ -163,7 +198,7 @@ export function rememberToolsProductName(name) {
  * Keeps the chosen screenshot so Tools can reopen on a newly selected product.
  */
 export function resetToolsEditorSession() {
-  clearToolsPageState();
+  clearToolsPageState({ force: true });
   try {
     sessionStorage.setItem(TOOLS_EDITOR_RESET_KEY, '1');
   } catch {
@@ -197,7 +232,7 @@ export function consumeToolsEditorReset() {
  * screenshot is chosen. Keeps video metadata and the picker gallery.
  */
 export function clearWorkingScreenshot() {
-  clearToolsPageState();
+  clearToolsPageState({ force: true });
   let prev = pendingMerchMemory;
   if (!prev || typeof prev !== 'object') {
     try {
@@ -272,8 +307,17 @@ export function savePendingMerchData(merchData) {
     const incomingHadSelected = Boolean(merchData?.selected_screenshot);
     const incomingHadEdited = Boolean(merchData?.edited_screenshot);
     const isFreshPickerSession = !incomingHadSelected && !incomingHadEdited;
+    let cartHasArtwork = false;
+    try {
+      const cartNow = readCartItems({ ignoreMemory: true }) || [];
+      cartHasArtwork = Array.isArray(cartNow) && cartNow.some(
+        (item) => item && String(item.screenshot || item.selected_screenshot || '').trim()
+      );
+    } catch {
+      cartHasArtwork = false;
+    }
 
-    if (sourceChanged || isFreshPickerSession) {
+    if (sourceChanged || (isFreshPickerSession && !cartHasArtwork)) {
       clearToolsPageState();
     }
     if (sourceChanged) {
@@ -468,9 +512,22 @@ export function consumeToolsPreviewNewest() {
 /** Replace the working screenshot and drop the previous Tools edit. */
 export function applySelectedScreenshot(url) {
   if (!url || typeof url !== 'string') return;
-  clearToolsPageState();
   const prev = readPendingMerchData() || {};
   const oldShot = prev.selected_screenshot || prev.edited_screenshot || '';
+  let cart = [];
+  try {
+    cart = readCartItems({ ignoreMemory: true }) || [];
+  } catch {
+    cart = [];
+  }
+  const cartHasArt = Array.isArray(cart) && cart.some(
+    (item) => item && String(item.screenshot || item.selected_screenshot || '').trim()
+  );
+  if (url === oldShot || cartHasArt) {
+    // Cart already has art — keep Tools edits (picker thumbs must not replace it).
+    return;
+  }
+  clearToolsPageState();
   const next = { ...prev, selected_screenshot: url };
   delete next.edited_screenshot;
   if (url !== oldShot) delete next.imageOrientation;

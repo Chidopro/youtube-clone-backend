@@ -1752,7 +1752,8 @@ def get_order_screenshot(order_id):
                 "color": color,
                 "size": size,
                 "image_orientation": get_item_image_orientation(item),
-                "toolSettings": get_item_tool_settings(item)
+                "toolSettings": get_item_tool_settings(item),
+                "edited": bool(item.get("edited")),
             })
         
         response = jsonify({

@@ -2731,96 +2731,19 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                             </div>
                                         ) : null}
                                         {!umbrellaOnly && !isMasterAdmin ? (
-                                            <div className="collaborator-payout-panel owner-earnings-panel">
-                                                <h5>Storefront owner purchase log</h5>
-                                                <p className="hint">
-                                                    ScreenMerch pays you $6.00 per item sold on your pages when pending earnings reach $50.
-                                                    If you choose to set a fee under a collaborator below, that amount comes out of what you would otherwise pay them — fees are optional, not required.
-                                                </p>
-                                                <ul className="collaborator-payout-list">
-                                                    {(() => {
-                                                        const ownerPayout = Number(
-                                                            ownerEarningsSummary?.owner_page_payout
-                                                            ?? ownerPayoutRows.reduce((sum, row) => sum + Number(row.pay_owner_amount ?? 0), 0)
-                                                        );
-                                                        const umbrellaPayout = screenmerchPaidTotal > 0
-                                                            ? Math.max(0, Number(screenmerchPaidTotal) - ownerPayout)
-                                                            : collaboratorPayoutRows.reduce(
-                                                                (sum, row) => sum + Number(row.pay_collaborator_amount ?? 0),
-                                                                0
-                                                            );
-                                                        return (
-                                                            <li>
-                                                                <div className="collab-payout-row-main">
-                                                                    <strong>Storefront owner payout</strong>
-                                                                    <span className="owner-payout-equation">
-                                                                        <span>Your payout ${ownerPayout.toFixed(2)}</span>
-                                                                        {umbrellaPayout > 0 ? (
-                                                                            <>
-                                                                                <span className="owner-payout-op" aria-hidden="true">+</span>
-                                                                                <span>Umbrella Payout ${umbrellaPayout.toFixed(2)}</span>
-                                                                            </>
-                                                                        ) : null}
-                                                                        {screenmerchPaidTotal > 0 ? (
-                                                                            <>
-                                                                                <span className="owner-payout-op" aria-hidden="true">=</span>
-                                                                                <strong className="paid-up-label">
-                                                                                    ${Number(screenmerchPaidTotal).toFixed(2)} ✓
-                                                                                </strong>
-                                                                            </>
-                                                                        ) : null}
-                                                                    </span>
-                                                                </div>
-                                                            </li>
-                                                        );
-                                                    })()}
-                                                    <li>
-                                                        <div className="collab-payout-row-main">
-                                                            <strong>From collaborator fees</strong>
-                                                            <span>
-                                                                You keep ${Number(ownerEarningsSummary?.owner_fee_amount ?? 0).toFixed(2)}
-                                                                {Number(ownerEarningsSummary?.owner_fee_amount ?? 0) <= 0
-                                                                    ? ' · No Sales Fee'
-                                                                    : ''}
-                                                            </span>
-                                                        </div>
-                                                    </li>
-                                                </ul>
-                                                {ownerRecentSales.length > 0 ? (
-                                                    <details className="owner-purchase-log-details">
-                                                        <summary>
-                                                            View purchase log ({ownerRecentSales.length})
-                                                        </summary>
-                                                        <ul className="collaborator-payout-list owner-purchase-log">
-                                                            {ownerRecentSales.map((sale, idx) => (
-                                                                <li key={String(sale.id || idx)}>
-                                                                    <div className="collab-payout-row-main">
-                                                                        <strong>{sale.product_name || 'Item'}</strong>
-                                                                        <span>
-                                                                            {sale.display_name || 'Your page'}
-                                                                            {' · '}
-                                                                            {formatPayoutDate(sale.created_at)}
-                                                                            {' · '}
-                                                                            Your payout ${Number(sale.pay_owner_amount ?? 0).toFixed(2)}
-                                                                        </span>
-                                                                    </div>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </details>
-                                                ) : null}
-                                            </div>
-                                        ) : null}
-                                        {!umbrellaOnly && !isMasterAdmin ? (
+                                            <>
                                             <div className={`collaborator-payout-panel owner-earnings-panel${screenmerchPayouts.length > 0 ? ' screenmerch-payments-received' : ''}`}>
                                                 <h5>Payments from ScreenMerch</h5>
                                                 <p className="hint">
-                                                    When ScreenMerch confirms a PayPal (or other) payment to you, it appears here as your payment record.
-                                                    Payout includes collaborator fees when applicable.
+                                                    When ScreenMerch sends you a PayPal payment, the latest one shows here.
                                                 </p>
                                                 {screenmerchPayouts.length > 0 ? (
-                                                    <ul className="collaborator-payout-list owner-purchase-log screenmerch-payment-list">
-                                                        {screenmerchPayouts.map((payout) => (
+                                                    (() => {
+                                                        const payoutTime = (payout) => new Date(payout.paid_at || payout.payout_date || 0).getTime();
+                                                        const sortedPayouts = [...screenmerchPayouts].sort((a, b) => payoutTime(b) - payoutTime(a));
+                                                        const currentPayout = sortedPayouts[0];
+                                                        const previousPayouts = sortedPayouts.slice(1);
+                                                        const renderPaymentRow = (payout) => (
                                                             <li key={String(payout.id)} className="screenmerch-payment-row">
                                                                 <div className="collab-payout-row-main">
                                                                     <strong className="paid-up-label">
@@ -2833,17 +2756,109 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                                     </span>
                                                                 </div>
                                                             </li>
-                                                        ))}
-                                                    </ul>
+                                                        );
+                                                        return (
+                                                            <>
+                                                                <ul className="collaborator-payout-list owner-purchase-log screenmerch-payment-list">
+                                                                    {renderPaymentRow(currentPayout)}
+                                                                </ul>
+                                                                <details className="owner-purchase-log-details screenmerch-all-payments">
+                                                                    <summary>
+                                                                        All payments ({sortedPayouts.length})
+                                                                    </summary>
+                                                                    {previousPayouts.length > 0 ? (
+                                                                        <ul className="collaborator-payout-list owner-purchase-log screenmerch-payment-list">
+                                                                            {previousPayouts.map(renderPaymentRow)}
+                                                                        </ul>
+                                                                    ) : (
+                                                                        <p className="screenmerch-all-payments-empty">
+                                                                            This is your first recorded payment.
+                                                                        </p>
+                                                                    )}
+                                                                    {screenmerchPaidTotal > 0 ? (
+                                                                        <p className="screenmerch-paid-total">
+                                                                            Total received: ${screenmerchPaidTotal.toFixed(2)} ✓
+                                                                        </p>
+                                                                    ) : null}
+                                                                </details>
+                                                            </>
+                                                        );
+                                                    })()
                                                 ) : (
                                                     <p className="hint">No ScreenMerch payouts recorded yet.</p>
                                                 )}
-                                                {screenmerchPaidTotal > 0 ? (
-                                                    <p className="screenmerch-paid-total">
-                                                        Total received: ${screenmerchPaidTotal.toFixed(2)} ✓
-                                                    </p>
-                                                ) : null}
                                             </div>
+                                            <div className="collaborator-payout-panel owner-earnings-panel">
+                                                <h5>Storefront owner purchase log</h5>
+                                                <p className="hint">
+                                                    ScreenMerch pays $6.00 per item on your pages when pending earnings reach $50.
+                                                </p>
+                                                {(() => {
+                                                    const ownerPayout = Number(
+                                                        ownerEarningsSummary?.owner_page_payout
+                                                        ?? ownerPayoutRows.reduce((sum, row) => sum + Number(row.pay_owner_amount ?? 0), 0)
+                                                    );
+                                                    const umbrellaPayout = collaboratorPayoutRows.reduce(
+                                                        (sum, row) => sum + Number(row.pay_collaborator_amount ?? 0),
+                                                        0
+                                                    );
+                                                    const feeAmount = Number(ownerEarningsSummary?.owner_fee_amount ?? 0);
+                                                    const hasEarningsLog = ownerPayout > 0 || umbrellaPayout > 0 || feeAmount > 0 || ownerRecentSales.length > 0;
+                                                    if (!hasEarningsLog) {
+                                                        return <p className="hint">No sales recorded yet.</p>;
+                                                    }
+                                                    return (
+                                                        <details className="owner-purchase-log-details owner-earnings-log">
+                                                            <summary>Earnings log</summary>
+                                                            <ul className="collaborator-payout-list owner-earnings-log-totals">
+                                                                <li>
+                                                                    <div className="collab-payout-row-main">
+                                                                        <strong>Your Earnings</strong>
+                                                                        <span>${ownerPayout.toFixed(2)}</span>
+                                                                    </div>
+                                                                </li>
+                                                                {umbrellaPayout > 0 ? (
+                                                                    <li>
+                                                                        <div className="collab-payout-row-main">
+                                                                            <strong>Umbrella Earnings</strong>
+                                                                            <span>${umbrellaPayout.toFixed(2)}</span>
+                                                                        </div>
+                                                                    </li>
+                                                                ) : null}
+                                                                <li>
+                                                                    <div className="collab-payout-row-main">
+                                                                        <strong>Fees</strong>
+                                                                        <span>
+                                                                            {feeAmount > 0
+                                                                                ? `You keep $${feeAmount.toFixed(2)}`
+                                                                                : 'None'}
+                                                                        </span>
+                                                                    </div>
+                                                                </li>
+                                                            </ul>
+                                                            {ownerRecentSales.length > 0 ? (
+                                                                <ul className="collaborator-payout-list owner-purchase-log">
+                                                                    {ownerRecentSales.map((sale, idx) => (
+                                                                        <li key={String(sale.id || idx)}>
+                                                                            <div className="collab-payout-row-main">
+                                                                                <strong>{sale.product_name || 'Item'}</strong>
+                                                                                <span>
+                                                                                    {sale.display_name || 'Your page'}
+                                                                                    {' · '}
+                                                                                    {formatPayoutDate(sale.created_at)}
+                                                                                    {' · '}
+                                                                                    Your payout ${Number(sale.pay_owner_amount ?? 0).toFixed(2)}
+                                                                                </span>
+                                                                            </div>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : null}
+                                                        </details>
+                                                    );
+                                                })()}
+                                            </div>
+                                            </>
                                         ) : null}
                                         {!umbrellaOnly && !isMasterAdmin && collaboratorPayoutRows.length > 0 ? (
                                             <div className="collaborator-payout-panel">
@@ -2865,14 +2880,15 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                                 ? ''
                                                                 : String(row.owner_fee_value ?? 0),
                                                         };
+                                                        const feeAmount = Number(row.owner_fee_amount ?? 0);
+                                                        const recentSales = row.recent_sales || [];
+                                                        const hasEarningsLog = payCollab > 0 || feeAmount > 0 || recentSales.length > 0;
                                                         return (
                                                             <li key={listId}>
                                                                 <div className="collab-payout-row-main">
                                                                     <strong>{collaboratorPayoutHeading(row)}</strong>
                                                                     <div className="collab-payout-amount-row">
                                                                         <span>
-                                                                            Pay collaborator ${payCollab.toFixed(2)}
-                                                                            {' · '}
                                                                             {payCollab <= 0 ? (
                                                                                 <>Owed $0.00</>
                                                                             ) : isPaidUp ? (
@@ -2919,25 +2935,43 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                                     message={collabFeeMessages[listId] || ''}
                                                                     readOnly={demoPreview}
                                                                 />
-                                                                {(row.recent_sales || []).length > 0 ? (
-                                                                    <details className="owner-purchase-log-details collab-purchase-log-details">
-                                                                        <summary>
-                                                                            View purchase log ({row.recent_sales.length})
-                                                                        </summary>
-                                                                        <ul className="collaborator-payout-list owner-purchase-log">
-                                                                            {row.recent_sales.map((sale, idx) => (
-                                                                                <li key={String(sale.id || idx)}>
-                                                                                    <div className="collab-payout-row-main">
-                                                                                        <strong>{sale.product_name || 'Item'}</strong>
-                                                                                        <span>
-                                                                                            {formatPayoutDate(sale.created_at)}
-                                                                                            {' · '}
-                                                                                            Pay collaborator ${Number(sale.pay_collaborator_amount ?? 0).toFixed(2)}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                </li>
-                                                                            ))}
+                                                                {hasEarningsLog ? (
+                                                                    <details className="owner-purchase-log-details owner-earnings-log collab-purchase-log-details">
+                                                                        <summary>Earnings log</summary>
+                                                                        <ul className="collaborator-payout-list owner-earnings-log-totals">
+                                                                            <li>
+                                                                                <div className="collab-payout-row-main">
+                                                                                    <strong>Earnings</strong>
+                                                                                    <span>${payCollab.toFixed(2)}</span>
+                                                                                </div>
+                                                                            </li>
+                                                                            <li>
+                                                                                <div className="collab-payout-row-main">
+                                                                                    <strong>Fees</strong>
+                                                                                    <span>
+                                                                                        {feeAmount > 0
+                                                                                            ? `You keep $${feeAmount.toFixed(2)}`
+                                                                                            : 'None'}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </li>
                                                                         </ul>
+                                                                        {recentSales.length > 0 ? (
+                                                                            <ul className="collaborator-payout-list owner-purchase-log">
+                                                                                {recentSales.map((sale, idx) => (
+                                                                                    <li key={String(sale.id || idx)}>
+                                                                                        <div className="collab-payout-row-main">
+                                                                                            <strong>{sale.product_name || 'Item'}</strong>
+                                                                                            <span>
+                                                                                                {formatPayoutDate(sale.created_at)}
+                                                                                                {' · '}
+                                                                                                Pay collaborator ${Number(sale.pay_collaborator_amount ?? 0).toFixed(2)}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        ) : null}
                                                                     </details>
                                                                 ) : null}
                                                             </li>

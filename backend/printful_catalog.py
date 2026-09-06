@@ -556,11 +556,13 @@ def _fetch_catalog_variants_nested(catalog_product_id: int) -> Dict[str, Dict[st
     return {}
 
 
-def get_nested_variant_map(catalog_product_id: int) -> Dict[str, Dict[str, int]]:
+def get_nested_variant_map(catalog_product_id: int, fetch: bool = True) -> Dict[str, Dict[str, int]]:
     with _maps_lock:
         cached = _nested_maps.get(catalog_product_id)
     if cached is not None:
         return cached
+    if not fetch:
+        return {}
 
     nested = _fetch_catalog_variants_nested(catalog_product_id)
     # Do not cache an empty map from a failed fetch; browse would otherwise
@@ -979,7 +981,43 @@ def combo_available_for_country(product_name: str, color: str, size: str, countr
     return variant_available_for_country(regions, country)
 
 
-def attach_printful_catalog_data(product: Dict[str, Any]) -> Dict[str, Any]:
+def _catalog_variant_map_cached(catalog_product_id: int) -> bool:
+    with _maps_lock:
+        return int(catalog_product_id) in _nested_maps
+
+
+def _warm_catalog_id(cid: int) -> None:
+    try:
+        get_nested_variant_map(cid)
+    except Exception as e:
+        logger.warning("Prefetch catalog %s: %s", cid, e)
+    try:
+        from printful_regions import prefetch_region_blank_costs, prefetch_variant_region_stock
+
+        prefetch_variant_region_stock(cid)
+        prefetch_region_blank_costs(cid)
+    except Exception as e:
+        logger.warning("Prefetch catalog extras %s: %s", cid, e)
+
+
+def start_printful_catalog_warmup() -> None:
+    """Fill variant/stock/price caches in the background so browse is not a 20s wait after deploy."""
+    if not os.getenv("PRINTFUL_API_KEY"):
+        return
+    ids = sorted({int(cid) for cid in PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME.values()})
+    if not ids:
+        return
+
+    def _run() -> None:
+        logger.info("Printful catalog warmup starting ids=%s", len(ids))
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            list(pool.map(_warm_catalog_id, ids))
+        logger.info("Printful catalog warmup finished")
+
+    threading.Thread(target=_run, name="printful-catalog-warmup", daemon=True).start()
+
+
+def attach_printful_catalog_data(product: Dict[str, Any], fetch_if_missing: bool = True) -> Dict[str, Any]:
     """Deep copy; set printful_catalog_product_id and printful_variant_map when possible."""
     out = copy.deepcopy(product)
     name = out.get("name") or ""
@@ -991,33 +1029,45 @@ def attach_printful_catalog_data(product: Dict[str, Any]) -> Dict[str, Any]:
     out["printful_catalog_product_id"] = int(pid)
     if not os.getenv("PRINTFUL_API_KEY"):
         return out
+    if not fetch_if_missing and not _catalog_variant_map_cached(int(pid)):
+        return out
     try:
-        nested = get_nested_variant_map(int(pid))
+        nested = get_nested_variant_map(int(pid), fetch=fetch_if_missing)
         # Frontend matches on storefront color (e.g. "White"); catalog may only have no-color bucket.
-        if NO_COLOR_BUCKET_KEY in nested:
+        if nested and NO_COLOR_BUCKET_KEY in nested:
             bucket = nested[NO_COLOR_BUCKET_KEY]
             for alias in ("White", "Default", "Black"):
                 if alias not in nested:
                     nested[alias] = dict(bucket)
-        out["printful_variant_map"] = nested
-        regional = build_regional_size_color_availability(out, int(pid))
-        if regional:
-            out["regional_size_color_availability"] = regional
+        if nested:
+            out["printful_variant_map"] = nested
+            if fetch_if_missing:
+                regional = build_regional_size_color_availability(out, int(pid))
+                if regional:
+                    out["regional_size_color_availability"] = regional
     except Exception as e:
         logger.warning("attach_printful_catalog_data(%s): %s", name, e)
-    try:
-        from printful_regions import build_regional_base_prices
+    if fetch_if_missing:
+        try:
+            from printful_regions import build_regional_base_prices
 
-        prices = build_regional_base_prices(float(out.get("price") or 0), int(pid))
-        if prices:
-            out["regional_base_prices"] = prices
-    except Exception as e:
-        logger.warning("attach_printful_catalog_data prices (%s): %s", name, e)
+            prices = build_regional_base_prices(float(out.get("price") or 0), int(pid))
+            if prices:
+                out["regional_base_prices"] = prices
+        except Exception as e:
+            logger.warning("attach_printful_catalog_data prices (%s): %s", name, e)
     return out
 
 
-def attach_printful_catalog_data_list(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Enrich a list (e.g. category browse). Fetches each distinct catalog id once (cached)."""
+def attach_printful_catalog_data_list(
+    products: List[Dict[str, Any]],
+    blocking: bool = True,
+) -> List[Dict[str, Any]]:
+    """Enrich a list (e.g. category browse). Fetches each distinct catalog id once (cached).
+
+    ``blocking=False`` returns immediately and warms missing Printful data in the background
+    so storefront category clicks are not stuck on a cold catalog.
+    """
     if not products:
         return []
     unique_ids: List[int] = []
@@ -1030,20 +1080,23 @@ def attach_printful_catalog_data_list(products: List[Dict[str, Any]]) -> List[Di
         if pid and int(pid) not in seen:
             seen.add(int(pid))
             unique_ids.append(int(pid))
-    if os.getenv("PRINTFUL_API_KEY"):
-        from printful_regions import prefetch_region_blank_costs, prefetch_variant_region_stock
+    if os.getenv("PRINTFUL_API_KEY") and unique_ids:
+        missing = [cid for cid in unique_ids if not _catalog_variant_map_cached(cid)]
+        if missing:
+            if blocking:
+                with ThreadPoolExecutor(max_workers=6) as pool:
+                    list(pool.map(_warm_catalog_id, missing))
+            else:
+                def _bg(ids: List[int] = list(missing)) -> None:
+                    with ThreadPoolExecutor(max_workers=6) as pool:
+                        list(pool.map(_warm_catalog_id, ids))
 
-        def _warm(cid: int) -> None:
-            try:
-                get_nested_variant_map(cid)
-            except Exception as e:
-                logger.warning("Prefetch catalog %s: %s", cid, e)
-            prefetch_variant_region_stock(cid)
-            prefetch_region_blank_costs(cid)
-
-        with ThreadPoolExecutor(max_workers=6) as pool:
-            list(pool.map(_warm, unique_ids))
-    return [attach_printful_catalog_data(p) for p in products]
+                threading.Thread(
+                    target=_bg,
+                    name="printful-catalog-browse-warm",
+                    daemon=True,
+                ).start()
+    return [attach_printful_catalog_data(p, fetch_if_missing=blocking) for p in products]
 
 
 def storefront_unit_price(product: Dict[str, Any], size: Optional[str], country: str) -> float:

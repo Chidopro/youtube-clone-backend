@@ -14,7 +14,7 @@ Sample-only:
 - Tab-scoped cart (sessionStorage only; closing the tab clears it)
 - Checkout “These items are not for sale” and no real charges
 - Browse/cart without shopper sign-in
-- Apply Edits returns to browse with cart open, not checkout
+- Apply Edits saves and stays on Tools; Continue Shopping returns to browse
 - Product Preview / Tools require a cart item; an empty cart opens the empty-cart window instead of a default product
 
 Real storefronts keep a persistent cart, real checkout, and the same Tools “newest cart item” preview reset after Add to Cart. Editing a cart item from checkout still focuses that item.

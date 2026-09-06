@@ -4,6 +4,7 @@ import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, ge
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
 import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest, peekToolsPreviewNewest, rememberArtworkOrientation } from '../../utils/merchSession';
 import { isDemoStorefront } from '../../utils/demoStorefront';
+import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlainText, cornerRadiusPx, featherPx } from '../../utils/editLog';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -174,6 +175,11 @@ const APPAREL_PRINT_OVERRIDES = {
     left: 49,
     // Portrait: close the hairline white print-box gap on the right only.
     rightGrow: 0.02,
+    // Landscape: this mockup's print box is taller than a 1.5:1 band, which
+    // left mint showing around a wide crop. Keep width on the painted box
+    // and use a taller landscape frame so the image fills the chest.
+    landscapeWidthScale: 1.05,
+    landscapeAspect: 1.15,
   },
   "Kids Long Sleeve": {
     widthFrac: 0.502,
@@ -439,8 +445,9 @@ function sizeApparelPrintOverlay(printW, printH, mockupW, mockupH, productName, 
  * scale). Portrait is grown ~5% to hide the mint box; that extra width
  * makes a landscape band stick out past the mockup rectangle. Height is
  * a shorter band so a wide screenshot fills left-to-right. A product can
- * set `landscapeWidthScale` to inset that band, and `landscapeRightGrow`
- * to extend only the right edge (left stays put).
+ * set `landscapeWidthScale` to inset that band, `landscapeAspect` (width /
+ * height, default 1.5) to make the band taller or shorter, and
+ * `landscapeRightGrow` to extend only the right edge (left stays put).
  */
 function overlaySizeForOrientation(width, height, orientation, productName) {
   const box = getApparelPrintOverride(productName);
@@ -453,16 +460,22 @@ function overlaySizeForOrientation(width, height, orientation, productName) {
   let w = coverScale > 1 ? width / coverScale : width;
   const widthScale = box?.landscapeWidthScale > 0 ? box.landscapeWidthScale : 1;
   w *= widthScale;
-  const h = Math.min(height, w / 1.5);
+  const landscapeAspect = box?.landscapeAspect > 1 ? box.landscapeAspect : 1.5;
+  const h = Math.min(height, w / landscapeAspect);
   const rightGrow = box?.landscapeRightGrow > 0 ? w * box.landscapeRightGrow : 0;
   w += rightGrow;
   return { width: w, height: h, rightShift: rightGrow / 2 };
 }
 
-function applyArtworkOrientation(_product, _screenshotUrl, userSetRef, setImageOrientation) {
+function applyArtworkOrientation(product, _screenshotUrl, userSetRef, setImageOrientation) {
   if (userSetRef.current) return;
-  rememberArtworkOrientation('portrait');
-  setImageOrientation('portrait');
+  const fromItem = (product?.toolSettings?.imageOrientation || product?.imageOrientation || product?.image_orientation || '');
+  const ori = fromItem === 'landscape' || fromItem === 'portrait' ? fromItem : 'portrait';
+  if (fromItem === 'landscape' || fromItem === 'portrait') {
+    userSetRef.current = true;
+  }
+  rememberArtworkOrientation(ori);
+  setImageOrientation(ori);
 }
 
 /** Fill the current print box. Portrait = full print area; Landscape = wide print inside it. */
@@ -475,6 +488,22 @@ function overlayFitForPreview(printBox) {
   };
 }
 
+/** Keep the overlay frame horizontally centered and inside the print box. */
+function clampOverlayOffsetToPrintArea({
+  offsetY = 0,
+  rightShift = 0,
+  overlayH,
+  printH,
+}) {
+  // Keep 1px inside the painted box so the frame is not clipped by rounding.
+  const maxY = Math.max(0, (Number(printH) - Number(overlayH)) / 2 - 1);
+  const shift = Number(rightShift) || 0;
+  const y = Number.isFinite(maxY)
+    ? Math.max(-maxY, Math.min(maxY, Number(offsetY) || 0))
+    : (Number(offsetY) || 0);
+  return { x: -shift, y };
+}
+
 /** Pixel corner radius for the visible print box (100% = inscribed circle / pill). */
 function overlayCornerRadiusPx(cornerRadius, width, height) {
   if (!(cornerRadius > 0) || !(width > 0) || !(height > 0)) return 0;
@@ -482,26 +511,116 @@ function overlayCornerRadiusPx(cornerRadius, width, height) {
   return cornerRadius >= 100 ? maxRadius : (cornerRadius / 100) * maxRadius;
 }
 
+function roundedRectSdf(x, y, cx, cy, halfW, halfH, radius) {
+  const hw = Math.max(0, halfW);
+  const hh = Math.max(0, halfH);
+  const r = Math.min(Math.max(0, radius), hw, hh);
+  const qx = Math.abs(x - cx) - (hw - r);
+  const qy = Math.abs(y - cy) - (hh - r);
+  return Math.min(Math.max(qx, qy), 0) + Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - r;
+}
+
+/** Inward fade that follows a rounded rect so inner corners are not square. */
+function roundedRectFeatherFactor(x, y, width, height, fadeX, fadeY, cornerR) {
+  const cx = (width - 1) * 0.5;
+  const cy = (height - 1) * 0.5;
+  const halfW = (width - 1) * 0.5;
+  const halfH = (height - 1) * 0.5;
+  const rOuter = Math.min(Math.max(0, cornerR), halfW, halfH);
+  const sdfOuter = roundedRectSdf(x, y, cx, cy, halfW, halfH, rOuter);
+  const halfWIn = Math.max(0.5, halfW - fadeX);
+  const halfHIn = Math.max(0.5, halfH - fadeY);
+  const fadeMin = Math.min(fadeX, fadeY);
+  let rInner = Math.max(0, rOuter - fadeMin);
+  if (rInner < fadeMin) rInner = fadeMin;
+  rInner = Math.min(rInner, halfWIn, halfHIn);
+  const sdfInner = roundedRectSdf(x, y, cx, cy, halfWIn, halfHIn, rInner);
+  if (sdfOuter >= 0) return 0;
+  if (sdfInner <= 0) return 1;
+  return (-sdfOuter) / Math.max(-sdfOuter + sdfInner, 1e-6);
+}
+
+const overlayFeatherMaskCache = new Map();
+
 /**
- * Feather the visible print-box edges, not the full screenshot.
- * Nested X then Y masks — mask-composite is unreliable in Chromium.
+ * Feather the visible print-box edges, following the rounded frame instead of
+ * nested X/Y ramps that meet at a right angle.
  */
-function overlayFeatherMaskStyle(featherEdge, width, height) {
+function overlayFeatherMaskStyle(featherEdge, width, height, cornerRadiusPx = 0) {
   if (!(featherEdge > 0) || !(width > 0) || !(height > 0)) return null;
-  const fx = (featherEdge / 100) * width * 0.5;
-  const fy = (featherEdge / 100) * height * 0.5;
-  const asMask = (image) => ({
-    maskImage: image,
+  if (typeof document === 'undefined') return null;
+  const maxSide = 256;
+  const scale = maxSide / Math.max(width, height);
+  const mw = Math.max(1, Math.round(width * scale));
+  const mh = Math.max(1, Math.round(height * scale));
+  const rScaled = Math.max(0, cornerRadiusPx) * (mw / width);
+  const cacheKey = `${mw}x${mh}:${featherEdge}:${Math.round(rScaled * 10)}`;
+  let url = overlayFeatherMaskCache.get(cacheKey);
+  if (!url) {
+    const canvas = document.createElement('canvas');
+    canvas.width = mw;
+    canvas.height = mh;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const imageData = ctx.createImageData(mw, mh);
+    const data = imageData.data;
+    const fadeX = Math.max(1, (featherEdge / 100) * (mw * 0.5));
+    const fadeY = Math.max(1, (featherEdge / 100) * (mh * 0.5));
+    for (let y = 0; y < mh; y++) {
+      for (let x = 0; x < mw; x++) {
+        const fade = roundedRectFeatherFactor(x, y, mw, mh, fadeX, fadeY, rScaled);
+        const i = (y * mw + x) * 4;
+        const v = Math.round(Math.max(0, Math.min(1, fade)) * 255);
+        data[i] = v;
+        data[i + 1] = v;
+        data[i + 2] = v;
+        data[i + 3] = v;
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+    url = canvas.toDataURL('image/png');
+    if (overlayFeatherMaskCache.size > 24) {
+      overlayFeatherMaskCache.delete(overlayFeatherMaskCache.keys().next().value);
+    }
+    overlayFeatherMaskCache.set(cacheKey, url);
+  }
+  return {
+    maskImage: `url("${url}")`,
     maskRepeat: 'no-repeat',
     maskSize: '100% 100%',
-    WebkitMaskImage: image,
+    maskMode: 'alpha',
+    WebkitMaskImage: `url("${url}")`,
     WebkitMaskRepeat: 'no-repeat',
     WebkitMaskSize: '100% 100%',
-  });
-  return {
-    x: asMask(`linear-gradient(to right, transparent 0px, #000 ${fx}px, #000 calc(100% - ${fx}px), transparent 100%)`),
-    y: asMask(`linear-gradient(to bottom, transparent 0px, #000 ${fy}px, #000 calc(100% - ${fy}px), transparent 100%)`),
   };
+}
+
+function normalizeFeatherFadeColor(value) {
+  return value === 'black' ? 'black' : 'white';
+}
+
+function overlayFeatherFadeBackground(enabled, color) {
+  if (!enabled) return 'transparent';
+  return color === 'black' ? '#000' : '#fff';
+}
+
+function flattenCanvasFeatherToColor(ctx, canvas, fadeColor) {
+  if (!ctx || !canvas) return;
+  const fill = fadeColor === 'black' ? 0 : 255;
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3];
+    if (a === 0) continue;
+    if (a < 255) {
+      const inv = 255 - a;
+      data[i] = Math.round((data[i] * a + fill * inv) / 255);
+      data[i + 1] = Math.round((data[i + 1] * a + fill * inv) / 255);
+      data[i + 2] = Math.round((data[i + 2] * a + fill * inv) / 255);
+    }
+    data[i + 3] = 255;
+  }
+  ctx.putImageData(imageData, 0, 0);
 }
 
 /**
@@ -546,21 +665,21 @@ function cartIdentity(products) {
 }
 
 function getInitialCartPrintFit() {
-  if (typeof window === 'undefined') return { name: '', fit: 'none' };
+  if (typeof window === 'undefined') return { name: '', fit: 'none', index: null };
   try {
     const q = window.location.search;
     if (q && new URLSearchParams(q).get('order_id')) {
-      return { name: '', fit: 'none' };
+      return { name: '', fit: 'none', index: null };
     }
     const items = readCartItems();
     if (!Array.isArray(items) || items.length === 0) {
-      return { name: '', fit: 'none' };
+      return { name: '', fit: 'none', index: null };
     }
 
     const withShots = items
       .map((item, originalIndex) => ({ item, originalIndex }))
       .filter(({ item }) => item && item.screenshot && String(item.screenshot).trim() !== '');
-    if (!withShots.length) return { name: '', fit: 'none' };
+    if (!withShots.length) return { name: '', fit: 'none', index: null };
 
     let chosen = withShots[withShots.length - 1];
     if (!peekToolsPreviewNewest()) {
@@ -571,10 +690,226 @@ function getInitialCartPrintFit() {
       }
     }
     const name = matchPrintAreaProductName(chosen.item.name) || '';
-    return { name, fit: name ? 'product' : 'none' };
+    const index = Math.max(0, withShots.indexOf(chosen));
+    return { name, fit: name ? 'product' : 'none', index };
   } catch {
-    return { name: '', fit: 'none' };
+    return { name: '', fit: 'none', index: null };
   }
+}
+
+const EDITOR_SLOT_DEFAULTS = {
+  featherEdge: 0,
+  cornerRadius: 0,
+  featherFadeEnabled: false,
+  featherFadeColor: 'white',
+  frameEnabled: false,
+  frameColor: '#FF0000',
+  frameWidth: 10,
+  doubleFrame: false,
+  blackAndWhite: false,
+  textEnabled: false,
+  textContent: '',
+  textFont: 'Arial',
+  textColor: '#000000',
+  textSize: 24,
+  textOffsetX: 50,
+  textOffsetY: 50,
+  imageOffsetX: 0,
+  imageOffsetY: 0,
+};
+
+function editorSlotFromCartItem(item) {
+  if (!item || typeof item !== 'object') return null;
+  const s = item.toolSettings;
+  const ori = (s && s.imageOrientation) || item.imageOrientation || '';
+  const hasSettings = s && typeof s === 'object';
+  if (!hasSettings && ori !== 'landscape' && ori !== 'portrait') return null;
+  return {
+    ...EDITOR_SLOT_DEFAULTS,
+    ...(hasSettings ? s : {}),
+    imageOrientation: ori === 'landscape' ? 'landscape' : (ori === 'portrait' ? 'portrait' : (hasSettings ? s.imageOrientation : 'portrait')),
+    offsetX: hasSettings && typeof s.offsetX === 'number' ? s.offsetX : 0,
+    offsetY: hasSettings && typeof s.offsetY === 'number' ? s.offsetY : 0,
+    sourceScreenshot: slotSourceKey(item.screenshot || item.selected_screenshot || ''),
+    fitUserSet: true,
+  };
+}
+
+function parseToolsPageState(raw) {
+  if (!raw) return null;
+  try {
+    const state = JSON.parse(raw);
+    return state && typeof state === 'object' ? state : null;
+  } catch {
+    return null;
+  }
+}
+
+function readToolsPageState() {
+  try {
+    const fromSession = parseToolsPageState(sessionStorage.getItem('tools_page_state'));
+    if (fromSession) return fromSession;
+  } catch {
+    /* ignore */
+  }
+  try {
+    const fromLocal = parseToolsPageState(localStorage.getItem('tools_page_state'));
+    if (fromLocal) return fromLocal;
+  } catch {
+    /* ignore */
+  }
+  return {};
+}
+
+function writeToolsPageState(patch) {
+  const next = { ...readToolsPageState(), ...patch };
+  const json = JSON.stringify(next);
+  try {
+    sessionStorage.setItem('tools_page_state', json);
+  } catch {
+    /* quota / private mode */
+  }
+  try {
+    localStorage.setItem('tools_page_state', json);
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function readEditorSlots() {
+  const slots = readToolsPageState().editorSlots;
+  return slots && typeof slots === 'object' ? slots : {};
+}
+
+function writeEditorSlots(slots) {
+  writeToolsPageState({ editorSlots: slots && typeof slots === 'object' ? slots : {} });
+}
+
+function hydrateSlotsFromCart(slots) {
+  const next = { ...(slots && typeof slots === 'object' ? slots : {}) };
+  try {
+    const cartNow = readCartItems({ ignoreMemory: true }) || [];
+    cartNow.forEach((item, i) => {
+      const fromCart = editorSlotFromCartItem(item);
+      if (!fromCart) return;
+      const shot = item.screenshot || item.selected_screenshot || '';
+      if (!savedMatchesSourcePreview(next[i], shot, shot)) {
+        next[i] = fromCart;
+      }
+    });
+  } catch {
+    /* ignore */
+  }
+  return next;
+}
+
+function savedMatchesSourcePreview(saved, screenshot, screenshotFromCart) {
+  if (!saved || screenshot !== screenshotFromCart) return false;
+  if (!saved.sourceScreenshot) return true;
+  const shotKey = shotFingerprint(screenshot);
+  return saved.sourceScreenshot === screenshot || saved.sourceScreenshot === shotKey;
+}
+
+function slotSourceKey(url) {
+  const raw = String(url || '');
+  if (!raw) return '';
+  if (raw.startsWith('data:') || raw.length > 400) return shotFingerprint(raw);
+  return raw;
+}
+
+function getInitialEditorSlot() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const q = window.location.search;
+    if (q && new URLSearchParams(q).get('order_id')) return null;
+    const { index } = getInitialCartPrintFit();
+    if (index == null || index < 0) return null;
+    const slots = readEditorSlots();
+    return slots[index] || slots[String(index)] || null;
+  } catch {
+    return null;
+  }
+}
+
+/** 300 DPI print-box pixels for the current product / orientation / scale. */
+function printTargetPixels(productName, productSize, orientation, printAreaFit, screenshotScale = 100) {
+  const name = matchPrintAreaProductName(productName) || String(productName || '').trim();
+  const dims = getPrintAreaDimensions(name, productSize, 'front');
+  let wIn = dims?.width > 0 ? dims.width : 11.5;
+  let hIn = dims?.height > 0 ? dims.height : 13.8;
+  if (printAreaFit === 'horizontal') {
+    hIn = wIn / 1.5;
+  } else if (printAreaFit === 'square') {
+    hIn = wIn;
+  } else if (printAreaFit === 'vertical') {
+    wIn = hIn * (2 / 3);
+  } else if (orientation === 'landscape') {
+    const sized = overlaySizeForOrientation(wIn, hIn, 'landscape', name);
+    wIn = sized.width;
+    hIn = sized.height;
+  }
+  const scale = (Number(screenshotScale) || 100) / 100;
+  return {
+    width: Math.round(wIn * 300 * scale),
+    height: Math.round(hIn * 300 * scale),
+  };
+}
+
+function ToolsEditLogCard({ log, previewSrc }) {
+  const lines = formatEditLogLines(log);
+  if (!editLogHasEntries(log) && !previewSrc) return null;
+  const copyText = formatEditLogPlainText(log);
+  const onCopy = () => {
+    if (!copyText || !navigator.clipboard) return;
+    navigator.clipboard.writeText(copyText).catch(() => {});
+  };
+  return (
+    <div className="tools-edit-log-card">
+      <h4 className="tools-edit-log-title">Edit log</h4>
+      <p className="tools-edit-log-hint">
+        Generate the 300 DPI image from the original first, then replicate these values.
+      </p>
+      {previewSrc ? (
+        <img src={previewSrc} alt="Edited screenshot" className="tools-edit-log-preview" />
+      ) : null}
+      {lines.length > 0 ? (
+        <dl className="tools-edit-log-list">
+          {lines.map((row) => (
+            <div key={row.label} className="tools-edit-log-row">
+              <dt>{row.label}</dt>
+              <dd>{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="tools-edit-log-empty">No edits yet.</p>
+      )}
+      {copyText ? (
+        <button type="button" className="tools-edit-log-copy" onClick={onCopy}>
+          Copy log
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Aspect of the visible print box so Screenshot Preview matches Product Preview. */
+function printBoxPreviewAspect(productName, productSize, orientation, printAreaFit) {
+  if (printAreaFit === 'horizontal') return 1.5;
+  if (printAreaFit === 'square') return 1;
+  if (printAreaFit === 'vertical') return 2 / 3;
+
+  const name = matchPrintAreaProductName(productName) || String(productName || '').trim();
+  const dims = getPrintAreaDimensions(name, productSize, 'front');
+  const width = dims?.width > 0 ? dims.width : 11.5;
+  const height = dims?.height > 0 ? dims.height : 13.8;
+
+  if (orientation === 'landscape') {
+    const sized = overlaySizeForOrientation(width, height, 'landscape', name);
+    if (sized.width > 0 && sized.height > 0) return sized.width / sized.height;
+    return 1.5;
+  }
+  return width / height;
 }
 
 // Component for product preview with draggable screenshot
@@ -603,7 +938,10 @@ const ProductPreviewWithDrag = ({
   screenshotScale = 100,
   imageOffsetX = 0,
   imageOffsetY = 0,
-  imageOrientation = 'portrait'
+  imageOrientation = 'portrait',
+  blackAndWhite = false,
+  featherFadeEnabled = false,
+  featherFadeColor = 'white',
 }) => {
   const containerRef = useRef(null);
   const productImageRef = useRef(null);
@@ -618,6 +956,31 @@ const ProductPreviewWithDrag = ({
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
   const [detectedPrintBox, setDetectedPrintBox] = useState(null);
   const overlayFitKeyRef = useRef('');
+
+  const clampFrameOffset = (x, y) => {
+    const placeName = selectedProductName || productName;
+    const printBox = overlaySizeForOrientation(
+      screenshotDisplaySize.width,
+      screenshotDisplaySize.height,
+      imageOrientation,
+      placeName
+    );
+    if (!(printBox.width > 0 && printBox.height > 0 && screenshotDisplaySize.width > 0 && screenshotDisplaySize.height > 0)) {
+      return { x: 0, y: 0 };
+    }
+    // Portrait overlay is grown ~5% to hide the painted box. Clamp landscape
+    // to that un-grown rectangle so the frame stays inside the print area.
+    const coverScale = printBoxCoverScale(placeName);
+    const visualPrintH = coverScale > 1
+      ? screenshotDisplaySize.height / coverScale
+      : screenshotDisplaySize.height;
+    return clampOverlayOffsetToPrintArea({
+      offsetY: y,
+      rightShift: printBox.rightShift || 0,
+      overlayH: printBox.height,
+      printH: visualPrintH,
+    });
+  };
 
   // Calculate screenshot display size based on product print area
   useLayoutEffect(() => {
@@ -989,12 +1352,14 @@ const ProductPreviewWithDrag = ({
   }, [productImage, productName]);
 
   const handleMouseDown = (e) => {
+    if (imageOrientation === 'landscape') return;
+    if (!screenshot || !(screenshotDisplaySize.width >= 8) || !(screenshotDisplaySize.height >= 8)) return;
     e.preventDefault();
     setIsDragging(true);
     const startPos = { x: e.clientX, y: e.clientY };
     setDragStart(startPos);
     lastDragPositionRef.current = startPos;
-    currentDragPositionRef.current = { x: offsetX, y: offsetY };
+    currentDragPositionRef.current = clampFrameOffset(offsetX, offsetY);
     if (textDragMode) {
       dragStartTextPositionRef.current = { x: textOffsetX, y: textOffsetY };
       totalDragDeltaRef.current = { x: 0, y: 0 };
@@ -1002,13 +1367,15 @@ const ProductPreviewWithDrag = ({
   };
 
   const handleTouchStart = (e) => {
+    if (imageOrientation === 'landscape') return;
+    if (!screenshot || !(screenshotDisplaySize.width >= 8) || !(screenshotDisplaySize.height >= 8)) return;
     e.preventDefault();
     const touch = e.touches[0];
     setIsDragging(true);
     const startPos = { x: touch.clientX, y: touch.clientY };
     setDragStart(startPos);
     lastDragPositionRef.current = startPos;
-    currentDragPositionRef.current = { x: offsetX, y: offsetY };
+    currentDragPositionRef.current = clampFrameOffset(offsetX, offsetY);
     if (textDragMode) {
       dragStartTextPositionRef.current = { x: textOffsetX, y: textOffsetY };
       totalDragDeltaRef.current = { x: 0, y: 0 };
@@ -1017,27 +1384,6 @@ const ProductPreviewWithDrag = ({
 
   useEffect(() => {
     if (!isDragging) return;
-
-    const clampOffsets = (x, y) => {
-      if (productImageSize.width > 0 && productImageSize.height > 0) {
-        const maxOffsetX = productImageSize.width * 0.4;
-        const maxOffsetYUp = productImageSize.height * 0.6;
-        const maxOffsetYDown = productImageSize.height * 0.4;
-        return {
-          x: Math.max(-maxOffsetX, Math.min(maxOffsetX, x)),
-          y: Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, y)),
-        };
-      }
-      const scaledWidth = screenshotDisplaySize.width * (screenshotScale / 100);
-      const scaledHeight = screenshotDisplaySize.height * (screenshotScale / 100);
-      const maxOffsetX = Math.max(scaledWidth, scaledHeight) * 0.5;
-      const maxOffsetYUp = Math.max(scaledWidth, scaledHeight) * 1.2;
-      const maxOffsetYDown = Math.max(scaledWidth, scaledHeight) * 0.5;
-      return {
-        x: Math.max(-maxOffsetX, Math.min(maxOffsetX, x)),
-        y: Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, y)),
-      };
-    };
 
     const handleMove = (e) => {
       if (e.touches) e.preventDefault();
@@ -1062,10 +1408,7 @@ const ProductPreviewWithDrag = ({
         return;
       }
 
-      const next = clampOffsets(
-        currentDragPositionRef.current.x + deltaX,
-        currentDragPositionRef.current.y + deltaY
-      );
+      const next = clampFrameOffset(0, currentDragPositionRef.current.y + deltaY);
       currentDragPositionRef.current = next;
       onOffsetChange(next.x, next.y);
     };
@@ -1091,7 +1434,22 @@ const ProductPreviewWithDrag = ({
       document.removeEventListener('touchend', handleUp);
       document.removeEventListener('touchcancel', handleUp);
     };
-  }, [isDragging, onOffsetChange, onTextPositionChange, textDragMode, screenshotDisplaySize, productImageSize, screenshotScale]);
+  }, [isDragging, onOffsetChange, onTextPositionChange, textDragMode, screenshotDisplaySize, productImageSize, imageOrientation, selectedProductName, productName]);
+
+  useLayoutEffect(() => {
+    if (isDragging || !onOffsetChange) return;
+    if (!(screenshotDisplaySize.width > 8) || !(screenshotDisplaySize.height > 8)) return;
+    if (imageOrientation === 'landscape') {
+      if (Math.abs(offsetX) > 0.5 || Math.abs(offsetY) > 0.5) {
+        onOffsetChange(0, 0);
+      }
+      return;
+    }
+    const next = clampFrameOffset(offsetX, offsetY);
+    if (Math.abs(next.x - offsetX) > 0.5 || Math.abs(next.y - offsetY) > 0.5) {
+      onOffsetChange(next.x, next.y);
+    }
+  }, [isDragging, offsetX, offsetY, screenshotDisplaySize, imageOrientation, selectedProductName, productName, onOffsetChange]);
 
   return (
     <div 
@@ -1101,12 +1459,14 @@ const ProductPreviewWithDrag = ({
         position: 'relative',
         width: '100%',
         margin: '0 auto',
-        cursor: isDragging ? 'grabbing' : 'grab',
+        cursor: imageOrientation === 'landscape' ? 'default' : (isDragging ? 'grabbing' : 'grab'),
         userSelect: 'none',
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
-        touchAction: 'none'
+        touchAction: imageOrientation === 'landscape' ? 'auto' : 'none'
       }}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
     >
       {/* Product Image */}
       <img 
@@ -1116,6 +1476,7 @@ const ProductPreviewWithDrag = ({
         src={productImage} 
         alt={productName}
         onLoad={handleProductImageLoad}
+        onDragStart={(e) => e.preventDefault()}
         style={{
           width: '100%',
           height: 'auto',
@@ -1138,14 +1499,17 @@ const ProductPreviewWithDrag = ({
         const topPct = (isHat && productImageSize.height > 0)
           ? `${50 - 8}%`
           : `${apparelOverlayPlacement(placeName, detectedPrintBox).top}%`;
+        const clampedOffset = imageOrientation === 'landscape'
+          ? { x: 0, y: 0 }
+          : clampFrameOffset(offsetX, offsetY);
         return (
         <div
           style={{
             position: 'absolute',
             top: topPct,
             left: `${apparelOverlayPlacement(placeName, detectedPrintBox).left}%`,
-            transform: `translate(calc(-50% + ${offsetX + (printBox.rightShift || 0)}px), calc(-50% + ${offsetY}px))`,
-            cursor: isDragging ? 'grabbing' : 'grab',
+            transform: `translate(calc(-50% + ${clampedOffset.x + (printBox.rightShift || 0)}px), calc(-50% + ${clampedOffset.y}px))`,
+            cursor: imageOrientation === 'landscape' ? 'default' : (isDragging ? 'grabbing' : 'grab'),
             userSelect: 'none',
             WebkitUserSelect: 'none',
             WebkitTouchCallout: 'none',
@@ -1154,19 +1518,21 @@ const ProductPreviewWithDrag = ({
             zIndex: 2,
             overflow: 'hidden'
           }}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
         >
           {(() => {
             const scaleFactor = 1;
             const oriented = overlayFitForPreview(printBox);
             const scaledWidth = oriented.width * scaleFactor;
             const scaledHeight = oriented.height * scaleFactor;
-            const posX = Math.max(0, Math.min(100, 50 + imageOffsetX / 2));
-            const posY = Math.max(0, Math.min(100, 50 + imageOffsetY / 2));
-            const overlayFitClass = ' product-preview-overlay-landscape';
+            const posX = imageOrientation === 'landscape'
+              ? 50
+              : Math.max(0, Math.min(100, 50 + imageOffsetX / 2));
+            const posY = imageOrientation === 'landscape'
+              ? 50
+              : Math.max(0, Math.min(100, 50 + imageOffsetY / 2));
+            const overlayFitClass = imageOrientation === 'landscape' ? ' product-preview-overlay-landscape' : '';
             const clipRadius = overlayCornerRadiusPx(cornerRadius, scaledWidth, scaledHeight);
-            const featherMask = overlayFeatherMaskStyle(featherEdge, scaledWidth, scaledHeight);
+            const featherMask = overlayFeatherMaskStyle(featherEdge, scaledWidth, scaledHeight, clipRadius);
             const clipBox = {
               width: `${scaledWidth}px`,
               height: `${scaledHeight}px`,
@@ -1185,6 +1551,7 @@ const ProductPreviewWithDrag = ({
                   position: 'relative',
                   overflow: 'hidden',
                   borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+                  background: overlayFeatherFadeBackground(featherFadeEnabled, featherFadeColor),
                 }}
               >
                 <div
@@ -1194,10 +1561,9 @@ const ProductPreviewWithDrag = ({
                     overflow: 'hidden',
                     borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
                     background: 'transparent',
-                    ...(featherMask?.x || {})
+                    ...(featherMask || {})
                   }}
                 >
-                  <div style={{ ...clipBox, ...(featherMask?.y || {}) }}>
                     <img 
                       className={`product-preview-overlay${overlayFitClass}`}
                       key={screenshot || 'overlay'}
@@ -1213,11 +1579,11 @@ const ProductPreviewWithDrag = ({
                         WebkitUserSelect: 'none',
                         WebkitTouchCallout: 'none',
                         touchAction: 'none',
-                        borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0
+                        borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+                        filter: blackAndWhite ? 'grayscale(1)' : undefined
                       }}
                       draggable={false}
                     />
-                  </div>
                 </div>
                 {previewFrame > 0 && (
                   <div
@@ -1257,6 +1623,119 @@ const ProductPreviewWithDrag = ({
     </div>
   );
 };
+
+/** Mini print-box clone of Product Preview so orientation and crop stay in sync. */
+function ScreenshotPreviewPane({
+  src,
+  productName,
+  productSize,
+  imageOrientation,
+  printAreaFit,
+  imageOffsetX = 0,
+  imageOffsetY = 0,
+  featherEdge = 0,
+  cornerRadius = 0,
+  frameEnabled = false,
+  frameColor = '#FF0000',
+  frameWidth = 10,
+  doubleFrame = false,
+  sourceWidth = 0,
+  sourceHeight = 0,
+  blackAndWhite = false,
+  featherFadeEnabled = false,
+  featherFadeColor = 'white',
+}) {
+  if (!src) {
+    return (
+      <p style={{ color: '#999', fontSize: '0.85rem', margin: 0, textAlign: 'center', padding: '10px' }}>
+        No screenshot loaded
+      </p>
+    );
+  }
+  const aspect = printBoxPreviewAspect(productName, productSize, imageOrientation, printAreaFit);
+  const boxW = 176;
+  const boxH = boxW / (aspect > 0 ? aspect : 1);
+  const posX = imageOrientation === 'landscape' ? 50 : Math.max(0, Math.min(100, 50 + imageOffsetX / 2));
+  const posY = imageOrientation === 'landscape' ? 50 : Math.max(0, Math.min(100, 50 + imageOffsetY / 2));
+  const clipRadius = overlayCornerRadiusPx(cornerRadius, boxW, boxH);
+  const featherMask = overlayFeatherMaskStyle(featherEdge, boxW, boxH, clipRadius);
+  const previewFrame = frameEnabled
+    ? overlayFramePx(frameWidth, boxW, boxH, sourceWidth, sourceHeight)
+    : 0;
+  const innerFrameOffset = previewFrame * 1.5;
+  const innerFrameWidth = previewFrame * 0.7;
+  const innerOuter = previewFrame + innerFrameOffset;
+  const innerRadius = Math.max(0, clipRadius - innerOuter);
+  const fill = { position: 'absolute', inset: 0 };
+  return (
+    <div
+      className={`screenshot-preview-stage${imageOrientation === 'landscape' ? ' is-landscape' : ' is-portrait'}`}
+      style={{ aspectRatio: String(aspect) }}
+    >
+      <div
+        style={{
+          ...fill,
+          overflow: 'hidden',
+          borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+          background: overlayFeatherFadeBackground(featherFadeEnabled, featherFadeColor),
+        }}
+      >
+        <div
+          style={{
+            ...fill,
+            overflow: 'hidden',
+            borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+            ...(featherMask || {})
+          }}
+        >
+            <img
+              src={src}
+              alt="Screenshot Preview"
+              style={{
+                ...fill,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: `${posX}% ${posY}%`,
+                display: 'block',
+                borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+                filter: blackAndWhite ? 'grayscale(1)' : undefined
+              }}
+            />
+        </div>
+        {previewFrame > 0 && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+              border: `${previewFrame}px solid ${frameColor}`,
+              boxSizing: 'border-box',
+              pointerEvents: 'none'
+            }}
+          />
+        )}
+        {previewFrame > 0 && doubleFrame && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: innerOuter,
+              right: innerOuter,
+              bottom: innerOuter,
+              left: innerOuter,
+              borderRadius: innerRadius,
+              border: `${innerFrameWidth}px solid ${frameColor}`,
+              boxSizing: 'border-box',
+              pointerEvents: 'none'
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 // Helper functions to determine product handling
 const isMugProduct = (productName) => {
@@ -1422,28 +1901,37 @@ const ToolsPage = () => {
   const containerRef = useRef(null);
   const backBtnRef = useRef(null);
   
+  const initialEditorSlot = getInitialEditorSlot() || {};
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
-  const [featherEdge, setFeatherEdge] = useState(0);
-  const [cornerRadius, setCornerRadius] = useState(0);
-  const [frameEnabled, setFrameEnabled] = useState(false);
-  const [frameColor, setFrameColor] = useState('#FF0000');
-  const [frameWidth, setFrameWidth] = useState(10);
-  const [doubleFrame, setDoubleFrame] = useState(false);
-  const [textEnabled, setTextEnabled] = useState(false);
-  const [textContent, setTextContent] = useState('');
-  const [textFont, setTextFont] = useState('Arial');
-  const [textColor, setTextColor] = useState('#000000');
-  const [textSize, setTextSize] = useState(24);
-  const [textOffsetX, setTextOffsetX] = useState(50); // 0-100, 50 = center
-  const [textOffsetY, setTextOffsetY] = useState(50); // 0-100, 50 = center
-  const [printAreaFit, setPrintAreaFit] = useState(() => getInitialCartPrintFit().fit); // 'none', 'horizontal', 'square', 'vertical', 'product'
-  const [imageOrientation, setImageOrientation] = useState('portrait'); // 'portrait' | 'landscape'
-  const [imageOffsetX, setImageOffsetX] = useState(0); // -100 to 100 (percentage)
-  const [imageOffsetY, setImageOffsetY] = useState(0); // -100 to 100 (percentage)
+  const [featherEdge, setFeatherEdge] = useState(() => initialEditorSlot.featherEdge ?? 0);
+  const [featherFadeEnabled, setFeatherFadeEnabled] = useState(() => Boolean(initialEditorSlot.featherFadeEnabled));
+  const [featherFadeColor, setFeatherFadeColor] = useState(() => normalizeFeatherFadeColor(initialEditorSlot.featherFadeColor));
+  const [cornerRadius, setCornerRadius] = useState(() => initialEditorSlot.cornerRadius ?? 0);
+  const [frameEnabled, setFrameEnabled] = useState(() => Boolean(initialEditorSlot.frameEnabled));
+  const [frameColor, setFrameColor] = useState(() => initialEditorSlot.frameColor || '#FF0000');
+  const [frameWidth, setFrameWidth] = useState(() => initialEditorSlot.frameWidth ?? 10);
+  const [doubleFrame, setDoubleFrame] = useState(() => Boolean(initialEditorSlot.doubleFrame));
+  const [blackAndWhite, setBlackAndWhite] = useState(() => Boolean(initialEditorSlot.blackAndWhite));
+  const [textEnabled, setTextEnabled] = useState(() => Boolean(initialEditorSlot.textEnabled));
+  const [textContent, setTextContent] = useState(() => initialEditorSlot.textContent || '');
+  const [textFont, setTextFont] = useState(() => initialEditorSlot.textFont || 'Arial');
+  const [textColor, setTextColor] = useState(() => initialEditorSlot.textColor || '#000000');
+  const [textSize, setTextSize] = useState(() => initialEditorSlot.textSize ?? 24);
+  const [textOffsetX, setTextOffsetX] = useState(() => initialEditorSlot.textOffsetX ?? 50);
+  const [textOffsetY, setTextOffsetY] = useState(() => initialEditorSlot.textOffsetY ?? 50);
+  const [printAreaFit, setPrintAreaFit] = useState(() => initialEditorSlot.printAreaFit || getInitialCartPrintFit().fit);
+  const [imageOrientation, setImageOrientation] = useState(() => (
+    initialEditorSlot.imageOrientation === 'landscape' ? 'landscape' : 'portrait'
+  ));
+  const [imageOffsetX, setImageOffsetX] = useState(() => initialEditorSlot.imageOffsetX ?? 0);
+  const [imageOffsetY, setImageOffsetY] = useState(() => initialEditorSlot.imageOffsetY ?? 0);
   const [editedImageUrl, setEditedImageUrl] = useState('');
+  const [editsAppliedNotice, setEditsAppliedNotice] = useState(false);
+  const editsAppliedNoticeTimerRef = useRef(null);
   const [selectedProductName, setSelectedProductName] = useState(() => getInitialCartPrintFit().name);
   const [currentImageDimensions, setCurrentImageDimensions] = useState({ width: 0, height: 0 });
+  const [bakedImageSize, setBakedImageSize] = useState({ width: 0, height: 0 });
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [upgradeFailed, setUpgradeFailed] = useState(false);
   const upgradeTriggeredRef = useRef(false); // Track if we've already triggered an upgrade for this image
@@ -1468,19 +1956,34 @@ const ToolsPage = () => {
   });
   const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
   // Per-slot edit state (keyed by cart product index) so each of up-to-5 products has its own edits; no carry-over when switching
-  const slotStateRef = useRef({});
+  const slotStateRef = useRef(readEditorSlots());
   const cartCountRef = useRef(0);
   const cartIdentityRef = useRef('');
   const entrySelectRef = useRef(true);
+  const selectedCartProductIndexRef = useRef(null);
   const sessionPreviewUrlRef = useRef('');
   const [sessionEpoch, setSessionEpoch] = useState(0);
+
+  useEffect(() => {
+    selectedCartProductIndexRef.current = selectedCartProductIndex;
+  }, [selectedCartProductIndex]);
   // True when the user picked Fit Type / landscape (do not treat initial 'none' as a choice)
-  const fitUserSetRef = useRef({});
+  const fitUserSetRef = useRef((() => {
+    const flags = {};
+    const slots = readEditorSlots();
+    Object.keys(slots).forEach((key) => {
+      if (slots[key] && slots[key].fitUserSet) flags[key] = true;
+    });
+    return flags;
+  })());
   const autoFitCartIndexRef = useRef({});
   const printFilterKeyRef = useRef('');
   // When true, apply-edits effect must skip so it doesn't overwrite with previous product's image (same effect batch race)
   const switchingSlotRef = useRef(false);
-  const orientationUserSetRef = useRef(false);
+  const editorHydratedRef = useRef(Boolean(initialEditorSlot.sourceScreenshot || initialEditorSlot.frameEnabled || initialEditorSlot.imageOrientation));
+  const orientationUserSetRef = useRef(
+    initialEditorSlot.imageOrientation === 'landscape' || initialEditorSlot.imageOrientation === 'portrait'
+  );
   const [slotSwitchTick, setSlotSwitchTick] = useState(0);
   const [printQualityImageUrl, setPrintQualityImageUrl] = useState(''); // 300 DPI image from API (parked for download)
   const [printQualityMeta, setPrintQualityMeta] = useState(null); // { dimensions: { width, height, dpi }, file_size, format, quality }
@@ -1562,14 +2065,19 @@ const ToolsPage = () => {
       if (!containerRef.current) return;
       const containerRect = containerRef.current.getBoundingClientRect();
       const leftPosition = containerRect.left + 100; // Add 100px for the grey spacer column
+      const isDesktopTools = !window.matchMedia('(max-width: 968px)').matches;
+      const nav = document.querySelector('nav');
+      const belowHeader = Math.max(nav?.getBoundingClientRect().bottom || 0, 64);
       if (leftColumnRef.current) {
         leftColumnRef.current.style.left = `${leftPosition}px`;
+        if (isDesktopTools) {
+          leftColumnRef.current.style.top = `${Math.round(belowHeader)}px`;
+          leftColumnRef.current.style.maxHeight = `calc(100dvh - ${Math.round(belowHeader)}px)`;
+        }
       }
-      if (backBtnRef.current && !window.matchMedia('(max-width: 968px)').matches) {
+      if (backBtnRef.current && isDesktopTools) {
         // Left gutter beside Product Preview, just under the header bar.
         backBtnRef.current.style.left = `${Math.round(containerRect.left)}px`;
-        const nav = document.querySelector('nav');
-        const belowHeader = Math.max(nav?.getBoundingClientRect().bottom || 0, 64);
         backBtnRef.current.style.top = `${Math.round(belowHeader + 4)}px`;
       }
     };
@@ -1596,8 +2104,199 @@ const ToolsPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (editsAppliedNoticeTimerRef.current) {
+        window.clearTimeout(editsAppliedNoticeTimerRef.current);
+      }
+    };
+  }, []);
+
+  const buildLiveEditLog = (productOverride = null) => {
+    const product = productOverride || (
+      selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null
+    );
+    const previewName = selectedProductName || product?.name || '';
+    const previewSize = product?.size || null;
+    const printPx = printTargetPixels(
+      previewName,
+      previewSize,
+      imageOrientation,
+      printAreaFit,
+      screenshotScale
+    );
+    const bakedW = bakedImageSize.width || currentImageDimensions.width;
+    const bakedH = bakedImageSize.height || currentImageDimensions.height;
+    return buildEditLog({
+      bakedWidth: bakedW,
+      bakedHeight: bakedH,
+      printWidth: printPx.width,
+      printHeight: printPx.height,
+      featherEdge,
+      cornerRadius,
+      frameEnabled,
+      frameColor,
+      frameWidth,
+      doubleFrame,
+      blackAndWhite,
+      featherFadeEnabled,
+      featherFadeColor,
+      textEnabled,
+      textContent,
+      textFont,
+      textColor,
+      textSize,
+      textOffsetX,
+      textOffsetY,
+      printAreaFit,
+      imageOrientation,
+      imageOffsetX,
+      imageOffsetY,
+      screenshotScale,
+      selectedProductName: previewName,
+    });
+  };
+
+  const captureLiveEditorSlot = (idx, extra = {}) => {
+    const product = (idx != null && cartProducts[idx]) ? cartProducts[idx] : null;
+    const cartIndex = product?.originalCartIndex;
+    const offset = (cartIndex != null && productImageOffsets[cartIndex]) || { x: 0, y: 0 };
+    const prev = { ...(slotStateRef.current[idx] || {}) };
+    delete prev.editedImageUrl;
+    return {
+      ...prev,
+      featherEdge,
+      cornerRadius,
+      frameEnabled,
+      frameColor,
+      frameWidth,
+      doubleFrame,
+      blackAndWhite,
+      featherFadeEnabled,
+      featherFadeColor,
+      textEnabled,
+      textContent,
+      textFont,
+      textColor,
+      textSize,
+      textOffsetX,
+      textOffsetY,
+      screenshotScale,
+      selectedProductName,
+      printAreaFit,
+      imageOrientation,
+      imageOffsetX,
+      imageOffsetY,
+      printQualityImageUrl: String(printQualityImageUrl || '').startsWith('data:') ? '' : printQualityImageUrl,
+      printQualityMeta,
+      offsetX: offset.x,
+      offsetY: offset.y,
+      fitUserSet: idx != null ? Boolean(fitUserSetRef.current[idx]) : false,
+      sourceScreenshot: slotSourceKey(imageUrl || product?.screenshot || ''),
+      editLog: buildLiveEditLog(product),
+      ...extra,
+    };
+  };
+
+  const applySavedEditorFields = (saved) => {
+    if (!saved || typeof saved !== 'object') return;
+    if (typeof saved.featherEdge === 'number') setFeatherEdge(saved.featherEdge);
+    if (typeof saved.cornerRadius === 'number') setCornerRadius(saved.cornerRadius);
+    if (typeof saved.frameEnabled === 'boolean') setFrameEnabled(saved.frameEnabled);
+    if (saved.frameColor) setFrameColor(saved.frameColor);
+    if (typeof saved.frameWidth === 'number') setFrameWidth(saved.frameWidth);
+    if (typeof saved.doubleFrame === 'boolean') setDoubleFrame(saved.doubleFrame);
+    setBlackAndWhite(Boolean(saved.blackAndWhite));
+    setFeatherFadeEnabled(Boolean(saved.featherFadeEnabled));
+    setFeatherFadeColor(normalizeFeatherFadeColor(saved.featherFadeColor));
+    if (typeof saved.textEnabled === 'boolean') setTextEnabled(saved.textEnabled);
+    if (typeof saved.textContent === 'string') setTextContent(saved.textContent);
+    if (saved.textFont) setTextFont(saved.textFont);
+    if (saved.textColor) setTextColor(saved.textColor);
+    if (typeof saved.textSize === 'number') setTextSize(saved.textSize);
+    if (typeof saved.textOffsetX === 'number') setTextOffsetX(saved.textOffsetX);
+    if (typeof saved.textOffsetY === 'number') setTextOffsetY(saved.textOffsetY);
+    if (typeof saved.imageOffsetX === 'number') setImageOffsetX(saved.imageOffsetX);
+    if (typeof saved.imageOffsetY === 'number') setImageOffsetY(saved.imageOffsetY);
+  };
+
+  const persistEditorSlotsNow = (opts = {}) => {
+    writeEditorSlots(slotStateRef.current);
+    syncLiveEditorToCartItem(selectedCartProductIndex, opts);
+  };
+
+  const syncLiveEditorToCartItem = (idx = selectedCartProductIndex, opts = {}) => {
+    if (idx == null) return;
+    const product = cartProducts[idx];
+    const orig = product?.originalCartIndex;
+    if (!Number.isInteger(orig)) return;
+    const slot = slotStateRef.current[idx] || captureLiveEditorSlot(idx);
+    const nextSettings = {
+      screenshotScale: slot.screenshotScale,
+      offsetX: slot.offsetX,
+      offsetY: slot.offsetY,
+      featherEdge: slot.featherEdge,
+      cornerRadius: slot.cornerRadius,
+      frameEnabled: slot.frameEnabled,
+      frameColor: slot.frameColor,
+      frameWidth: slot.frameWidth,
+      doubleFrame: slot.doubleFrame,
+      blackAndWhite: slot.blackAndWhite,
+      featherFadeEnabled: Boolean(slot.featherFadeEnabled),
+      featherFadeColor: normalizeFeatherFadeColor(slot.featherFadeColor),
+      textEnabled: slot.textEnabled,
+      textContent: slot.textContent,
+      textFont: slot.textFont,
+      textColor: slot.textColor,
+      textSize: slot.textSize,
+      textOffsetX: slot.textOffsetX,
+      textOffsetY: slot.textOffsetY,
+      printAreaFit: slot.printAreaFit,
+      imageOrientation: slot.imageOrientation,
+      selectedProductName: slot.selectedProductName,
+      editLog: slot.editLog || null,
+    };
+    try {
+      const cartItems = readCartItems({ ignoreMemory: true });
+      if (!Array.isArray(cartItems) || !cartItems[orig]) return;
+      const prev = cartItems[orig].toolSettings || null;
+      const nextIsDefault = !nextSettings.frameEnabled
+        && nextSettings.imageOrientation !== 'landscape'
+        && !nextSettings.blackAndWhite
+        && !nextSettings.featherFadeEnabled
+        && !nextSettings.textEnabled
+        && !(nextSettings.featherEdge > 0)
+        && !(nextSettings.cornerRadius > 0);
+      const prevHasEdits = prev && (
+        prev.frameEnabled
+        || prev.imageOrientation === 'landscape'
+        || prev.blackAndWhite
+        || prev.featherFadeEnabled
+        || prev.textEnabled
+        || prev.featherEdge > 0
+        || prev.cornerRadius > 0
+      );
+      if (!opts.force && nextIsDefault && prevHasEdits) return;
+      if (
+        JSON.stringify(prev) === JSON.stringify(nextSettings) &&
+        cartItems[orig].imageOrientation === slot.imageOrientation
+      ) {
+        return;
+      }
+      writeCartItems(cartItems.map((item, i) => (
+        i !== orig
+          ? item
+          : { ...item, imageOrientation: slot.imageOrientation, toolSettings: nextSettings }
+      )));
+    } catch {
+      /* ignore */
+    }
+  };
+
   const applyEditorReset = () => {
     slotStateRef.current = {};
+    writeEditorSlots({});
+    editorHydratedRef.current = false;
     sessionPreviewUrlRef.current = '';
     cartIdentityRef.current = '';
     cartCountRef.current = 0;
@@ -1615,6 +2314,22 @@ const ToolsPage = () => {
     setEditedImageUrl('');
     setImageOffsetX(0);
     setImageOffsetY(0);
+    setFeatherEdge(0);
+    setFeatherFadeEnabled(false);
+    setFeatherFadeColor('white');
+    setCornerRadius(0);
+    setFrameEnabled(false);
+    setFrameWidth(10);
+    setFrameColor('#FF0000');
+    setDoubleFrame(false);
+    setBlackAndWhite(false);
+    setTextEnabled(false);
+    setTextContent('');
+    setTextFont('Arial');
+    setTextColor('#000000');
+    setTextSize(24);
+    setTextOffsetX(50);
+    setTextOffsetY(50);
     orientationUserSetRef.current = false;
     setImageOrientation('portrait');
     setProductSelectClicked(false);
@@ -1627,12 +2342,13 @@ const ToolsPage = () => {
   useEffect(() => {
     resyncMerchSessionFromStorage();
     entrySelectRef.current = true;
-    slotStateRef.current = {};
     cartIdentityRef.current = '';
     cartCountRef.current = 0;
     if (consumeToolsEditorReset()) {
       applyEditorReset();
+      return;
     }
+    slotStateRef.current = hydrateSlotsFromCart(readEditorSlots());
   }, [location.key]);
 
   useEffect(() => {
@@ -1640,14 +2356,12 @@ const ToolsPage = () => {
       if (!event.persisted) return;
       resyncMerchSessionFromStorage();
       entrySelectRef.current = true;
-      slotStateRef.current = {};
       cartIdentityRef.current = '';
       cartCountRef.current = 0;
-      setImageUrl('');
-      setSelectedImage('');
-      setEditedImageUrl('');
       if (consumeToolsEditorReset()) {
         applyEditorReset();
+      } else {
+        slotStateRef.current = hydrateSlotsFromCart(readEditorSlots());
       }
       setSessionEpoch((n) => n + 1);
     };
@@ -1664,64 +2378,22 @@ const ToolsPage = () => {
     };
   }, []);
 
-  // Load tool page state from localStorage on mount (skip when opened from email/order link so we always start clean)
+  // Persist current slot (edits survive cart/checkout and returning to Tools)
   useEffect(() => {
     const fromOrder = searchParams.get('order_id') || (typeof window !== 'undefined' && window.location.href && window.location.href.includes('order_id='));
     if (fromOrder) return;
-    try {
-      const savedState = localStorage.getItem('tools_page_state');
-      if (savedState) {
-        const state = JSON.parse(savedState);
-        // Do not restore screenshotScale or productImageOffsets — those belong
-        // to the previous cart item and shove a newly added product off-center.
-        // Do NOT restore selectedCartProductIndex — it often points at a leftover
-        // item from a previous video. Selection is set from focus index / latest cart item.
-        console.log('📦 Restored tool page state from localStorage');
-      }
-    } catch (e) {
-      console.warn('Could not load tool page state:', e);
-    }
-  }, [searchParams]);
-
-  // Save tool page state to localStorage whenever it changes (skip when opened from order link)
-  useEffect(() => {
-    const fromOrder = searchParams.get('order_id') || (typeof window !== 'undefined' && window.location.href && window.location.href.includes('order_id='));
-    if (fromOrder) return;
-    try {
-      const stateToSave = {
-        screenshotScale,
-        productImageOffsets,
-        selectedCartProductIndex
-      };
-      localStorage.setItem('tools_page_state', JSON.stringify(stateToSave));
-    } catch (e) {
-      console.warn('Could not save tool page state:', e);
-    }
-  }, [screenshotScale, productImageOffsets, selectedCartProductIndex, searchParams]);
-
-  // Persist current slot's Fit to Print (and related) state so it survives cart poll / loadScreenshot re-run
-  useEffect(() => {
+    if (!editorHydratedRef.current) return;
     if (selectedCartProductIndex === null || !cartProducts.length || !cartProducts[selectedCartProductIndex]) return;
     const idx = selectedCartProductIndex;
-    const cartIndex = cartProducts[idx].originalCartIndex;
-    const offset = productImageOffsets[cartIndex] || { x: 0, y: 0 };
-    slotStateRef.current[idx] = {
-      ...(slotStateRef.current[idx] || {}),
-      editedImageUrl,
+    slotStateRef.current[idx] = captureLiveEditorSlot(idx);
+    writeToolsPageState({
+      editorSlots: slotStateRef.current,
       screenshotScale,
-      selectedProductName,
-      printAreaFit,
-      imageOrientation,
-      imageOffsetX,
-      imageOffsetY,
-      printQualityImageUrl,
-      printQualityMeta,
-      offsetX: offset.x,
-      offsetY: offset.y,
-      fitUserSet: Boolean(fitUserSetRef.current[idx]),
-      sourceScreenshot: imageUrl || cartProducts[idx].screenshot || ''
-    };
-  }, [selectedCartProductIndex, cartProducts, editedImageUrl, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets]);
+      productImageOffsets,
+      selectedCartProductIndex,
+    });
+    syncLiveEditorToCartItem(idx);
+  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, searchParams]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -1761,17 +2433,26 @@ const ToolsPage = () => {
             ? data.products
             : [{ product: 'Order Screenshot', screenshot: data.screenshot, color: 'N/A', size: 'N/A', index: 0 }];
           let mapped = products
-            .map((p, i) => ({
-              originalCartIndex: p.index ?? i,
-              name: p.product || 'Product',
-              color: p.color || 'N/A',
-              size: p.size || 'N/A',
-              category: p.category || '',
-              screenshot: p.screenshot || '',
-              productImage: (p.preview_image_url && p.preview_image_url.trim()) || '', // Product mockup (same as cart tools)
-              toolSettings: null,
-              filteredIndex: i
-            }))
+            .map((p, i) => {
+              const hasOriginal = Boolean(p.original_screenshot && String(p.original_screenshot).trim());
+              const ts = p.toolSettings && typeof p.toolSettings === 'object' ? p.toolSettings : {};
+              const ori = p.image_orientation || ts.imageOrientation || p.imageOrientation || '';
+              return {
+                originalCartIndex: p.index ?? i,
+                name: p.product || 'Product',
+                color: p.color || 'N/A',
+                size: p.size || 'N/A',
+                category: p.category || '',
+                screenshot: hasOriginal ? p.original_screenshot : (p.screenshot || ''),
+                originalScreenshot: hasOriginal ? p.original_screenshot : '',
+                productImage: (p.preview_image_url && p.preview_image_url.trim()) || '',
+                imageOrientation: ori,
+                toolSettings: hasOriginal
+                  ? ts
+                  : { imageOrientation: ori === 'landscape' ? 'landscape' : 'portrait' },
+                filteredIndex: i
+              };
+            })
             .filter((item) => item.screenshot && item.screenshot.trim() !== '');
           setCartProducts(mapped);
           setSelectedCartProductIndex(mapped.length > 0 ? 0 : null);
@@ -1850,7 +2531,8 @@ const ToolsPage = () => {
               color: item.color || 'N/A',
               size: item.size || 'N/A',
               category: item.category || '',
-              screenshot: item.screenshot || '',
+              screenshot: item.originalScreenshot || item.screenshot || '',
+              originalScreenshot: item.originalScreenshot || '',
               productImage: item.image || '', // Store product image from cart
               imageOrientation: item.imageOrientation || item.toolSettings?.imageOrientation || '',
               toolSettings: item.toolSettings || null // Store tool settings if they exist
@@ -1897,61 +2579,87 @@ const ToolsPage = () => {
             } else if (forceEntry || (!demoStore && cartGrew)) {
               nextIndex = lastIndex;
             } else if (
-              selectedCartProductIndex !== null &&
-              selectedCartProductIndex < productsWithScreenshots.length
+              selectedCartProductIndexRef.current !== null &&
+              selectedCartProductIndexRef.current < productsWithScreenshots.length
             ) {
-              nextIndex = selectedCartProductIndex;
+              nextIndex = selectedCartProductIndexRef.current;
             }
 
             const chosen = productsWithScreenshots[nextIndex];
             if (identityChanged && chosen && !showNewest) {
               const slot = slotStateRef.current[nextIndex];
-              if (slot && slot.sourceScreenshot && slot.sourceScreenshot !== chosen.screenshot) {
+              const chosenKey = slotSourceKey(chosen.screenshot);
+              if (slot && slot.sourceScreenshot && slot.sourceScreenshot !== chosen.screenshot && slot.sourceScreenshot !== chosenKey) {
                 delete slotStateRef.current[nextIndex];
+                persistEditorSlotsNow();
                 setEditedImageUrl('');
               }
             }
             if (showNewest && chosen) {
-              switchingSlotRef.current = true;
-              delete slotStateRef.current[nextIndex];
-              fitUserSetRef.current[nextIndex] = false;
-              delete autoFitCartIndexRef.current[nextIndex];
-              printFilterKeyRef.current = '';
-              setEditedImageUrl('');
-              setFitPreviewImageUrl('');
-              setScreenshotSizeInteracted(true);
-              setImageOffsetX(0);
-              setImageOffsetY(0);
-              orientationUserSetRef.current = false;
-              applyArtworkOrientation(chosen, chosen?.screenshot, orientationUserSetRef, setImageOrientation);
+              const existingSlot = slotStateRef.current[nextIndex];
+              const sameShot = Boolean(
+                existingSlot &&
+                existingSlot.sourceScreenshot &&
+                (existingSlot.sourceScreenshot === chosen.screenshot ||
+                  existingSlot.sourceScreenshot === slotSourceKey(chosen.screenshot))
+              );
+              if (!sameShot) {
+                switchingSlotRef.current = true;
+                delete slotStateRef.current[nextIndex];
+                persistEditorSlotsNow();
+                fitUserSetRef.current[nextIndex] = false;
+                delete autoFitCartIndexRef.current[nextIndex];
+                printFilterKeyRef.current = '';
+                setEditedImageUrl('');
+                setFitPreviewImageUrl('');
+                setScreenshotSizeInteracted(true);
+                setImageOffsetX(0);
+                setImageOffsetY(0);
+                applySavedEditorFields(EDITOR_SLOT_DEFAULTS);
+                orientationUserSetRef.current = false;
+                applyArtworkOrientation(chosen, chosen?.screenshot, orientationUserSetRef, setImageOrientation);
+              }
             }
-            if (showNewest || nextIndex !== selectedCartProductIndex || forceEntry) {
+            if (showNewest || nextIndex !== selectedCartProductIndexRef.current || forceEntry) {
+              selectedCartProductIndexRef.current = nextIndex;
               setSelectedCartProductIndex(nextIndex);
-              const matchedName = matchPrintAreaProductName(chosen?.name) || '';
+              const slot = !showNewest ? slotStateRef.current[nextIndex] : null;
+              const matchedName = (slot && slot.selectedProductName) || matchPrintAreaProductName(chosen?.name) || '';
               if (matchedName) {
                 setSelectedProductName(matchedName);
-                setPrintAreaFit('product');
+                setPrintAreaFit((slot && slot.printAreaFit) || 'product');
                 setProductSelectClicked(true);
               } else {
                 setSelectedProductName('');
-                setPrintAreaFit('none');
+                setPrintAreaFit((slot && slot.printAreaFit) || 'none');
               }
               const settings = showNewest ? null : chosen?.toolSettings;
               // Do not restore cart-saved screenshotScale — that value was often
               // compensation for a wrong first size and makes the overlay jump larger.
-              const sessionScale = !showNewest
-                ? slotStateRef.current[nextIndex]?.screenshotScale
-                : undefined;
+              const savedSlot = !showNewest ? slotStateRef.current[nextIndex] : null;
+              const sessionScale = savedSlot?.screenshotScale;
               setScreenshotScale(sessionScale !== undefined ? sessionScale : 100);
-              if (chosen && settings && settings.offsetX !== undefined && settings.offsetY !== undefined) {
+              if (chosen && savedSlot && savedSlot.offsetX !== undefined) {
+                const ox = savedSlot.offsetX ?? 0;
+                const oy = savedSlot.offsetY ?? 0;
+                const cartIdx = chosen.originalCartIndex;
                 setProductImageOffsets(prev => ({
                   ...prev,
-                  [chosen.originalCartIndex]: { x: settings.offsetX, y: settings.offsetY }
+                  [cartIdx]: { x: ox, y: oy }
+                }));
+              } else if (chosen && settings && settings.offsetX !== undefined && settings.offsetY !== undefined) {
+                const ox = settings.offsetX;
+                const oy = settings.offsetY;
+                const cartIdx = chosen.originalCartIndex;
+                setProductImageOffsets(prev => ({
+                  ...prev,
+                  [cartIdx]: { x: ox, y: oy }
                 }));
               } else if (chosen) {
+                const cartIdx = chosen.originalCartIndex;
                 setProductImageOffsets(prev => ({
                   ...prev,
-                  [chosen.originalCartIndex]: { x: 0, y: 0 }
+                  [cartIdx]: { x: 0, y: 0 }
                 }));
               }
             }
@@ -1997,7 +2705,7 @@ const ToolsPage = () => {
       window.removeEventListener(CART_UPDATED_EVENT, loadCartProducts);
       clearInterval(checkInterval);
     };
-  }, [selectedCartProductIndex, searchParams, sessionEpoch, location.key]); // Re-run on Tools visit, bfcache, or cart selection
+  }, [searchParams, sessionEpoch, location.key]); // Re-run on Tools visit, bfcache, or cart selection
 
   // Load screenshot and product name from localStorage or URL params
   useEffect(() => {
@@ -2036,7 +2744,14 @@ const ToolsPage = () => {
               }
             }
             // Avoid clobbering an in-progress edit when cart poll reloads the same image
-            const saved = slotStateRef.current[selectedCartProductIndex];
+            const savedFromSlot = slotStateRef.current[selectedCartProductIndex];
+            const savedFromCart = editorSlotFromCartItem(selectedProduct);
+            const slotMatches = savedMatchesSourcePreview(savedFromSlot, screenshot, screenshotFromCart);
+            const cartMatches = Boolean(savedFromCart) && screenshotFromCart === (selectedProduct.screenshot || selectedProduct.selected_screenshot || '');
+            const saved = slotMatches ? savedFromSlot : (cartMatches ? savedFromCart : savedFromSlot);
+            if (saved === savedFromCart && savedFromCart) {
+              slotStateRef.current[selectedCartProductIndex] = savedFromCart;
+            }
             const matchedName = matchPrintAreaProductName(selectedProduct.name);
             const resolvedName = (saved && saved.selectedProductName) || matchedName || '';
             const savedFit = saved && saved.printAreaFit;
@@ -2052,48 +2767,61 @@ const ToolsPage = () => {
                 setSelectedProductName((prev) => prev || resolvedName);
                 setPrintAreaFit((prev) => (prev && prev !== 'none' ? prev : 'product'));
               }
+              if (saved && savedMatchesSourcePreview(saved, screenshot, screenshotFromCart)) {
+                applySavedEditorFields(saved);
+                if (saved.imageOrientation === 'landscape' || saved.imageOrientation === 'portrait') {
+                  orientationUserSetRef.current = true;
+                  setImageOrientation(saved.imageOrientation);
+                }
+              }
+              editorHydratedRef.current = true;
               return;
             }
             if (screenshot !== imageUrl) {
               upgradeTriggeredRef.current = false;
-              fitUserSetRef.current[selectedCartProductIndex] = false;
-              setEditedImageUrl('');
+              if (!savedMatchesSourcePreview(saved, screenshot, screenshotFromCart)) {
+                fitUserSetRef.current[selectedCartProductIndex] = false;
+                setEditedImageUrl('');
+              }
             }
             setImageUrl(screenshot);
             setSelectedImage(screenshot);
             setIsUpgrading(false);
-            const savedMatchesSource = Boolean(
-              saved &&
-              screenshot === screenshotFromCart &&
-              (!saved.sourceScreenshot || saved.sourceScreenshot === screenshot)
-            );
+            const savedMatchesSource = savedMatchesSourcePreview(saved, screenshot, screenshotFromCart);
             if (savedMatchesSource) {
               fitUserSetRef.current[selectedCartProductIndex] = Boolean(saved.fitUserSet);
-              setEditedImageUrl(saved.editedImageUrl || '');
+              setEditedImageUrl('');
               setScreenshotScale(saved.screenshotScale ?? 100);
               setSelectedProductName(resolvedName);
               setPrintAreaFit(resolvedFit);
+              applySavedEditorFields(saved);
               if (saved.imageOrientation === 'landscape' || saved.imageOrientation === 'portrait') {
+                orientationUserSetRef.current = true;
                 setImageOrientation(saved.imageOrientation);
               } else {
                 applyArtworkOrientation(selectedProduct, screenshot, orientationUserSetRef, setImageOrientation);
               }
-              setImageOffsetX(saved.imageOffsetX ?? 0);
-              setImageOffsetY(saved.imageOffsetY ?? 0);
               setPrintQualityImageUrl(saved.printQualityImageUrl || '');
               setPrintQualityMeta(saved.printQualityMeta || null);
               const cartIndex = selectedProduct.originalCartIndex;
-              setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: saved.offsetX ?? 0, y: saved.offsetY ?? 0 } }));
+              const ox = saved.offsetX ?? 0;
+              const oy = saved.offsetY ?? 0;
+              setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: ox, y: oy } }));
             } else {
               fitUserSetRef.current[selectedCartProductIndex] = false;
               setEditedImageUrl('');
               setScreenshotScale(100);
               setSelectedProductName(resolvedName);
               setPrintAreaFit(resolvedFit);
-              orientationUserSetRef.current = false;
-              applyArtworkOrientation(selectedProduct, screenshot, orientationUserSetRef, setImageOrientation);
-              setImageOffsetX(0);
-              setImageOffsetY(0);
+              applySavedEditorFields(EDITOR_SLOT_DEFAULTS);
+              const cartOri = selectedProduct.imageOrientation || selectedProduct.toolSettings?.imageOrientation || selectedProduct.image_orientation;
+              if (cartOri === 'landscape' || cartOri === 'portrait') {
+                orientationUserSetRef.current = true;
+                setImageOrientation(cartOri);
+              } else {
+                orientationUserSetRef.current = false;
+                applyArtworkOrientation(selectedProduct, screenshot, orientationUserSetRef, setImageOrientation);
+              }
               setPrintQualityImageUrl('');
               setPrintQualityMeta(null);
               const cartIndex = selectedProduct.originalCartIndex;
@@ -2102,6 +2830,7 @@ const ToolsPage = () => {
                 setScreenshotSizeInteracted(true);
               }
             }
+            editorHydratedRef.current = true;
             if (resolvedName) setProductSelectClicked(true);
             setTimeout(function clearSwitchFlag() {
               switchingSlotRef.current = false;
@@ -2189,8 +2918,9 @@ const ToolsPage = () => {
             // No failure flag, clear failure state
             setUpgradeFailed(false);
           }
-          // Load selected product name
-          if (data.selected_product_name) {
+          // Cart item is the source of truth; leftover pending_merch names
+          // must not keep Product Preview on a previous shirt.
+          if (data.selected_product_name && !(selectedCartProductIndex !== null && cartProducts[selectedCartProductIndex])) {
             setSelectedProductName(data.selected_product_name);
             setPrintAreaFit((prev) => (prev && prev !== 'none' ? prev : 'product'));
           }
@@ -2243,6 +2973,18 @@ const ToolsPage = () => {
     setScreenshotSizeInteracted(true);
     autoFitCartIndexRef.current[selectedCartProductIndex] = true;
   }, [selectedCartProductIndex, cartProducts]);
+
+  useEffect(() => {
+    if (imageOrientation !== 'landscape') return;
+    setImageOffsetX(0);
+    setImageOffsetY(0);
+    if (selectedCartProductIndex == null) return;
+    setProductImageOffsets((prev) => {
+      const cur = prev[selectedCartProductIndex];
+      if (cur && cur.x === 0 && cur.y === 0) return prev;
+      return { ...prev, [selectedCartProductIndex]: { x: 0, y: 0 } };
+    });
+  }, [imageOrientation, selectedCartProductIndex]);
 
   // When Fit to Print names a product that is not the current cart item,
   // load that product's mockup so the screenshot can be tested on it.
@@ -2830,8 +3572,8 @@ const ToolsPage = () => {
       tempCanvas.width = img.width;
       tempCanvas.height = img.height;
 
-      // Horizontal / Square / Vertical still crop. Product Specific must not —
-      // that cover-crop runs after the first paint and zooms video stills too far.
+      // Bake the visible print box (portrait / landscape / fit type) so Apply
+      // Edits, checkout, and Generate 300 DPI match Screenshot Preview.
       let sourceWidth = img.width;
       let sourceHeight = img.height;
       let sourceX = 0;
@@ -2880,22 +3622,23 @@ const ToolsPage = () => {
         sourceY = Math.max(0, Math.min(sourceY, maxOffsetY));
       };
 
-      if (printAreaFit !== 'none' && printAreaFit !== 'product') {
-        let targetAspect;
-        switch (printAreaFit) {
-          case 'horizontal':
-            targetAspect = 1.5; // Wider (e.g., 3:2 or 4:3)
-            break;
-          case 'square':
-            targetAspect = 1.0; // Square (1:1)
-            break;
-          case 'vertical':
-            targetAspect = 0.67; // Taller (e.g., 2:3 or 3:4) - for tank tops, vertical shirts
-            break;
-          default:
-            targetAspect = img.width / img.height;
-        }
+      const previewProduct = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
+      const previewName = selectedProductName || previewProduct?.name || '';
+      const previewSize = previewProduct?.size || fitProductSize;
+      const targetAspect = printBoxPreviewAspect(
+        previewName,
+        previewSize,
+        imageOrientation,
+        printAreaFit
+      );
+      if (targetAspect > 0) {
         cropToAspect(targetAspect);
+      }
+      if (!cancelled) {
+        setBakedImageSize({
+          width: Math.round(sourceWidth) || img.width,
+          height: Math.round(sourceHeight) || img.height,
+        });
       }
 
       const didCrop = sourceWidth < img.width - 1 || sourceHeight < img.height - 1 || sourceX > 1 || sourceY > 1;
@@ -2903,6 +3646,7 @@ const ToolsPage = () => {
         featherEdge ||
         cornerRadius ||
         frameEnabled ||
+        blackAndWhite ||
         (textEnabled && textContent && String(textContent).trim())
       );
       if (!didCrop && !hasPixelEdits) {
@@ -2921,7 +3665,9 @@ const ToolsPage = () => {
       tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
       
       // Draw cropped image to temp canvas
+      tempCtx.filter = blackAndWhite ? 'grayscale(1)' : 'none';
       tempCtx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+      tempCtx.filter = 'none';
 
       // Calculate max corner radius for circle (half of smallest dimension)
       const maxCornerRadius = Math.min(canvas.width, canvas.height) / 2;
@@ -3042,48 +3788,24 @@ const ToolsPage = () => {
         } else {
           // Fade each side by a share of that side's length so portrait and
           // landscape screenshots soften top, bottom, left, and right equally.
+          // Inner corners follow the rounded frame instead of meeting at 90°.
           const imageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
           const data = imageData.data;
           const fadeX = Math.max(1, featherX);
           const fadeY = Math.max(1, featherY);
+          const cornerR = Math.max(0, effectiveCornerRadius);
           
           for (let y = 0; y < maskCanvas.height; y++) {
             for (let x = 0; x < maskCanvas.width; x++) {
-              let edgeFade = 1;
-              const distLeft = x;
-              const distRight = maskCanvas.width - 1 - x;
-              const distTop = y;
-              const distBottom = maskCanvas.height - 1 - y;
-              const dx = Math.min(distLeft, distRight);
-              const dy = Math.min(distTop, distBottom);
-
-              if (effectiveCornerRadius > 0) {
-                const inTopLeft = distLeft < effectiveCornerRadius && distTop < effectiveCornerRadius;
-                const inTopRight = distRight < effectiveCornerRadius && distTop < effectiveCornerRadius;
-                const inBottomLeft = distLeft < effectiveCornerRadius && distBottom < effectiveCornerRadius;
-                const inBottomRight = distRight < effectiveCornerRadius && distBottom < effectiveCornerRadius;
-                if (inTopLeft || inTopRight || inBottomLeft || inBottomRight) {
-                  const cornerCenterX = inTopLeft || inBottomLeft
-                    ? effectiveCornerRadius
-                    : maskCanvas.width - effectiveCornerRadius;
-                  const cornerCenterY = inTopLeft || inTopRight
-                    ? effectiveCornerRadius
-                    : maskCanvas.height - effectiveCornerRadius;
-                  const distToCornerCenter = Math.hypot(x - cornerCenterX, y - cornerCenterY);
-                  const minDist = Math.max(0, effectiveCornerRadius - distToCornerCenter);
-                  const cornerFeather = Math.max(fadeX, fadeY);
-                  edgeFade = minDist < cornerFeather ? minDist / cornerFeather : 1;
-                } else {
-                  const fadeFromX = dx < fadeX ? dx / fadeX : 1;
-                  const fadeFromY = dy < fadeY ? dy / fadeY : 1;
-                  edgeFade = fadeFromX * fadeFromY;
-                }
-              } else {
-                const fadeFromX = dx < fadeX ? dx / fadeX : 1;
-                const fadeFromY = dy < fadeY ? dy / fadeY : 1;
-                edgeFade = fadeFromX * fadeFromY;
-              }
-
+              const edgeFade = roundedRectFeatherFactor(
+                x,
+                y,
+                maskCanvas.width,
+                maskCanvas.height,
+                fadeX,
+                fadeY,
+                cornerR
+              );
               const index = (y * maskCanvas.width + x) * 4;
               data[index + 3] = Math.floor(Math.max(0, Math.min(1, edgeFade)) * 255);
             }
@@ -3098,6 +3820,10 @@ const ToolsPage = () => {
         ctx.globalCompositeOperation = 'destination-in';
         ctx.drawImage(maskCanvas, 0, 0);
         ctx.globalCompositeOperation = 'source-over';
+      }
+
+      if (featherFadeEnabled && featherEdge > 0) {
+        flattenCanvasFeatherToColor(ctx, canvas, featherFadeColor);
       }
 
       // Paint the frame as a filled ring on the same path as the image clip.
@@ -3242,7 +3968,7 @@ const ToolsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation]);
 
   const rotateScreenshotClockwise = () => {
     const src = (imageUrl || '').trim();
@@ -3377,7 +4103,12 @@ const ToolsPage = () => {
   };
 
   const handleGenerate300Dpi = async () => {
-    const imageToUse = editedImageUrl || imageUrl;
+    const selectedProduct =
+      selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
+    const originalShot = String(selectedProduct?.originalScreenshot || '').trim();
+    // Always start from the unedited original. Passing a baked/edited preview
+    // through 300 DPI changes feather, corners, and frame.
+    const imageToUse = originalShot || imageUrl;
     if (!imageToUse || !imageToUse.trim()) {
       alert('No image to use. Please load a screenshot first.');
       return;
@@ -3386,11 +4117,29 @@ const ToolsPage = () => {
     setPrintQualityImageUrl('');
     setPrintQualityMeta(null);
     try {
+      const orientation = imageOrientation === 'landscape' ? 'landscape' : 'portrait';
       const payload = {
         thumbnail_data: imageToUse,
         print_dpi: 300,
+        preserve_edits: false,
+        fit_mode: 'cover',
+        image_orientation: orientation,
         soft_corners: false,
-        edge_feather: false
+        edge_feather: false,
+        corner_radius_percent: 0,
+        feather_edge_percent: 0,
+        frame_enabled: false,
+        frame_color: frameColor,
+        frame_width: frameWidth,
+        double_frame: false,
+        text_enabled: false,
+        text_content: '',
+        text_font: textFont,
+        text_color: textColor,
+        text_size: textSize,
+        text_offset_x: textOffsetX,
+        text_offset_y: textOffsetY,
+        add_white_background: true
       };
       if (selectedProductName && printAreaFit === 'product') {
         try {
@@ -3402,6 +4151,13 @@ const ToolsPage = () => {
           }
         } catch (_) {}
       }
+      if (!originalShot) {
+        payload.preserve_edits = true;
+        payload.fit_mode = 'preserve';
+        delete payload.image_orientation;
+        delete payload.print_area_width;
+        delete payload.print_area_height;
+      }
       const apiUrl = import.meta.env.DEV
         ? 'http://127.0.0.1:5000/api/process-thumbnail-print-quality'
         : apiJoin('/api/process-thumbnail-print-quality');
@@ -3410,8 +4166,23 @@ const ToolsPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      const raw = await response.text();
+      if (!raw) {
+        alert(
+          response.status === 502
+            ? 'Server ran out of memory generating the 300 DPI image. Please try again.'
+            : 'Server returned an empty response. Please try again.'
+        );
+        return;
+      }
+      let result = {};
+      try {
+        result = JSON.parse(raw);
+      } catch (_) {
+        alert('Server returned an invalid response. Please try again.');
+        return;
+      }
       if (response.ok) {
-        const result = await response.json();
         if (result.screenshot) {
           setPrintQualityImageUrl(result.screenshot);
           setPrintQualityMeta({
@@ -3424,8 +4195,7 @@ const ToolsPage = () => {
           alert('Generated but no image returned.');
         }
       } else {
-        const err = await response.json().catch(() => ({}));
-        alert(err.error || 'Failed to generate 300 DPI image.');
+        alert(result.error || 'Failed to generate 300 DPI image.');
       }
     } catch (e) {
       console.error(e);
@@ -3470,25 +4240,15 @@ const ToolsPage = () => {
     }
   };
 
-  const handleApplyEdits = () => {
-    // When opened from order email (order_id in URL): always download, never go to checkout (avoids empty cart)
-    const hasOrderId = searchParams.get('order_id') ||
-      (typeof window !== 'undefined' && (
-        (window.location.search && new URLSearchParams(window.location.search).get('order_id')) ||
-        (window.location.href && window.location.href.includes('order_id='))
-      )) ||
-      isFromOrderEmail;
-    if (hasOrderId) {
-      handleDownload();
-      return;
-    }
+  const browseCategoryPath = () => {
+    let category = 'mens';
+    try { category = localStorage.getItem('last_selected_category') || 'mens'; } catch (_) {}
+    return `/product/browse?category=${encodeURIComponent(category)}`;
+  };
 
-    if (!editedImageUrl) {
-      alert('Please wait for the image to process, or select a screenshot first.');
-      return;
-    }
-    
-    // Save edited image to merch session
+  const saveAppliedEditsToCart = () => {
+    if (!editedImageUrl) return false;
+
     try {
       const data = { ...readPendingMerchData() };
       data.edited_screenshot = editedImageUrl;
@@ -3500,6 +4260,9 @@ const ToolsPage = () => {
         frameColor,
         frameWidth,
         doubleFrame,
+        blackAndWhite,
+        featherFadeEnabled,
+        featherFadeColor,
         textEnabled,
         textContent,
         textFont,
@@ -3510,7 +4273,8 @@ const ToolsPage = () => {
         printAreaFit,
         imageOrientation,
         imageOffsetX,
-        imageOffsetY
+        imageOffsetY,
+        editLog: buildLiveEditLog(selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null)
       };
       savePendingMerchData(data);
       
@@ -3534,9 +4298,12 @@ const ToolsPage = () => {
           if (index === cartIndex) {
             return {
               ...item,
+              originalScreenshot: item.originalScreenshot || item.screenshot,
               screenshot: editedImageUrl,
+              selected_screenshot: editedImageUrl,
               edited: true,
               tools_acknowledged: true,
+              imageOrientation,
               toolSettings: {
                 screenshotScale,
                 offsetX: offsets.x,
@@ -3547,6 +4314,9 @@ const ToolsPage = () => {
                 frameColor,
                 frameWidth,
                 doubleFrame,
+                blackAndWhite,
+                featherFadeEnabled,
+                featherFadeColor,
                 textEnabled,
                 textContent,
                 textFont,
@@ -3555,7 +4325,8 @@ const ToolsPage = () => {
                 textOffsetX,
                 textOffsetY,
                 printAreaFit,
-                imageOrientation
+                imageOrientation,
+                editLog: buildLiveEditLog(selectedProduct)
               }
             };
           }
@@ -3573,6 +4344,7 @@ const ToolsPage = () => {
             image: selectedProduct.productImage || '',
             color: selectedProduct.color && selectedProduct.color !== 'N/A' ? selectedProduct.color : 'Default',
             size: selectedProduct.size && selectedProduct.size !== 'N/A' ? selectedProduct.size : 'One Size',
+            originalScreenshot: selectedProduct.originalScreenshot || selectedProduct.screenshot || imageUrl,
             screenshot: editedImageUrl,
             selected_screenshot: editedImageUrl,
             qty: 1,
@@ -3585,6 +4357,7 @@ const ToolsPage = () => {
       } else {
         updatedCart = cartItems.map(item => ({
           ...item,
+          originalScreenshot: item.originalScreenshot || item.screenshot,
           screenshot: editedImageUrl,
           edited: true,
           tools_acknowledged: true
@@ -3593,17 +4366,87 @@ const ToolsPage = () => {
       }
       
       writeCartItems(updatedCart);
+      if (selectedCartProductIndex !== null) {
+        slotStateRef.current[selectedCartProductIndex] = captureLiveEditorSlot(selectedCartProductIndex, {
+          ...EDITOR_SLOT_DEFAULTS,
+          sourceScreenshot: slotSourceKey(editedImageUrl),
+          imageOrientation,
+          blackAndWhite,
+          featherFadeEnabled,
+          featherFadeColor,
+          selectedProductName,
+          printAreaFit,
+          screenshotScale,
+        });
+        persistEditorSlotsNow();
+      }
+      return true;
     } catch (e) {
       console.error('Failed to save edited image:', e);
+      return false;
     }
+  };
 
-    if (isDemoStorefront()) {
-      let category = 'mens';
-      try { category = localStorage.getItem('last_selected_category') || 'mens'; } catch (_) {}
-      navigate(`/product/browse?category=${encodeURIComponent(category)}&openCart=true`);
+  const flashEditsAppliedNotice = () => {
+    setEditsAppliedNotice(true);
+    if (editsAppliedNoticeTimerRef.current) {
+      window.clearTimeout(editsAppliedNoticeTimerRef.current);
+    }
+    editsAppliedNoticeTimerRef.current = window.setTimeout(() => {
+      setEditsAppliedNotice(false);
+      editsAppliedNoticeTimerRef.current = null;
+    }, 2000);
+  };
+
+  const handleApplyEdits = () => {
+    // When opened from order email (order_id in URL): always download, never go to checkout (avoids empty cart)
+    const hasOrderId = searchParams.get('order_id') ||
+      (typeof window !== 'undefined' && (
+        (window.location.search && new URLSearchParams(window.location.search).get('order_id')) ||
+        (window.location.href && window.location.href.includes('order_id='))
+      )) ||
+      isFromOrderEmail;
+    if (hasOrderId) {
+      handleDownload();
       return;
     }
+
+    if (!editedImageUrl) {
+      alert('Please wait for the image to process, or select a screenshot first.');
+      return;
+    }
+
+    saveAppliedEditsToCart();
+    flashEditsAppliedNotice();
+  };
+
+  const persistToolsBeforeLeave = () => {
+    if (editedImageUrl) {
+      saveAppliedEditsToCart();
+    } else if (selectedCartProductIndex !== null && cartProducts[selectedCartProductIndex]) {
+      slotStateRef.current[selectedCartProductIndex] = captureLiveEditorSlot(selectedCartProductIndex);
+      persistEditorSlotsNow();
+    }
+  };
+
+  const handleContinueShopping = () => {
+    persistToolsBeforeLeave();
+    navigate(browseCategoryPath());
+  };
+
+  const handleCheckoutFromTools = () => {
+    persistToolsBeforeLeave();
     navigate('/checkout');
+  };
+
+  const applyFeatherFadeChoice = (choice) => {
+    if (choice === 'transparent') {
+      setFeatherFadeEnabled(false);
+      return;
+    }
+    setFeatherFadeColor(choice === 'black' ? 'black' : 'white');
+    setFeatherFadeEnabled(true);
+    setFeatherEdge((prev) => (prev > 0 ? prev : 20));
   };
 
   const switchToCartSlot = (newIndex) => {
@@ -3611,23 +4454,8 @@ const ToolsPage = () => {
     switchingSlotRef.current = true;
     const oldIndex = selectedCartProductIndex;
     if (oldIndex !== null && cartProducts[oldIndex]) {
-      const cartIndex = cartProducts[oldIndex].originalCartIndex;
-      const offset = productImageOffsets[cartIndex] || { x: 0, y: 0 };
-      slotStateRef.current[oldIndex] = {
-        editedImageUrl,
-        screenshotScale,
-        selectedProductName,
-        printAreaFit,
-        imageOrientation,
-        imageOffsetX,
-        imageOffsetY,
-        printQualityImageUrl,
-        printQualityMeta,
-        offsetX: offset.x,
-        offsetY: offset.y,
-        fitUserSet: Boolean(fitUserSetRef.current[oldIndex]),
-        sourceScreenshot: imageUrl || cartProducts[oldIndex].screenshot || ''
-      };
+      slotStateRef.current[oldIndex] = captureLiveEditorSlot(oldIndex);
+      persistEditorSlotsNow();
     }
     setSelectedCartProductIndex(newIndex);
     printFilterKeyRef.current = '';
@@ -3662,8 +4490,10 @@ const ToolsPage = () => {
   };
 
   const goBackFromTools = () => {
-    resetToolsEditorSession();
-    applyEditorReset();
+    if (selectedCartProductIndex !== null && cartProducts[selectedCartProductIndex]) {
+      slotStateRef.current[selectedCartProductIndex] = captureLiveEditorSlot(selectedCartProductIndex);
+      persistEditorSlotsNow();
+    }
     if (typeof window !== 'undefined' && window.history.length > 1) {
       navigate(-1);
       return;
@@ -3683,6 +4513,18 @@ const ToolsPage = () => {
     !searchParams.get('order_id') &&
     !isFromOrderEmail &&
     readCartItems().length === 0;
+
+  const liveEditLog = buildLiveEditLog();
+  const liveFeatherPx = featherPx(
+    featherEdge,
+    liveEditLog.imageWidth,
+    liveEditLog.imageHeight
+  );
+  const liveCornerPx = cornerRadiusPx(
+    cornerRadius,
+    liveEditLog.imageWidth,
+    liveEditLog.imageHeight
+  );
 
   return (
     <div className="tools-page-container" ref={containerRef}>
@@ -3773,6 +4615,9 @@ const ToolsPage = () => {
                     <h3 className="product-preview-heading">
                       <span className="product-preview-heading-label">
                         Product Preview ({selectedCartProductIndex + 1} of {cartProducts.length})
+                        {displayName ? (
+                          <span className="product-preview-heading-product"> {displayName}</span>
+                        ) : null}
                       </span>
                     </h3>
                     <div className="product-preview-name-row" style={{
@@ -3909,6 +4754,9 @@ const ToolsPage = () => {
                                 imageOffsetX={imageOffsetX}
                                 imageOffsetY={imageOffsetY}
                                 imageOrientation={imageOrientation}
+                                blackAndWhite={blackAndWhite}
+                                featherFadeEnabled={featherFadeEnabled}
+                                featherFadeColor={featherFadeColor}
                               />
                               <div style={{
                                 position: 'absolute',
@@ -3996,6 +4844,9 @@ const ToolsPage = () => {
                               imageOffsetX={imageOffsetX}
                               imageOffsetY={imageOffsetY}
                               imageOrientation={imageOrientation}
+                              blackAndWhite={blackAndWhite}
+                              featherFadeEnabled={featherFadeEnabled}
+                              featherFadeColor={featherFadeColor}
                             />
                           );
                         } else {
@@ -4063,6 +4914,9 @@ const ToolsPage = () => {
                             imageOffsetX={imageOffsetX}
                             imageOffsetY={imageOffsetY}
                             imageOrientation={imageOrientation}
+                            blackAndWhite={blackAndWhite}
+                            featherFadeEnabled={featherFadeEnabled}
+                            featherFadeColor={featherFadeColor}
                           />
                         );
                       }
@@ -4093,11 +4947,10 @@ const ToolsPage = () => {
           <h1 className="tools-column-heading">Edit Tools</h1>
           <div className="tools-controls-section">
           {/* Product Selector - Small dropdown at top of tools */}
-          {cartProducts.length > 1 && (
+          {cartProducts.length > 0 && (
             <div 
-              className="tool-control-group"
+              className="tool-control-group tools-cart-product-group"
               style={{ 
-                marginBottom: '1rem',
                 position: 'relative'
               }}
             >
@@ -4123,14 +4976,10 @@ const ToolsPage = () => {
             </div>
           )}
           
-          {/* Fit to Print Area - At the top */}
-          <div className="tool-control-group">
-            <h3>Fit to Print Area</h3>
-            <p className="tool-description">Crop image to fit product print areas</p>
-            
+          <div className="tool-control-group tools-orientation-group">
             {/* Portrait = tuned print box. Landscape = same box, wide on the chest. */}
-            <div className="select-control" style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Image orientation:</label>
+            <div className="select-control" style={{ marginBottom: '1rem', marginTop: 0 }}>
+              <h3 style={{ marginTop: 0, marginBottom: '0.5rem', fontWeight: 'bold' }}>Image orientation:</h3>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
                   <input
@@ -4156,61 +5005,31 @@ const ToolsPage = () => {
                       orientationUserSetRef.current = true;
                       rememberArtworkOrientation('landscape');
                       setImageOrientation('landscape');
+                      setImageOffsetX(0);
+                      setImageOffsetY(0);
+                      if (selectedCartProductIndex !== null) {
+                        fitUserSetRef.current[selectedCartProductIndex] = true;
+                        setProductImageOffsets((prev) => ({
+                          ...prev,
+                          [selectedCartProductIndex]: { x: 0, y: 0 },
+                        }));
+                      }
                       if (selectedProductName && printAreaFit === 'none') {
                         setPrintAreaFit('product');
                       }
-                      if (selectedCartProductIndex !== null) {
-                        fitUserSetRef.current[selectedCartProductIndex] = true;
-                      }
                     }}
                   />
-                  <span>Landscape (wide print inside the print area)</span>
+                  <span>Landscape</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={blackAndWhite}
+                    onChange={(e) => setBlackAndWhite(e.target.checked)}
+                  />
+                  <span>Black and white</span>
                 </label>
               </div>
-            </div>
-            
-            {/* Product Selector */}
-            <div 
-              className="select-control product-select-pulse-wrapper"
-              style={{ marginBottom: '1rem', position: 'relative' }}
-            >
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                Select Product:
-              </label>
-              <select
-                value={selectedProductName}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setSelectedProductName(value);
-                  setProductSelectClicked(true);
-                  setScreenshotSizeInteracted(false);
-                  if (value) {
-                    setPrintAreaFit('product');
-                    if (!orientationUserSetRef.current) {
-                      rememberArtworkOrientation('portrait');
-                      setImageOrientation('portrait');
-                    }
-                  }
-                  if (selectedCartProductIndex !== null) {
-                    fitUserSetRef.current[selectedCartProductIndex] = true;
-                  }
-                  const matchIdx = cartProducts.findIndex((p) => {
-                    const n = matchPrintAreaProductName(p.name) || p.name;
-                    return n === value || p.name === value;
-                  });
-                  if (matchIdx >= 0) {
-                    switchToCartSlot(matchIdx);
-                  }
-                }}
-                className={`print-area-select ${!productSelectClicked ? 'product-select-pulse' : ''}`}
-              >
-                <option value="">-- Select Product --</option>
-                {Object.keys(PRINT_AREA_CONFIG).sort().map(productName => (
-                  <option key={productName} value={productName}>
-                    {productName}
-                  </option>
-                ))}
-              </select>
             </div>
             
             <div className="select-control">
@@ -4238,7 +5057,7 @@ const ToolsPage = () => {
               </select>
             </div>
             
-            {(printAreaFit !== 'none' || imageOrientation === 'landscape') && (
+            {printAreaFit !== 'none' && imageOrientation !== 'landscape' && (
               <>
                 <div className="slider-control" style={{ marginTop: '1rem' }}>
                   <label>Move Horizontal:</label>
@@ -4298,8 +5117,53 @@ const ToolsPage = () => {
                       onChange={(e) => setFeatherEdge(parseInt(e.target.value))}
                       className="slider"
                     />
-                    <span className="slider-value">{featherEdge}%</span>
+                    <span className="slider-value">
+                      {featherEdge}%
+                      {featherEdge > 0 && liveFeatherPx.x > 0
+                        ? ` · ${Math.round(liveFeatherPx.x)}×${Math.round(liveFeatherPx.y)}px`
+                        : ''}
+                    </span>
                   </div>
+                  {(() => {
+                    const fadeChoice = featherFadeEnabled
+                      ? (featherFadeColor === 'black' ? 'black' : 'white')
+                      : 'transparent';
+                    return (
+                      <>
+                        <p className="tool-description feather-fade-caption">
+                          {fadeChoice === 'transparent'
+                            ? 'Color shows through edge'
+                            : 'Fills the blurred edge so the shirt does not show through'}
+                        </p>
+                        <div className="feather-fade-choices" role="group" aria-label="Feather fade color">
+                          <button
+                            type="button"
+                            className={`feather-fade-choice${fadeChoice === 'transparent' ? ' is-active' : ''}`}
+                            onClick={() => applyFeatherFadeChoice('transparent')}
+                          >
+                            <span className="feather-fade-swatch is-transparent" />
+                            Transparent
+                          </button>
+                          <button
+                            type="button"
+                            className={`feather-fade-choice${fadeChoice === 'white' ? ' is-active' : ''}`}
+                            onClick={() => applyFeatherFadeChoice('white')}
+                          >
+                            <span className="feather-fade-swatch is-white" />
+                            White
+                          </button>
+                          <button
+                            type="button"
+                            className={`feather-fade-choice${fadeChoice === 'black' ? ' is-active' : ''}`}
+                            onClick={() => applyFeatherFadeChoice('black')}
+                          >
+                            <span className="feather-fade-swatch is-black" />
+                            Black
+                          </button>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div className="tool-control-group">
@@ -4314,7 +5178,14 @@ const ToolsPage = () => {
                       onChange={(e) => setCornerRadius(parseInt(e.target.value))}
                       className="slider"
                     />
-                    <span className="slider-value">{cornerRadius === 100 ? 'Circle' : `${cornerRadius}%`}</span>
+                    <span className="slider-value">
+                      {cornerRadius === 100
+                        ? 'Circle'
+                        : `${cornerRadius}%`}
+                      {cornerRadius > 0 && liveCornerPx > 0
+                        ? ` · ${Math.round(liveCornerPx)}px`
+                        : ''}
+                    </span>
                   </div>
                 </div>
 
@@ -4488,63 +5359,53 @@ const ToolsPage = () => {
                         </>
                       )}
                     </div>
-                    
-                    {/* Screenshot Preview - Small window to the right */}
-                    <div style={{ 
-                      flexShrink: 0, 
-                      width: '200px', 
-                      background: 'white', 
-                      borderRadius: '8px', 
-                      padding: '12px',
-                      border: '2px solid #e0e0e0',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}>
-                      <h4 className="screenshot-preview-title" style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold' }}>
+                    {/* Screenshot Preview — same print-box crop as Product Preview */}
+                    <div className="screenshot-preview-card">
+                      <h4 className="screenshot-preview-title">
                         Screenshot Preview
                       </h4>
-                      <div style={{ 
-                        width: '100%', 
-                        minHeight: '120px', 
-                        maxHeight: '150px',
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        background: '#f8f9fa', 
-                        borderRadius: '6px', 
-                        overflow: 'hidden',
-                        border: '1px solid #dee2e6'
-                      }}>
-                        {editedImageUrl ? (
-                          <img 
-                            key={editedImageUrl}
-                            src={editedImageUrl} 
-                            alt="Screenshot Preview" 
-                            style={{ 
-                              maxWidth: '100%', 
-                              maxHeight: '150px', 
-                              objectFit: 'contain',
-                              display: 'block'
-                            }}
+                      {(() => {
+                        const overlayNeedsBakedPixels = Boolean(
+                          (textEnabled && String(textContent || '').trim()) ||
+                          (printAreaFit !== 'none' && printAreaFit !== 'product')
+                        );
+                        const previewSrc = overlayNeedsBakedPixels
+                          ? (editedImageUrl || imageUrl)
+                          : (imageUrl || editedImageUrl);
+                        const cartProduct = selectedCartProductIndex != null
+                          ? cartProducts[selectedCartProductIndex]
+                          : null;
+                        const previewName = selectedProductName || cartProduct?.name || '';
+                        return (
+                          <ScreenshotPreviewPane
+                            src={previewSrc}
+                            productName={previewName}
+                            productSize={cartProduct?.size}
+                            imageOrientation={imageOrientation}
+                            printAreaFit={printAreaFit}
+                            imageOffsetX={imageOffsetX}
+                            imageOffsetY={imageOffsetY}
+                            featherEdge={featherEdge}
+                            cornerRadius={cornerRadius}
+                            frameEnabled={frameEnabled}
+                            frameColor={frameColor}
+                            frameWidth={frameWidth}
+                            doubleFrame={doubleFrame}
+                            blackAndWhite={blackAndWhite}
+                            featherFadeEnabled={featherFadeEnabled}
+                            featherFadeColor={featherFadeColor}
+                            sourceWidth={currentImageDimensions.width}
+                            sourceHeight={currentImageDimensions.height}
                           />
-                        ) : imageUrl ? (
-                          <img 
-                            key={imageUrl}
-                            src={imageUrl} 
-                            alt="Screenshot Preview" 
-                            style={{ 
-                              maxWidth: '100%', 
-                              maxHeight: '150px', 
-                              objectFit: 'contain',
-                              display: 'block'
-                            }}
-                          />
-                        ) : (
-                          <p style={{ color: '#999', fontSize: '0.85rem', margin: 0, textAlign: 'center', padding: '10px' }}>
-                            No screenshot loaded
-                          </p>
-                        )}
-                      </div>
+                        );
+                      })()}
                     </div>
+                    {editLogHasEntries(liveEditLog) && (searchParams.get('order_id') || isFromOrderEmail) && (
+                      <ToolsEditLogCard
+                        log={liveEditLog}
+                        previewSrc={editedImageUrl || imageUrl}
+                      />
+                    )}
                     {/* Print Quality Image - only on email Edit Tools page; 300 DPI result parked here for download */}
                     {(searchParams.get('order_id') || (typeof window !== 'undefined' && (window.location.search && new URLSearchParams(window.location.search).get('order_id')) || (window.location.href && window.location.href.includes('order_id='))) || isFromOrderEmail) && (
                       <div style={{
@@ -4605,21 +5466,6 @@ const ToolsPage = () => {
               </>
             );
           })()}
-          
-          {(() => {
-            // Check if current product is all-over-print (tools should be disabled)
-            const currentProduct = cartProducts.length > 0 && selectedCartProductIndex !== null 
-              ? cartProducts[selectedCartProductIndex] 
-              : null;
-            const currentProductName = currentProduct?.name || '';
-            const toolsUnavailable = getToolsUnavailableInfo(currentProductName, currentProduct?.category);
-            
-            if (toolsUnavailable) {
-              return null; // Don't show Framed Border if tools are disabled
-            }
-            
-            return null; // Framed Border is already shown above
-          })()}
 
           <div className="tools-actions">
             {(() => {
@@ -4633,6 +5479,28 @@ const ToolsPage = () => {
               }
               const isEmailEditToolsPage = !!(fromParams || fromUrl || isFromOrderEmail);
               const orderId = searchParams.get('order_id') || '';
+              const resetEditor = () => {
+                applySavedEditorFields(EDITOR_SLOT_DEFAULTS);
+                setPrintAreaFit('none');
+                setImageOffsetX(0);
+                setImageOffsetY(0);
+                orientationUserSetRef.current = false;
+                setImageOrientation('portrait');
+                if (selectedCartProductIndex !== null) {
+                  fitUserSetRef.current[selectedCartProductIndex] = true;
+                  slotStateRef.current[selectedCartProductIndex] = captureLiveEditorSlot(selectedCartProductIndex, {
+                    ...EDITOR_SLOT_DEFAULTS,
+                    printAreaFit: 'none',
+                    imageOffsetX: 0,
+                    imageOffsetY: 0,
+                    imageOrientation: 'portrait',
+                    blackAndWhite: false,
+                    fitUserSet: true,
+                    sourceScreenshot: slotSourceKey(imageUrl || cartProducts[selectedCartProductIndex]?.screenshot || ''),
+                  });
+                  persistEditorSlotsNow({ force: true });
+                }
+              };
               if (isEmailEditToolsPage) {
                 const orderDetailsUrl = orderId ? `${API_CONFIG.BASE_URL}/admin/orders?order_id=${encodeURIComponent(orderId)}` : '';
                 return (
@@ -4666,43 +5534,51 @@ const ToolsPage = () => {
                         Download Print Quality Image
                       </button>
                     </div>
+                    <button
+                      type="button"
+                      className="reset-btn"
+                      onClick={resetEditor}
+                    >
+                      Reset
+                    </button>
                   </>
                 );
               }
-              // Cart tools: show Apply Edits (apply and proceed to checkout)
+              // Cart tools: save in place, then continue shopping, checkout, or stay on Tools
               return (
-                <button 
-                  className="apply-edits-btn"
-                  onClick={handleApplyEdits}
-                  disabled={!editedImageUrl}
-                >
-                  Apply Edits
-                </button>
+                <>
+                  <button 
+                    type="button"
+                    className="apply-edits-btn"
+                    onClick={handleApplyEdits}
+                    disabled={!editedImageUrl}
+                  >
+                    {editsAppliedNotice ? 'Edits Applied' : 'Apply Edits'}
+                  </button>
+                  <button
+                    type="button"
+                    className="reset-btn"
+                    onClick={resetEditor}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    className="continue-shopping-btn"
+                    onClick={handleContinueShopping}
+                  >
+                    Shopping
+                  </button>
+                  <button
+                    type="button"
+                    className="tools-checkout-btn"
+                    onClick={handleCheckoutFromTools}
+                  >
+                    Checkout
+                  </button>
+                </>
               );
             })()}
-            <button 
-              className="reset-btn"
-              onClick={() => {
-                setFeatherEdge(0);
-                setCornerRadius(0);
-                setFrameEnabled(false);
-                setFrameWidth(10);
-                setFrameColor('#FF0000');
-                setDoubleFrame(false);
-                setTextEnabled(false);
-                setTextContent('');
-                setTextFont('Arial');
-                setTextColor('#000000');
-                setTextSize(24);
-                setTextOffsetX(50);
-                setTextOffsetY(50);
-                setPrintAreaFit('none');
-                setImageOffsetX(0);
-                setImageOffsetY(0);
-              }}
-            >
-              Reset
-            </button>
           </div>
           </div>
         </div>

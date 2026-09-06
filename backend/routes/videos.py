@@ -564,7 +564,8 @@ def process_thumbnail_print_quality():
         text_size = int(data.get("text_size", 24))
         text_offset_x = int(data.get("text_offset_x", 50))
         text_offset_y = int(data.get("text_offset_y", 50))
-        add_white_background = data.get("add_white_background", False)
+        add_white_background = data.get("add_white_background", True)  # ignored when corners are rounded
+        feather_fade_color = data.get("feather_fade_color") or data.get("featherFadeColor") or "white"
         print_area_width = data.get("print_area_width")
         print_area_height = data.get("print_area_height")
         image_orientation = data.get("image_orientation") or data.get("imageOrientation")
@@ -619,7 +620,8 @@ def process_thumbnail_print_quality():
             print_area_height=print_area_height,
             image_orientation=image_orientation,
             fit_mode=fit_mode,
-            preserve_edits=preserve_edits
+            preserve_edits=preserve_edits,
+            feather_fade_color=feather_fade_color
         )
         
         if result.get('success'):

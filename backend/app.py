@@ -41,6 +41,7 @@ from printful_catalog import (
     resolve_cart_item_unit_price,
     printful_dashboard_urls_by_product_name,
     printful_catalog_titles_by_product_name,
+    start_printful_catalog_warmup,
 )
 
 # NEW: Import video screenshot capture
@@ -339,8 +340,8 @@ try:
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 except Exception as _proxy_err:
     logger.warning("ProxyFix not applied: %s", _proxy_err)
-# Allow large checkout payloads (base64 screenshots in cart) - default 1MB can truncate
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
+# Allow large checkout / print-quality payloads (base64 screenshots in cart)
+app.config['MAX_CONTENT_LENGTH'] = 48 * 1024 * 1024  # 48 MB
 
 def _allow_origin_user_id():
     """If request is from our frontend and X-User-Id exists in DB, return user_id; else None. Use only when session auth failed."""
@@ -828,6 +829,13 @@ def format_order_datetime(value):
         return s
 
 
+@app.template_filter("edit_log_html")
+def edit_log_html_filter(item):
+    """Admin order page: Tools recipe so 300 DPI can be replicated from the original."""
+    from services.order_email import format_item_edit_log_html
+    return format_item_edit_log_html(item)
+
+
 # Add custom Jinja2 filters
 @app.template_filter('get_product_price')
 def get_product_price(product_name_or_item):
@@ -978,6 +986,23 @@ def not_found(e):
     """Log 404s so we can see which URL was requested (e.g. /api/email-status before deploy)."""
     logger.info("404 Not Found: %s %s", request.method, request.path)
     return jsonify({"error": "Not Found", "path": request.path}), 404
+
+
+@app.errorhandler(413)
+def request_too_large(e):
+    """JSON 413 so print-quality fetch().json() does not fail on Werkzeug HTML."""
+    resp = make_response(jsonify({
+        "success": False,
+        "error": "Image is too large to upload. Try generating from the original screenshot URL."
+    }), 413)
+    if request.path.startswith("/api/"):
+        try:
+            resp.headers["Access-Control-Allow-Origin"] = _cors_allow_origin()
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+        except Exception:
+            resp.headers["Access-Control-Allow-Origin"] = "https://screenmerch.com"
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+    return resp
 
 
 @app.errorhandler(500)
@@ -1133,7 +1158,7 @@ def get_browse_api():
         # Filter products by category
         filtered_products = filter_products_by_category(category)
         try:
-            filtered_products = attach_printful_catalog_data_list(filtered_products)
+            filtered_products = attach_printful_catalog_data_list(filtered_products, blocking=False)
         except Exception as ex:
             logger.warning("Printful catalog enrichment skipped: %s", ex)
         
@@ -1220,7 +1245,7 @@ def get_product_api(product_id):
         # Filter products by category
         filtered_products = filter_products_by_category(category)
         try:
-            filtered_products = attach_printful_catalog_data_list(filtered_products)
+            filtered_products = attach_printful_catalog_data_list(filtered_products, blocking=False)
         except Exception as ex:
             logger.warning("Printful catalog enrichment skipped: %s", ex)
         
@@ -2240,6 +2265,11 @@ except Exception as e:
     print(f"[ERROR] Error registering Products/Orders Blueprints: {str(e)}")
     import traceback
     traceback.print_exc()
+
+try:
+    start_printful_catalog_warmup()
+except Exception as e:
+    logger.warning("Printful catalog warmup did not start: %s", e)
 
 @app.route("/")
 def index():
@@ -5330,7 +5360,12 @@ def process_thumbnail_print_quality():
         frame_color = data.get("frame_color", "#FF0000")
         frame_width = int(data.get("frame_width", 10))  # Ensure it's an integer
         double_frame = data.get("double_frame", False)
-        add_white_background = data.get("add_white_background", False)
+        # Flatten feather onto white inside the print shape. Rounded corners stay
+        # transparent so Printful does not print white right-angle boxes.
+        add_white_background = data.get("add_white_background", True)
+        if add_white_background is None:
+            add_white_background = True
+        feather_fade_color = data.get("feather_fade_color") or data.get("featherFadeColor") or "white"
         # Print area dimensions (in inches) - if provided, will be used to set exact output size
         print_area_width = data.get("print_area_width")
         print_area_height = data.get("print_area_height")
@@ -5375,7 +5410,8 @@ def process_thumbnail_print_quality():
             print_area_height=print_area_height,
             image_orientation=image_orientation,
             fit_mode=fit_mode,
-            preserve_edits=preserve_edits
+            preserve_edits=preserve_edits,
+            feather_fade_color=feather_fade_color
         )
         
         if result['success']:
@@ -5701,7 +5737,8 @@ def get_order_screenshot(order_id):
                     "size": size,
                     "preview_image_url": preview_image_url,
                     "image_orientation": get_item_image_orientation(item),
-                    "toolSettings": get_item_tool_settings(item)
+                    "toolSettings": get_item_tool_settings(item),
+                    "edited": bool(item.get("edited")),
                 })
             else:
                 # Even if no screenshot found, add product so user knows it exists (they can still process it)
@@ -5715,7 +5752,8 @@ def get_order_screenshot(order_id):
                     "size": size,
                     "preview_image_url": preview_image_url,
                     "image_orientation": get_item_image_orientation(item),
-                    "toolSettings": get_item_tool_settings(item)
+                    "toolSettings": get_item_tool_settings(item),
+                    "edited": bool(item.get("edited")),
                 })
         
         # If no products found but we have order-level screenshot, create a single product entry

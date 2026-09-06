@@ -160,7 +160,8 @@ nav.nav-dropdown-active {
 }
 
 .nav-right .subscribe-btn + .user-profile-menu {
-    margin-left: 10px;
+    margin-left: 8px;
+    margin-right: 8px;
 }
 
 nav .sign-in-btn,
@@ -177,7 +178,7 @@ nav .nav-right .subscribe-btn {
 
 .nav-right img{
     width: 30px;
-    margin-right: 15px;
+    margin-right: 0;
     transition: transform 0.2s ease;
 }
 
@@ -334,6 +335,7 @@ nav .nav-right .subscribe-btn {
         justify-content: flex-start;
         align-items: center;
         gap: 8px;
+        min-height: 80px;
         padding: 4px 12px 6px 0 !important;
         overflow-x: visible;
         width: 100%;
@@ -343,8 +345,8 @@ nav .nav-right .subscribe-btn {
     }
 
     nav.nav--logo-horizontal {
-        height: 64px !important;
-        max-height: 64px !important;
+        height: 80px !important;
+        max-height: 80px !important;
         /* Must stay visible so the mobile ⋮ menu panel is not clipped */
         overflow: visible !important;
         align-items: center;
@@ -445,9 +447,9 @@ nav .nav-right .subscribe-btn {
         justify-content: center;
         background: none;
         border: none;
-        padding: 6px 0 6px 4px;
-        min-width: 36px;
-        min-height: 44px;
+        padding: 0;
+        min-width: 32px;
+        min-height: 32px;
         cursor: pointer;
         touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
@@ -555,6 +557,7 @@ nav .nav-right .subscribe-btn {
         box-sizing: border-box;
         padding-top: 0;
         padding-bottom: 0;
+        transform: none;
     }
 
     .nav-right:has(.user-profile-menu) {
@@ -562,7 +565,8 @@ nav .nav-right .subscribe-btn {
     }
 
     .nav-cart-btn {
-        margin-right: 0 !important;
+        margin-right: 4px !important;
+        margin-left: -2px;
         width: 28px;
         height: 28px;
         justify-content: flex-end;
@@ -580,14 +584,14 @@ nav .nav-right .subscribe-btn {
         margin-right: 0;
     }
          /* Sign In button mobile styling - COMPACT SIZE */
-         .sign-in-btn {
+         nav .sign-in-btn {
          padding: 4px 0 !important;
          font-size: 10px !important; /* Smaller font */
          border-radius: 0;
          white-space: nowrap;
-         width: 44px;
-         min-width: 44px;
-         max-width: 44px;
+         width: 58px;
+         min-width: 58px;
+         max-width: 58px;
          text-align: center;
          font-weight: 500;
          transition: all 0.2s ease;
@@ -607,21 +611,21 @@ nav .nav-right .subscribe-btn {
          height: 28px; /* Smaller height */
      }
 
-     .sign-in-btn:hover {
+     nav .sign-in-btn:hover {
          background-color: #e8f1fc !important;
          color: #0448a0 !important;
          border-color: #0448a0 !important;
      }
      
      /* Start Free button mobile styling - COMPACT SIZE */
-     .nav-right .subscribe-btn {
+     nav .nav-right .subscribe-btn {
          padding: 4px 0 !important;
          font-size: 10px !important; /* Smaller font */
          border-radius: 0;
          white-space: nowrap;
-         width: 44px;
-         min-width: 44px;
-         max-width: 44px;
+         width: 58px;
+         min-width: 58px;
+         max-width: 58px;
          text-align: center;
          font-weight: 500;
          transition: all 0.2s ease;
@@ -641,7 +645,7 @@ nav .nav-right .subscribe-btn {
          height: 28px; /* Smaller height */
      }
 
-     .nav-right .subscribe-btn:hover {
+     nav .nav-right .subscribe-btn:hover {
          background: #fde8e8 !important;
          color: #a00000 !important;
          border-color: #a00000 !important;
@@ -654,12 +658,12 @@ nav .nav-right .subscribe-btn {
 /* Extra small mobile devices */
 @media (max-width: 480px) {
     /* Sign In button small mobile styling - COMPACT SIZE */
-    .sign-in-btn {
-        padding: 3px 0;
+    nav .sign-in-btn {
+        padding: 3px 0 !important;
         font-size: 9px; /* Smaller font */
-        width: 40px;
-        min-width: 40px;
-        max-width: 40px;
+        width: 54px;
+        min-width: 54px;
+        max-width: 54px;
         border-radius: 0;
         display: inline-flex; /* Ensure side-by-side layout on small screens */
         border: 2px solid #065fd4;
@@ -671,12 +675,12 @@ nav .nav-right .subscribe-btn {
     }
     
     /* Start Free button small mobile styling - COMPACT SIZE */
-    .nav-right .subscribe-btn {
-        padding: 3px 0;
+    nav .nav-right .subscribe-btn {
+        padding: 3px 0 !important;
         font-size: 9px; /* Smaller font */
-        width: 40px;
-        min-width: 40px;
-        max-width: 40px;
+        width: 54px;
+        min-width: 54px;
+        max-width: 54px;
         border-radius: 0;
         display: inline-flex; /* Ensure side-by-side layout on small screens */
         border: 2px solid #cc0000;
@@ -855,6 +859,16 @@ nav .nav-right .subscribe-btn {
         margin-right: 0;
     }
 
+    .nav-right .subscribe-btn + .user-profile-menu {
+        margin-left: 8px;
+        margin-right: 8px;
+    }
+
+    .nav-right .user-profile {
+        width: 28px;
+        height: 28px;
+    }
+
     .nav-right .user-profile-menu + .nav-cart-btn {
         margin-left: 0;
     }
@@ -935,6 +949,9 @@ nav .nav-right .subscribe-btn {
     box-shadow: none;
     -webkit-appearance: none;
     appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .user-profile-container:focus {
@@ -949,8 +966,9 @@ nav .nav-right .subscribe-btn {
 
 .user-profile {
     border-radius: 50%;
-    width: 35px;
-    height: 35px;
+    width: 32px;
+    height: 32px;
+    display: block;
     object-fit: cover;
     transition: transform 0.2s ease;
 }
@@ -1106,6 +1124,13 @@ nav .nav-right .subscribe-btn {
     text-align: center;
 }
 
+@media (max-width: 768px) {
+    .nav-cart-badge {
+        right: 2px;
+        top: -2px;
+    }
+}
+
 .nav-upload-spacer {
     width: 24px;
     height: 24px;
@@ -1168,11 +1193,11 @@ nav .nav-right .subscribe-btn {
 
     .nav-mobile-menu-panel {
         position: fixed;
-        top: 72px;
+        top: 88px;
         left: 8px;
         z-index: 1;
         width: min(200px, 52vw);
-        max-height: min(70vh, calc(100dvh - 80px));
+        max-height: min(70vh, calc(100dvh - 96px));
         overflow-x: hidden;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
@@ -1223,32 +1248,39 @@ nav .nav-right .subscribe-btn {
     .nav-left.flex-div {
         position: absolute !important;
         left: 0 !important;
-        bottom: 0 !important;
+        top: 50%;
+        bottom: auto !important;
         z-index: 10070 !important;
-        padding: 0 0 6px 0 !important;
+        padding: 0 !important;
         margin: 0 !important;
+        transform: translateY(-50%);
+        align-items: center !important;
     }
 
     .nav-left .menu-icon--more {
         align-items: center !important;
         justify-content: flex-start !important;
         padding: 0 0 0 4px !important;
+        align-self: center;
     }
 
     .nav-center-right {
         position: absolute !important;
         right: 0 !important;
+        top: auto !important;
         bottom: 0 !important;
         padding-bottom: 6px !important;
+        transform: none;
     }
 
-    /* Apex has no cart; inset Sign Up so its right edge is visible, not flush to the screen. */
+    /* Apex has no cart; keep a sliver of inset so Sign Up is not flush to the screen. */
     .nav-center-right:not(:has(.nav-cart-btn)) {
-        right: 10px !important;
+        right: 4px !important;
+        padding-right: 0 !important;
     }
 
     .nav-cart-btn {
-        margin-right: 0 !important;
+        margin-right: 4px !important;
     }
 
     nav.nav--logo-horizontal .nav-left,

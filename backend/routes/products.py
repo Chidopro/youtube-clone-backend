@@ -180,7 +180,7 @@ def get_browse_api():
 
         # Deep copy + attach Printful catalog variant maps (true variant IDs per color/size)
         try:
-            filtered_products = attach_printful_catalog_data_list(filtered_products)
+            filtered_products = attach_printful_catalog_data_list(filtered_products, blocking=False)
         except Exception as ex:
             logger.warning("Printful catalog enrichment skipped: %s", ex)
         
@@ -234,7 +234,7 @@ def get_product_api(product_id):
         
         filtered_products = _filter_products_by_category(category)
         try:
-            filtered_products = attach_printful_catalog_data_list(filtered_products)
+            filtered_products = attach_printful_catalog_data_list(filtered_products, blocking=False)
         except Exception as ex:
             logger.warning("Printful catalog enrichment skipped: %s", ex)
 

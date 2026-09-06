@@ -274,37 +274,44 @@ const Favorites = ({ sidebar }) => {
           return;
         }
 
-        const list = await withMemberPublicIdentity(data.list || null);
-        setListMeta(list);
+        const rawList = data.list || null;
+        const isOwnerPage = !!(rawList?.is_primary || rawList?.slug === 'owner' || effectiveSlug === 'owner');
+        setListMeta(rawList);
         let favs = data.favorites || [];
         if (
           !favs.length &&
-          list?.owner_user_id &&
-          !(list.is_primary || list.slug === 'owner')
+          rawList?.owner_user_id &&
+          !isOwnerPage
         ) {
-          favs = await fetchMemberFavorites(list.owner_user_id);
+          favs = await fetchMemberFavorites(rawList.owner_user_id);
         }
         setImages(favs);
         setLoading(false);
 
-        if (list?.id) {
+        if (!isOwnerPage && rawList?.owner_user_id) {
+          void withMemberPublicIdentity(rawList).then((resolved) => {
+            if (resolved) setListMeta(resolved);
+          });
+        }
+
+        if (rawList?.id) {
           try {
-            localStorage.setItem('sm_favorite_list_id', list.id);
-            localStorage.setItem('sm_favorite_list_slug', list.slug || effectiveSlug);
+            localStorage.setItem('sm_favorite_list_id', rawList.id);
+            localStorage.setItem('sm_favorite_list_slug', rawList.slug || effectiveSlug);
           } catch (_) {}
         }
-        const nextSlug = (list?.slug || '').toLowerCase();
+        const nextSlug = (rawList?.slug || '').toLowerCase();
         if (nextSlug && nextSlug !== effectiveSlug && nextSlug !== 'owner') {
           navigate(`/favorites/${encodeURIComponent(nextSlug)}`, { replace: true });
         }
 
         const pageUserId =
-          list?.owner_user_id ||
-          (list?.is_primary || list?.slug === 'owner' ? currentCreator.id : null) ||
+          rawList?.owner_user_id ||
+          (isOwnerPage ? currentCreator.id : null) ||
           currentCreator.id;
 
         const extrasPromise =
-          list?.is_primary || effectiveSlug === 'owner'
+          isOwnerPage
             ? fetchOwnerExtraPages(sub, currentCreator.id)
                 .then((extras) =>
                   Promise.all(
