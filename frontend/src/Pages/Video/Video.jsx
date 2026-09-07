@@ -4,7 +4,7 @@ import Recommended from "../../Components/Recommended/Recommended";
 import './Video.css'
 import { useParams, useNavigate } from "react-router-dom";
 import { useCreator } from '../../contexts/CreatorContext';
-import { savePendingMerchData } from '../../utils/merchSession';
+import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
 
 const Video = ({ sidebar }) => {
 
@@ -37,11 +37,8 @@ const Video = ({ sidebar }) => {
       setIsMobilePortrait(portrait);
       const navbar = document.querySelector('nav');
       const page = document.querySelector('.video-page-container');
-      const player = document.querySelector('.video-page-container .video-container')
-        || document.querySelector('.video-page-container .video-viewer');
       const navHeight = navbar ? Math.ceil(navbar.getBoundingClientRect().height) : 56;
-      const playerViewportTop = player ? Math.round(player.getBoundingClientRect().top) : navHeight;
-      const offset = `${Math.max(navHeight, playerViewportTop)}px`;
+      const offset = `${navHeight}px`;
       document.documentElement.style.setProperty('--video-nav-offset', offset);
       if (page) page.style.setProperty('--video-nav-offset', offset);
     };
@@ -99,27 +96,12 @@ const Video = ({ sidebar }) => {
             });
           }
         } else {
-          const player = document.querySelector('.video-page-container .video-container')
-            || document.querySelector('.video-page-container .video-viewer');
           const navbar = document.querySelector('nav');
           const page = document.querySelector('.video-page-container');
           const navbarHeight = navbar ? Math.ceil(navbar.getBoundingClientRect().height) : 56;
-          if (player) {
-            const playerTop = player.getBoundingClientRect().top + window.scrollY;
-            const targetScrollPosition = Math.max(0, playerTop - navbarHeight - 4);
-            window.scrollTo({
-              top: targetScrollPosition,
-              behavior: 'smooth'
-            });
-            window.setTimeout(() => {
-              const top = Math.max(navbarHeight, Math.round(player.getBoundingClientRect().top));
-              const next = `${top}px`;
-              document.documentElement.style.setProperty('--video-nav-offset', next);
-              if (page) page.style.setProperty('--video-nav-offset', next);
-            }, 450);
-          } else {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }
+          const next = `${navbarHeight}px`;
+          document.documentElement.style.setProperty('--video-nav-offset', next);
+          if (page) page.style.setProperty('--video-nav-offset', next);
         }
       }, 500); // 500ms delay to ensure video player is loaded
       
@@ -215,6 +197,7 @@ const Video = ({ sidebar }) => {
 
   // Make Merch handler
   const goToMerchandiseCategories = () => {
+    markMerchIntentStarted();
     try {
       const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : 0;
       const frameSeconds =

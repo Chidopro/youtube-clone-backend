@@ -369,6 +369,7 @@
     justify-content: center !important;
     text-align: center !important;
     box-sizing: border-box !important;
+    border-radius: 0 !important;
   }
   
   .screenmerch-actions .screenmerch-btn.make-merch-btn,
@@ -461,7 +462,7 @@
     width: 100%;
     padding: 16px;
     font-size: 16px;
-    border-radius: 12px;
+    border-radius: 0;
     margin-top: 20px;
     background: #28a745 !important;
     color: white;
@@ -1209,6 +1210,11 @@
 }
 
 /* Select Screenshot button - Red */
+.screenmerch-btn.screenshot-btn,
+.screenmerch-btn.make-merch-btn {
+    border-radius: 0 !important;
+}
+
 .screenmerch-btn.screenshot-btn {
     background: #dc3545 !important;
     box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);

@@ -66,12 +66,31 @@ body.creator-storefront .product-page .user-flow-section {
 }
 
 @media (min-width: 769px) {
+  body:has(.main-content-area--video) {
+    overflow: hidden;
+  }
+
+  body:has(.main-content-area--video) #root,
+  body:has(.main-content-area--video) #root > div {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
   .main-content-area--video {
-    padding-top: 0;
-    padding-bottom: 12px;
-    padding-left: 0;
-    padding-right: 0;
+    padding: 12px 0;
     background: #fff;
+    overflow: hidden;
+  }
+
+  .main-content-area--video .main-content-inner {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .main-content-area--video .site-footer {
+    display: none;
   }
 }
 

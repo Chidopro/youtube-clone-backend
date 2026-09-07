@@ -569,6 +569,48 @@ export function applySelectedScreenshot(url) {
 
 export const CART_UPDATED_EVENT = 'screenmerch-cart-updated';
 
+/** Session-only: cart chrome stays after Make Merch until the tab closes or checkout. */
+const MERCH_INTENT_KEY = 'merch_intent_started';
+export const MERCH_INTENT_UPDATED_EVENT = 'screenmerch-merch-intent-updated';
+
+function emitMerchIntentUpdated() {
+  try {
+    window.dispatchEvent(new Event(MERCH_INTENT_UPDATED_EVENT));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function hasMerchIntentStarted() {
+  try {
+    return sessionStorage.getItem(MERCH_INTENT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markMerchIntentStarted() {
+  let already = false;
+  try {
+    already = sessionStorage.getItem(MERCH_INTENT_KEY) === '1';
+    sessionStorage.setItem(MERCH_INTENT_KEY, '1');
+  } catch {
+    /* ignore */
+  }
+  if (!already) emitMerchIntentUpdated();
+}
+
+export function clearMerchIntent() {
+  let had = false;
+  try {
+    had = sessionStorage.getItem(MERCH_INTENT_KEY) === '1';
+    sessionStorage.removeItem(MERCH_INTENT_KEY);
+  } catch {
+    /* ignore */
+  }
+  if (had) emitMerchIntentUpdated();
+}
+
 function parseCartArray(raw) {
   if (raw == null || raw === '') return null;
   try {
@@ -694,5 +736,7 @@ export function writeCartItems(items, options = {}) {
   if (prevLen > 0 && isEmpty && !options.keepWorkingScreenshot) {
     clearWorkingScreenshot();
   }
+  if (!isEmpty) markMerchIntentStarted();
+  else if (options.clearMerchIntent) clearMerchIntent();
   emitCartUpdated();
 }

@@ -7,7 +7,7 @@ import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
 import { isOptimizedPlaybackUrl, needsVideoOptimize, requestVideoOptimize, screenshotSourceUrl } from '../../utils/videoOptimize'
 import { useCreator } from '../../contexts/CreatorContext'
-import { savePendingMerchData } from '../../utils/merchSession'
+import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession'
 
 // Before 28 Jul 2026, mobile captured the on-screen player box (~small JPEG).
 // "screenshot/print fidelity" switched that to native videoWidth x videoHeight.
@@ -611,6 +611,7 @@ const PlayVideo = ({
 
     // Make Merch handler — guests can walk the product flow; login is asked at checkout.
     const handleMakeMerch = async () => {
+        markMerchIntentStarted();
         const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : (screenshotTimestamps[0] ?? 0);
         savePendingMerchData({
             thumbnail,
@@ -1148,11 +1149,16 @@ const PlayVideo = ({
                         preload="auto"
                         disablePictureInPicture
                         disableRemotePlayback
-                        onClick={() => {
-                            if (!isMobile || isCropMode) return;
-                            if (Date.now() - playStartedAtRef.current < 500) return;
+                        onClick={(e) => {
+                            if (isCropMode) return;
                             const el = videoRef.current;
-                            if (el && !el.paused) {
+                            if (!el) return;
+                            const rect = el.getBoundingClientRect();
+                            if (e.clientY > rect.bottom - 44) return;
+                            if (Date.now() - playStartedAtRef.current < 400) return;
+                            if (el.paused) {
+                                el.play().catch(() => {});
+                            } else {
                                 el.pause();
                             }
                         }}
@@ -1315,7 +1321,7 @@ const PlayVideo = ({
                                 justifyContent: 'center',
                                 pointerEvents: 'auto',
                                 background: 'rgba(0, 0, 0, 0.4)',
-                                borderRadius: '12px'
+                                borderRadius: 0
                             }}
                         >
                             <div 
@@ -1594,7 +1600,7 @@ const PlayVideo = ({
                         backgroundColor: (isCapturingScreenshot || screenshots.length >= 6) ? '#6c757d' : '#dc3545',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '5px',
+                        borderRadius: 0,
                         cursor: (isCapturingScreenshot || screenshots.length >= 6) ? 'not-allowed' : 'pointer',
                         fontWeight: 'bold',
                         opacity: (isCapturingScreenshot || screenshots.length >= 6) ? 0.7 : 1
@@ -1618,7 +1624,7 @@ const PlayVideo = ({
                          backgroundColor: '#28a745',
                          color: 'white',
                          border: 'none',
-                         borderRadius: '5px',
+                         borderRadius: 0,
                          cursor: 'pointer',
                          fontWeight: 'bold',
                          touchAction: 'manipulation'

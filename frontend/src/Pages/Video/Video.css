@@ -176,6 +176,11 @@
   margin: 0 6px;
 }
 
+.video-page-container .play-video h3,
+.video-page-container .video-viewer h3 {
+  display: none !important;
+}
+
 /* Video Page Container - CACHE BUST 2025-01-27 */
 .video-page-container {
   background: #fff;
@@ -202,16 +207,19 @@
   margin-top: 0;
 }
 
-/* Desktop: keep 2/3 bar in page flow; player row scrolls into view */
+/* Desktop: fill the area under the header, with padding from main-content-area--video */
 @media (min-width: 769px) {
   .video-page-container {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    height: 100%;
     padding-top: 0;
-    padding-bottom: 8px;
+    padding-bottom: 0;
     width: 100%;
     max-width: none;
+    overflow: hidden;
   }
   
   .main-container {
@@ -246,9 +254,9 @@
 
 .video-viewer {
   flex: 2;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
   padding: 0 0 0px 0;
   margin: 0;
@@ -297,7 +305,7 @@
   padding: 10px 8px;
   min-height: 40px;
   border: none;
-  border-radius: 5px;
+  border-radius: 0 !important;
   color: #fff;
   font-weight: bold;
   font-size: 13px;
@@ -629,7 +637,7 @@
     width: 100%;
     padding: 15px;
     font-size: 16px;
-    border-radius: 8px;
+    border-radius: 0;
     margin-top: 15px;
     background: #28a745;
     color: white;
@@ -721,8 +729,11 @@
   .video-page-container .main-container {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-    align-items: start;
+    align-items: stretch;
     column-gap: 12px;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
     width: 100%;
     max-width: none;
     margin: 0;
@@ -736,20 +747,90 @@
     padding-top: 0 !important;
   }
 
+  /* Player fills the column so its bottom matches Select Screenshot / Make Merch. */
+  .video-page-container .video-viewer {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-self: stretch;
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    padding-bottom: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .video-page-container .play-video {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    width: 100%;
+  }
+
+  .video-page-container .play-video h3 {
+    display: none !important;
+  }
+
+  .video-page-container .play-video .video-container {
+    order: 0;
+    display: block !important;
+    flex: 1 1 0;
+    width: 100%;
+    min-height: 0 !important;
+    height: 100% !important;
+    margin-bottom: 0 !important;
+  }
+
+  .video-page-container .play-video .video-container > div {
+    display: block !important;
+    width: 100%;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .video-page-container .play-video video {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #000 !important;
+    cursor: pointer;
+  }
+
+  .video-page-container .play-video,
+  .video-page-container .play-video .video-container,
+  .video-page-container .play-video .video-container > div {
+    background: #000;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .video-page-container .play-video .publisher {
+    display: none;
+  }
+
   .video-page-container .screenshots-section {
-    padding: 0 0 8px 0 !important;
-    border-radius: 8px;
+    padding: 0 !important;
+    border-radius: 0;
     width: auto !important;
     max-width: none !important;
     margin: 0 !important;
-    align-self: start;
+    align-self: stretch;
     position: relative !important;
     top: 0 !important;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    height: calc(100dvh - var(--video-nav-offset, 80px) - 8px);
-    max-height: calc(100dvh - var(--video-nav-offset, 80px) - 8px);
+    height: 100%;
+    max-height: none;
     min-height: 0;
     overflow: hidden;
     box-sizing: border-box;
@@ -892,5 +973,6 @@
     line-height: 1.2 !important;
     box-sizing: border-box !important;
     white-space: normal;
+    border-radius: 0 !important;
   }
 }
