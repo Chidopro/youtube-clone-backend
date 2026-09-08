@@ -299,6 +299,10 @@ body.creator-storefront nav {
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
 }
 
+.storefront-tab-bar {
+    display: none;
+}
+
 .navbar-logo-edit {
     position: absolute;
     right: 0;
@@ -393,13 +397,50 @@ body.creator-storefront nav {
     }
 
     .storefront-nav-links {
-        gap: 10px;
-        margin: 0 2px 0 0;
+        display: none !important;
     }
 
-    .storefront-nav-links a {
-        font-size: 12px;
-        padding: 4px 0;
+    .storefront-tab-bar {
+        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10040;
+        align-items: stretch;
+        justify-content: space-around;
+        gap: 4px;
+        margin: 0;
+        background: #fff;
+        border-top: 1px solid rgba(0, 0, 0, 0.14);
+        padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+        box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .storefront-tab-bar a {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.02em;
+        color: #555;
+        text-decoration: none;
+        white-space: nowrap;
+        border-radius: 8px;
+    }
+
+    .storefront-tab-bar a.is-active {
+        color: #111;
+        background: rgba(0, 0, 0, 0.06);
+        box-shadow: none;
+    }
+
+    /* Home.css zeros body padding with !important; pad the app shell instead. */
+    body.storefront-tab-bar-visible #root > div {
+        padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
     }
 
     nav.nav--logo-horizontal {

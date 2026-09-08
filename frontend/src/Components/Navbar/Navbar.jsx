@@ -74,6 +74,10 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     const storefrontPageActive = /^\/favorites(\/|$)/.test(location.pathname);
     const storefrontFriendsActive = location.pathname === '/friend-pages';
     const storefrontShopActive = isMerchStoreRoute;
+    const showStorefrontHeaderLinks = isStorefront && !isOrderSuccessPage;
+    const showStorefrontTabBar = showStorefrontHeaderLinks
+        && location.pathname !== '/tools'
+        && !location.pathname.startsWith('/checkout');
     const customLogoUrl = (creatorSettings?.custom_logo_url || '').trim();
     const logoSrc = customLogoUrl || (!isStorefront ? logo : '');
     const [logoOrientation, setLogoOrientation] = useState('square');
@@ -120,6 +124,11 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
             setLogoOrientation('square');
         }
     }, [creatorSettings?.custom_logo_url]);
+
+    useEffect(() => {
+        document.body.classList.toggle('storefront-tab-bar-visible', showStorefrontTabBar);
+        return () => document.body.classList.remove('storefront-tab-bar-visible');
+    }, [showStorefrontTabBar]);
 
     useEffect(() => {
         const refreshCartChrome = () => setCartCount(getCartItemCount());
@@ -943,7 +952,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         />
                         ) : null}
                     </Link>
-                    {isStorefront && !isOrderSuccessPage ? (
+                    {showStorefrontHeaderLinks ? (
                         <div className="storefront-nav-links" role="navigation" aria-label="Store sections">
                             <Link
                                 to="/favorites"
@@ -1192,6 +1201,32 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                     </div>
                 </div>
             </nav>
+
+            {showStorefrontTabBar ? (
+                <div className="storefront-tab-bar" role="navigation" aria-label="Store sections">
+                    <Link
+                        to="/favorites"
+                        className={storefrontPageActive ? 'is-active' : undefined}
+                        onClick={() => setSidebar(false)}
+                    >
+                        Page
+                    </Link>
+                    <Link
+                        to="/friend-pages"
+                        className={storefrontFriendsActive ? 'is-active' : undefined}
+                        onClick={() => setSidebar(false)}
+                    >
+                        Friends
+                    </Link>
+                    <Link
+                        to="/shop"
+                        className={storefrontShopActive ? 'is-active' : undefined}
+                        onClick={() => setSidebar(false)}
+                    >
+                        Shop
+                    </Link>
+                </div>
+            ) : null}
 
             {renderProfileDropdown()}
 
