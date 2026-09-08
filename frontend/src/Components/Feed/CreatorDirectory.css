@@ -27,12 +27,13 @@
   }
 
   .creator-directory-subtitle-desktop {
-    max-width: none;
-    white-space: nowrap;
+    max-width: min(720px, 100%);
+    white-space: normal;
     margin-top: 0;
     margin-bottom: 16px;
+    padding: 0 16px;
     font-size: 1.05rem;
-    line-height: 1.25;
+    line-height: 1.4;
   }
 
   .creator-directory-grid {
@@ -55,10 +56,11 @@
     display: block;
     font-size: 1rem;
     font-weight: 500;
-    white-space: nowrap;
+    white-space: normal;
     margin: 0 0 16px;
-    line-height: 1.2;
-    max-width: none;
+    padding: 0 12px;
+    line-height: 1.35;
+    max-width: 100%;
   }
 }
 

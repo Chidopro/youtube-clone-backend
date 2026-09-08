@@ -91,12 +91,24 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
   const [editMsg, setEditMsg] = useState('');
   const videoInputRef = useRef(null);
   const thumbInputRef = useRef(null);
-  const [claimedCount, setClaimedCount] = useState(0);
-  const [takenBySpot, setTakenBySpot] = useState({});
+  const [claimedCount, setClaimedCount] = useState(1);
+  const [takenBySpot, setTakenBySpot] = useState(() => ({
+    1: {
+      spot: 1,
+      label: DEMO_STOREFRONT_SUBDOMAIN,
+      name: DEMO_STOREFRONT_SUBDOMAIN,
+      subdomain: DEMO_STOREFRONT_SUBDOMAIN,
+      status: 'active',
+    },
+  }));
   const [imagesBySpot, setImagesBySpot] = useState({});
   const [tick, setTick] = useState(() => Math.floor(Date.now() / HUB_ROTATE_MS));
 
   const availableCount = Math.max(0, TOTAL_CREATOR_SPOTS - claimedCount);
+  const firstOpenSpot = RESERVE_SLOT_THEMES.find((slot) => !takenBySpot[slot.spot])?.spot;
+  const visibleSlotThemes = RESERVE_SLOT_THEMES.filter(
+    (slot) => takenBySpot[slot.spot] || slot.spot === firstOpenSpot
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -412,8 +424,8 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
           <h3>ScreenMerch</h3>
         </div>
 
-        {/* 20 numbered reserve storefront slots */}
-        {RESERVE_SLOT_THEMES.map((slot) => {
+        {/* Claimed storefronts plus one open reserve seat — hide empty Spot #n placeholders */}
+        {visibleSlotThemes.map((slot) => {
           const taken = takenBySpot[slot.spot];
           const isTaken = Boolean(taken);
           const subdomain = (taken?.subdomain || '').trim().toLowerCase();
