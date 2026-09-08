@@ -89,9 +89,7 @@
   width: 186px;
   max-width: 186px;
   /* Title is "Selected Image" — the only image must look selected even before state catches up. */
-  border: 3px solid #667eea;
-  box-shadow: inset 0 0 0 3px rgba(102, 126, 234, 0.85);
-  z-index: 2;
+  border-color: #667eea;
 }
 
 .screenshots-section--single .screenshot-item .screenshot-label {
@@ -256,10 +254,35 @@
   border-color: #667eea;
 }
 
-.screenshot-item.selected {
-  border: 3px solid #667eea;
-  box-shadow: inset 0 0 0 3px rgba(102, 126, 234, 0.85);
+.screenshot-grid:has(.screenshot-item.selected) .screenshot-item:not(.selected) {
+  opacity: 0.58;
+}
+
+.screenshot-item.selected,
+.screenshots-section--single .screenshot-item {
+  border-color: #667eea;
   z-index: 2;
+}
+
+/* In-window cue: badge stays inside the card so it cannot overlap neighbors. */
+.screenshot-item.selected::after,
+.screenshots-section--single .screenshot-item::after {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 28px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(51, 51, 51, 0.35);
+  z-index: 3;
+  pointer-events: none;
 }
 
 .screenshot-image {
@@ -281,8 +304,14 @@
   white-space: nowrap;
 }
 
-.screenshot-item.selected .screenshot-label {
+.screenshot-item.selected .screenshot-label,
+.screenshots-section--single .screenshot-item .screenshot-label {
   background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.screenshot-item.selected .screenshot-label::before,
+.screenshots-section--single .screenshot-item .screenshot-label::before {
+  content: 'Selected · ';
 }
 
 .save-to-favorites-btn {
@@ -620,9 +649,9 @@
     box-sizing: border-box;
   }
 
-  .screenshot-item.selected {
-    border: 3px solid #667eea !important;
-    box-shadow: inset 0 0 0 3px rgba(102, 126, 234, 0.85) !important;
+  .screenshot-item.selected,
+  .screenshots-section--single .screenshot-item {
+    border-color: #667eea;
     transform: none; /* scale caused uneven card heights in the flex row */
   }
 

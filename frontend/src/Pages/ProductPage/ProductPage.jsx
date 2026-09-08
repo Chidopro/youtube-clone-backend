@@ -1463,6 +1463,7 @@ const ProductPage = ({ sidebar }) => {
                   return thumbnailUrl ? (
                   <div 
                     className={`screenshot-item ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
+                    aria-current={selectedScreenshot === 'thumbnail' ? 'true' : undefined}
                   >
                     <div onClick={() => {
                       setSelectedScreenshot('thumbnail');
@@ -1489,6 +1490,7 @@ const ProductPage = ({ sidebar }) => {
                       <div 
                         key={`shot-${index}`}
                         className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
+                        aria-current={selectedScreenshot === index ? 'true' : undefined}
                       >
                         <div onClick={() => {
                           setSelectedScreenshot(index);

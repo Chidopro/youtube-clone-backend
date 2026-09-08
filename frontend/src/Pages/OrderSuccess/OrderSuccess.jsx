@@ -40,7 +40,7 @@ const OrderSuccess = () => {
     (function clearCartCompletely() {
       try {
         // Clear all cart-related storage
-        writeCartItems([]);
+        writeCartItems([], { clearMerchIntent: true });
         localStorage.removeItem('cart');
         localStorage.removeItem('cartData');
         localStorage.removeItem('persistent_cart');

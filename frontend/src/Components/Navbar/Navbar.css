@@ -12,6 +12,12 @@ nav{
 /* Opaque backing so scrolled page content cannot show through a low-opacity brand gradient. */
 nav.nav--brand-gradient {
     background-color: #fff;
+    isolation: isolate;
+}
+
+/* White in a custom logo file blends into the header colors instead of showing as a box. */
+nav.nav--brand-gradient .navbar-logo-wrap .logo.logo--custom {
+    mix-blend-mode: darken;
 }
 
 /* Storefront header gradient from Personalization (background only — keep controls as-is) */
@@ -242,6 +248,16 @@ nav .nav-right .subscribe-btn {
     max-width: 100px;
     max-height: 100px;
     height: auto;
+}
+
+/* Custom wordmarks (all storefronts): 32px desktop / 24px mobile. Do not enlarge. */
+.navbar-logo-wrap .logo.logo--custom.logo--horizontal {
+    width: auto;
+    height: 32px;
+    max-width: 640px;
+    max-height: 32px;
+    object-fit: contain;
+    object-position: left center;
 }
 
 .navbar-logo-wrap {
@@ -494,6 +510,17 @@ nav .nav-right .subscribe-btn {
         max-width: 70px !important;
         max-height: 56px !important;
         height: auto !important;
+    }
+    .navbar-logo-wrap .logo.logo--custom.logo--horizontal {
+        width: auto !important;
+        max-width: 280px !important;
+        height: 24px !important;
+        max-height: 24px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        object-fit: contain !important;
+        object-position: left center !important;
+        display: block;
     }
     .navbar-logo-wrap > a {
         display: block;
@@ -1253,7 +1280,7 @@ nav .nav-right .subscribe-btn {
         z-index: 10070 !important;
         padding: 0 !important;
         margin: 0 !important;
-        transform: translateY(-50%);
+        transform: translateY(calc(-50% + 6px));
         align-items: center !important;
     }
 
@@ -1287,7 +1314,7 @@ nav .nav-right .subscribe-btn {
     nav.nav--logo-horizontal .nav-left.flex-div {
         bottom: auto !important;
         top: 50%;
-        transform: translateY(-50%);
+        transform: translateY(calc(-50% + 6px));
         padding-bottom: 0 !important;
         align-items: center !important;
     }

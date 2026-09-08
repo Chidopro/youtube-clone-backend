@@ -19,6 +19,7 @@ import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomain
 import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
 import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
+import { cropCustomLogoFromUrl } from '../../utils/logoBackground'
 import Sidebar from '../Sidebar/Sidebar'
 import ShipToPicker from '../ShipToPicker/ShipToPicker'
 
@@ -54,7 +55,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [oauthProcessing, setOauthProcessing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [cartCount, setCartCount] = useState(0);
+    const [cartCount, setCartCount] = useState(() => getCartItemCount());
     const [isOrderProcessingAdmin, setIsOrderProcessingAdmin] = useState(false);
     const [isFullAdmin, setIsFullAdmin] = useState(false);
     /** Order-processing-only admins see Admin Portal only; master admins keep Dashboard + Channel invites */
@@ -68,6 +69,8 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     const location = useLocation();
     const isOrderSuccessPage = location.pathname === '/success' || location.pathname === '/order-success';
     const isStorefront = isCreatorStorefrontHostname();
+    const isMerchStoreRoute = /^\/(merchandise|product|tools|checkout)(\/|$)/.test(location.pathname);
+    const showStorefrontCart = isStorefront && (cartCount > 0 || isMerchStoreRoute);
     const customLogoUrl = (creatorSettings?.custom_logo_url || '').trim();
     const logoSrc = customLogoUrl || (!isStorefront ? logo : '');
     const [logoOrientation, setLogoOrientation] = useState('square');
@@ -89,6 +92,26 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
         setLogoOrientation((prev) => (prev === next ? prev : next));
     };
 
+    const prepareNavbarLogo = (img) => {
+        if (!img) return;
+        if (!customLogoUrl || img.dataset.logoCropped === '1') {
+            classifyLogoOrientation(img);
+            return;
+        }
+        if (img.dataset.logoCropping === '1') return;
+        img.dataset.logoCropping = '1';
+        const originalSrc = img.getAttribute('data-logo-original') || customLogoUrl;
+        cropCustomLogoFromUrl(originalSrc).then((croppedUrl) => {
+            if (!img.isConnected) return;
+            if (croppedUrl && img.src !== croppedUrl) {
+                img.dataset.logoCropped = '1';
+                img.src = croppedUrl;
+                return;
+            }
+            classifyLogoOrientation(img);
+        });
+    };
+
     useEffect(() => {
         if (!creatorSettings?.custom_logo_url) {
             setLogoOrientation('square');
@@ -96,15 +119,15 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     }, [creatorSettings?.custom_logo_url]);
 
     useEffect(() => {
-        const refreshCartCount = () => setCartCount(getCartItemCount());
-        refreshCartCount();
-        window.addEventListener(CART_UPDATED_EVENT, refreshCartCount);
-        window.addEventListener('storage', refreshCartCount);
-        window.addEventListener('focus', refreshCartCount);
+        const refreshCartChrome = () => setCartCount(getCartItemCount());
+        refreshCartChrome();
+        window.addEventListener(CART_UPDATED_EVENT, refreshCartChrome);
+        window.addEventListener('storage', refreshCartChrome);
+        window.addEventListener('focus', refreshCartChrome);
         return () => {
-            window.removeEventListener(CART_UPDATED_EVENT, refreshCartCount);
-            window.removeEventListener('storage', refreshCartCount);
-            window.removeEventListener('focus', refreshCartCount);
+            window.removeEventListener(CART_UPDATED_EVENT, refreshCartChrome);
+            window.removeEventListener('storage', refreshCartChrome);
+            window.removeEventListener('focus', refreshCartChrome);
         };
     }, [location.pathname]);
 
@@ -897,10 +920,11 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                             key={`navbar-logo-${customLogoUrl || 'default'}`}
                             src={logoSrc}
                             alt="Logo"
+                            data-logo-original={customLogoUrl || undefined}
                             className={`logo${customLogoUrl ? ' logo--custom' : ''} logo--${logoOrientation}${isOrderSuccessPage ? ' order-success-logo' : ''}`}
-                            onLoad={(e) => classifyLogoOrientation(e.target)}
+                            onLoad={(e) => prepareNavbarLogo(e.target)}
                             ref={(el) => {
-                                if (el?.complete && el.naturalWidth) classifyLogoOrientation(el);
+                                if (el?.complete && el.naturalWidth) prepareNavbarLogo(el);
                             }}
                             onError={(e) => {
                                 e.target.onerror = null;
@@ -1109,6 +1133,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                     {isStorefront ? (
                     <>
                     <ShipToPicker />
+                    {showStorefrontCart ? (
                     <button
                         type="button"
                         className="nav-cart-btn"
@@ -1131,6 +1156,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         </svg>
                         {cartCount > 0 ? <span className="nav-cart-badge">{cartCount > 99 ? '99+' : cartCount}</span> : null}
                     </button>
+                    ) : null}
                     </>
                     ) : null}
                     </div>

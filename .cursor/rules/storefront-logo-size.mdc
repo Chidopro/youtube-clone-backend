@@ -1,0 +1,19 @@
+---
+description: Cap all storefront logos at the shared desktop and mobile header sizes
+alwaysApply: true
+---
+
+# Storefront logo size
+
+Every creator subdomain uses the same header logo sizes. Do not size logos per store (`maxfreedom`, `filialsons`, or any other host). Do not add subdomain checks or one-off CSS to make a mark larger.
+
+Display caps (maximum, not a target to grow past):
+
+- Wordmark (horizontal custom): **32px** tall on desktop, **24px** tall on mobile (`max-width: 768px`)
+- Square/round custom: **82px** on desktop, **70×56px** on mobile
+
+Keep these in `frontend/src/Components/Navbar/Navbar.css` on `.logo--custom.logo--horizontal` and `.logo--custom.logo--square`. Do not raise `height`, `max-height`, `width`, or `max-width` on those rules.
+
+Trim empty canvas so a padded PNG still fills these caps instead of looking tiny. Do not scale a mark above the caps to compensate for padding.
+
+ScreenMerch.com’s own mug/square logo is separate. Do not copy its 160px/82px header sizes onto custom storefront wordmarks.

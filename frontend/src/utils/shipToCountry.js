@@ -35,5 +35,7 @@ export function writeShipToCountry(code) {
 
 export function getShipToOption(code) {
   const c = isAllowedShipToCountry(code) ? String(code).trim().toUpperCase() : readShipToCountry();
-  return CHECKOUT_COUNTRY_OPTIONS.find((o) => o.code === c) || CHECKOUT_COUNTRY_OPTIONS[0];
+  return CHECKOUT_COUNTRY_OPTIONS.find((o) => o.code === c)
+    || CHECKOUT_COUNTRY_OPTIONS.find((o) => o.code === 'US')
+    || CHECKOUT_COUNTRY_OPTIONS[0];
 }

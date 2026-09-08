@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import './Profile.css';
 import '../../Components/ChannelHeader/ChannelHeaderShared.css';
 import { API_CONFIG, getBackendUrl } from '../../config/apiConfig';
-import { savePendingMerchData } from '../../utils/merchSession';
+import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
 
 const Profile = ({ sidebar }) => {
   const { username } = useParams();
@@ -98,6 +98,7 @@ const Profile = ({ sidebar }) => {
   }, []);
 
   const handleMakeMerchFromFavorite = async (favorite) => {
+    markMerchIntentStarted();
     // Check if user is authenticated
     const isAuthenticated = localStorage.getItem('user_authenticated');
     const googleAuthenticated = localStorage.getItem('isAuthenticated');

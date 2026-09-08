@@ -8,7 +8,7 @@ import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { requestVideoOptimize } from '../../utils/videoOptimize';
-import { savePendingMerchData } from '../../utils/merchSession';
+import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
 import { favoriteListsJson, fetchFavoritesForList, fetchPublicFavoriteLists, linkOwnerExtraPagesToStorefront } from '../../utils/favoriteListsApi';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.jsx';
@@ -1281,6 +1281,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     };
 
     const handleMakeMerchFromFavorite = async (favorite) => {
+        markMerchIntentStarted();
         // Check if user is authenticated
         const isAuthenticated = localStorage.getItem('user_authenticated');
         const googleAuthenticated = localStorage.getItem('isAuthenticated');

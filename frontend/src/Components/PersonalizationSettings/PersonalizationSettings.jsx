@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import { normalizeStorageUrl } from '../../utils/storageUrl';
+import { knockoutLogoWhiteBackground } from '../../utils/logoBackground';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getBackendUrl } from '../../config/apiConfig';
 import './PersonalizationSettings.css';
@@ -290,8 +291,16 @@ const PersonalizationSettings = ({ readOnly = false }) => {
         return;
       }
       const backendUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) || 'https://screenmerch.fly.dev';
+      let uploadFile = file;
+      if (file.type !== 'image/svg+xml') {
+        try {
+          uploadFile = await knockoutLogoWhiteBackground(file);
+        } catch (knockoutErr) {
+          console.warn('Logo white-background knockout skipped:', knockoutErr);
+        }
+      }
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', uploadFile);
       formData.append('user_id', userId);
       const res = await fetch(`${backendUrl}/api/upload-creator-logo`, {
         method: 'POST',
@@ -786,7 +795,7 @@ const PersonalizationSettings = ({ readOnly = false }) => {
                 <img src={normalizeStorageUrl(settings.custom_logo_url)} alt="Logo preview" className="logo-preview" onError={(e) => { e.target.style.display = 'none'; }} />
               </div>
             )}
-            <p className="help-text">URL to your custom logo. Crop tightly — extra empty canvas makes the mark look small in the header. Square or round marks (not enlarged): 200×200px PNG or SVG, same header area as the ScreenMerch logo. Horizontal logos (enlarged in the header): 1600×480px or about 3:1. Use &quot;Upload logo&quot; or paste a URL. Uploads use the existing creator-logos bucket.</p>
+            <p className="help-text">Use a PNG with a transparent background so a white box does not show on the header. Upload knocks out a solid white backdrop and trims empty canvas automatically. All storefronts use the same size: wordmarks 32px tall on desktop and 24px on mobile. Square or round marks: 200×200px PNG or SVG. Use &quot;Upload logo&quot; or paste a URL.</p>
           </div>
           
           <div className="color-settings">

@@ -510,7 +510,7 @@ const Checkout = () => {
       const data = await res.json();
       if (data?.url) {
         try {
-          writeCartItems([]);
+          writeCartItems([], { clearMerchIntent: true });
           localStorage.removeItem('cart');
           localStorage.removeItem('cartData');
           localStorage.removeItem('persistent_cart');
@@ -535,7 +535,7 @@ const Checkout = () => {
       const data2 = await res2.json();
       if (data2?.next_url) {
         try {
-          writeCartItems([]);
+          writeCartItems([], { clearMerchIntent: true });
           localStorage.removeItem('cart');
           localStorage.removeItem('cartData');
           localStorage.removeItem('persistent_cart');

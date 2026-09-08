@@ -5,7 +5,7 @@ import { getSubdomain } from '../../utils/subdomainService';
 import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, favoriteGalleryUrl, withMemberPublicIdentity, fetchMemberFavorites } from '../../utils/favoriteListsApi';
 import { favoriteListPageHeading } from '../../utils/favoriteListLabels';
 import { apiJoin } from '../../config/apiConfig';
-import { savePendingMerchData } from '../../utils/merchSession';
+import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
 import {
   browseShopCategoryPath,
   readShopAddIntent,
@@ -400,6 +400,8 @@ const Favorites = ({ sidebar }) => {
       alert('No image available.');
       return;
     }
+
+    markMerchIntentStarted();
 
     const merchData = {
       thumbnail: imageUrl,
