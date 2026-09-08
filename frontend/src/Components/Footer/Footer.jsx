@@ -2,8 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import './Footer.css';
 import screenMerchLogo from '../../assets/screenmerch_logo.png.png';
+import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 
 const Footer = () => {
+  const isStorefront = isCreatorStorefrontHostname();
+
   return (
     <footer className="site-footer">
       <div className="footer-container">
@@ -19,6 +22,12 @@ const Footer = () => {
             <Link to="/terms-of-service">Terms of Service</Link>
             <Link to="/contact">Contact Us</Link>
           </div>
+
+          {isStorefront ? (
+            <p className="footer-store-note">
+              Printed to order. Questions: <a href="mailto:support@screenmerch.com">support@screenmerch.com</a>
+            </p>
+          ) : null}
 
           {/* Copyright */}
           <div className="footer-copyright">

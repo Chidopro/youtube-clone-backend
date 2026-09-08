@@ -15,7 +15,7 @@ import { supabase } from '../../supabaseClient'
 import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from '../../utils/userService'
 import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
-import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService'
+import { isCreatorStorefrontHostname } from '../../utils/subdomainService'
 import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
 import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
@@ -69,8 +69,11 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     const location = useLocation();
     const isOrderSuccessPage = location.pathname === '/success' || location.pathname === '/order-success';
     const isStorefront = isCreatorStorefrontHostname();
-    const isMerchStoreRoute = /^\/(merchandise|product|tools|checkout)(\/|$)/.test(location.pathname);
+    const isMerchStoreRoute = /^\/(merchandise|product|tools|checkout|shop)(\/|$)/.test(location.pathname);
     const showStorefrontCart = isStorefront && (cartCount > 0 || isMerchStoreRoute);
+    const storefrontPageActive = /^\/favorites(\/|$)/.test(location.pathname);
+    const storefrontFriendsActive = location.pathname === '/friend-pages';
+    const storefrontShopActive = isMerchStoreRoute;
     const customLogoUrl = (creatorSettings?.custom_logo_url || '').trim();
     const logoSrc = customLogoUrl || (!isStorefront ? logo : '');
     const [logoOrientation, setLogoOrientation] = useState('square');
@@ -940,6 +943,31 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         />
                         ) : null}
                     </Link>
+                    {isStorefront && !isOrderSuccessPage ? (
+                        <div className="storefront-nav-links" role="navigation" aria-label="Store sections">
+                            <Link
+                                to="/favorites"
+                                className={storefrontPageActive ? 'is-active' : undefined}
+                                onClick={() => setSidebar(false)}
+                            >
+                                Page
+                            </Link>
+                            <Link
+                                to="/friend-pages"
+                                className={storefrontFriendsActive ? 'is-active' : undefined}
+                                onClick={() => setSidebar(false)}
+                            >
+                                Friends
+                            </Link>
+                            <Link
+                                to="/shop"
+                                className={storefrontShopActive ? 'is-active' : undefined}
+                                onClick={() => setSidebar(false)}
+                            >
+                                Shop
+                            </Link>
+                        </div>
+                    ) : null}
                     {location.pathname.includes('/dashboard') && user && !isDemoPreviewUser(user) && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && (
                         <Link to="/dashboard?tab=personalization" className="navbar-logo-edit" aria-label="Edit logo in Personalization" title="Edit logo">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
@@ -966,11 +994,12 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                     document.body
                 )}
                 <div className="nav-center-right flex-div">
+                    {isStorefront ? null : (
                     <div className="nav-middle flex-div">
                         <div className="search-box flex-div">
                             <input
                                 type="text"
-                                placeholder={getSubdomain() ? 'Search videos' : 'Search channels'}
+                                placeholder="Search channels"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onKeyPress={handleSearchKeyPress}
@@ -978,6 +1007,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                             <img src={search_icon} alt="" onClick={handleSearch} style={{ cursor: 'pointer' }} />
                         </div>
                     </div>
+                    )}
                     <div className="nav-right flex-div">
                         {user && !isDemoPreviewUser(user) && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && location.pathname !== '/creator-thank-you' && !(location.pathname === '/subscription-tiers' && (user?.status === 'pending' || user?.status === undefined)) ? (
                             console.log('🎥 Rendering upload link for creator:', user?.display_name, 'User object:', user) ||

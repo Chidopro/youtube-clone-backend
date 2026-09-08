@@ -288,7 +288,8 @@ const App = () => {
     (location.pathname === '/product/browse' && new URLSearchParams(location.search).get('category') === 'thumbnails');
   const isVideoPage = /^\/video\//.test(location.pathname);
   const isOrderSuccessPage = location.pathname === '/order-success' || location.pathname === '/success';
-  const useStorefrontChrome = isFavoritesPage || isFriendPages || isShopPage || isToolsPage;
+  const isMerchandisePage = location.pathname === '/merchandise' || location.pathname.startsWith('/product');
+  const useStorefrontChrome = isFavoritesPage || isFriendPages || isShopPage || isToolsPage || isMerchandisePage;
   const showDesktopSidebar = shouldShowSidebar && !isMobile && !isOrderSuccessPage;
 
   console.log('🚀 App.jsx rendering - current path:', location.pathname);

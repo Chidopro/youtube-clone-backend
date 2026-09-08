@@ -79,9 +79,9 @@
 
 /* Merchandise Categories Page */
 .merchandise-categories {
-  min-height: 100vh;
+  min-height: 0;
   background: #f9f9f9;
-  padding: 2.75rem 2rem 2rem;
+  padding: 1.5rem 1.25rem 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -143,13 +143,21 @@
   max-width: 1200px;
   width: 100%;
   text-align: center;
+  padding: 0 8px;
+  box-sizing: border-box;
 }
 
 .categories-title {
-  font-size: 3rem;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 1rem;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 1.25rem;
+  padding: 0 12px;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .categories-subtitle {
@@ -413,9 +421,11 @@
   }
 
   .merchandise-categories-page .categories-title {
-    font-size: 2rem;
+    font-size: 1.35rem;
     margin-top: 0;
-    margin-bottom: 0.55rem;
+    margin-bottom: 0.75rem;
+    padding: 0 8px;
+    white-space: normal;
   }
 
   .categories-subtitle {
@@ -464,8 +474,9 @@
   }
 
   .merchandise-categories-page .categories-title {
-    font-size: 1.5rem;
-    margin-bottom: 0.45rem;
+    font-size: 1.25rem;
+    margin-bottom: 0.55rem;
+    white-space: normal;
   }
 
   .categories-subtitle {

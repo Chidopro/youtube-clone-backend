@@ -53,6 +53,23 @@
   text-decoration: underline;
 }
 
+.footer-store-note {
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #6c757d;
+}
+
+.footer-store-note a {
+  color: #3f51b5;
+  text-decoration: none;
+}
+
+.footer-store-note a:hover {
+  text-decoration: underline;
+}
+
 .footer-copyright {
   display: flex;
   align-items: center;
