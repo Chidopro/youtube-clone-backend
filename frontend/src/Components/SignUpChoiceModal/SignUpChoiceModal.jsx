@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './SignUpChoiceModal.css';
 
-const SignUpChoiceModal = ({ isOpen, onClose }) => {
+const SignUpChoiceModal = ({ isOpen, onClose, onCreatorSignUp }) => {
     const navigate = useNavigate();
 
     if (!isOpen) return null;
@@ -14,7 +14,11 @@ const SignUpChoiceModal = ({ isOpen, onClose }) => {
 
     const handleCreatorSignUp = () => {
         onClose();
-        navigate('/subscription-tiers', { state: { intent: 'creator' } });
+        if (typeof onCreatorSignUp === 'function') {
+            onCreatorSignUp();
+            return;
+        }
+        navigate('/signup', { state: { intent: 'creator' } });
     };
 
     return (

@@ -146,12 +146,41 @@ def aggregate_sales_payout_totals(sale_lines):
     }
 
 
+def payout_list_key(value):
+    """Match favorite_list_id values whether they include UUID dashes or mixed case."""
+    return str(value or "").strip().lower().replace("-", "")
+
+
+def sales_rows_matching_lists(rows, list_ids):
+    """Keep sale rows attributed to any of the given favorite-list ids."""
+    want = {payout_list_key(x) for x in (list_ids or []) if x not in (None, "")}
+    if not want:
+        return []
+    matched = []
+    for row in rows or []:
+        if payout_list_key(row.get("favorite_list_id")) in want:
+            matched.append(row)
+    return matched
+
+
+def _payout_recency_key(payout):
+    """Newest-first: prefer ledger insert time, then the paid-on date."""
+    if not payout:
+        return ""
+    return str(
+        payout.get("created_at")
+        or payout.get("paid_at")
+        or payout.get("payout_date")
+        or ""
+    )
+
+
 def umbrella_payout_balance_fields(lifetime_net, payouts):
     """
     Unpaid balance and payout history for one umbrella collaborator page.
 
-    When recorded payouts exceed current earnings (e.g. sales were cleared and re-tested),
-    excess payments are ignored so the collaborator is not shown as paid up incorrectly.
+    Paying at least the current earnings marks the page paid up. Extra ledger rows
+    (retries or leftover test payments) must not bring the Record payment button back.
     """
     paid_total = 0.0
     for p in payouts or []:
@@ -162,17 +191,18 @@ def umbrella_payout_balance_fields(lifetime_net, payouts):
     paid_total = round(paid_total, 2)
     lifetime_net = round(float(lifetime_net or 0), 2)
 
-    payout_stale = paid_total > lifetime_net and lifetime_net > 0
-    if payout_stale:
-        balance_owed = lifetime_net
-    else:
-        balance_owed = round(max(0.0, lifetime_net - paid_total), 2)
-
-    is_paid_up = lifetime_net > 0 and balance_owed <= 0 and not payout_stale
+    balance_owed = round(max(0.0, lifetime_net - paid_total), 2)
+    is_paid_up = lifetime_net > 0 and balance_owed <= 0
+    payout_stale = lifetime_net > 0 and round(paid_total - lifetime_net, 2) > 0.05
     can_record_payout = balance_owed >= UMBRELLA_COLLABORATOR_PAYOUT_MINIMUM
 
-    last_payout = None if payout_stale else (payouts[0] if payouts else None)
-    recent_payouts = [] if payout_stale else (payouts or [])[:5]
+    payouts_newest = sorted(
+        list(payouts or []),
+        key=_payout_recency_key,
+        reverse=True,
+    )
+    last_payout = payouts_newest[0] if payouts_newest else None
+    recent_payouts = payouts_newest[:5]
 
     return {
         "paid_total": paid_total,
@@ -230,6 +260,24 @@ def owner_collab_fee_per_item(fee_type, fee_value):
     return 0.0
 
 
+def apply_owner_fee_to_sale_share(creator_share, fee_type, fee_value, quantity=1):
+    """Split one sale's $6-style creator share into owner fee vs collaborator pay."""
+    try:
+        qty = max(1, int(quantity or 1))
+    except (TypeError, ValueError):
+        qty = 1
+    cs = round(float(creator_share or 0), 2)
+    per_item = owner_collab_fee_per_item(fee_type, fee_value)
+    fee = round(min(cs, per_item * qty), 2)
+    return {
+        "quantity": qty,
+        "collaborator_share_before_fee": cs,
+        "owner_fee_amount": fee,
+        "owner_fee_per_item": per_item,
+        "pay_collaborator_amount": round(max(0.0, cs - fee), 2),
+    }
+
+
 def apply_owner_fee_to_collab_totals(collab_totals, fee_type, fee_value):
     """
     Split the $6/item collaborator share into owner fee vs remaining collaborator pay.
@@ -272,23 +320,94 @@ def resolve_owner_collab_fee(fees_by_list, favorite_list_id=None):
 
 def apply_per_list_owner_fees(collab_lines, fees_by_list):
     """
-    Apply a possibly different owner fee to each collaborator's sales and sum.
+    Apply the fee that was in effect for each sale, then sum.
 
     Returns (adjusted_collab_pay_total, owner_fee_total).
     """
-    grouped = {}
-    for line in collab_lines or []:
-        key = str(line.get("favorite_list_id") or "")
-        grouped.setdefault(key, []).append(line)
     pay_total = 0.0
     fee_total = 0.0
-    for flid, lines in grouped.items():
-        fee = resolve_owner_collab_fee(fees_by_list, flid or None)
-        adj = apply_owner_fee_to_collab_totals(
-            aggregate_sales_payout_totals(lines),
-            fee.get("fee_type"),
-            fee.get("fee_value"),
-        )
-        pay_total += float(adj.get("pay_collaborator_amount") or 0)
-        fee_total += float(adj.get("owner_fee_amount") or 0)
+    for line in collab_lines or []:
+        fee = resolve_owner_collab_fee(fees_by_list, line.get("favorite_list_id"))
+        split = split_collab_sale_share(line, fee)
+        pay_total += float(split.get("pay_collaborator_amount") or 0)
+        fee_total += float(split.get("owner_fee_amount") or 0)
     return round(pay_total, 2), round(fee_total, 2)
+
+
+def _parse_sale_time(raw):
+    from datetime import datetime
+
+    if not raw:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        if "T" not in text and len(text) >= 10:
+            text = text[:10] + "T00:00:00+00:00"
+        return datetime.fromisoformat(text[:32])
+    except Exception:
+        return None
+
+
+def sale_has_locked_owner_fee(sale):
+    """True when this sale row was stamped with the fee at purchase time."""
+    if not isinstance(sale, dict):
+        return False
+    if sale.get("owner_fee_type") not in (None, ""):
+        return True
+    return False
+
+
+def fee_at_time(list_fee, created_at):
+    """Fee settings that applied at created_at. Closed history periods win over the current rate."""
+    current = list_fee or {"fee_type": "none", "fee_value": 0.0}
+    sale_ts = _parse_sale_time(created_at)
+    history = current.get("history") if isinstance(current, dict) else None
+    if sale_ts and isinstance(history, list):
+        for entry in history:
+            if not isinstance(entry, dict):
+                continue
+            start = _parse_sale_time(entry.get("effective_from"))
+            end = _parse_sale_time(entry.get("effective_to"))
+            if start and sale_ts < start:
+                continue
+            if end and sale_ts >= end:
+                continue
+            t, v = normalize_owner_collab_fee(entry.get("fee_type"), entry.get("fee_value"))
+            return {"fee_type": t, "fee_value": v}
+        current_from = _parse_sale_time(current.get("effective_from") or current.get("updated_at"))
+        if current_from and sale_ts < current_from:
+            # Sale is before the current rate started, but no history row matched.
+            # Keep looking: if history was empty this falls through to current.
+            pass
+    t, v = normalize_owner_collab_fee(current.get("fee_type"), current.get("fee_value"))
+    return {"fee_type": t, "fee_value": v}
+
+
+def owner_fee_for_sale(sale, list_fee):
+    """Locked snapshot on the sale row, else the fee in effect when it was created."""
+    if sale_has_locked_owner_fee(sale):
+        t, v = normalize_owner_collab_fee(sale.get("owner_fee_type"), sale.get("owner_fee_value"))
+        return {"fee_type": t, "fee_value": v}
+    return fee_at_time(list_fee, (sale or {}).get("created_at"))
+
+
+def split_collab_sale_share(sale, list_fee):
+    """Split one collaborator sale using the locked or historical fee, never a later setting."""
+    sale = sale or {}
+    try:
+        qty = max(1, int(sale.get("quantity") or 1))
+    except (TypeError, ValueError):
+        qty = 1
+    try:
+        cs, _pf = get_payout_for_sale(sale.get("product_name"), sale.get("amount"), qty)
+    except Exception:
+        cs = 0.0
+    fee = owner_fee_for_sale(sale, list_fee)
+    split = apply_owner_fee_to_sale_share(cs, fee["fee_type"], fee["fee_value"], qty)
+    split["owner_fee_type"] = fee["fee_type"]
+    split["owner_fee_value"] = fee["fee_value"]
+    return split

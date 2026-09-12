@@ -342,9 +342,9 @@ const Admin = () => {
 
   const loadUsers = async () => {
     try {
-      const result = await AdminService.getUsers(0, 100, searchTerm, filterStatus, filterRole);
+      const result = await AdminService.getUsers(0, 100, searchTerm, filterStatus, 'all');
       console.log('Loaded users:', result.users);
-      setUsers(result.users);
+      setUsers(Array.isArray(result.users) ? result.users : []);
     } catch (error) {
       console.error('Error loading users:', error);
     }
@@ -1399,7 +1399,8 @@ const Admin = () => {
 
   const filteredUsers = users.filter(user => {
     const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = user.display_name?.toLowerCase().includes(searchLower) ||
+    const matchesSearch = !searchLower ||
+                         user.display_name?.toLowerCase().includes(searchLower) ||
                          user.email?.toLowerCase().includes(searchLower) ||
                          user.subdomain?.toLowerCase().includes(searchLower);
     const matchesStatus = filterStatus === 'all' || user.status === filterStatus;

@@ -74,6 +74,34 @@ export function distinctHubThumbs({ favoriteUrls, friendUrls, shopPreferredUrls,
   };
 }
 
+/** Top row: first distinct photo per hub. Does not rotate. */
+export function stagnantHubThumbs(pools) {
+  return distinctHubThumbs(pools, 0);
+}
+
+function urlsWithout(urls, blockedIdentities) {
+  return (urls || []).filter((u) => {
+    const key = imageIdentity(u);
+    return key && !blockedIdentities.has(key);
+  });
+}
+
+/** Second row: rotate through leftover photos, skipping the still top-row images. */
+export function shuffleHubThumbs(pools, tick, stagnant) {
+  const blocked = new Set(
+    [stagnant?.favorites, stagnant?.friend, stagnant?.shop].map(imageIdentity).filter(Boolean)
+  );
+  return distinctHubThumbs(
+    {
+      favoriteUrls: urlsWithout(pools.favoriteUrls, blocked),
+      friendUrls: urlsWithout(pools.friendUrls, blocked),
+      shopPreferredUrls: urlsWithout(pools.shopPreferredUrls, blocked),
+      shopUrls: urlsWithout(pools.shopUrls, blocked),
+    },
+    tick
+  );
+}
+
 export function HubThumb({ src, emptyLabel }) {
   const [current, setCurrent] = useState(src || '');
 
@@ -125,11 +153,12 @@ const Feed = ({
   const [tick, setTick] = useState(() => Math.floor(Date.now() / HUB_ROTATE_MS));
 
   useEffect(() => {
+    if (!showHubs) return undefined;
     const id = window.setInterval(() => {
       setTick(Math.floor(Date.now() / HUB_ROTATE_MS));
     }, Math.min(HUB_ROTATE_MS, 4000));
     return () => window.clearInterval(id);
-  }, []);
+  }, [showHubs]);
 
   const favoriteUrls = useMemo(
     () => uniqueUrls((Array.isArray(favoritesPreview) ? favoritesPreview : []).map((u) => publicStorageCardUrl(u, 1400))),
@@ -155,42 +184,90 @@ const Feed = ({
     });
   }, [shopUrls, favoriteUrls, friendUrls]);
 
-  const hubThumbs = useMemo(
-    () =>
-      distinctHubThumbs(
-        { favoriteUrls, friendUrls, shopPreferredUrls, shopUrls },
-        tick
-      ),
-    [shopPreferredUrls, shopUrls, favoriteUrls, friendUrls, tick]
+  const hubPools = useMemo(
+    () => ({ favoriteUrls, friendUrls, shopPreferredUrls, shopUrls }),
+    [favoriteUrls, friendUrls, shopPreferredUrls, shopUrls]
+  );
+
+  const hubThumbs = useMemo(() => stagnantHubThumbs(hubPools), [hubPools]);
+
+  const shuffleThumbs = useMemo(
+    () => shuffleHubThumbs(hubPools, tick, hubThumbs),
+    [hubPools, tick, hubThumbs]
   );
 
   return (
     <div className="feed-wrap">
       {showHubs && (
-        <div className="feed-hubs" aria-label="Storefront sections">
-          <button type="button" className="card hub-card" onClick={() => navigate('/favorites')}>
-            <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />
-            <h2>My Page</h2>
-          </button>
-          <button
-            type="button"
-            className="card hub-card"
-            onPointerEnter={() => {
-              const sub = getSubdomain();
-              if (sub) fetchPublicFavoriteLists(sub, { lite: true });
-            }}
-            onClick={() => navigate('/friend-pages')}
-          >
-            <HubThumb src={hubThumbs.friend} emptyLabel="No Friends Yet" />
-            <h2>My Friends</h2>
-          </button>
-          <button type="button" className="card hub-card" onClick={() => navigate('/shop')}>
-            <HubThumb src={hubThumbs.shop} emptyLabel="My Shop" />
-            <h2>My Shop</h2>
-          </button>
-        </div>
+        <>
+          <div className="feed-hubs" aria-label="Storefront sections">
+            <button type="button" className="card hub-card" onClick={() => navigate('/favorites')}>
+              <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />
+              <h2>My Page</h2>
+            </button>
+            <button
+              type="button"
+              className="card hub-card"
+              onPointerEnter={() => {
+                const sub = getSubdomain();
+                if (sub) fetchPublicFavoriteLists(sub, { lite: true });
+              }}
+              onClick={() => navigate('/friend-pages')}
+            >
+              <HubThumb src={hubThumbs.friend} emptyLabel="No Friends Yet" />
+              <h2>My Friends</h2>
+            </button>
+            <button type="button" className="card hub-card" onClick={() => navigate('/shop')}>
+              <HubThumb src={hubThumbs.shop} emptyLabel="My Shop" />
+              <h2>My Shop</h2>
+            </button>
+          </div>
+          <div className="feed-hubs feed-hubs--shuffle" aria-label="More from this store">
+            <button
+              type="button"
+              className="card hub-card hub-card--shuffle"
+              aria-label="More from My Page"
+              onClick={() => navigate('/favorites')}
+            >
+              <HubThumb
+                key={shuffleThumbs.favorites || 'page-shuffle'}
+                src={shuffleThumbs.favorites}
+                emptyLabel=""
+              />
+            </button>
+            <button
+              type="button"
+              className="card hub-card hub-card--shuffle"
+              aria-label="More from My Friends"
+              onPointerEnter={() => {
+                const sub = getSubdomain();
+                if (sub) fetchPublicFavoriteLists(sub, { lite: true });
+              }}
+              onClick={() => navigate('/friend-pages')}
+            >
+              <HubThumb
+                key={shuffleThumbs.friend || 'friends-shuffle'}
+                src={shuffleThumbs.friend}
+                emptyLabel=""
+              />
+            </button>
+            <button
+              type="button"
+              className="card hub-card hub-card--shuffle"
+              aria-label="More from My Shop"
+              onClick={() => navigate('/shop')}
+            >
+              <HubThumb
+                key={shuffleThumbs.shop || 'shop-shuffle'}
+                src={shuffleThumbs.shop}
+                emptyLabel=""
+              />
+            </button>
+          </div>
+        </>
       )}
 
+      {!showHubs ? (
       <div className="feed" id="storefront-videos">
         {videos.map((item) => (
           <div
@@ -208,6 +285,7 @@ const Feed = ({
           </div>
         ))}
       </div>
+      ) : null}
     </div>
   );
 };

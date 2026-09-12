@@ -331,8 +331,23 @@
   background: #28a745;
 }
 
+@keyframes screenshotBtnPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.35), 0 0 0 0 rgba(220, 53, 69, 0.45);
+  }
+  50% {
+    transform: scale(1.045);
+    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.55), 0 0 0 10px rgba(220, 53, 69, 0);
+  }
+}
+
 .screenshots-section .screenmerch-actions--sidebar .screenshot-btn:hover:not(:disabled) {
   background: #c82333;
+}
+
+.screenshots-section .screenmerch-actions--sidebar .screenshot-btn.screenshot-btn-pulse:not(:disabled) {
+  animation: screenshotBtnPulse 1.4s ease-in-out infinite;
 }
 
 .screenshots-section .screenmerch-actions--sidebar .make-merch-btn:hover {
@@ -439,24 +454,27 @@
     -webkit-transform: none !important;
   }
   
-  /* Hide fullscreen / cast; keep native play controls */
+  /* Hide fullscreen / cast; keep the bottom play + progress bar */
   .video-viewer .video-container video::-webkit-media-controls-fullscreen-button,
   .video-viewer .video-container video::-internal-media-controls-overlay-cast-button {
     display: none !important;
   }
 
-  .video-viewer .video-container video.mobile-playing::-webkit-media-controls-overlay-enclosure,
-  .video-viewer .video-container video.mobile-playing::-webkit-media-controls-overlay-play-button,
-  .video-viewer .video-container video.mobile-playing::-webkit-media-controls-rewind-button,
-  .video-viewer .video-container video.mobile-playing::-webkit-media-controls-skip-back-button,
-  .video-viewer .video-container video.mobile-playing::-webkit-media-controls-skip-forward-button {
+  .video-viewer .video-container video::-webkit-media-controls,
+  .video-viewer .video-container video::-webkit-media-controls-enclosure,
+  .video-viewer .video-container video::-webkit-media-controls-panel,
+  .video-viewer .video-container video::-webkit-media-controls-play-button,
+  .video-viewer .video-container video::-webkit-media-controls-overlay-enclosure,
+  .video-viewer .video-container video::-webkit-media-controls-overlay-play-button,
+  .video-viewer .video-container video::-webkit-media-controls-rewind-button,
+  .video-viewer .video-container video::-webkit-media-controls-skip-back-button,
+  .video-viewer .video-container video::-webkit-media-controls-skip-forward-button,
+  .video-viewer .video-container video::-webkit-media-controls-start-playback-button {
     display: none !important;
     opacity: 0 !important;
     pointer-events: none !important;
-  }
-
-  .video-viewer .video-container video.mobile-playing::-webkit-media-controls {
-    background: transparent !important;
+    width: 0 !important;
+    height: 0 !important;
   }
   
   .video-viewer .screenmerch-actions {
@@ -817,6 +835,17 @@
     display: none;
   }
 
+  .video-page-container .play-video .inline-crop-controls {
+    flex: 0 0 auto;
+    order: 1;
+    margin: 8px 0 0;
+    background: transparent;
+  }
+
+  .video-page-container .play-video.crop-mode-active {
+    background: transparent;
+  }
+
   .video-page-container .screenshots-section {
     padding: 0 !important;
     border-radius: 0;
@@ -953,6 +982,12 @@
     gap: 8px;
     box-sizing: border-box;
     flex-wrap: nowrap;
+  }
+
+  .video-page-container .play-video .inline-crop-controls {
+    width: 100%;
+    margin: 4px 0 0;
+    gap: 6px;
   }
 
   .video-viewer .screenmerch-actions .screenmerch-btn,

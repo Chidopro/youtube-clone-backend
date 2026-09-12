@@ -90,12 +90,18 @@ function FavoritesShelfTrack({
 }
 
 function FavoriteImageCard({ item, onMakeMerch }) {
+  const handleActivate = () => onMakeMerch(item.raw);
   return (
     <div className="favorites-card">
-      <div className="favorites-card-image">
+      <button
+        type="button"
+        className="favorites-card-image favorites-card-image--clickable"
+        onClick={handleActivate}
+        aria-label={`Make merch from ${item.title}`}
+      >
         <img
           src={item.gallery || item.full || item.thumb || 'https://via.placeholder.com/640x480?text=No+Image'}
-          alt={item.title}
+          alt=""
           loading="lazy"
           decoding="async"
           onError={(e) => {
@@ -105,13 +111,13 @@ function FavoriteImageCard({ item, onMakeMerch }) {
             }
           }}
         />
-      </div>
+      </button>
       <div className="favorites-card-content">
         <h3>{item.title}</h3>
         <button
           type="button"
           className="favorites-make-merch-btn"
-          onClick={() => onMakeMerch(item.raw)}
+          onClick={handleActivate}
         >
           Make Merch
         </button>
@@ -147,18 +153,42 @@ function getShelfMaxScroll(el) {
   return Math.max(0, Math.min(nativeMax, showLast));
 }
 
+const preloadThumbUrls = (urls, timeoutMs = 1200) =>
+  Promise.all(
+    (urls || []).filter(Boolean).slice(0, 8).map(
+      (src) =>
+        new Promise((resolve) => {
+          const img = new Image();
+          const done = () => resolve();
+          const timer = window.setTimeout(done, timeoutMs);
+          img.onload = () => {
+            window.clearTimeout(timer);
+            resolve();
+          };
+          img.onerror = () => {
+            window.clearTimeout(timer);
+            resolve();
+          };
+          img.src = src;
+        })
+    )
+  );
+
+const EMPTY_PAGE_MEDIA = { images: [], videos: [] };
+
 const Favorites = ({ sidebar }) => {
   const navigate = useNavigate();
   const { listSlug } = useParams();
   const [searchParams] = useSearchParams();
   const fromShop = searchParams.get('from') === 'shop';
   const { currentCreator, loading: creatorLoading } = useCreator();
-  const [images, setImages] = useState([]);
-  const [videos, setVideos] = useState([]);
+  const [pageMedia, setPageMedia] = useState({ images: [], videos: [] });
   const [listMeta, setListMeta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [extraPages, setExtraPages] = useState([]);
+  const images = pageMedia.images;
+  const videos = pageMedia.videos;
   const imageTrackRef = useRef(null);
   const videoTrackRef = useRef(null);
   const shelfScrollTargetRef = useRef(null);
@@ -171,7 +201,7 @@ const Favorites = ({ sidebar }) => {
     delete el.dataset.shelfSnap;
   };
 
-  const getActiveShelfEl = () => imageTrackRef.current || videoTrackRef.current;
+  const getActiveShelfEl = () => videoTrackRef.current || imageTrackRef.current;
 
   const isOnFriendPage = () => {
     if (listMeta?.is_primary || listMeta?.slug === 'owner') return false;
@@ -239,13 +269,13 @@ const Favorites = ({ sidebar }) => {
   }, [effectiveSlug]);
 
   useEffect(() => {
+    let cancelled = false;
     const run = async () => {
       const sub = getSubdomain();
       if (!sub || creatorLoading) {
         if (!creatorLoading) {
           setLoading(false);
-          setImages([]);
-          setVideos([]);
+          setPageMedia(EMPTY_PAGE_MEDIA);
           setExtraPages([]);
           setError('');
         }
@@ -253,21 +283,21 @@ const Favorites = ({ sidebar }) => {
       }
       if (!currentCreator?.id) {
         setLoading(false);
-        setImages([]);
-        setVideos([]);
+        setPageMedia(EMPTY_PAGE_MEDIA);
         setExtraPages([]);
         setError('');
         return;
       }
 
       setLoading(true);
+      setExtraPages([]);
       setError('');
       try {
         const { ok, data } = await fetchPublicFavoritesByList(sub, effectiveSlug);
+        if (cancelled) return;
         if (!ok || !data.success) {
           setError(data?.error || 'Could not load this page');
-          setImages([]);
-          setVideos([]);
+          setPageMedia(EMPTY_PAGE_MEDIA);
           setListMeta(null);
           setExtraPages([]);
           setLoading(false);
@@ -284,13 +314,12 @@ const Favorites = ({ sidebar }) => {
           !isOwnerPage
         ) {
           favs = await fetchMemberFavorites(rawList.owner_user_id);
+          if (cancelled) return;
         }
-        setImages(favs);
-        setLoading(false);
 
         if (!isOwnerPage && rawList?.owner_user_id) {
           void withMemberPublicIdentity(rawList).then((resolved) => {
-            if (resolved) setListMeta(resolved);
+            if (!cancelled && resolved) setListMeta(resolved);
           });
         }
 
@@ -310,25 +339,6 @@ const Favorites = ({ sidebar }) => {
           (isOwnerPage ? currentCreator.id : null) ||
           currentCreator.id;
 
-        const extrasPromise =
-          isOwnerPage
-            ? fetchOwnerExtraPages(sub, currentCreator.id)
-                .then((extras) =>
-                  Promise.all(
-                    extras.map(async (extraList) => ({
-                      list: extraList,
-                      images: await fetchFavoritesForList(
-                        sub,
-                        extraList,
-                        extraList.owner_user_id || currentCreator.id
-                      ),
-                    }))
-                  )
-                )
-                .then(setExtraPages)
-                .catch(() => setExtraPages([]))
-            : Promise.resolve(setExtraPages([]));
-
         const videosPromise = pageUserId
           ? fetch(`${apiJoin('/api/videos')}?user_id=${encodeURIComponent(pageUserId)}&limit=100`)
               .then((vRes) => (vRes.ok ? vRes.json().catch(() => []) : []))
@@ -337,22 +347,54 @@ const Favorites = ({ sidebar }) => {
                   ...v,
                   thumbnail: v.thumbnail || v.thumbnail_url || '',
                 }));
-                setVideos(listVideos);
+                return listVideos;
               })
-              .catch(() => setVideos([]))
-          : Promise.resolve(setVideos([]));
+              .catch(() => [])
+          : Promise.resolve([]);
 
-        void extrasPromise;
-        void videosPromise;
+        const listVideos = await videosPromise;
+        if (cancelled) return;
+        await preloadThumbUrls([
+          ...listVideos.map((v) => v.thumbnail || v.thumbnail_url),
+          ...mapFavoriteImages(favs).map((item) => item.gallery || item.thumb),
+        ]);
+        if (cancelled) return;
+        setPageMedia({ images: favs, videos: listVideos });
+        setLoading(false);
+
+        if (!isOwnerPage) {
+          setExtraPages([]);
+          return;
+        }
+        try {
+          const extras = await fetchOwnerExtraPages(sub, currentCreator.id);
+          if (cancelled) return;
+          const pages = await Promise.all(
+            extras.map(async (extraList) => ({
+              list: extraList,
+              images: await fetchFavoritesForList(
+                sub,
+                extraList,
+                extraList.owner_user_id || currentCreator.id
+              ),
+            }))
+          );
+          if (!cancelled) setExtraPages(pages);
+        } catch (_) {
+          if (!cancelled) setExtraPages([]);
+        }
       } catch (e) {
+        if (cancelled) return;
         setError(e.message || 'Network error');
-        setImages([]);
-        setVideos([]);
+        setPageMedia(EMPTY_PAGE_MEDIA);
         setExtraPages([]);
         setLoading(false);
       }
     };
     run();
+    return () => {
+      cancelled = true;
+    };
   }, [currentCreator?.id, effectiveSlug, creatorLoading, navigate]);
 
   const pageTitle = listMeta
@@ -475,31 +517,25 @@ const Favorites = ({ sidebar }) => {
 
         {!loading && (hasVisibleItems || extraPageItems.length > 0) ? (
           <div className="favorites-shelves">
-            {imageItems.length > 0 ? (
-              <section className="favorites-shelf favorites-shelf--images" aria-label="Images">
-                <h2 className="favorites-shelf-title">Images</h2>
-                <FavoritesShelfTrack itemCount={imageItems.length} trio scrollRef={imageTrackRef}>
-                  {imageItems.map((item) => (
-                    <FavoriteImageCard key={item.id} item={item} onMakeMerch={handleMakeMerch} />
-                  ))}
-                </FavoritesShelfTrack>
-              </section>
-            ) : null}
-
             {videoItems.length > 0 ? (
               <section className="favorites-shelf favorites-shelf--videos" aria-label="Videos">
                 <h2 className="favorites-shelf-title">Videos</h2>
                 <FavoritesShelfTrack itemCount={videoItems.length} trio scrollRef={videoTrackRef}>
                   {videoItems.map((item) => (
                     <div className="favorites-card favorites-card--video" key={item.id}>
-                      <div className="favorites-card-image">
+                      <button
+                        type="button"
+                        className="favorites-card-image favorites-card-image--clickable"
+                        onClick={() => openVideo(item.raw)}
+                        aria-label={`Play video ${item.title}`}
+                      >
                         <img
                           src={item.thumb || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
-                          alt={item.title}
-                          loading="lazy"
+                          alt=""
+                          loading="eager"
                           decoding="async"
                         />
-                      </div>
+                      </button>
                       <div className="favorites-card-content">
                         <h3>{item.title}</h3>
                         <button
@@ -511,6 +547,17 @@ const Favorites = ({ sidebar }) => {
                         </button>
                       </div>
                     </div>
+                  ))}
+                </FavoritesShelfTrack>
+              </section>
+            ) : null}
+
+            {imageItems.length > 0 ? (
+              <section className="favorites-shelf favorites-shelf--images" aria-label="Images">
+                <h2 className="favorites-shelf-title">Images</h2>
+                <FavoritesShelfTrack itemCount={imageItems.length} trio scrollRef={imageTrackRef}>
+                  {imageItems.map((item) => (
+                    <FavoriteImageCard key={item.id} item={item} onMakeMerch={handleMakeMerch} />
                   ))}
                 </FavoritesShelfTrack>
               </section>

@@ -110,6 +110,25 @@
   color: #475569;
 }
 
+.faq-answer p {
+  margin: 0 0 0.75rem;
+}
+
+.faq-answer p:last-child {
+  margin-bottom: 0;
+}
+
+.faq-answer a {
+  color: #5568d3;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.faq-answer a:hover {
+  color: #4338ca;
+  text-decoration: underline;
+}
+
 .faq-cta-row {
   display: flex;
   flex-wrap: wrap;

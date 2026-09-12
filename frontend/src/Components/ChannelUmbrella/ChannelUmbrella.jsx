@@ -59,7 +59,6 @@ const ChannelUmbrella = ({ previewMode = false }) => {
   const [salesLoading, setSalesLoading] = useState(true);
   const [salesError, setSalesError] = useState('');
   const [collaboratorOwedTotal, setCollaboratorOwedTotal] = useState(0);
-  const [ownerSummary, setOwnerSummary] = useState(null);
   const [payoutNote, setPayoutNote] = useState('');
   const [payoutModal, setPayoutModal] = useState(null);
   const [payoutAmount, setPayoutAmount] = useState('');
@@ -92,11 +91,9 @@ const ChannelUmbrella = ({ previewMode = false }) => {
         setSalesError(data?.error || 'Could not load attributed earnings');
         setSalesByList([]);
         setCollaboratorOwedTotal(0);
-        setOwnerSummary(null);
       } else {
         setSalesByList(data?.by_list || []);
         setCollaboratorOwedTotal(Number(data?.collaborator_owed_total || 0));
-        setOwnerSummary(data?.storefront_owner_summary || null);
         setPayoutNote(
           String(data?.payout_note || '').replace(
             /paying umbrella collaborators monthly/gi,
@@ -561,30 +558,9 @@ const ChannelUmbrella = ({ previewMode = false }) => {
 
       <section className="channel-umbrella-section" aria-labelledby="umbrella-sales-heading">
         <h2 id="umbrella-sales-heading" className="channel-umbrella-section-title">
-          Payout summary
+          Umbrella collaborators (you pay bi-monthly)
         </h2>
         {payoutNote ? <p className="hint umbrella-payout-note">{payoutNote}</p> : null}
-        {ownerSummary && (
-          Number(ownerSummary.net_amount || 0) > 0
-          || Number(ownerSummary.owner_fee_amount || 0) > 0
-        ) ? (
-          <div className="umbrella-owner-payout-card">
-            <h3 className="channel-umbrella-subheading">Your storefront (paid by ScreenMerch)</h3>
-            <p className="hint">
-              Net earnings from sales on your pages:{' '}
-              <strong>${Number(ownerSummary.owner_page_payout ?? ownerSummary.net_amount ?? 0).toFixed(2)}</strong>
-            </p>
-            {Number(ownerSummary.owner_fee_amount || 0) > 0 ? (
-              <p className="hint">
-                From collaborator fees:{' '}
-                <strong>${Number(ownerSummary.owner_fee_amount || 0).toFixed(2)}</strong>
-                {' · '}
-                Total:{' '}
-                <strong>${Number(ownerSummary.owner_total_earnings || 0).toFixed(2)}</strong>
-              </p>
-            ) : null}
-          </div>
-        ) : null}
         {collaboratorOwedTotal > 0 ? (
           <p className="channel-umbrella-msg ok umbrella-owed-banner">
             Unpaid balance to collaborators: <strong>${collaboratorOwedTotal.toFixed(2)}</strong>
@@ -597,29 +573,25 @@ const ChannelUmbrella = ({ previewMode = false }) => {
         ) : null}
         {!salesLoading && !salesError && salesByList.length > 0 ? (
           <>
-            <h3 className="channel-umbrella-subheading">Umbrella collaborators (you pay bi-monthly)</h3>
             <p className="hint">
               These balances are what you owe collaborators. ScreenMerch does not pay them.
               Pay them off-platform (PayPal, Zelle, etc.), then use Confirm payment + date to log it.
             </p>
           <div className="umbrella-earnings-table-wrap">
-          <table className="channel-umbrella-earnings-table">
-            <thead>
-              <tr>
-                <th className="col-page">Page</th>
-                <th className="col-num">Items</th>
-                <th className="col-num">Gross</th>
-                <th className="col-num">Platform fee</th>
-                <th className="col-num">Merch cost</th>
-                <th className="col-num" title="Pay collaborator">Collab</th>
-                <th className="col-num" title="Balance owed">Balance</th>
-                <th className="col-action">Confirm payment</th>
-              </tr>
-            </thead>
+          <div className="channel-umbrella-earnings-table" role="table">
+            <div className="umbrella-earnings-head" role="row">
+              <span className="col-page" role="columnheader">Page</span>
+              <span className="col-num" role="columnheader">Items</span>
+              <span className="col-num" role="columnheader">Gross</span>
+              <span className="col-num" role="columnheader">Merch cost</span>
+              <span className="col-num" role="columnheader" title="Pay collaborator">Collab</span>
+              <span className="col-num" role="columnheader" title="Storefront fee kept from collaborator share">Fee</span>
+              <span className="col-num" role="columnheader" title="Balance owed">Balance</span>
+              <span className="col-action" role="columnheader">Confirm payment</span>
+            </div>
             {salesByList.map((row) => {
                 const balance = Number(row.balance_owed ?? 0);
                 const gross = Number(row.gross_amount ?? row.total_amount ?? 0);
-                const fee = Number(row.platform_fee_amount ?? 0);
                 const merchCost = Number(row.merch_cost_amount ?? row.net_amount ?? 0);
                 const payCollab = Number(row.pay_collaborator_amount ?? 0);
                 const lastPaid = row.last_payout;
@@ -628,15 +600,15 @@ const ChannelUmbrella = ({ previewMode = false }) => {
                 const canRecord = row.can_record_payout ?? (payCollab > 0 && balance >= 50);
                 const isPaidUp = row.is_paid_up ?? (payCollab > 0 && balance <= 0);
                 return (
-                  <tbody key={listKey}>
-                  <tr className="umbrella-row-collaborator">
-                    <td className="col-page" data-label="Page">{collaboratorPayoutHeading(row)}</td>
-                    <td className="col-num" data-label="Items">{row.order_count}</td>
-                    <td className="col-num" data-label="Gross">${gross.toFixed(2)}</td>
-                    <td className="col-num" data-label="Platform fee">${fee.toFixed(2)}</td>
-                    <td className="col-num" data-label="Merch cost">${merchCost.toFixed(2)}</td>
-                    <td className="col-num col-pay" data-label="Pay collaborator">${payCollab.toFixed(2)}</td>
-                    <td className="col-num" data-label="Balance owed">
+                  <div key={listKey} className="umbrella-earnings-group" role="rowgroup">
+                  <div className="umbrella-earnings-row umbrella-row-collaborator" role="row">
+                    <span className="col-page" role="cell" data-label="Page">{collaboratorPayoutHeading(row)}</span>
+                    <span className="col-num" role="cell" data-label="Items">{row.order_count}</span>
+                    <span className="col-num" role="cell" data-label="Gross">${gross.toFixed(2)}</span>
+                    <span className="col-num" role="cell" data-label="Merch cost">${merchCost.toFixed(2)}</span>
+                    <span className="col-num col-pay" role="cell" data-label="Pay collaborator">${payCollab.toFixed(2)}</span>
+                    <span className="col-num" role="cell" data-label="Storefront fee">${Number(row.owner_fee_amount ?? 0).toFixed(2)}</span>
+                    <span className="col-num" role="cell" data-label="Balance owed">
                       {payCollab <= 0 ? (
                         <span className="umbrella-amount-zero">$0.00</span>
                       ) : isPaidUp ? (
@@ -646,8 +618,8 @@ const ChannelUmbrella = ({ previewMode = false }) => {
                       ) : (
                         <span className="umbrella-amount-zero">$0.00</span>
                       )}
-                    </td>
-                    <td className="col-action" data-label="Confirm payment">
+                    </span>
+                    <span className="col-action" role="cell" data-label="Confirm payment">
                       {canRecord ? (
                         <button
                           type="button"
@@ -666,11 +638,10 @@ const ChannelUmbrella = ({ previewMode = false }) => {
                       ) : (
                         <span className="hint-inline">—</span>
                       )}
-                    </td>
-                  </tr>
+                    </span>
+                  </div>
                   {(lastPaid || history.length > 0) ? (
-                    <tr className="umbrella-row-payout-meta">
-                      <td colSpan={8}>
+                    <div className="umbrella-row-payout-meta">
                         <div className="umbrella-last-paid-row">
                           {lastPaid ? (
                             <span className="umbrella-last-paid">
@@ -702,13 +673,12 @@ const ChannelUmbrella = ({ previewMode = false }) => {
                             ))}
                           </ul>
                         ) : null}
-                      </td>
-                    </tr>
+                    </div>
                   ) : null}
-                  </tbody>
+                  </div>
                 );
               })}
-          </table>
+          </div>
           </div>
           </>
         ) : null}

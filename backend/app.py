@@ -2746,19 +2746,30 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
     if fav_list:
         sale_data["favorite_list_id"] = fav_list
         logger.info(f"✅ [RECORD_SALE] Attributing sale to favorite_list_id={fav_list}")
+    stamp_sale_owner_fee(sale_data, item, supabase_admin if supabase_admin else supabase)
     try:
         # Use service role client to bypass RLS for precise tracking
         client_to_use = supabase_admin if supabase_admin else supabase
         try:
             client_to_use.table('sales').insert(sale_data).execute()
         except Exception as sale_insert_err:
-            err_s = str(sale_insert_err).lower()
-            if fav_list and ("favorite_list_id" in err_s or "column" in err_s):
-                sale_data.pop("favorite_list_id", None)
-                client_to_use.table('sales').insert(sale_data).execute()
-                logger.warning("sales insert retried without favorite_list_id (column may be missing)")
-            else:
-                raise sale_insert_err
+            payload = dict(sale_data)
+            last_err = sale_insert_err
+            for _ in range(12):
+                missing = _pgrst_missing_column(last_err)
+                if missing and missing in payload:
+                    payload.pop(missing, None)
+                    try:
+                        client_to_use.table('sales').insert(payload).execute()
+                        last_err = None
+                        break
+                    except Exception as retry_err:
+                        last_err = retry_err
+                        continue
+                break
+            if last_err:
+                raise last_err
+            logger.warning("sales insert retried without missing columns")
         logger.info(f"✅ Recorded sale with precise tracking: product={sale_data['product_name']}, creator_user_id={creator_user_id}, amount=${item_price}")
         
         # Create creator earnings record if creator_user_id exists and they are a creator
@@ -6660,17 +6671,21 @@ def admin_record_storefront_payout():
         allowed_methods = {"paypal", "zelle", "venmo", "bank", "other"}
         payment_method = method_raw if method_raw in allowed_methods else "paypal"
 
+        recorded_dt = datetime.now(timezone.utc)
         if paid_at_raw:
             try:
                 if "T" in paid_at_raw:
                     paid_at_dt = datetime.fromisoformat(paid_at_raw.replace("Z", "+00:00"))
+                    if paid_at_dt.tzinfo is None:
+                        paid_at_dt = paid_at_dt.replace(tzinfo=timezone.utc)
                 else:
                     paid_at_dt = datetime.fromisoformat(f"{paid_at_raw}T12:00:00").replace(tzinfo=timezone.utc)
             except ValueError:
                 return jsonify({"success": False, "error": "paid_at must be a valid date"}), 400
         else:
-            paid_at_dt = datetime.now(timezone.utc)
+            paid_at_dt = recorded_dt
         paid_at_iso = paid_at_dt.astimezone(timezone.utc).isoformat()
+        recorded_iso = recorded_dt.isoformat()
 
         user_r = (
             client.table("users")
@@ -6695,7 +6710,7 @@ def admin_record_storefront_payout():
             "paypal_email": paypal_email,
             "status": "completed",
             "payout_date": paid_at_iso,
-            "processed_date": paid_at_iso,
+            "processed_date": recorded_iso,
             "notes": note or None,
         }
         payout_ins = _payouts_insert(client, payout_row)
@@ -8449,14 +8464,16 @@ def _fl_member_preferred_nickname(member_user_id, current_display_name=""):
     return ""
 
 
-def _umbrella_member_list_for_user(user_id, owner_id=None):
-    """Return the collaborator favorites list row for an umbrella member."""
+def _umbrella_member_lists_for_user(user_id, owner_id=None):
+    """All collaborator favorites lists for this member on one storefront."""
     if not supabase_admin or not user_id:
-        return None
-    membership = _cf_approved_umbrella_membership(user_id)
-    oid = owner_id or (membership or {}).get("channel_owner_id")
+        return []
+    oid = owner_id
     if not oid:
-        return None
+        membership = _cf_umbrella_membership_for_request(user_id)
+        oid = (membership or {}).get("channel_owner_id")
+    if not oid:
+        return []
     u = _cf_user_row(user_id)
     label = _fl_member_preferred_nickname(user_id) or _umbrella_collaborator_label(u)
     _fl_ensure_umbrella_member_list(oid, user_id, label)
@@ -8465,11 +8482,27 @@ def _umbrella_member_list_for_user(user_id, owner_id=None):
         .select("*")
         .eq("owner_user_id", user_id)
         .eq("storefront_owner_id", oid)
-        .limit(1)
         .execute()
     )
-    row = (lr.data or [None])[0]
-    return _fl_sync_stale_collaborator_slug(row) if row else None
+    rows = []
+    for row in lr.data or []:
+        synced = _fl_sync_stale_collaborator_slug(row)
+        if synced:
+            rows.append(synced)
+    rows.sort(
+        key=lambda r: (
+            0 if r.get("updated_at") else 1,
+            str(r.get("updated_at") or ""),
+        ),
+        reverse=True,
+    )
+    return rows
+
+
+def _umbrella_member_list_for_user(user_id, owner_id=None):
+    """Return the collaborator favorites list row for an umbrella member."""
+    rows = _umbrella_member_lists_for_user(user_id, owner_id)
+    return rows[0] if rows else None
 
 
 def _fl_storefront_collaborator_lists(storefront_owner_id):
@@ -8705,20 +8738,37 @@ def _cf_is_storefront_owner(user_id, subdomain=None):
     return True
 
 
-def _cf_approved_umbrella_membership(friend_id):
-    """First approved umbrella row where user is the invited friend."""
+def _cf_approved_umbrella_membership(friend_id, channel_owner_id=None):
+    """Approved umbrella row where user is the invited friend.
+
+    When channel_owner_id is set, only that storefront's membership is returned.
+    Pom/Gee are collaborators on more than one storefront; picking an arbitrary
+    first row made FilialSons analytics load Maxfreedom's page instead.
+    """
     if not supabase_admin or not friend_id:
         return None
-    r = (
+    q = (
         supabase_admin.table("channel_friends")
         .select("*")
         .eq("friend_id", friend_id)
         .eq("status", "approved")
         .eq("invited_by", "creator")
-        .limit(1)
-        .execute()
     )
+    if channel_owner_id:
+        q = q.eq("channel_owner_id", str(channel_owner_id))
+    r = q.limit(1).execute()
     return (r.data or [None])[0]
+
+
+def _cf_umbrella_membership_for_request(user_id):
+    """Membership for the storefront the collaborator is currently viewing."""
+    storefront_owner_id, on_subdomain = _creator_id_from_request_subdomain()
+    if on_subdomain and storefront_owner_id:
+        scoped = _cf_approved_umbrella_membership(user_id, storefront_owner_id)
+        if scoped:
+            return scoped
+        return None
+    return _cf_approved_umbrella_membership(user_id)
 
 
 def _umbrella_invite_row_by_token(token):
@@ -9731,7 +9781,9 @@ def channel_friends_my_umbrella_status():
         if not me:
             return jsonify({"success": False, "error": "User not found"}), 404
         is_storefront_owner = bool((me.get("subdomain") or "").strip())
-        membership = _cf_approved_umbrella_membership(user_id)
+        membership = _cf_umbrella_membership_for_request(user_id)
+        if not membership:
+            membership = _cf_approved_umbrella_membership(user_id)
         is_umbrella_member = membership is not None and not is_storefront_owner
         owner = None
         if membership:
@@ -10132,6 +10184,44 @@ def _fl_unique_slug(base_slug, *, owner_user_id=None, storefront_owner_id=None, 
         slug = f"{base}-{n}"[:64]
 
 
+def _load_list_favorites(row):
+    """Favorites for a page. Collaborator pages also include images on older list ids for the same member."""
+    if not row or not row.get("id"):
+        return []
+    is_collab = _is_collaborator_favorite_list(row)
+    if row.get("owner_user_id") and row.get("id"):
+        _fl_attach_orphan_favorites(row["owner_user_id"], row["id"])
+    fr = (
+        supabase_admin.table("creator_favorites")
+        .select("*")
+        .eq("list_id", row["id"])
+        .order("created_at", desc=True)
+        .execute()
+    )
+    by_id = {str(f.get("id")): f for f in (fr.data or []) if f.get("id")}
+    if is_collab and row.get("owner_user_id"):
+        try:
+            extra = (
+                supabase_admin.table("creator_favorites")
+                .select("*")
+                .eq("user_id", str(row.get("owner_user_id")))
+                .order("created_at", desc=True)
+                .limit(48)
+                .execute()
+            )
+            for fav in extra.data or []:
+                fid = str(fav.get("id") or "")
+                if fid:
+                    by_id.setdefault(fid, fav)
+        except Exception as extra_err:
+            logger.warning("collaborator fallback favorites: %s", extra_err)
+    return sorted(
+        by_id.values(),
+        key=lambda fav: str(fav.get("created_at") or ""),
+        reverse=True,
+    )
+
+
 def _fl_attach_orphan_favorites(user_id, list_id):
     """Attach favorites missing list_id to the collaborator's page (repairs Save Favorite bugs)."""
     if not supabase_admin or not user_id or not list_id:
@@ -10481,7 +10571,7 @@ def favorite_lists_mine():
         umbrella_only = _is_umbrella_collaborator_only(user_id)
         owner_name = None
         if umbrella_only:
-            membership = _cf_approved_umbrella_membership(user_id)
+            membership = _cf_umbrella_membership_for_request(user_id)
             owner_id = (membership or {}).get("channel_owner_id")
             if owner_id:
                 owner = _cf_user_row(owner_id)
@@ -10520,6 +10610,49 @@ def favorite_lists_mine():
         ), 200
     except Exception as e:
         logger.exception("favorite_lists_mine: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/favorite-lists/favorites", methods=["GET", "OPTIONS"])
+def favorite_lists_favorites():
+    """Authenticated images for a dashboard page (bypasses browser RLS)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _authenticated_users_id()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        list_id = (request.args.get("list_id") or "").strip()
+        if not list_id:
+            return jsonify({"success": False, "error": "list_id is required"}), 400
+        lr = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("*")
+            .eq("id", list_id)
+            .limit(1)
+            .execute()
+        )
+        row = (lr.data or [None])[0]
+        if not row:
+            return jsonify({"success": False, "error": "List not found"}), 404
+        if _is_umbrella_collaborator_only(user_id):
+            allowed = {
+                str(L.get("id"))
+                for L in _umbrella_member_lists_for_user(user_id)
+                if L and L.get("id")
+            }
+            if str(list_id) not in allowed:
+                return jsonify({"success": False, "error": "Forbidden"}), 403
+        elif str(row.get("owner_user_id") or "") != str(user_id) and str(
+            row.get("storefront_owner_id") or ""
+        ) != str(user_id):
+            return jsonify({"success": False, "error": "Forbidden"}), 403
+        favorites = _load_list_favorites(row)
+        return jsonify({"success": True, "favorites": favorites}), 200
+    except Exception as e:
+        logger.exception("favorite_lists_favorites: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -10895,30 +11028,7 @@ def public_favorites_by_list():
             row["member_label"] = nick[:80]
             row["is_collaborator_page"] = True
             row["display_name"] = nick if "Favorites" in nick else f"{nick} Favorites"
-        # Repair favorites saved without list_id (old Save Favorite path)
-        if row.get("owner_user_id") and row.get("id"):
-            _fl_attach_orphan_favorites(row["owner_user_id"], row["id"])
-        fr = (
-            supabase_admin.table("creator_favorites")
-            .select("*")
-            .eq("list_id", row["id"])
-            .order("created_at", desc=True)
-            .execute()
-        )
-        favorites = list(fr.data or [])
-        if is_collab and not favorites and row.get("owner_user_id"):
-            try:
-                extra = (
-                    supabase_admin.table("creator_favorites")
-                    .select("*")
-                    .eq("user_id", str(row.get("owner_user_id")))
-                    .order("created_at", desc=True)
-                    .limit(24)
-                    .execute()
-                )
-                favorites = list(extra.data or [])
-            except Exception as extra_err:
-                logger.warning("collaborator fallback favorites: %s", extra_err)
+        favorites = _load_list_favorites(row)
         return jsonify({"success": True, "list": _scrub_owner_fee_tagline(row), "favorites": favorites}), 200
     except Exception as e:
         logger.exception("public_favorites_by_list: %s", e)
@@ -10934,30 +11044,94 @@ def _is_collaborator_favorite_list(meta, storefront_owner_id=None):
     return bool(owner_uid and sf_uid and owner_uid != sf_uid)
 
 
-def _umbrella_payouts_by_list(storefront_owner_id, list_ids=None):
+def _payout_list_key(value):
+    from utils.payout import payout_list_key
+
+    return payout_list_key(value)
+
+
+def _payouts_for_list(payouts_by_list, favorite_list_id):
+    """Look up ledger rows even when UUID dash/case formatting differs."""
+    if not payouts_by_list or favorite_list_id in (None, ""):
+        return []
+    raw = str(favorite_list_id)
+    if raw in payouts_by_list:
+        return payouts_by_list[raw]
+    key = _payout_list_key(raw)
+    if key in payouts_by_list:
+        return payouts_by_list[key]
+    for stored_key, rows in payouts_by_list.items():
+        if _payout_list_key(stored_key) == key:
+            return rows
+    return []
+
+
+def _dedupe_payout_rows(rows):
+    seen = set()
+    out = []
+    for payout in rows or []:
+        pid = str(payout.get("id") or "")
+        if pid:
+            if pid in seen:
+                continue
+            seen.add(pid)
+        out.append(payout)
+    return out
+
+
+def _umbrella_payouts_by_list(storefront_owner_id, list_ids=None, collaborator_user_id=None):
     """Load off-platform collaborator payouts grouped by favorite_list_id."""
     out = {}
     if not supabase_admin or not storefront_owner_id:
         return out
+    want = None
+    if list_ids:
+        want = {_payout_list_key(x) for x in list_ids if x not in (None, "")}
+        if not want:
+            want = None
+    collab_uid = str(collaborator_user_id) if collaborator_user_id else ""
+    cols_full = "id, favorite_list_id, collaborator_user_id, amount, paid_at, note, created_at"
+    cols_min = "id, favorite_list_id, amount, paid_at, note, created_at"
+    rows = []
     try:
-        q = (
+        r = (
             supabase_admin.table("umbrella_collaborator_payouts")
-            .select("id, favorite_list_id, collaborator_user_id, amount, paid_at, note, created_at")
+            .select(cols_full)
             .eq("storefront_owner_id", str(storefront_owner_id))
             .order("paid_at", desc=True)
+            .execute()
         )
-        if list_ids:
-            q = q.in_("favorite_list_id", [str(x) for x in list_ids])
-        r = q.execute()
-        for row in r.data or []:
-            lid = str(row.get("favorite_list_id") or "")
-            if not lid:
-                continue
-            out.setdefault(lid, []).append(row)
+        rows = r.data or []
     except Exception as err:
         err_s = str(err).lower()
-        if "umbrella_collaborator_payouts" not in err_s and "does not exist" not in err_s:
-            logger.warning("umbrella payouts lookup failed: %s", err)
+        table_missing = "umbrella_collaborator_payouts" in err_s or "does not exist" in err_s
+        if table_missing:
+            return out
+        try:
+            r = (
+                supabase_admin.table("umbrella_collaborator_payouts")
+                .select(cols_min)
+                .eq("storefront_owner_id", str(storefront_owner_id))
+                .order("paid_at", desc=True)
+                .execute()
+            )
+            rows = r.data or []
+        except Exception as retry_err:
+            logger.warning("umbrella payouts lookup failed: %s", retry_err)
+            return out
+    for row in rows:
+        lid = row.get("favorite_list_id")
+        key = _payout_list_key(lid)
+        if not key:
+            continue
+        if want is not None and key not in want:
+            if not (collab_uid and str(row.get("collaborator_user_id") or "") == collab_uid):
+                continue
+        raw = str(lid)
+        bucket = out.setdefault(raw, [])
+        bucket.append(row)
+        if key not in out:
+            out[key] = bucket
     return out
 
 
@@ -10968,19 +11142,38 @@ def _umbrella_payout_balance_fields(lifetime_net, payouts):
     return umbrella_payout_balance_fields(lifetime_net, payouts)
 
 
+def _payout_recorded_sort_key(payout):
+    """Prefer real insert time. Ignore created_at when it is just the date-picker stamp."""
+    created = str((payout or {}).get("created_at") or "")
+    paid = str((payout or {}).get("payout_date") or (payout or {}).get("paid_at") or "")
+    if created and paid and created[:19] == paid[:19]:
+        return ""
+    return created
+
+
 def _screenmerch_payouts_for_user(user_id):
     """Completed ScreenMerch → storefront-owner payouts (PayPal confirmation ledger)."""
     if not supabase_admin or not user_id:
         return []
     try:
-        r = (
-            supabase_admin.table("payouts")
-            .select("*")
-            .eq("user_id", str(user_id))
-            .order("payout_date", desc=True)
-            .limit(25)
-            .execute()
-        )
+        try:
+            r = (
+                supabase_admin.table("payouts")
+                .select("*")
+                .eq("user_id", str(user_id))
+                .order("created_at", desc=True)
+                .limit(25)
+                .execute()
+            )
+        except Exception:
+            r = (
+                supabase_admin.table("payouts")
+                .select("*")
+                .eq("user_id", str(user_id))
+                .order("payout_date", desc=True)
+                .limit(25)
+                .execute()
+            )
         rows = []
         for row in r.data or []:
             status = (row.get("status") or "completed").lower()
@@ -10991,11 +11184,18 @@ def _screenmerch_payouts_for_user(user_id):
                 "amount": round(float(row.get("amount") or 0), 2),
                 "payment_method": row.get("payment_method") or "paypal",
                 "status": status,
+                "created_at": row.get("created_at"),
                 "paid_at": row.get("processed_date") or row.get("payout_date") or row.get("created_at"),
                 "payout_date": row.get("payout_date"),
                 "note": row.get("notes") or "",
                 "notes": row.get("notes") or "",
             })
+        rows.sort(
+            key=lambda p: (
+                _payout_recorded_sort_key(p),
+            ),
+            reverse=True,
+        )
         return rows
     except Exception as err:
         logger.warning("screenmerch payouts lookup failed: %s", err)
@@ -11011,13 +11211,71 @@ def _default_umbrella_owner_fee():
 _OWNER_FEE_TAG_PREFIX = "__SMFEE__"
 
 
+def _normalize_history_entry(entry):
+    from utils.payout import normalize_owner_collab_fee
+
+    t, v = normalize_owner_collab_fee(
+        (entry or {}).get("fee_type"), (entry or {}).get("fee_value")
+    )
+    out = {"fee_type": t, "fee_value": v}
+    if (entry or {}).get("effective_from"):
+        out["effective_from"] = entry["effective_from"]
+    if (entry or {}).get("effective_to"):
+        out["effective_to"] = entry["effective_to"]
+    return out
+
+
 def _normalize_owner_fee_row(row):
     from utils.payout import normalize_owner_collab_fee
 
     t, v = normalize_owner_collab_fee(
         (row or {}).get("fee_type"), (row or {}).get("fee_value")
     )
-    return {"fee_type": t, "fee_value": v}
+    out = {"fee_type": t, "fee_value": v}
+    hist = (row or {}).get("history")
+    if isinstance(hist, list):
+        out["history"] = [_normalize_history_entry(h) for h in hist if isinstance(h, dict)]
+    for key in ("effective_from", "updated_at"):
+        if (row or {}).get(key):
+            out[key] = row[key]
+    return out
+
+
+def _encode_owner_fee_tagline(fee):
+    payload = {
+        "fee_type": (fee or {}).get("fee_type") or "none",
+        "fee_value": (fee or {}).get("fee_value") or 0,
+    }
+    if (fee or {}).get("history"):
+        payload["history"] = fee["history"]
+    if (fee or {}).get("effective_from"):
+        payload["effective_from"] = fee["effective_from"]
+    return _OWNER_FEE_TAG_PREFIX + json.dumps(payload, separators=(",", ":"))
+
+
+def _seed_fee_history_if_needed(fee, updated_at=None):
+    """
+    If the current rate is $0 and there is no history, sales before this
+    setting was last saved keep the prior $3 flat fee.
+    """
+    fee = dict(fee or {})
+    if fee.get("history"):
+        return fee, False
+    t = str(fee.get("fee_type") or "none").lower()
+    try:
+        v = float(fee.get("fee_value") or 0)
+    except (TypeError, ValueError):
+        v = 0.0
+    if t not in ("none", "") or v > 0 or not updated_at:
+        return fee, False
+    fee["history"] = [{
+        "fee_type": "flat",
+        "fee_value": 3,
+        "effective_from": None,
+        "effective_to": updated_at,
+    }]
+    fee["effective_from"] = updated_at
+    return fee, True
 
 
 def _fee_from_page_tagline(tagline):
@@ -11044,6 +11302,20 @@ def _scrub_owner_fee_tagline(row):
     return row
 
 
+def _persist_owner_fee_tagline(storefront_owner_id, list_id, fee):
+    if not supabase_admin or not storefront_owner_id or not list_id:
+        return
+    try:
+        payload = {"page_tagline": _encode_owner_fee_tagline(fee)}
+        if (fee or {}).get("updated_at"):
+            payload["updated_at"] = fee["updated_at"]
+        supabase_admin.table("creator_favorite_lists").update(payload).eq("id", str(list_id)).eq(
+            "storefront_owner_id", str(storefront_owner_id)
+        ).execute()
+    except Exception as err:
+        logger.warning("owner fee history persist failed: %s", err)
+
+
 def _load_owner_fees_from_list_taglines(storefront_owner_id):
     out = {}
     if not supabase_admin or not storefront_owner_id:
@@ -11051,17 +11323,36 @@ def _load_owner_fees_from_list_taglines(storefront_owner_id):
     try:
         r = (
             supabase_admin.table("creator_favorite_lists")
-            .select("id, page_tagline")
+            .select("id, page_tagline, updated_at")
             .eq("storefront_owner_id", str(storefront_owner_id))
             .execute()
         )
     except Exception as err:
-        logger.warning("owner fee tagline lookup failed: %s", err)
-        return out
+        err_s = str(err).lower()
+        if "updated_at" in err_s and "column" in err_s:
+            try:
+                r = (
+                    supabase_admin.table("creator_favorite_lists")
+                    .select("id, page_tagline")
+                    .eq("storefront_owner_id", str(storefront_owner_id))
+                    .execute()
+                )
+            except Exception as inner:
+                logger.warning("owner fee tagline lookup failed: %s", inner)
+                return out
+        else:
+            logger.warning("owner fee tagline lookup failed: %s", err)
+            return out
     for row in r.data or []:
         parsed = _fee_from_page_tagline(row.get("page_tagline"))
-        if parsed and row.get("id"):
-            out[str(row["id"])] = parsed
+        if not parsed:
+            continue
+        parsed, seeded = _seed_fee_history_if_needed(parsed, row.get("updated_at"))
+        list_id = row.get("id")
+        if list_id:
+            out[str(list_id)] = parsed
+            if seeded:
+                _persist_owner_fee_tagline(storefront_owner_id, list_id, parsed)
     return out
 
 
@@ -11107,7 +11398,27 @@ def _get_umbrella_owner_fees_by_list(storefront_owner_id):
             logger.warning("owner fee lookup failed: %s", err)
     tagline_fees = _load_owner_fees_from_list_taglines(storefront_owner_id)
     for key, fee in tagline_fees.items():
-        out.setdefault(key, fee)
+        if key in out:
+            merged = dict(out[key])
+            tagged_hist = list(fee.get("history") or [])
+            tagged_t = fee.get("fee_type") or "none"
+            tagged_v = fee.get("fee_value") or 0
+            table_t = merged.get("fee_type") or "none"
+            table_v = merged.get("fee_value") or 0
+            if not tagged_hist and (tagged_t, round(float(tagged_v or 0), 2)) != (table_t, round(float(table_v or 0), 2)):
+                tagged_hist = [{
+                    "fee_type": tagged_t,
+                    "fee_value": tagged_v,
+                    "effective_from": fee.get("effective_from"),
+                    "effective_to": merged.get("updated_at") or fee.get("updated_at"),
+                }]
+            if tagged_hist:
+                merged["history"] = tagged_hist
+            if fee.get("effective_from") and not merged.get("effective_from"):
+                merged["effective_from"] = fee["effective_from"]
+            out[key] = merged
+        else:
+            out[key] = fee
     return out
 
 
@@ -11130,12 +11441,32 @@ def _save_umbrella_owner_fee(storefront_owner_id, favorite_list_id, fee_type, fe
         raise ValueError("favorite_list_id is required")
     t, v = normalize_owner_collab_fee(fee_type, fee_value)
     list_id = str(favorite_list_id)
+    now = datetime.now(timezone.utc).isoformat()
+    existing_fee = _get_umbrella_owner_fee(storefront_owner_id, list_id)
+    history = list((existing_fee or {}).get("history") or [])
+    old_t = (existing_fee or {}).get("fee_type") or "none"
+    old_v = (existing_fee or {}).get("fee_value") or 0
+    if (old_t, round(float(old_v or 0), 2)) != (t, v):
+        history.append({
+            "fee_type": old_t,
+            "fee_value": old_v,
+            "effective_from": (existing_fee or {}).get("effective_from"),
+            "effective_to": now,
+        })
+    saved = {
+        "fee_type": t,
+        "fee_value": v,
+        "history": history,
+        "effective_from": now,
+        "updated_at": now,
+        "favorite_list_id": list_id,
+    }
     row = {
         "storefront_owner_id": str(storefront_owner_id),
         "favorite_list_id": list_id,
         "fee_type": t,
         "fee_value": v,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": now,
     }
     try:
         existing = (
@@ -11154,7 +11485,8 @@ def _save_umbrella_owner_fee(storefront_owner_id, favorite_list_id, fee_type, fe
             ).execute()
         else:
             supabase_admin.table("umbrella_owner_fee_settings").insert(row).execute()
-        return {"fee_type": t, "fee_value": v, "favorite_list_id": list_id}
+        _persist_owner_fee_tagline(storefront_owner_id, list_id, saved)
+        return saved
     except Exception as err:
         err_s = str(err).lower()
         table_missing = (
@@ -11166,13 +11498,55 @@ def _save_umbrella_owner_fee(storefront_owner_id, favorite_list_id, fee_type, fe
             raise
         logger.warning("owner fee table unavailable, saving on favorite list: %s", err)
 
-    encoded = _OWNER_FEE_TAG_PREFIX + json.dumps(
-        {"fee_type": t, "fee_value": v}, separators=(",", ":")
-    )
-    supabase_admin.table("creator_favorite_lists").update(
-        {"page_tagline": encoded, "updated_at": row["updated_at"]}
-    ).eq("id", list_id).eq("storefront_owner_id", str(storefront_owner_id)).execute()
-    return {"fee_type": t, "fee_value": v, "favorite_list_id": list_id}
+    _persist_owner_fee_tagline(storefront_owner_id, list_id, saved)
+    return saved
+
+
+def stamp_sale_owner_fee(sale_data, item, client):
+    """Lock the collaborator fee that applies at purchase time onto the sale row."""
+    if not isinstance(sale_data, dict) or not client:
+        return
+    flid = sale_data.get("favorite_list_id")
+    if not flid:
+        return
+    try:
+        lr = (
+            client.table("creator_favorite_lists")
+            .select("id, storefront_owner_id, owner_user_id")
+            .eq("id", str(flid))
+            .limit(1)
+            .execute()
+        )
+        meta = (lr.data or [None])[0]
+        if not meta:
+            return
+        owner_id = meta.get("storefront_owner_id")
+        if not owner_id or not _is_collaborator_favorite_list(meta, owner_id):
+            return
+        from utils.payout import resolve_owner_collab_fee, split_collab_sale_share
+
+        list_fee = resolve_owner_collab_fee(_get_umbrella_owner_fees_by_list(owner_id), flid)
+        qty = 1
+        if item is not None:
+            try:
+                qty = max(1, int(item.get("quantity") or 1))
+            except (TypeError, ValueError):
+                qty = 1
+        line = {
+            **sale_data,
+            "quantity": qty,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        split = split_collab_sale_share(line, list_fee)
+        sale_data["quantity"] = split["quantity"]
+        sale_data["owner_fee_type"] = split["owner_fee_type"]
+        sale_data["owner_fee_value"] = split["owner_fee_value"]
+        sale_data["owner_fee_per_item"] = split["owner_fee_per_item"]
+        sale_data["owner_fee_amount"] = split["owner_fee_amount"]
+        sale_data["pay_collaborator_amount"] = split["pay_collaborator_amount"]
+        sale_data["collaborator_share_before_fee"] = split["collaborator_share_before_fee"]
+    except Exception as err:
+        logger.warning("sale fee snapshot skipped: %s", err)
 
 
 @app.route("/api/favorite-lists/sales-summary", methods=["GET", "OPTIONS"])
@@ -11213,7 +11587,11 @@ def favorite_lists_sales_summary():
         try:
             sales_result = (
                 supabase_admin.table("sales")
-                .select("id, favorite_list_id, amount, product_name, created_at")
+                .select(
+                    "id, favorite_list_id, amount, product_name, created_at, quantity, "
+                    "owner_fee_type, owner_fee_value, owner_fee_per_item, owner_fee_amount, "
+                    "pay_collaborator_amount, collaborator_share_before_fee"
+                )
                 .eq("user_id", user_id)
                 .execute()
             )
@@ -11244,14 +11622,27 @@ def favorite_lists_sales_summary():
                     .execute()
                 )
                 rows = [{**s, "product_name": ""} for s in (sales_result.data or [])]
+            elif any(
+                col in err_s
+                for col in ("owner_fee", "quantity", "pay_collaborator", "collaborator_share")
+            ):
+                sales_result = (
+                    supabase_admin.table("sales")
+                    .select("id, favorite_list_id, amount, product_name, created_at")
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+                rows = sales_result.data or []
             else:
                 raise
         from utils.payout import (
             aggregate_sales_payout_totals,
             apply_owner_fee_to_collab_totals,
+            apply_owner_fee_to_sale_share,
             get_payout_for_sale,
             owner_collab_fee_per_item,
             resolve_owner_collab_fee,
+            split_collab_sale_share,
         )
 
         by_list = {}
@@ -11305,7 +11696,9 @@ def favorite_lists_sales_summary():
         owner_pages = []
         collaborator_owed_total = 0.0
         owner_sales = []
+        all_collab_earning_sales = []
         owner_fee_total = 0.0
+        collab_pay_total = 0.0
         collab_items_total = 0
         for key, agg in by_list.items():
             lid = agg["favorite_list_id"]
@@ -11315,11 +11708,24 @@ def favorite_lists_sales_summary():
             totals = aggregate_sales_payout_totals(sale_lines)
             list_fee = resolve_owner_collab_fee(fees_by_list, lid) if is_collab else _default_umbrella_owner_fee()
             if is_collab:
-                totals = apply_owner_fee_to_collab_totals(
-                    totals, list_fee["fee_type"], list_fee["fee_value"]
-                )
-                owner_fee_total += float(totals.get("owner_fee_amount") or 0)
+                fee_sum = 0.0
+                pay_sum = 0.0
+                share_sum = 0.0
+                collab_splits = []
+                for s in sale_lines:
+                    split = split_collab_sale_share(s, list_fee)
+                    collab_splits.append((s, split))
+                    fee_sum += float(split.get("owner_fee_amount") or 0)
+                    pay_sum += float(split.get("pay_collaborator_amount") or 0)
+                    share_sum += float(split.get("collaborator_share_before_fee") or 0)
+                totals["owner_fee_amount"] = round(fee_sum, 2)
+                totals["pay_collaborator_amount"] = round(pay_sum, 2)
+                totals["collaborator_share_before_fee"] = round(share_sum, 2)
+                owner_fee_total += fee_sum
+                collab_pay_total += pay_sum
                 collab_items_total += int(totals.get("order_count") or 0)
+            else:
+                collab_splits = []
             gross = totals["gross_amount"]
             platform_fee = totals["platform_fee_amount"]
             merch_cost = totals["merch_cost_amount"]
@@ -11359,8 +11765,23 @@ def favorite_lists_sales_summary():
 
             payout_bal = _umbrella_payout_balance_fields(0, [])
             if is_collab and lid:
+                member_uid = str((meta or {}).get("owner_user_id") or "")
+                member_lids = [
+                    mlid
+                    for mlid, m in lists_map.items()
+                    if member_uid and str(m.get("owner_user_id") or "") == member_uid
+                ] or [str(lid)]
+                if str(lid) not in {str(x) for x in member_lids}:
+                    member_lids.append(str(lid))
                 payout_bal = _umbrella_payout_balance_fields(
-                    pay_collaborator, payouts_by_list.get(str(lid), [])
+                    pay_collaborator,
+                    _dedupe_payout_rows(
+                        [
+                            payout
+                            for mlid in member_lids
+                            for payout in _payouts_for_list(payouts_by_list, mlid)
+                        ]
+                    ),
                 )
 
             row_out = {
@@ -11390,20 +11811,25 @@ def favorite_lists_sales_summary():
                 row_out["owner_fee_value"] = list_fee["fee_value"]
                 row_out["owner_fee_per_item"] = fee_per_item
                 row_out["owner_fee_amount"] = round(float(totals.get("owner_fee_amount") or 0), 2)
+                row_out["collaborator_share_before_fee"] = round(
+                    float(totals.get("collaborator_share_before_fee") or 0), 2
+                )
                 collab_recent = []
-                for s in sale_lines:
-                    try:
-                        cs, _pf = get_payout_for_sale(s.get("product_name"), s.get("amount"), 1)
-                    except Exception:
-                        cs = 0.0
+                for s, split in collab_splits:
                     collab_recent.append({
                         "id": s.get("id"),
                         "product_name": s.get("product_name") or "Item",
                         "amount": round(float(s.get("amount") or 0), 2),
-                        "pay_collaborator_amount": round(max(0.0, float(cs or 0) - fee_per_item), 2),
+                        "quantity": split["quantity"],
+                        "collaborator_share_before_fee": split["collaborator_share_before_fee"],
+                        "owner_fee_amount": split["owner_fee_amount"],
+                        "owner_fee_per_item": split["owner_fee_per_item"],
+                        "pay_collaborator_amount": split["pay_collaborator_amount"],
                         "created_at": s.get("created_at"),
                     })
                 collab_recent.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+                for item in collab_recent:
+                    all_collab_earning_sales.append({**item, "display_name": display_name})
                 row_out["recent_sales"] = collab_recent[:25]
                 member_uid = str((meta or {}).get("owner_user_id") or "")
                 is_active = member_uid in active_friend_ids
@@ -11454,6 +11880,7 @@ def favorite_lists_sales_summary():
                 "display_name": page_name,
             })
         owner_recent_sales.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+        owner_earnings_owner_sales = list(owner_recent_sales)
         owner_recent_sales = owner_recent_sales[:25]
         sm_payouts = _screenmerch_payouts_for_user(user_id)
         sm_paid_total = round(sum(float(p.get("amount") or 0) for p in sm_payouts), 2)
@@ -11475,8 +11902,11 @@ def favorite_lists_sales_summary():
                     "merch_cost_amount": owner_totals["merch_cost_amount"],
                     "owner_page_payout": round(owner_page_payout, 2),
                     "owner_fee_amount": owner_fee_total,
-                    "owner_total_earnings": round(owner_page_payout + owner_fee_total, 2),
+                    "collaborator_pay_total": round(collab_pay_total, 2),
+                    "owner_total_earnings": round(owner_page_payout + owner_fee_total + collab_pay_total, 2),
                     "collaborator_item_count": collab_items_total,
+                    "owner_earnings_owner_sales": owner_earnings_owner_sales,
+                    "owner_earnings_collaborator_sales": all_collab_earning_sales,
                 },
                 "screenmerch_payouts": sm_payouts,
                 "screenmerch_paid_total": sm_paid_total,
@@ -11551,7 +11981,7 @@ def favorite_lists_record_collaborator_payout():
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
-        user_id, err = _validate_x_user_id_session()
+        user_id, err = _authenticated_users_id()
         if err is not None:
             return err[0], err[1]
         if not supabase_admin:
@@ -11628,14 +12058,16 @@ def favorite_lists_record_collaborator_payout():
 
         from utils.payout import (
             UMBRELLA_COLLABORATOR_PAYOUT_MINIMUM,
-            aggregate_sales_payout_totals,
-            apply_owner_fee_to_collab_totals,
+            split_collab_sale_share,
         )
 
         try:
             sales_res = (
                 supabase_admin.table("sales")
-                .select("product_name, amount, favorite_list_id")
+                .select(
+                    "product_name, amount, favorite_list_id, created_at, quantity, "
+                    "owner_fee_type, owner_fee_value, owner_fee_amount"
+                )
                 .eq("user_id", user_id)
                 .execute()
             )
@@ -11646,15 +12078,28 @@ def favorite_lists_record_collaborator_payout():
                 if str(s.get("favorite_list_id") or "") == want_list
             ]
         except Exception:
-            sale_lines = []
+            try:
+                sales_res = (
+                    supabase_admin.table("sales")
+                    .select("product_name, amount, favorite_list_id, created_at")
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+                want_list = str(favorite_list_id)
+                sale_lines = [
+                    s
+                    for s in (sales_res.data or [])
+                    if str(s.get("favorite_list_id") or "") == want_list
+                ]
+            except Exception:
+                sale_lines = []
         owner_fee = _get_umbrella_owner_fee(user_id, favorite_list_id)
-        pay_collaborator = apply_owner_fee_to_collab_totals(
-            aggregate_sales_payout_totals(sale_lines),
-            owner_fee["fee_type"],
-            owner_fee["fee_value"],
-        )["pay_collaborator_amount"]
-        list_payouts = _umbrella_payouts_by_list(user_id, [favorite_list_id]).get(
-            str(favorite_list_id), []
+        pay_collaborator = round(
+            sum(float(split_collab_sale_share(s, owner_fee).get("pay_collaborator_amount") or 0) for s in sale_lines),
+            2,
+        )
+        list_payouts = _payouts_for_list(
+            _umbrella_payouts_by_list(user_id, [favorite_list_id]), favorite_list_id
         )
         payout_bal = _umbrella_payout_balance_fields(pay_collaborator, list_payouts)
         balance_owed = float(payout_bal.get("balance_owed") or 0)
@@ -11746,6 +12191,7 @@ def _empty_analytics_payload():
         "avg_order_value": 0,
         "products_sold_count": 0,
         "videos_with_sales_count": 0,
+        "week_sales_count": 0,
         "sales_data": [0] * 30,
         "products_sold": [],
         "videos_with_sales": [],
@@ -11760,7 +12206,10 @@ def _sale_record_to_order(sale):
     sale_created_at = sale.get("created_at")
     if not sale_created_at or sale_created_at == "N/A":
         sale_created_at = datetime.now().isoformat()
-    amount = sale.get("amount", 0) or 0
+    try:
+        amount = float(sale.get("amount", 0) or 0)
+    except (TypeError, ValueError):
+        amount = 0.0
     return {
         "order_id": sale.get("id", "db-" + str(sale.get("id"))),
         "cart": [
@@ -11830,7 +12279,7 @@ def _analytics_payout_fields_from_sales(sales_rows, storefront_owner_id=None):
         "collaborator_pay_total": collab_pay,
         "owner_page_payout": round(owner_page, 2),
         "owner_fee_amount": round(owner_fee_amount, 2),
-        "owner_total_earnings": round(owner_page + owner_fee_amount, 2),
+        "owner_total_earnings": round(owner_page + owner_fee_amount + collab_pay, 2),
     }
 
 
@@ -11845,7 +12294,12 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
     from datetime import datetime, timedelta
 
     total_sales = len(all_orders)
-    total_revenue = sum(order.get("total_value", 0) for order in all_orders)
+    total_revenue = 0.0
+    for order in all_orders:
+        try:
+            total_revenue += float(order.get("total_value") or 0)
+        except (TypeError, ValueError):
+            pass
     avg_order_value = total_revenue / total_sales if total_sales > 0 else 0
 
     def _order_dt(order):
@@ -11857,20 +12311,24 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
         except Exception:
             return None
 
-    # Products Sold chart: last 7 days only (keeps the dashboard list short)
     week_cutoff = datetime.now() - timedelta(days=7)
-    week_orders = []
+    week_sales_count = 0
     for order in all_orders:
         od = _order_dt(order)
         if od is not None and od >= week_cutoff:
-            week_orders.append(order)
+            week_sales_count += 1
 
     products_sold = {}
     videos_with_sales = {}
-    for order in week_orders:
-        if order.get("total_value", 0) <= 0:
+    for order in all_orders:
+        try:
+            if float(order.get("total_value") or 0) <= 0:
+                continue
+        except (TypeError, ValueError):
             continue
         for item in order.get("cart", []):
+            if not isinstance(item, dict):
+                continue
             product_name = item.get("product", "Unknown")
             products_sold[product_name] = products_sold.get(product_name, 0) + 1
             video_name = item.get("video_title", "Unknown Video")
@@ -11934,8 +12392,10 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
     products_sold_list = []
     for product, quantity in products_sold.items():
         product_revenue = 0
-        for order in week_orders:
+        for order in all_orders:
             for item in order.get("cart", []):
+                if not isinstance(item, dict):
+                    continue
                 if item.get("product", "") == product:
                     item_price = item.get("price", 0)
                     if not item_price or item_price <= 0:
@@ -11984,10 +12444,11 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
 
     return {
         "total_sales": total_sales,
-        "total_revenue": round(total_revenue, 2),
-        "avg_order_value": round(avg_order_value, 2),
+        "total_revenue": round(float(total_revenue or 0), 2),
+        "avg_order_value": round(float(avg_order_value or 0), 2),
         "products_sold_count": len(products_sold),
         "videos_with_sales_count": len(videos_with_sales),
+        "week_sales_count": week_sales_count,
         "sales_data": sales_data,
         "daily_sales": daily_sales,
         "products_sold": products_sold_list,
@@ -12033,80 +12494,75 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
     }
 
 
-def _umbrella_page_orders_for_analytics(list_id, owner_id):
-    """Sales attributed to one umbrella collaborator favorites page.
+def _load_sales_for_favorite_lists(owner_id, list_ids):
+    """Load persisted sales for collaborator page(s). Never select columns production lacks."""
+    from utils.payout import sales_rows_matching_lists
 
-    Prefer the sales table as the source of truth. In-memory order_store entries
-    are only added when not already persisted (avoids double-counting after webhook).
-    """
-    all_orders = []
-    list_id_str = str(list_id)
-    owner_id_str = str(owner_id)
-    seen_keys = set()
-
+    ids = [x for x in (list_ids or []) if x not in (None, "")]
+    if not ids:
+        return []
     client_to_use = supabase_admin if supabase_admin else supabase
-    sales_rows = []
-    if client_to_use:
-        try:
-            query = client_to_use.table("sales").select(
-                "id,product_name,amount,image_url,user_id,channel_id,creator_name,video_title,created_at,favorite_list_id"
-            )
-            query = query.eq("user_id", owner_id_str)
+    if not client_to_use:
+        return []
+    selects = (
+        "id,product_name,amount,image_url,user_id,channel_id,creator_name,video_title,created_at,favorite_list_id",
+        "id,product_name,amount,user_id,created_at,favorite_list_id",
+        "id,product_name,amount,user_id,favorite_list_id",
+    )
+    rows = None
+    if owner_id:
+        for cols in selects:
             try:
-                sales_result = query.eq("favorite_list_id", list_id).execute()
-                sales_rows = sales_result.data or []
-            except Exception:
-                sales_result = query.execute()
-                sales_rows = [
-                    s
-                    for s in (sales_result.data or [])
-                    if str(s.get("favorite_list_id") or "") == list_id_str
-                ]
-        except Exception as db_error:
-            logger.error("umbrella analytics sales query failed: %s", db_error)
-            sales_rows = []
-
-    for sale in sales_rows:
+                result = (
+                    client_to_use.table("sales")
+                    .select(cols)
+                    .eq("user_id", str(owner_id))
+                    .execute()
+                )
+                rows = result.data or []
+                break
+            except Exception as err:
+                logger.warning("collaborator sales select fallback: %s", err)
+                rows = None
+    if not rows:
+        rows = []
+        min_cols = selects[-1]
+        for lid in ids:
+            try:
+                result = (
+                    client_to_use.table("sales")
+                    .select(min_cols)
+                    .eq("favorite_list_id", str(lid))
+                    .execute()
+                )
+                rows.extend(result.data or [])
+            except Exception as err:
+                logger.warning("collaborator sales by list fallback: %s", err)
+    matched = sales_rows_matching_lists(rows, ids)
+    seen = set()
+    unique = []
+    for sale in matched:
         sale_id = sale.get("id")
         key = f"sale:{sale_id}" if sale_id is not None else None
         if key:
-            if key in seen_keys:
+            if key in seen:
                 continue
-            seen_keys.add(key)
-        order = _sale_record_to_order(sale)
-        fp = (
-            f"fp:{order.get('total_value')}|"
-            f"{(order.get('cart') or [{}])[0].get('product')}|"
-            f"{str(order.get('created_at') or '')[:16]}"
-        )
-        seen_keys.add(fp)
-        all_orders.append(order)
+            seen.add(key)
+        unique.append(sale)
+    return unique
 
-    for order_id, order_data in order_store.items():
-        if str(order_data.get("favorite_list_id") or "") != list_id_str:
-            continue
-        cart = order_data.get("cart") or []
-        first_product = (cart[0].get("product") if cart and isinstance(cart[0], dict) else "") or ""
-        total_value = order_data.get("total_value")
-        if not total_value:
-            total_value = sum((item.get("price") or 0) for item in cart if isinstance(item, dict)) or 0
-        created = order_data.get("created_at") or order_data.get("timestamp", "N/A")
-        fp = f"fp:{total_value}|{first_product}|{str(created)[:16]}"
-        if fp in seen_keys:
-            continue
-        mem_key = f"mem:{order_id}"
-        if mem_key in seen_keys:
-            continue
-        seen_keys.add(mem_key)
-        seen_keys.add(fp)
-        od = dict(order_data)
-        od["order_id"] = order_id
-        od["status"] = od.get("status") or "pending"
-        od["created_at"] = created
-        od["total_value"] = total_value
-        all_orders.append(od)
 
-    return all_orders
+def _umbrella_page_orders_for_analytics(list_id, owner_id, extra_list_ids=None):
+    """Sales attributed to one umbrella collaborator favorites page.
+
+    The sales table is the source of truth. In-memory order_store is not used:
+    leftover Fly-machine orders were resurfacing on Friends analytics after a
+    storefront reset deleted the persisted rows.
+    """
+    ids = [list_id]
+    if extra_list_ids:
+        ids.extend(extra_list_ids)
+    return [_sale_record_to_order(sale) for sale in _load_sales_for_favorite_lists(owner_id, ids)]
 
 
 @app.route("/api/favorite-lists/my-analytics", methods=["GET", "OPTIONS"])
@@ -12122,87 +12578,107 @@ def favorite_lists_my_analytics():
             return jsonify({"success": False, "error": "Server not configured"}), 503
         if not _is_umbrella_collaborator_only(user_id):
             return jsonify({"success": False, "error": "Only umbrella collaborators can view page analytics"}), 403
-        membership = _cf_approved_umbrella_membership(user_id)
+        membership = _cf_umbrella_membership_for_request(user_id)
         owner_id = (membership or {}).get("channel_owner_id")
-        member_list = _umbrella_member_list_for_user(user_id, owner_id)
+        member_lists = _umbrella_member_lists_for_user(user_id, owner_id)
+        member_list = member_lists[0] if member_lists else None
         if not owner_id or not member_list:
             payload = _empty_analytics_payload()
             payload["scope"] = "umbrella_page"
             return jsonify(payload), 200
         page_label = (member_list.get("display_name") or "Your favorites page").strip() or "Your favorites page"
-        all_orders = _umbrella_page_orders_for_analytics(member_list["id"], owner_id)
+        list_ids = [L.get("id") for L in member_lists if L and L.get("id")]
+        page_sales = _load_sales_for_favorite_lists(owner_id, list_ids)
+        all_orders = [_sale_record_to_order(sale) for sale in page_sales]
         payload = _analytics_payload_from_orders(all_orders, product_source_label=page_label)
-        owner = _cf_user_row(owner_id)
-        owner_label = (owner or {}).get("display_name") or (owner or {}).get("username") or "your storefront owner"
-        from utils.payout import aggregate_sales_payout_totals, apply_owner_fee_to_collab_totals
-
-        page_sales = []
-        try:
-            sales_q = (
-                supabase_admin.table("sales")
-                .select("product_name, amount")
-                .eq("user_id", str(owner_id))
-            )
-            try:
-                page_sales_res = sales_q.eq("favorite_list_id", member_list["id"]).execute()
-                page_sales = page_sales_res.data or []
-            except Exception:
-                all_res = sales_q.execute()
-                page_sales = [
-                    s
-                    for s in (all_res.data or [])
-                    if str(s.get("favorite_list_id") or "") == str(member_list["id"])
-                ]
-        except Exception:
-            page_sales = [
-                {
-                    "product_name": (item.get("product") or item.get("product_name") or ""),
-                    "amount": item.get("price") or order.get("total_value") or 0,
-                }
-                for order in all_orders
-                for item in (order.get("cart") or [])
-                if isinstance(item, dict)
-            ]
-        # Single source of truth for collaborator + platform ($6 / $6 on standard items)
-        owner_fee = _get_umbrella_owner_fee(owner_id, member_list["id"])
-        payout_totals = apply_owner_fee_to_collab_totals(
-            aggregate_sales_payout_totals(page_sales),
-            owner_fee["fee_type"],
-            owner_fee["fee_value"],
-        )
-        pay_collaborator = payout_totals["pay_collaborator_amount"]
-        platform_fee = payout_totals["platform_fee_amount"]
-        list_payouts = _umbrella_payouts_by_list(owner_id, [member_list["id"]]).get(
-            str(member_list["id"]), []
-        )
-        payout_bal = _umbrella_payout_balance_fields(pay_collaborator, list_payouts)
         payload["scope"] = "umbrella_page"
         payload["page_name"] = page_label
         payload["favorite_list_id"] = member_list.get("id")
+        owner = _cf_user_row(owner_id)
+        owner_label = (owner or {}).get("display_name") or (owner or {}).get("username") or "your storefront owner"
         payload["storefront_owner_name"] = owner_label
-        payload["collaborator_net_owed"] = payout_bal.get("balance_owed", pay_collaborator)
-        payload["lifetime_net"] = pay_collaborator
-        payload["pay_collaborator_amount"] = pay_collaborator
-        payload["platform_fee_amount"] = platform_fee
-        payload["merch_cost_amount"] = payout_totals["merch_cost_amount"]
-        payload["paid_total"] = payout_bal.get("paid_total", 0)
-        payload["is_paid_up"] = payout_bal.get("is_paid_up", False)
-        payload["can_record_payout"] = payout_bal.get("can_record_payout", False)
-        payload["payout_stale"] = payout_bal.get("payout_stale", False)
-        payload["last_payout"] = payout_bal.get("last_payout")
-        payload["recent_payouts"] = payout_bal.get("recent_payouts") or []
-        # Keep weekly summary cards on the same totals (fixes inflated platform fee)
-        payload["payout_summary"] = {
-            "gross_amount": payout_totals["gross_amount"],
-            "platform_fee_amount": platform_fee,
-            "merch_cost_amount": payout_totals["merch_cost_amount"],
-            "owner_net_payout": 0,
-            "collaborator_pay_total": pay_collaborator,
-        }
-        payload["payout_note"] = (
-            f"ScreenMerch pays {owner_label} when their pending earnings reach $50 or more. "
-            f"They are responsible for paying you monthly when your owed balance exceeds $50."
+        from utils.payout import (
+            aggregate_sales_payout_totals,
+            owner_collab_fee_per_item,
+            split_collab_sale_share,
         )
+
+        try:
+            owner_fee = _get_umbrella_owner_fee(owner_id, member_list["id"])
+            base_totals = aggregate_sales_payout_totals(page_sales)
+            fee_sum = 0.0
+            pay_sum = 0.0
+            share_sum = 0.0
+            fee_sales = []
+            for s in page_sales:
+                split = split_collab_sale_share(s, owner_fee)
+                fee_sum += float(split.get("owner_fee_amount") or 0)
+                pay_sum += float(split.get("pay_collaborator_amount") or 0)
+                share_sum += float(split.get("collaborator_share_before_fee") or 0)
+                fee_sales.append({
+                    "id": s.get("id"),
+                    "product_name": s.get("product_name") or "Item",
+                    "amount": round(float(s.get("amount") or 0), 2),
+                    "quantity": split["quantity"],
+                    "collaborator_share_before_fee": split["collaborator_share_before_fee"],
+                    "owner_fee_amount": split["owner_fee_amount"],
+                    "owner_fee_per_item": split["owner_fee_per_item"],
+                    "pay_collaborator_amount": split["pay_collaborator_amount"],
+                    "created_at": str(s.get("created_at") or ""),
+                })
+            pay_collaborator = round(pay_sum, 2)
+            platform_fee = float(base_totals["platform_fee_amount"] or 0)
+            owner_fee_amount = round(fee_sum, 2)
+            fee_per_item = owner_collab_fee_per_item(owner_fee["fee_type"], owner_fee["fee_value"])
+            share_before_fee = round(share_sum, 2)
+            payouts_by_list = _umbrella_payouts_by_list(
+                owner_id, list_ids, collaborator_user_id=user_id
+            )
+            list_payouts = _dedupe_payout_rows(
+                [payout for rows in payouts_by_list.values() for payout in (rows or [])]
+            )
+            payout_bal = _umbrella_payout_balance_fields(pay_collaborator, list_payouts)
+            fee_sales.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+            payload["collaborator_net_owed"] = payout_bal.get("balance_owed", pay_collaborator)
+            payload["lifetime_net"] = pay_collaborator
+            payload["pay_collaborator_amount"] = pay_collaborator
+            payload["platform_fee_amount"] = platform_fee
+            payload["merch_cost_amount"] = float(base_totals["merch_cost_amount"] or 0)
+            payload["owner_fee_amount"] = owner_fee_amount
+            payload["owner_fee_per_item"] = fee_per_item
+            payload["owner_fee_type"] = owner_fee.get("fee_type") or "none"
+            payload["owner_fee_value"] = owner_fee.get("fee_value") or 0
+            payload["collaborator_share_before_fee"] = share_before_fee
+            payload["fee_sales"] = fee_sales[:25]
+            payload["paid_total"] = payout_bal.get("paid_total", 0)
+            payload["is_paid_up"] = payout_bal.get("is_paid_up", False)
+            payload["can_record_payout"] = payout_bal.get("can_record_payout", False)
+            payload["payout_stale"] = payout_bal.get("payout_stale", False)
+            payload["last_payout"] = payout_bal.get("last_payout")
+            payload["recent_payouts"] = payout_bal.get("recent_payouts") or []
+            payload["payout_summary"] = {
+                "gross_amount": float(base_totals["gross_amount"] or 0),
+                "platform_fee_amount": platform_fee,
+                "merch_cost_amount": float(base_totals["merch_cost_amount"] or 0),
+                "owner_net_payout": 0,
+                "collaborator_pay_total": pay_collaborator,
+                "owner_fee_amount": owner_fee_amount,
+                "owner_fee_per_item": fee_per_item,
+                "collaborator_share_before_fee": share_before_fee,
+            }
+            if owner_fee_amount > 0:
+                payload["payout_note"] = (
+                    f"{owner_label} keeps ${fee_per_item:.2f} of your $6.00 share on each item. "
+                    f"Your payout below is after that storefront fee. "
+                    f"They pay you when your owed balance exceeds $50."
+                )
+            else:
+                payload["payout_note"] = (
+                    f"ScreenMerch pays {owner_label} when their pending earnings reach $50 or more. "
+                    f"They are responsible for paying you when your owed balance exceeds $50."
+                )
+        except Exception as enrich_err:
+            logger.exception("favorite_lists_my_analytics payout enrich: %s", enrich_err)
         return jsonify(payload), 200
     except Exception as e:
         logger.exception("favorite_lists_my_analytics: %s", e)
@@ -13219,27 +13695,19 @@ def get_analytics():
         logger.info(f"🔍 Debug: all_orders length = {len(all_orders)}")
         logger.info(f"🔍 Debug: order_store length = {len(order_store)}")
         
-        # Get unique products sold (last 7 days only — keeps Products Sold chart short)
+        # Unique products sold (all recorded sales — matches Total Sales)
         from datetime import datetime, timedelta
         products_sold = {}
         videos_with_sales = {}
-        week_cutoff = datetime.now() - timedelta(days=7)
         
         for order in all_orders:
             # Skip orders with $0 value
             if order.get('total_value', 0) <= 0:
                 continue
-            try:
-                created = order.get('created_at')
-                if not created or created == 'N/A':
-                    continue
-                order_date = datetime.fromisoformat(str(created).replace('Z', '+00:00')).replace(tzinfo=None)
-                if order_date < week_cutoff:
-                    continue
-            except Exception:
-                continue
                 
             for item in order.get('cart', []):
+                if not isinstance(item, dict):
+                    continue
                 product_name = item.get('product', 'Unknown')
                 if product_name not in products_sold:
                     products_sold[product_name] = 0
@@ -13309,21 +13777,14 @@ def get_analytics():
                 'net_revenue': round(day_owner_net, 2),
             })
         
-        # Calculate actual revenue per product (last 7 days only)
+        # Calculate actual revenue per product
         products_sold_list = []
         for product, quantity in products_sold.items():
             product_revenue = 0
             for order in all_orders:
-                try:
-                    created = order.get('created_at')
-                    if not created or created == 'N/A':
-                        continue
-                    order_date = datetime.fromisoformat(str(created).replace('Z', '+00:00')).replace(tzinfo=None)
-                    if order_date < week_cutoff:
-                        continue
-                except Exception:
-                    continue
                 for item in order.get('cart', []):
+                    if not isinstance(item, dict):
+                        continue
                     if item.get('product', '') == product:
                         item_price = item.get('price', 0)
                         if not item_price or item_price <= 0:

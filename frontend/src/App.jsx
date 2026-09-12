@@ -12,7 +12,6 @@ import ChannelInvites from "./Pages/ChannelInvites/ChannelInvites";
 import SubscriptionTiers from "./Pages/SubscriptionTiers/SubscriptionTiers";
 import SubscriptionSuccess from "./Pages/SubscriptionSuccess/SubscriptionSuccess";
 import OrderSuccess from "./Pages/OrderSuccess/OrderSuccess";
-import Sidebar from "./Components/Sidebar/Sidebar";
 import ComingSoon from "./Pages/ComingSoon/ComingSoon";
 import Admin from "./Pages/Admin/Admin";
 import AuthForm from "./Components/AuthForm";
@@ -42,33 +41,18 @@ import FriendPages from "./Pages/FriendPages/FriendPages";
 import Shop from "./Pages/Shop/Shop";
 import DemoDashboard from "./Pages/DemoDashboard/DemoDashboard";
 import UmbrellaJoin from "./Pages/UmbrellaJoin/UmbrellaJoin";
-import { API_CONFIG } from "./config/apiConfig";
 import { CreatorProvider } from "./contexts/CreatorContext";
 import { isCreatorStorefrontHostname } from "./utils/subdomainService";
 
 const App = () => {
-  // Sidebar starts closed by default for cleaner look
-  const [sidebar, setSidebar] = useState(false);
+  // Pages keep the full-width layout (the old sidebar menu is gone).
+  const sidebar = false;
   const [category, setCategory] = useState(0);
-  const [currentProfileTier, setCurrentProfileTier] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [isMobile, setIsMobile] = useState(false);
   const resetCategory = () => setSelectedCategory('All');
   const location = useLocation();
   const navigate = useNavigate();
   const oauthSuccessProcessedRef = useRef(false);
-
-  // Detect mobile screen size
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 900);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Apex vs creator storefront: hide 1-2-3 bar on subdomains (CSS), keep markup for easy restore
   useEffect(() => {
@@ -221,37 +205,6 @@ const App = () => {
       }
     } catch (_) {}
   }, [location.pathname, navigate]);
-  
-  // Check if current route is a profile page and fetch subscription data
-  useEffect(() => {
-    const checkProfileTier = async () => {
-      const profileMatch = location.pathname.match(/^\/profile\/(.+)$/);
-      if (profileMatch) {
-        const username = profileMatch[1];
-        try {
-          const response = await fetch(`${API_CONFIG.ENDPOINTS.USER_SUBSCRIPTION}/${username}/subscription`);
-          if (response.ok) {
-            const data = await response.json();
-            setCurrentProfileTier(data);
-          } else {
-            setCurrentProfileTier({ isThirdTier: false });
-          }
-        } catch (error) {
-          console.error('Error fetching subscription data:', error);
-          setCurrentProfileTier({ isThirdTier: false });
-        }
-      } else {
-        setCurrentProfileTier(null);
-      }
-    };
-    
-    checkProfileTier();
-  }, [location.pathname]);
-  
-  // Close hamburger drawer after navigation (Favorites / Home / etc.)
-  useEffect(() => {
-    setSidebar(false);
-  }, [location.pathname]);
 
   // Open each route at the true top so sticky header never covers the first heading.
   // Video pages position themselves, so leave those alone.
@@ -278,9 +231,6 @@ const App = () => {
     };
   }, [location.pathname, location.search]);
 
-  // Hide main sidebar for third tier profile pages
-  const shouldShowSidebar = sidebar && !(currentProfileTier?.isThirdTier);
-  
   const isFavoritesPage = /^\/favorites(\/|$)/.test(location.pathname);
   const isFriendPages = location.pathname === '/friend-pages';
   const isShopPage = location.pathname === '/shop';
@@ -290,30 +240,37 @@ const App = () => {
   const isOrderSuccessPage = location.pathname === '/order-success' || location.pathname === '/success';
   const isMerchandisePage = location.pathname === '/merchandise' || location.pathname.startsWith('/product');
   const useStorefrontChrome = isFavoritesPage || isFriendPages || isShopPage || isToolsPage || isMerchandisePage;
-  const showDesktopSidebar = shouldShowSidebar && !isMobile && !isOrderSuccessPage;
+  const isStorefrontHome = location.pathname === '/' && isCreatorStorefrontHostname();
 
   console.log('🚀 App.jsx rendering - current path:', location.pathname);
   
   return (
     <CreatorProvider>
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div
+        className={isStorefrontHome ? 'app-shell app-shell--storefront-home' : 'app-shell'}
+        style={isStorefrontHome ? undefined : { display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
+      >
         <Navbar
-          sidebar={sidebar}
-          setSidebar={setSidebar}
           resetCategory={resetCategory}
-          category={category}
-          setCategory={setCategory}
         />
         <div id="page-top-banner" className="page-top-banner" aria-hidden="true" />
-        <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
-          {showDesktopSidebar && (
-          <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} setSidebar={setSidebar} />
-          )}
+        <div
+          className="app-shell-body"
+          style={{ display: 'flex', flex: '1 1 auto', minHeight: isStorefrontHome ? 'auto' : 0 }}
+        >
           <div
             className={`main-content-area${useStorefrontChrome ? ' main-content-area--storefront-subpage' : ''}${isVideoPage ? ' main-content-area--video' : ''}${isOrderSuccessPage ? ' main-content-area--order-success' : ''}`}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: isStorefrontHome ? 'auto' : 0 }}
           >
-            <div className="main-content-inner" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'visible' }}>
+            <div
+              className="main-content-inner"
+              style={{
+                flex: '1 1 auto',
+                minHeight: isStorefrontHome ? 'auto' : 0,
+                overflow: 'visible',
+                ...(isStorefrontHome ? { display: 'flex', flexDirection: 'column' } : {}),
+              }}
+            >
               <Routes>
                 <Route path="/" element={<Home sidebar={sidebar} category={category} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />} />
                 <Route path="/video/:categoryId/:videoId" element={<Video sidebar={sidebar} />} />

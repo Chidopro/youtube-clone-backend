@@ -50,25 +50,17 @@ nav.nav-dropdown-active {
 
 .nav-middle,
 .nav-middle .search-box {
-    display: none !important;
+    display: flex;
 }
 
 @media (min-width: 769px) {
     nav:not(.nav--logo-horizontal) .nav-middle,
     nav:not(.nav--logo-horizontal) .nav-middle .search-box {
-        display: flex !important;
+        display: flex;
     }
 }
 
-/* Keep search off on phones, including landscape (width often ≥769px). */
 @media (max-width: 1023px) {
-    nav .nav-middle,
-    nav .nav-middle .search-box,
-    nav:not(.nav--logo-horizontal) .nav-middle,
-    nav:not(.nav--logo-horizontal) .nav-middle .search-box {
-        display: none !important;
-    }
-
     nav .nav-center-right:not(:has(.nav-cart-btn)) {
         padding-right: 10px;
     }
@@ -86,17 +78,21 @@ nav.nav-dropdown-active {
     gap: 10px;
 }
 
-/* Sign In button – white fill, blue border + blue text */
-.sign-in-btn {
-    border: 2px solid #065fd4;
-    padding: 8px 12px; /* Match Sign Up button padding */
+/* Header Sign In / Sign Up / Sign Out: text only */
+nav .sign-in-btn,
+nav .nav-right .subscribe-btn {
+    border: none;
+    padding: 6px 0;
     border-radius: 0;
     cursor: pointer;
-    font-size: 14px !important; /* Match Sign Up – congruent button text */
-    font-weight: 500;
+    font-size: 14px !important;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     line-height: 1;
-    height: 32px;
-    transition: all 0.2s ease;
+    height: auto;
+    width: auto;
+    min-width: 0;
+    max-width: none;
     margin-right: 0;
     white-space: nowrap;
     text-decoration: none;
@@ -107,57 +103,27 @@ nav.nav-dropdown-active {
     pointer-events: auto;
     z-index: 10001;
     position: relative;
-    background-color: #fff;
-    color: #065fd4;
+    background: transparent;
+    color: #222;
+    box-sizing: border-box;
+    overflow: visible;
+    transform: none;
 }
 
-/* Duplicate removed - styling now in main .sign-in-btn rule above */
-
-.sign-in-btn:hover {
-    background-color: #e8f1fc;
-    color: #0448a0;
-    border-color: #0448a0;
-    transform: translateY(-1px);
+nav .sign-in-btn:hover,
+nav .nav-right .subscribe-btn:hover {
+    background: transparent;
+    color: #000;
+    border: none;
+    transform: none;
 }
 
-/* Sign Up button – white fill, red border + red text */
-.nav-right .subscribe-btn {
-    border: 2px solid #cc0000;
-    padding: 8px 12px;
-    border-radius: 0;
-    cursor: pointer;
-    font-size: 14px !important; /* Same as .sign-in-btn – congruent */
-    font-weight: 500;
-    line-height: 1;
-    height: 32px;
-    transition: all 0.2s ease;
-    margin-right: 0;
-    white-space: nowrap;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: none;
-    pointer-events: auto;
-    z-index: 10001; /* Match Sign In button z-index */
-    position: relative; /* Match Sign In button position */
-    background: #fff;
-    color: #cc0000;
-}
-
-.nav-right .subscribe-btn:hover {
-    background: #fde8e8;
-    color: #a00000;
-    border-color: #a00000;
-    transform: translateY(-1px);
-}
-
-.nav-right .subscribe-btn:disabled {
-    background: #fff;
-    color: #999;
+nav .nav-right .subscribe-btn:disabled {
+    background: transparent;
+    color: #888;
     cursor: not-allowed;
     transform: none;
-    border-color: #999;
+    border: none;
 }
 
 .nav-right > a[href="/upload"],
@@ -170,12 +136,17 @@ nav.nav-dropdown-active {
     margin-right: 8px;
 }
 
+.nav-right:has(.sign-in-btn),
+.nav-right:has(.subscribe-btn) {
+    gap: 16px;
+}
+
 nav .sign-in-btn,
 nav .nav-right .subscribe-btn {
     box-sizing: border-box;
-    width: 68px;
-    min-width: 68px;
-    max-width: 68px;
+    width: auto;
+    min-width: 0;
+    max-width: none;
     padding-left: 0;
     padding-right: 0;
     justify-content: center;
@@ -267,6 +238,13 @@ nav .nav-right .subscribe-btn {
     overflow: visible;
 }
 
+.navbar-logo-mark {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
 .storefront-nav-links {
     display: flex;
     align-items: center;
@@ -295,42 +273,58 @@ nav .nav-right .subscribe-btn {
     box-shadow: inset 0 -2px 0 #111;
 }
 
+/* Storefront Sign In / Sign Up / Sign Out: text only, same as Page / Friends / Shop. */
+body.creator-storefront nav .sign-in-btn,
+body.creator-storefront nav .nav-right .subscribe-btn {
+    border: none !important;
+    background: transparent !important;
+    color: #222 !important;
+    box-shadow: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    padding: 6px 0 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    transform: none !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+
+body.creator-storefront nav .sign-in-btn:hover,
+body.creator-storefront nav .nav-right .subscribe-btn:hover {
+    background: transparent !important;
+    color: #000 !important;
+    border: none !important;
+    transform: none !important;
+}
+
+body.creator-storefront nav .nav-right .subscribe-btn:disabled {
+    background: transparent !important;
+    color: #888 !important;
+    border: none !important;
+}
+
+body.creator-storefront nav .nav-right {
+    gap: 16px;
+}
+
+@media (min-width: 769px) {
+    body.creator-storefront nav .nav-right {
+        align-self: center;
+        padding-bottom: 0;
+    }
+}
+
 body.creator-storefront nav {
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
 }
 
 .storefront-tab-bar {
     display: none;
-}
-
-.navbar-logo-edit {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    width: 26px;
-    height: 26px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(102, 126, 234, 0.95);
-    color: #fff;
-    border-radius: 6px;
-    text-decoration: none;
-    line-height: 1;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
-    transition: background 0.2s, transform 0.2s;
-    z-index: 10;
-    pointer-events: auto;
-}
-
-.navbar-logo-edit svg {
-    flex-shrink: 0;
-    color: #fff;
-}
-
-.navbar-logo-edit:hover {
-    background: rgba(102, 126, 234, 1);
-    transform: scale(1.05);
 }
 
 .nav-middle .search-box{
@@ -348,8 +342,44 @@ body.creator-storefront nav {
     transition: border-color 0.2s ease;
 }
 
-.nav-middle .search-box:focus-within {
+.nav-middle .search-box-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.nav-middle .search-box:focus-within,
+.nav-middle .search-box.is-open {
     border-color: #065fd4;
+}
+
+.nav-middle .search-input-slot {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.nav-middle .search-autofill {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    font-size: 14px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.nav-middle .search-autofill-typed {
+    color: transparent;
+}
+
+.nav-middle .search-autofill-rest {
+    color: #9aa0a6;
 }
 
 .nav-middle .search-box input{
@@ -363,6 +393,96 @@ body.creator-storefront nav {
     min-height: 0;
     padding: 0;
     margin: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.search-suggest {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 10080;
+    margin: 0;
+    padding: 6px 0;
+    list-style: none;
+    min-width: 100%;
+    width: max(100%, 280px);
+    max-height: min(360px, 70vh);
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.search-suggest button {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+}
+
+.search-suggest button.is-active,
+.search-suggest button:hover {
+    background: #f3f4f6;
+}
+
+.search-suggest img,
+.search-suggest-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.search-suggest-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #e5e7eb;
+    color: #444;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.search-suggest-copy {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.search-suggest-name {
+    color: #111;
+    font-size: 14px;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-suggest-host {
+    color: #6b7280;
+    font-size: 11px;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-suggest-empty {
+    padding: 12px;
+    color: #6b7280;
+    font-size: 13px;
 }
 
 .nav-middle .search-box  img{
@@ -381,6 +501,13 @@ body.creator-storefront nav {
 }
 
 @media (max-width: 768px){
+    html,
+    body,
+    #root {
+        overflow-x: hidden;
+        max-width: 100%;
+    }
+
     nav {
         display: flex !important;
         flex-wrap: nowrap;
@@ -388,7 +515,7 @@ body.creator-storefront nav {
         align-items: center;
         gap: 8px;
         min-height: 80px;
-        padding: 4px 12px 6px 0 !important;
+        padding: 4px 12px 6px 12px !important;
         overflow-x: visible;
         width: 100%;
         max-width: 100vw;
@@ -460,17 +587,19 @@ body.creator-storefront nav {
         min-width: 0;
         display: flex !important;
         align-items: center !important;
-        margin: 0 12px 0 22px !important;
+        margin: 0 12px 0 0 !important;
         padding: 0 !important;
         line-height: 0;
     }
 
-    .navbar-logo-edit {
-        display: none !important;
+    body.creator-storefront nav .navbar-logo-wrap {
+        align-self: stretch !important;
+        align-items: flex-start !important;
+        padding-top: 8px !important;
     }
 
     .navbar-logo-wrap--square {
-        margin-left: 22px !important;
+        margin-left: 0 !important;
     }
 
     .nav-left,
@@ -605,7 +734,8 @@ body.creator-storefront nav {
         object-position: left center !important;
         display: block;
     }
-    .navbar-logo-wrap > a {
+    .navbar-logo-wrap > a,
+    .navbar-logo-mark > a {
         display: block;
         line-height: 0;
         margin: 0;
@@ -616,7 +746,7 @@ body.creator-storefront nav {
     }
     .nav-middle .search-box {
         width: 100%;
-        max-width: 132px;
+        max-width: 224px;
         min-width: 0;
         height: 28px;
         min-height: 28px;
@@ -632,13 +762,22 @@ body.creator-storefront nav {
         width: 100%;
         min-width: 0;
         height: 100%;
-        font-size: 10px;
+        font-size: 16px !important;
         line-height: 1;
      }
+    .nav-middle .search-autofill {
+        font-size: 16px;
+    }
     .nav-center-right {
-        flex-direction: row; /* Keep horizontal layout */
-        gap: 8px;
-        align-items: center;
+        display: grid !important;
+        grid-template-columns: auto auto;
+        grid-template-areas:
+            "search ."
+            ". auth";
+        column-gap: 0;
+        row-gap: 6px;
+        justify-content: end;
+        align-items: end;
         align-self: auto;
         margin-left: 0;
         margin-right: 0;
@@ -651,13 +790,13 @@ body.creator-storefront nav {
         min-width: 0;
         overflow: visible;
         box-sizing: border-box;
-        justify-content: flex-end;
         padding-bottom: 6px;
     }
     
     .nav-right {
+        grid-area: auth;
         flex-direction: row; /* Make buttons side by side on mobile */
-        gap: 2px;
+        gap: 16px;
         align-items: center;
         align-self: auto;
         justify-content: flex-end; /* Align to right */
@@ -686,133 +825,102 @@ body.creator-storefront nav {
         margin-left: 0;
     }
     
-    /* Search bar styling */
+    /* Search sits toward the middle; its box corner is kitty-corner to Sign In */
     .nav-middle {
-        flex: 0 1 132px;
-        max-width: 132px;
-        min-width: 0;
+        grid-area: search;
+        flex: 0 0 auto;
+        width: min(224px, calc(100vw - 96px));
+        max-width: min(224px, calc(100vw - 96px));
+        min-width: 108px;
         margin-right: 0;
+        display: flex;
     }
-         /* Sign In button mobile styling - COMPACT SIZE */
-         nav .sign-in-btn {
-         padding: 4px 0 !important;
-         font-size: 10px !important; /* Smaller font */
+
+    .nav-middle .search-box-wrap {
+        display: flex;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        position: relative;
+    }
+
+    .search-suggest {
+        left: 0;
+        right: 0;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+         /* Sign In / Sign Up mobile: text only */
+         nav .sign-in-btn,
+         nav .nav-right .subscribe-btn {
+         padding: 6px 0 !important;
+         font-size: 14px !important;
          border-radius: 0;
          white-space: nowrap;
-         width: 58px;
-         min-width: 58px;
-         max-width: 58px;
+         width: auto !important;
+         min-width: 0 !important;
+         max-width: none !important;
          text-align: center;
-         font-weight: 500;
-         transition: all 0.2s ease;
+         font-weight: 600;
          margin: 0 !important;
          display: inline-flex !important;
-         flex-shrink: 0; /* Don't shrink */
+         flex-shrink: 0;
          justify-content: center;
          align-items: center;
-         border: 2px solid #065fd4 !important;
+         border: none !important;
          box-shadow: none;
-         overflow: hidden;
-         text-overflow: ellipsis;
+         overflow: visible;
+         text-overflow: unset;
          z-index: 10001;
          position: relative;
-         background-color: #fff !important;
-         color: #065fd4 !important;
-         height: 28px; /* Smaller height */
+         background: transparent !important;
+         color: #222 !important;
+         height: auto !important;
      }
 
-     nav .sign-in-btn:hover {
-         background-color: #e8f1fc !important;
-         color: #0448a0 !important;
-         border-color: #0448a0 !important;
-     }
-     
-     /* Start Free button mobile styling - COMPACT SIZE */
-     nav .nav-right .subscribe-btn {
-         padding: 4px 0 !important;
-         font-size: 10px !important; /* Smaller font */
-         border-radius: 0;
-         white-space: nowrap;
-         width: 58px;
-         min-width: 58px;
-         max-width: 58px;
-         text-align: center;
-         font-weight: 500;
-         transition: all 0.2s ease;
-         margin: 0 !important;
-         display: inline-flex !important;
-         flex-shrink: 0; /* Don't shrink */
-         justify-content: center;
-         align-items: center;
-         border: 2px solid #cc0000 !important;
-         box-shadow: none;
-         overflow: hidden;
-         text-overflow: ellipsis;
-         z-index: 10001;
-         position: relative;
-         background: #fff !important;
-         color: #cc0000 !important;
-         height: 28px; /* Smaller height */
-     }
-
+     nav .sign-in-btn:hover,
      nav .nav-right .subscribe-btn:hover {
-         background: #fde8e8 !important;
-         color: #a00000 !important;
-         border-color: #a00000 !important;
+         background: transparent !important;
+         color: #000 !important;
+         border: none !important;
      }
-     
-     /* Override removed - complete styling now in rule above */
-    /* Duplicate removed - styling now in main .sign-in-btn rule above */
 }
 
 /* Extra small mobile devices */
 @media (max-width: 480px) {
-    /* Sign In button small mobile styling - COMPACT SIZE */
-    nav .sign-in-btn {
-        padding: 3px 0 !important;
-        font-size: 9px; /* Smaller font */
-        width: 54px;
-        min-width: 54px;
-        max-width: 54px;
-        border-radius: 0;
-        display: inline-flex; /* Ensure side-by-side layout on small screens */
-        border: 2px solid #065fd4;
-        background-color: #fff;
-        color: #065fd4;
-        z-index: 10001;
-        position: relative;
-        height: 24px; /* Smaller height */
-    }
-    
-    /* Start Free button small mobile styling - COMPACT SIZE */
+    nav .sign-in-btn,
     nav .nav-right .subscribe-btn {
-        padding: 3px 0 !important;
-        font-size: 9px; /* Smaller font */
-        width: 54px;
-        min-width: 54px;
-        max-width: 54px;
+        padding: 6px 0 !important;
+        font-size: 13px !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
         border-radius: 0;
-        display: inline-flex; /* Ensure side-by-side layout on small screens */
-        border: 2px solid #cc0000;
-        background: #fff;
-        color: #cc0000;
+        display: inline-flex;
+        border: none !important;
+        background: transparent !important;
+        color: #222 !important;
         z-index: 10001;
         position: relative;
-        height: 24px; /* Smaller height */
+        height: auto !important;
         margin: 0 !important;
+        font-weight: 600;
     }
 
     .nav-middle .search-box {
-        height: 24px;
-        min-height: 24px;
-        max-height: 24px;
+        height: 28px;
+        min-height: 28px;
+        max-height: 28px;
         padding: 0 8px !important;
     }
     
     .nav-center-right {
         margin-right: 0; /* Remove right margin to align with purple bar like hamburger menu */
         max-width: none;
-        gap: 12px;
+        gap: 6px;
     }
     
     .nav-right {
@@ -824,8 +932,20 @@ body.creator-storefront nav {
     }
     
     .nav-middle {
-        max-width: 120px;
-        flex: 0 1 120px;
+        width: min(204px, calc(100vw - 88px));
+        max-width: min(204px, calc(100vw - 88px));
+        flex: 0 0 auto;
+        display: flex;
+    }
+
+    .search-suggest {
+        left: 0;
+        right: 0;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
     }
 }
 
@@ -882,7 +1002,33 @@ body.creator-storefront nav {
         align-items: center;
         min-width: 0;
         padding-right: 0;
-        margin-left: 20px;
+        margin-left: 0;
+    }
+
+    /* Storefront: logo sits at the top of the bar; Page / Friends / Shop stay centered. */
+    body.creator-storefront nav .navbar-logo-wrap,
+    body.creator-storefront nav .navbar-logo-wrap--square,
+    body.creator-storefront nav .navbar-logo-wrap--horizontal {
+        align-self: stretch;
+        align-items: center;
+    }
+
+    body.creator-storefront nav .navbar-logo-wrap > a,
+    body.creator-storefront nav .navbar-logo-mark {
+        align-self: flex-start;
+        padding-top: 8px;
+        line-height: 0;
+        display: block;
+    }
+
+    body.creator-storefront nav .navbar-logo-mark > a {
+        display: block;
+        line-height: 0;
+        padding: 0;
+    }
+
+    body.creator-storefront nav .storefront-nav-links {
+        align-self: center;
     }
 
     /* Horizontal wordmark: 3-dots beside the logo text, not the bar bottom. */
@@ -900,7 +1046,7 @@ body.creator-storefront nav {
     nav.nav--logo-horizontal .navbar-logo-wrap,
     nav.nav--logo-horizontal .navbar-logo-wrap--square,
     nav.nav--logo-horizontal .navbar-logo-wrap--horizontal {
-        margin-left: 2px;
+        margin-left: 0;
     }
 
     .navbar-logo-wrap .logo,
@@ -929,6 +1075,7 @@ body.creator-storefront nav {
     .nav-middle {
         display: flex;
         align-items: center;
+        overflow: visible;
     }
 
     .nav-middle .search-box {
@@ -982,49 +1129,27 @@ body.creator-storefront nav {
     .nav-right .user-profile-menu + .nav-cart-btn {
         margin-left: 0;
     }
-    /* Sign In button desktop styling */
-    .sign-in-btn {
-        padding: 4px 0;
-        font-size: 14px !important;
-        font-weight: 500;
-        line-height: 1;
-        height: 24px;
-        border-radius: 0;
-        white-space: nowrap;
-        margin-right: 0;
-        display: inline-flex;
-        width: 68px;
-        min-width: 68px;
-        max-width: 68px;
-        border: 2px solid #065fd4;
-        background-color: #fff;
-        color: #065fd4;
-        z-index: 10001;
-        position: relative;
-    }
-    
-    /* Sign Up button desktop styling */
+    /* Sign In / Sign Up desktop: text only */
+    .sign-in-btn,
     .nav-right .subscribe-btn {
-        padding: 4px 0;
+        padding: 6px 0;
         font-size: 14px !important;
-        font-weight: 500;
+        font-weight: 600;
         line-height: 1;
-        height: 24px;
+        height: auto;
         border-radius: 0;
         white-space: nowrap;
         margin-right: 0;
         display: inline-flex;
-        width: 68px;
-        min-width: 68px;
-        max-width: 68px;
-        border: 2px solid #cc0000;
-        background: #fff;
-        color: #cc0000;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        border: none;
+        background: transparent;
+        color: #222;
         z-index: 10001;
         position: relative;
     }
-    
-    /* Override removed - complete styling now in rule above */
 }
 
 .loading-spinner-navbar {
@@ -1117,7 +1242,10 @@ body.creator-storefront nav {
 .user-dropdown--portal {
     position: fixed;
     left: auto;
-    width: min(220px, calc(100vw - 20px));
+    width: min(280px, calc(100vw - 20px));
+    max-width: calc(100vw - 20px);
+    overflow: hidden;
+    box-sizing: border-box;
     z-index: 100001;
     margin-top: 0;
     display: flex;
@@ -1131,6 +1259,20 @@ body.creator-storefront nav {
     font-size: 14px;
     padding: 0 16px;
     color: #333;
+}
+
+.user-dropdown-identity {
+    min-width: 0;
+    white-space: normal;
+}
+
+.user-dropdown-identity strong {
+    display: block;
+    margin-top: 4px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.35;
 }
 
 .user-dropdown hr {
@@ -1385,7 +1527,7 @@ body.creator-storefront nav {
 
     /* Apex has no cart; keep a sliver of inset so Sign Up is not flush to the screen. */
     .nav-center-right:not(:has(.nav-cart-btn)) {
-        right: 4px !important;
+        right: 8px !important;
         padding-right: 0 !important;
     }
 
@@ -1404,6 +1546,6 @@ body.creator-storefront nav {
 
     nav.nav--logo-horizontal .navbar-logo-wrap,
     nav.nav--logo-horizontal .navbar-logo-wrap--horizontal {
-        margin-left: 16px !important;
+        margin-left: 0 !important;
     }
 }

@@ -20,8 +20,18 @@ const FAQ_SECTIONS = [
         a: 'FrameSnag is a free Google Chrome extension for ScreenMerch creators (desktop). After your storefront is approved, install FrameSnag from the Chrome Web Store or from the download link in Dashboard → Pages. Open one of your own YouTube videos (FrameSnag only works on your videos), use FrameSnag to capture high-quality frames or thumbnails, and send them to your ScreenMerch page. Those images become artwork fans can put on merch. You can also paste a capture into Pages with Ctrl+V (Cmd+V on Mac) when FrameSnag opens your dashboard.',
       },
       {
+        id: 'creator-earnings',
         q: 'How much do I earn per sale?',
-        a: 'Creators earn $6 per sale on every product. ScreenMerch pays storefront owners when pending earnings reach the $50 minimum.',
+        a: (
+          <>
+            <p>
+              Creators earn $6 per sale on every product. ScreenMerch pays storefront owners when pending earnings reach the $50 minimum.
+            </p>
+            <p>
+              <Link to="/subscription-tiers">See an example earnings illustration</Link> for a sample month of mug sales.
+            </p>
+          </>
+        ),
       },
       {
         q: 'Why are storefront spots limited?',
@@ -70,6 +80,19 @@ const FAQ_SECTIONS = [
     title: 'Fans & shopping',
     items: [
       {
+        id: 'add-to-home-screen',
+        q: 'How do I put ScreenMerch on my phone?',
+        a: (
+          <>
+            <p>
+              ScreenMerch is a website, so there is no App Store or Play Store listing. Open the ScreenMerch site or storefront you want to keep, then save it to your home screen. The mug icon opens that page.
+            </p>
+            <p>iPhone: use Safari, tap Share, then Add to Home Screen.</p>
+            <p>Android: use Chrome, tap the menu, then Add to Home screen or Install app.</p>
+          </>
+        ),
+      },
+      {
         q: 'I just want a customer account.',
         a: 'You don’t need to be a creator to shop. Create a customer account, then visit a creator’s storefront (for example theirname.screenmerch.com), pick a video moment or page image, place the image on a product, and check out.',
       },
@@ -90,15 +113,23 @@ const FAQ = () => {
   const location = useLocation();
   const [openKey, setOpenKey] = useState('');
 
-  // Every visit (including from dashboard dropdown): all closed, scroll to top
+  // Menu visits start closed at the top. Hash links (footer) open that item.
   useEffect(() => {
+    const hash = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+    if (hash) {
+      setOpenKey(hash);
+      const t = window.setTimeout(() => {
+        document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+      return () => window.clearTimeout(t);
+    }
     setOpenKey('');
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
     const main = document.querySelector('.main-content-area');
     if (main) main.scrollTop = 0;
-  }, [location.key, location.pathname, location.state]);
+  }, [location.key, location.pathname, location.state, location.hash]);
 
   const toggle = (key) => {
     setOpenKey((prev) => (prev === key ? '' : key));
@@ -117,10 +148,10 @@ const FAQ = () => {
             <h2 className="faq-section-title">{section.title}</h2>
             <div className="faq-list">
               {section.items.map((item, index) => {
-                const key = `${section.id}-${index}`;
+                const key = item.id || `${section.id}-${index}`;
                 const isOpen = openKey === key;
                 return (
-                  <div key={key} className={`faq-item ${isOpen ? 'open' : ''}`}>
+                  <div key={key} id={item.id} className={`faq-item ${isOpen ? 'open' : ''}`}>
                     <button
                       type="button"
                       className="faq-question"
@@ -146,7 +177,7 @@ const FAQ = () => {
             className="faq-cta-primary"
             onClick={() => navigate('/subscription-tiers', { state: { intent: 'creator' } })}
           >
-            Unlock your free storefront
+            See example earnings
           </button>
           <Link to="/how-it-works" className="faq-cta-secondary">
             How it works

@@ -334,7 +334,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
 
   return (
     <>
-      <div className={`container home-page ${sidebar ? "" : " large-container"}`}>
+      <div className={`container home-page${isMainSite ? '' : ' home-page--hubs'} ${sidebar ? "" : " large-container"}`}>
         {/* Launch banner: main site only (not creator subdomains) */}
         {isMainSite ? (
           <Link
@@ -423,8 +423,8 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         />
 
 
-        {/* Main site: creator directory. Subdomains: hub row + video feed. */}
-        {((isMainSite && loading) || (!isMainSite && (loading || hubsLoading))) && (
+        {/* Main site: creator directory. Subdomains: Page / Friends / Shop only. */}
+        {((isMainSite && loading) || (!isMainSite && hubsLoading)) && (
           <div style={{padding: 24}}>Loading...</div>
         )}
         {error && <div style={{padding: 24, color: 'red'}}>{error}</div>}
@@ -441,55 +441,14 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
             }}
           />
         )}
-        {!loading && !hubsLoading && !error && !isMainSite && (
-          <>
-            <Feed
-              videos={videos}
-              favoritesPreview={favoritesPreview}
-              friendPagePreview={friendPagePreview}
-              shopPreview={shopPreview}
-              showHubs
-            />
-            {videos.length === 0 && (
-              <div className="storefront-empty">
-                <div
-                  className={`storefront-empty-card${canEdit ? ' storefront-empty-card--clickable' : ''}`}
-                  role={canEdit ? 'button' : undefined}
-                  tabIndex={canEdit ? 0 : undefined}
-                  onClick={canEdit ? () => navigate('/dashboard?tab=favorites') : undefined}
-                  onKeyDown={
-                    canEdit
-                      ? (e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            navigate('/dashboard?tab=favorites');
-                          }
-                        }
-                      : undefined
-                  }
-                >
-                  <h3>No videos yet</h3>
-                  <p>
-                    {canEdit
-                      ? 'This storefront is live. Add your first video from the dashboard to start selling merch.'
-                      : 'This creator hasn\'t added videos yet. Check back soon.'}
-                  </p>
-                  {canEdit && (
-                    <button
-                      type="button"
-                      className="storefront-empty-cta"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/upload');
-                      }}
-                    >
-                      Add videos
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </>
+        {!hubsLoading && !error && !isMainSite && (
+          <Feed
+            videos={videos}
+            favoritesPreview={favoritesPreview}
+            friendPagePreview={friendPagePreview}
+            shopPreview={shopPreview}
+            showHubs
+          />
         )}
       </div>
       <DemoStorefrontWelcome isOpen={showDemoWelcome} onClose={dismissDemoWelcome} />

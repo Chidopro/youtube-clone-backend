@@ -225,7 +225,7 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
     navigate('/how-it-works');
   };
 
-  /** Same path as Navbar "Become a creator" → earnings/signup flow. */
+  /** Earnings calculator (same page as FAQ “See example earnings”). */
   const openReserveCta = () => {
     navigate('/subscription-tiers', { state: { intent: 'creator' } });
   };

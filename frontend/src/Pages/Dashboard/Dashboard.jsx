@@ -14,6 +14,7 @@ import PersonalizationSettings from '../../Components/PersonalizationSettings/Pe
 import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.jsx';
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
 import { useCreator } from '../../contexts/CreatorContext';
+import { getSubdomain } from '../../utils/subdomainService';
 import { DEMO_DASHBOARD_PATH, DEMO_STOREFRONT_SUBDOMAIN, isDemoPreviewSession, isDemoStorefront, isDemoStorefrontVisitor } from '../../utils/demoStorefront';
 import { collaboratorPayoutHeading } from '../../utils/favoriteListLabels';
 import '../DemoDashboard/DemoDashboard.css';
@@ -58,6 +59,383 @@ function todayPayoutInputDate() {
 
 const COLLAB_SHARE_PER_ITEM = 6;
 
+function saleSoldQuantity(sale) {
+    const explicit = Number(sale?.quantity);
+    if (Number.isFinite(explicit) && explicit > 0) return Math.floor(explicit);
+    const share = Number(sale?.collaborator_share_before_fee ?? sale?.pay_owner_amount ?? 0);
+    if (share > 0) return Math.max(1, Math.round(share / COLLAB_SHARE_PER_ITEM));
+    const payout = Number(sale?.pay_collaborator_amount ?? 0);
+    if (payout > 0) return Math.max(1, Math.round(payout / COLLAB_SHARE_PER_ITEM));
+    return 1;
+}
+
+function saleSoldLabel(sale) {
+    const qty = saleSoldQuantity(sale);
+    return qty === 1 ? '1 sold' : `${qty} sold`;
+}
+
+function productSalesItemCount(data) {
+    const fromSold = (data?.products_sold || []).reduce((sum, product) => sum + Number(product.quantity || 0), 0);
+    if (fromSold > 0) return fromSold;
+    const listed = Number(data?.products_sold_count || 0);
+    if (listed > 0) return listed;
+    return (data?.fee_sales || []).reduce((sum, sale) => sum + saleSoldQuantity(sale), 0);
+}
+
+function money(n) {
+    return `$${Number(n || 0).toFixed(2)}`;
+}
+
+function timesEquals(count, rate, total) {
+    const n = Number(count) || 0;
+    const r = Number(rate) || 0;
+    const t = Number(total) || 0;
+    if (n > 0 && r > 0) return `${n} × ${money(r)} = ${money(t)}`;
+    return money(t);
+}
+
+function sumEquals(parts, subtracted = []) {
+    const shown = (parts || []).filter((n) => Number(n) > 0).map((n) => money(n));
+    const minus = (subtracted || []).filter((n) => Number(n) > 0).map((n) => `− ${money(n)}`);
+    if (!shown.length && !minus.length) return '';
+    return `${shown.join(' + ')}${minus.length ? ` ${minus.join(' ')}` : ''}`;
+}
+
+function saleCollaboratorPayoutLabel(sale) {
+    const fee = Number(sale?.owner_fee_amount ?? 0);
+    const net = Number(sale?.pay_collaborator_amount ?? 0);
+    const share = Number(sale?.collaborator_share_before_fee ?? (net + fee));
+    if (fee > 0) {
+        return `Share ${money(share)} · Fee ${money(fee)} · Payout ${money(net)}`;
+    }
+    return `Payout ${money(net)}`;
+}
+
+function saleDateRangeLabel(sales) {
+    const stamps = (sales || []).map((s) => s?.created_at).filter(Boolean).sort();
+    if (!stamps.length) return '';
+    const first = formatPayoutDate(stamps[0]);
+    const last = formatPayoutDate(stamps[stamps.length - 1]);
+    return first === last ? last : `${first} – ${last}`;
+}
+
+function saleTimeMs(sale) {
+    const raw = sale?.created_at;
+    if (!raw) return 0;
+    const t = new Date(raw).getTime();
+    return Number.isFinite(t) ? t : 0;
+}
+
+function parseTimeMs(raw) {
+    if (!raw) return 0;
+    const t = new Date(raw).getTime();
+    return Number.isFinite(t) ? t : 0;
+}
+
+function sameStamp(a, b) {
+    const left = parseTimeMs(a);
+    const right = parseTimeMs(b);
+    return left > 0 && right > 0 && Math.abs(left - right) < 2000;
+}
+
+function payoutRecordedTimeMs(payout) {
+    const created = parseTimeMs(payout?.created_at) || parseTimeMs(payout?.recorded_at);
+    if (!created) return 0;
+    if (sameStamp(payout?.created_at, payout?.payout_date) || sameStamp(payout?.created_at, payout?.paid_at)) {
+        return 0;
+    }
+    return created;
+}
+
+function payoutNewestTimeMs(payout) {
+    return (
+        parseTimeMs(payout?.created_at)
+        || parseTimeMs(payout?.recorded_at)
+        || parseTimeMs(payout?.paid_at)
+        || parseTimeMs(payout?.payout_date)
+        || 0
+    );
+}
+
+function newestPayout(payouts) {
+    const rows = (payouts || []).filter(Boolean);
+    if (!rows.length) return null;
+    return [...rows].sort((a, b) => payoutNewestTimeMs(b) - payoutNewestTimeMs(a))[0];
+}
+
+function sortPayoutsNewestFirst(payouts) {
+    return [...(payouts || [])]
+        .map((payout, apiIndex) => ({ payout, apiIndex }))
+        .sort((a, b) => {
+            const recorded = payoutRecordedTimeMs(b.payout) - payoutRecordedTimeMs(a.payout);
+            if (recorded !== 0) return recorded;
+            return a.apiIndex - b.apiIndex;
+        })
+        .map((row) => row.payout);
+}
+
+function saleCreatorShare(sale) {
+    const owner = Number(sale?.pay_owner_amount ?? 0);
+    if (owner > 0) return owner;
+    const beforeFee = Number(sale?.collaborator_share_before_fee ?? 0);
+    if (beforeFee > 0) return beforeFee;
+    const split = Number(sale?.owner_fee_amount ?? 0) + Number(sale?.pay_collaborator_amount ?? 0);
+    if (split > 0) return split;
+    return saleSoldQuantity(sale) * COLLAB_SHARE_PER_ITEM;
+}
+
+function ownerEarningsFiguresFromSales(ownerSales, collabSales) {
+    const owners = ownerSales || [];
+    const collabs = collabSales || [];
+    const ownerPayout = owners.reduce((sum, s) => sum + Number(s.pay_owner_amount ?? 0), 0);
+    const feeAmount = collabs.reduce((sum, s) => sum + Number(s.owner_fee_amount ?? 0), 0);
+    const collabPay = collabs.reduce((sum, s) => sum + Number(s.pay_collaborator_amount ?? 0), 0);
+    const ownerItems = owners.reduce((sum, s) => sum + saleSoldQuantity(s), 0);
+    const feeItems = collabs.reduce((sum, s) => sum + saleSoldQuantity(s), 0);
+    const listedFeePerItem = Number(
+        collabs.find((s) => Number(s.owner_fee_per_item) > 0)?.owner_fee_per_item
+        || (feeItems > 0 && feeAmount > 0 ? feeAmount / feeItems : 0)
+    );
+    const collabPayPerItem = listedFeePerItem > 0
+        ? Math.max(0, COLLAB_SHARE_PER_ITEM - listedFeePerItem)
+        : (feeItems > 0 ? collabPay / feeItems : 0);
+    const collabShareTotal = feeAmount + collabPay;
+    const totalOwnerEarnings = ownerPayout + collabShareTotal - collabPay;
+    return {
+        ownerSales: owners,
+        collabSales: collabs,
+        ownerPayout,
+        feeAmount,
+        collabPay,
+        collabShareTotal,
+        totalOwnerEarnings,
+        ownerItems,
+        feeItems,
+        listedFeePerItem,
+        collabPayPerItem,
+        ownerDateLabel: saleDateRangeLabel(owners),
+        collaboratorDateLabel: saleDateRangeLabel(collabs),
+        qualifyingItems: ownerItems + feeItems,
+        qualifyingShare: ownerPayout + collabShareTotal,
+        hasActivity: ownerPayout > 0 || collabPay > 0 || feeAmount > 0 || owners.length > 0 || collabs.length > 0,
+    };
+}
+
+function buildOwnerEarningsPeriods(ownerSales, collabSales, payouts) {
+    const newestFirst = sortPayoutsNewestFirst(payouts);
+    const tagged = [
+        ...(ownerSales || []).map((sale) => ({ kind: 'owner', sale, ts: saleTimeMs(sale) })),
+        ...(collabSales || []).map((sale) => ({ kind: 'collab', sale, ts: saleTimeMs(sale) })),
+    ].sort((a, b) => {
+        const dt = a.ts - b.ts;
+        if (dt !== 0) return dt;
+        return String(a.sale?.id || '').localeCompare(String(b.sale?.id || ''));
+    });
+    let cursor = 0;
+    const takeForAmount = (amount) => {
+        const taken = [];
+        let covered = 0;
+        const target = Number(amount) || 0;
+        while (cursor < tagged.length && (target <= 0 || covered < target - 0.005)) {
+            taken.push(tagged[cursor]);
+            covered += saleCreatorShare(tagged[cursor].sale);
+            cursor += 1;
+        }
+        return ownerEarningsFiguresFromSales(
+            taken.filter((row) => row.kind === 'owner').map((row) => row.sale),
+            taken.filter((row) => row.kind === 'collab').map((row) => row.sale),
+        );
+    };
+    const historyOldestFirst = [...newestFirst].reverse().map((payout, i) => ({
+        key: String(payout.id ?? `payout-${i}`),
+        payout,
+        ...takeForAmount(payout.amount),
+    }));
+    const leftover = tagged.slice(cursor);
+    const latest = {
+        key: 'latest',
+        payout: null,
+        ...ownerEarningsFiguresFromSales(
+            leftover.filter((row) => row.kind === 'owner').map((row) => row.sale),
+            leftover.filter((row) => row.kind === 'collab').map((row) => row.sale),
+        ),
+    };
+    return [latest, ...[...historyOldestFirst].reverse()];
+}
+
+function OwnerEarningsFigures({ period, emptyMessage, showItemDetails = true }) {
+    if (!period?.hasActivity) {
+        return emptyMessage ? <p className="hint">{emptyMessage}</p> : null;
+    }
+    const {
+        ownerPayout,
+        feeAmount,
+        collabPay,
+        collabShareTotal,
+        totalOwnerEarnings,
+        ownerItems,
+        feeItems,
+        listedFeePerItem,
+        collabPayPerItem,
+        ownerSales,
+        collabSales,
+        ownerDateLabel,
+        collaboratorDateLabel,
+        qualifyingItems,
+        qualifyingShare,
+        payout,
+    } = period;
+    const earningsEquation = sumEquals([ownerPayout, collabShareTotal], [collabPay]);
+    return (
+        <>
+            <ul className="collaborator-payout-list owner-earnings-log-totals owner-earnings-visible">
+                {payout ? (
+                    <>
+                        <li>
+                            <div className="collab-payout-row-main">
+                                <strong>ScreenMerch paid</strong>
+                                <span className="owner-earnings-math">{money(payout.amount)}</span>
+                            </div>
+                        </li>
+                        <li>
+                            <div className="collab-payout-row-main">
+                                <strong>Qualifying items</strong>
+                                <span className="owner-earnings-math">
+                                    {timesEquals(qualifyingItems, COLLAB_SHARE_PER_ITEM, qualifyingShare)}
+                                </span>
+                            </div>
+                        </li>
+                    </>
+                ) : null}
+                {ownerPayout > 0 || ownerSales.length > 0 ? (
+                    <li>
+                        <div className="collab-payout-row-main">
+                            <strong>Storefront page sales</strong>
+                            <span className="owner-earnings-math">
+                                {timesEquals(ownerItems, COLLAB_SHARE_PER_ITEM, ownerPayout)}
+                            </span>
+                        </div>
+                    </li>
+                ) : null}
+                {feeAmount > 0 ? (
+                    <li>
+                        <div className="collab-payout-row-main">
+                            <strong>Collaborator fees</strong>
+                            <span className="owner-earnings-math">
+                                {timesEquals(feeItems, listedFeePerItem, feeAmount)}
+                            </span>
+                        </div>
+                    </li>
+                ) : null}
+                {collabPay > 0 ? (
+                    <li>
+                        <div className="collab-payout-row-main">
+                            <strong>Collaborator payments</strong>
+                            <span className="owner-earnings-math">
+                                {timesEquals(feeItems, collabPayPerItem, collabPay)}
+                            </span>
+                        </div>
+                    </li>
+                ) : null}
+                <li className="owner-earnings-total-row">
+                    <div className="collab-payout-row-main">
+                        <strong>
+                            Your Earnings
+                            {ownerDateLabel ? (
+                                <span className="owner-earnings-date">{ownerDateLabel}</span>
+                            ) : null}
+                        </strong>
+                        <span className="owner-earnings-math">
+                            {earningsEquation ? `${earningsEquation} = ` : ''}
+                            <span className="owner-earnings-total-amount">
+                                {money(totalOwnerEarnings)}
+                            </span>
+                        </span>
+                    </div>
+                </li>
+            </ul>
+            {showItemDetails && ownerSales.length > 0 ? (
+                <details className="owner-purchase-log-details owner-earnings-log">
+                    <summary>Storefront product sales</summary>
+                    <ul className="collaborator-payout-list owner-earnings-log-totals">
+                        <li>
+                            <div className="collab-payout-row-main">
+                                <strong>Storefront earnings</strong>
+                                <span>
+                                    ${ownerPayout.toFixed(2)}
+                                    {ownerDateLabel ? ` · ${ownerDateLabel}` : ''}
+                                </span>
+                            </div>
+                        </li>
+                    </ul>
+                    <ul className="collaborator-payout-list owner-purchase-log">
+                        {ownerSales.map((sale, idx) => (
+                            <li key={String(sale.id || idx)}>
+                                <div className="collab-payout-row-main">
+                                    <strong>{sale.product_name || 'Item'}</strong>
+                                    <span>
+                                        {sale.display_name || 'Your page'}
+                                        {' · '}
+                                        {formatPayoutDate(sale.created_at)}
+                                        {' · '}
+                                        {saleSoldLabel(sale)}
+                                        {' · '}
+                                        Your payout ${Number(sale.pay_owner_amount ?? 0).toFixed(2)}
+                                    </span>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </details>
+            ) : null}
+            {showItemDetails && (collabPay > 0 || collabSales.length > 0) ? (
+                <details className="owner-purchase-log-details owner-earnings-log">
+                    <summary>Collaborator Earnings</summary>
+                    <ul className="collaborator-payout-list owner-earnings-log-totals">
+                        <li>
+                            <div className="collab-payout-row-main">
+                                <strong>Collaborator Earnings</strong>
+                                <span>
+                                    {money(collabPay)}
+                                    {collaboratorDateLabel ? ` · ${collaboratorDateLabel}` : ''}
+                                </span>
+                            </div>
+                        </li>
+                        {feeAmount > 0 ? (
+                            <li>
+                                <div className="collab-payout-row-main">
+                                    <strong>Fees kept by you</strong>
+                                    <span>{money(feeAmount)}</span>
+                                </div>
+                            </li>
+                        ) : null}
+                    </ul>
+                    {collabSales.length > 0 ? (
+                        <ul className="collaborator-payout-list owner-purchase-log">
+                            {collabSales.map((sale, idx) => (
+                                <li key={String(sale.id || idx)}>
+                                    <div className="collab-payout-row-main">
+                                        <strong>{sale.product_name || 'Item'}</strong>
+                                        <span>
+                                            {sale.display_name || 'Collaborator'}
+                                            {' · '}
+                                            {formatPayoutDate(sale.created_at)}
+                                            {' · '}
+                                            {saleSoldLabel(sale)}
+                                            {' · '}
+                                            {saleCollaboratorPayoutLabel(sale)}
+                                        </span>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : null}
+                </details>
+            ) : null}
+        </>
+    );
+}
+
 function ownerFeePerItem(feeType, feeValue) {
     const t = String(feeType || 'none').toLowerCase();
     const v = Number(feeValue) || 0;
@@ -80,16 +458,25 @@ function CollaboratorFeeForm({
     saving,
     message,
     readOnly = false,
+    hideSave = false,
+    collaboratorView = false,
+    salesFeeAmount = 0,
+    salesItemCount = 0,
 }) {
     const perItem = ownerFeePerItem(feeType, feeValue);
     const collabKeeps = Math.max(0, COLLAB_SHARE_PER_ITEM - perItem);
     const preview =
         feeType === 'none' || perItem <= 0
             ? 'This creator keeps the full $6.00 per item.'
-            : `You keep $${perItem.toFixed(2)} of each item; they keep $${collabKeeps.toFixed(2)}.`;
+            : collaboratorView
+                ? `The storefront keeps $${perItem.toFixed(2)} of each item; you keep $${collabKeeps.toFixed(2)}.`
+                : `You keep $${perItem.toFixed(2)} of each item; they keep $${collabKeeps.toFixed(2)}.`;
     const radioName = `owner-fee-type-${listId}`;
     return (
-        <form className="owner-fee-form collab-fee-form" onSubmit={onSave}>
+        <form
+            className={`owner-fee-form collab-fee-form${readOnly ? ' collab-fee-form--readonly' : ''}`}
+            onSubmit={hideSave ? (e) => e.preventDefault() : onSave}
+        >
             <div className="owner-fee-type" role="radiogroup" aria-label="Sales fee for this creator">
                 <label>
                     <input
@@ -138,9 +525,17 @@ function CollaboratorFeeForm({
                 </label>
             ) : null}
             <p className="owner-fee-preview">{preview}</p>
+            {salesItemCount > 0 ? (
+                <p className="owner-fee-sales-taken">
+                    From recorded sales: {collaboratorView ? 'the storefront keeps' : 'you keep'} {money(salesFeeAmount)}
+                    {salesItemCount === 1 ? ' (1 item)' : ` (${salesItemCount} items)`}.
+                </p>
+            ) : null}
+            {hideSave ? null : (
             <button type="submit" className="btn-save-owner-fee" disabled={saving || readOnly}>
                 {saving ? 'Saving…' : 'Save rate'}
             </button>
+            )}
             {message ? (
                 <p className={`owner-fee-message${message.startsWith('Saved') ? ' ok' : ' error'}`}>
                     {message}
@@ -216,6 +611,8 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(demoPreviewFromRoute ? 'analytics' : 'favorites');
     const [umbrellaOnly, setUmbrellaOnly] = useState(false);
+    const [umbrellaStatusReady, setUmbrellaStatusReady] = useState(false);
+    const [analyticsError, setAnalyticsError] = useState('');
     const { currentCreator, loading: creatorLoading } = useCreator();
 
     // Open tab when URL has ?tab= (e.g. from navbar logo edit or FrameSnag "Add to Favorites")
@@ -231,7 +628,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         }
         if (tab === 'personalization') setActiveTab('personalization');
         if (tab === 'analytics') setActiveTab('analytics');
-        if (tab === 'videos') setActiveTab('videos');
+        if (tab === 'videos') setActiveTab('favorites');
         if (tab === 'favorites') {
             setActiveTab('favorites');
             setShowPasteHint(true); // Show "press Ctrl+V" hint when sent from FrameSnag
@@ -241,8 +638,10 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     useEffect(() => {
         if (demoPreview || !user?.id || userProfile?.role !== 'creator') {
             setUmbrellaOnly(false);
+            setUmbrellaStatusReady(true);
             return;
         }
+        setUmbrellaStatusReady(false);
         let cancelled = false;
         (async () => {
             try {
@@ -251,7 +650,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                 if (ok && data?.is_umbrella_only) {
                     setUmbrellaOnly(true);
                     const tabParam = new URLSearchParams(window.location.search).get('tab');
-                    if (tabParam === 'analytics' || tabParam === 'videos' || tabParam === 'favorites') {
+                    if (tabParam === 'analytics' || tabParam === 'favorites') {
                         setActiveTab(tabParam);
                     } else {
                         setActiveTab('favorites');
@@ -261,16 +660,18 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                 }
             } catch (_) {
                 if (!cancelled) setUmbrellaOnly(false);
+            } finally {
+                if (!cancelled) setUmbrellaStatusReady(true);
             }
         })();
         return () => { cancelled = true; };
     }, [user?.id, userProfile?.role]);
 
     useEffect(() => {
-        if (!umbrellaOnly && activeTab === 'videos') {
+        if (activeTab === 'videos') {
             setActiveTab('favorites');
         }
-    }, [umbrellaOnly, activeTab]);
+    }, [activeTab]);
 
     // Paste-from-FrameSnag: storefront owners only (umbrella collaborators upload manually)
     useEffect(() => {
@@ -334,6 +735,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         total_revenue: 0,
         products_sold_count: 0,
         videos_with_sales_count: 0,
+        week_sales_count: null,
         avg_order_value: 0,
         products_sold: [],
         recent_sales: [],
@@ -347,6 +749,13 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         payout_summary: {},
         platform_fee_amount: 0,
         pay_collaborator_amount: 0,
+        owner_fee_amount: 0,
+        owner_fee_per_item: 0,
+        collaborator_share_before_fee: 0,
+        fee_sales: [],
+        is_paid_up: false,
+        owner_fee_type: 'none',
+        owner_fee_value: 0,
     });
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const [collaboratorPayoutRows, setCollaboratorPayoutRows] = useState([]);
@@ -365,7 +774,11 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     const [analyticsPayoutAmount, setAnalyticsPayoutAmount] = useState('');
     const [analyticsPayoutDate, setAnalyticsPayoutDate] = useState('');
     const [analyticsPayoutNote, setAnalyticsPayoutNote] = useState('');
+    const [analyticsPayoutError, setAnalyticsPayoutError] = useState('');
     const [recordingAnalyticsPayout, setRecordingAnalyticsPayout] = useState(false);
+    const analyticsPayoutIgnoreBackdropUntilRef = useRef(0);
+    const analyticsFetchGenRef = useRef(0);
+    const recordedCollabPayoutsRef = useRef({});
     const [isMasterAdmin, setIsMasterAdmin] = useState(false);
     const [editingVideo, setEditingVideo] = useState(null);
     const [editVideoForm, setEditVideoForm] = useState({
@@ -547,32 +960,54 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             setFavorites([]);
             return;
         }
-        if (demoPreview) {
-            const page = pages.find((p) => p.id === listId);
-            if (!page) {
-                setFavorites([]);
-                return;
-            }
+        const page = pages.find((p) => p.id === listId) || null;
+        const storefrontSub = demoPreview
+            ? DEMO_STOREFRONT_SUBDOMAIN
+            : (getSubdomain() || currentCreator?.subdomain || '');
+
+        if (page && storefrontSub) {
             const favs = await fetchFavoritesForList(
-                DEMO_STOREFRONT_SUBDOMAIN,
+                storefrontSub,
                 page,
                 page.owner_user_id || userId
             );
-            setFavorites(favs || []);
-            return;
+            if ((favs || []).length > 0 || demoPreview) {
+                setFavorites(favs || []);
+                return;
+            }
         }
+
+        if (!demoPreview) {
+            const { ok, data } = await favoriteListsJson(
+                `/api/favorite-lists/favorites?list_id=${encodeURIComponent(listId)}`
+            );
+            if (ok && Array.isArray(data?.favorites)) {
+                setFavorites(data.favorites);
+                return;
+            }
+        }
+
         if (!userId) {
             setFavorites([]);
             return;
         }
-        const page = pages.find((p) => p.id === listId);
-        const favUserId = page?.is_collaborator_page ? page.owner_user_id : userId;
-        const { data, error } = await supabase
+        const favUserId = page?.is_collaborator_page
+            ? (page.owner_user_id || userId)
+            : userId;
+        let { data, error } = await supabase
             .from('creator_favorites')
             .select('*')
-            .eq('user_id', favUserId)
             .eq('list_id', listId)
             .order('created_at', { ascending: false });
+        if (error || !(data || []).length) {
+            const fallback = await supabase
+                .from('creator_favorites')
+                .select('*')
+                .eq('user_id', favUserId)
+                .order('created_at', { ascending: false });
+            data = fallback.data;
+            error = fallback.error;
+        }
         if (error) {
             console.error('Favorites fetch:', error);
             setFavorites([]);
@@ -593,9 +1028,11 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     const pageVideosUserId = selectedFavoritePage?.is_collaborator_page
         ? (selectedFavoritePage.owner_user_id || null)
         : (user?.id || null);
-    const pageVideos = pageVideosUserId && String(pageVideosUserId) === String(user?.id)
+    const pageVideos = umbrellaOnly
         ? videos
-        : otherPageVideos;
+        : (pageVideosUserId && String(pageVideosUserId) === String(user?.id)
+            ? videos
+            : otherPageVideos);
 
     useEffect(() => {
         if (!pageVideosUserId || String(pageVideosUserId) === String(user?.id)) {
@@ -707,7 +1144,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                 if (nextId) persistFramesnagListTarget(nextId);
                 if (data.is_umbrella_only && primary) {
                     const rawName = (primary.display_name || '').replace(/\s*\(owner\)\s*/gi, ' ').trim();
-                    setUmbrellaPageName(isUmbrellaAutoPageName(rawName) ? '' : rawName);
+                    setUmbrellaPageName(isUmbrellaAutoPageName(rawName) ? '' : cleanFavoritePageNickname(rawName));
                 }
                 if (nextId && listUserId) {
                     const page = data.lists.find((l) => l.id === nextId);
@@ -733,7 +1170,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
 
     const handleSaveUmbrellaPageName = async () => {
         if (demoPreview) return;
-        const name = umbrellaPageName.trim();
+        const name = cleanFavoritePageNickname(umbrellaPageName);
         const selectedList = favoritePages.find((l) => String(l.id) === String(selectedFavoriteListId));
         const collabList = selectedList?.is_collaborator_page
             ? selectedList
@@ -761,7 +1198,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             setFavoritePages((prev) =>
                 prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
             );
-            setUmbrellaPageName(updated.display_name || name);
+            setUmbrellaPageName(cleanFavoritePageNickname(updated.display_name || name));
         } catch (e) {
             console.error(e);
             alert(e.message || 'Could not save page name');
@@ -1565,14 +2002,40 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         return () => { mounted = false; };
     }, [user?.email]);
 
+    const mergeCollabPayoutRows = (rows) => {
+        const recorded = recordedCollabPayoutsRef.current;
+        return (rows || []).map((row) => {
+            const id = String(row.favorite_list_id || '');
+            const rec = recorded[id];
+            if (!rec) return row;
+            const serverPaid = Number(row.paid_total || 0);
+            if (serverPaid + 0.009 >= rec.paid_total) {
+                delete recorded[id];
+                return row;
+            }
+            const lifetime = Number(row.pay_collaborator_amount || 0);
+            const nextBalance = Math.max(0, lifetime - rec.paid_total);
+            return {
+                ...row,
+                paid_total: rec.paid_total,
+                balance_owed: nextBalance,
+                is_paid_up: lifetime > 0 && nextBalance <= 0.009,
+                can_record_payout: nextBalance >= 50,
+                last_payout: newestPayout([rec.payout, row.last_payout, ...(row.recent_payouts || [])]),
+            };
+        });
+    };
+
     // Fetch analytics data (owner: all sales; umbrella collaborator: their page only)
     const fetchAnalytics = async () => {
         if (!user || !user.id) {
             console.warn('Cannot fetch analytics: user not found');
             return;
         }
+        const gen = ++analyticsFetchGenRef.current;
 
         setAnalyticsLoading(true);
+        setAnalyticsError('');
         try {
             let data;
             if (umbrellaOnly) {
@@ -1618,6 +2081,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             }
 
             console.log('📊 Analytics data received:', data);
+            if (gen !== analyticsFetchGenRef.current) return;
 
             setAnalyticsData({
                 total_sales: data.total_sales || 0,
@@ -1625,6 +2089,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                 avg_order_value: data.avg_order_value || 0,
                 products_sold_count: data.products_sold_count || 0,
                 videos_with_sales_count: data.videos_with_sales_count || 0,
+                week_sales_count: data.week_sales_count,
                 sales_data: data.sales_data || [],
                 products_sold: data.products_sold || [],
                 videos_with_sales: data.videos_with_sales || [],
@@ -1634,11 +2099,22 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                 storefront_owner_name: data.storefront_owner_name || '',
                 collaborator_net_owed: data.collaborator_net_owed || 0,
                 paid_total: data.paid_total || 0,
-                last_payout: data.last_payout || null,
+                last_payout: newestPayout([data.last_payout, ...(data.recent_payouts || [])]),
+                recent_payouts: data.recent_payouts || [],
                 payout_note: data.payout_note || '',
                 payout_summary: data.payout_summary || {},
                 platform_fee_amount: data.platform_fee_amount ?? data.payout_summary?.platform_fee_amount ?? 0,
                 pay_collaborator_amount: data.pay_collaborator_amount ?? data.payout_summary?.collaborator_pay_total ?? 0,
+                owner_fee_amount: data.owner_fee_amount ?? data.payout_summary?.owner_fee_amount ?? 0,
+                owner_fee_per_item: data.owner_fee_per_item ?? data.payout_summary?.owner_fee_per_item ?? 0,
+                collaborator_share_before_fee:
+                    data.collaborator_share_before_fee
+                    ?? data.payout_summary?.collaborator_share_before_fee
+                    ?? 0,
+                fee_sales: data.fee_sales || [],
+                is_paid_up: Boolean(data.is_paid_up),
+                owner_fee_type: data.owner_fee_type || 'none',
+                owner_fee_value: data.owner_fee_value ?? 0,
             });
             if (data.payout_summary?.screenmerch_pending_amount != null) {
                 setScreenmerchPendingAmount(Number(data.payout_summary.screenmerch_pending_amount || 0));
@@ -1664,8 +2140,12 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                         sumData = sum.data;
                     }
                     if (sumOk) {
+                        if (gen !== analyticsFetchGenRef.current) return;
                         const collabRows = (sumData?.by_list || []).filter((r) => r.is_collaborator_page);
-                        setCollaboratorPayoutRows(collabRows);
+                        setCollaboratorPayoutRows(mergeCollabPayoutRows(collabRows.map((row) => ({
+                            ...row,
+                            last_payout: newestPayout([row.last_payout, ...(row.recent_payouts || [])]),
+                        }))));
                         setCollaboratorOwedTotal(Number(sumData?.collaborator_owed_total || 0));
                         setOwnerPayoutRows(sumData?.owner_pages || []);
                         setOwnerRecentSales(sumData?.owner_recent_sales || []);
@@ -1707,8 +2187,11 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             }
         } catch (error) {
             console.error('Error fetching analytics:', error);
+            setAnalyticsError(error?.message || 'Could not load sales analytics');
         } finally {
-            setAnalyticsLoading(false);
+            if (gen === analyticsFetchGenRef.current) {
+                setAnalyticsLoading(false);
+            }
         }
     };
 
@@ -1760,55 +2243,97 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
 
     const openAnalyticsPayoutModal = (row) => {
         const balance = Number(row.balance_owed ?? 0);
+        analyticsPayoutIgnoreBackdropUntilRef.current = Date.now() + 500;
         setAnalyticsPayoutModal(row);
         setAnalyticsPayoutAmount(balance > 0 ? balance.toFixed(2) : '');
         setAnalyticsPayoutDate(todayPayoutInputDate());
         setAnalyticsPayoutNote('');
+        setAnalyticsPayoutError('');
     };
 
-    const closeAnalyticsPayoutModal = () => {
+    const closeAnalyticsPayoutModal = (force = false) => {
         if (recordingAnalyticsPayout) return;
+        if (!force && Date.now() < analyticsPayoutIgnoreBackdropUntilRef.current) return;
         setAnalyticsPayoutModal(null);
+        setAnalyticsPayoutError('');
+    };
+
+    const applyRecordedCollaboratorPayout = (listId, payout, amount) => {
+        const id = String(listId || '');
+        const paidAmount = Number(amount || 0);
+        setCollaboratorPayoutRows((prev) =>
+            prev.map((row) => {
+                if (String(row.favorite_list_id) !== id) return row;
+                const nextPaid = Number(row.paid_total || 0) + paidAmount;
+                const nextBalance = Math.max(0, Number(row.balance_owed || 0) - paidAmount);
+                recordedCollabPayoutsRef.current[id] = {
+                    amount: paidAmount,
+                    paid_total: nextPaid,
+                    payout: payout || row.last_payout,
+                };
+                return {
+                    ...row,
+                    paid_total: nextPaid,
+                    balance_owed: nextBalance,
+                    is_paid_up: nextBalance <= 0.009,
+                    can_record_payout: nextBalance >= 50,
+                    last_payout: newestPayout([payout, row.last_payout, ...(row.recent_payouts || [])]),
+                    recent_payouts: [payout, ...(row.recent_payouts || [])].filter(Boolean).slice(0, 5),
+                };
+            })
+        );
     };
 
     const submitAnalyticsPayout = async (e) => {
         e.preventDefault();
-        if (!analyticsPayoutModal?.favorite_list_id) return;
+        const listId = analyticsPayoutModal?.favorite_list_id
+            ? String(analyticsPayoutModal.favorite_list_id)
+            : '';
+        if (!listId) {
+            setAnalyticsPayoutError('This collaborator page is missing an ID, so the payment cannot be saved. Refresh and try again.');
+            return;
+        }
         const amount = Number(analyticsPayoutAmount);
-        if (!amount || amount <= 0) return;
+        if (!amount || amount <= 0) {
+            setAnalyticsPayoutError('Enter a payment amount greater than zero.');
+            return;
+        }
         if (amount < 50) {
-            alert('Minimum collaborator payout is $50.');
+            setAnalyticsPayoutError('Minimum collaborator payout is $50.');
             return;
         }
         setRecordingAnalyticsPayout(true);
+        setAnalyticsPayoutError('');
         try {
             const { ok, data } = await favoriteListsJson('/api/favorite-lists/record-collaborator-payout', {
                 method: 'POST',
                 body: JSON.stringify({
-                    favorite_list_id: analyticsPayoutModal.favorite_list_id,
+                    favorite_list_id: listId,
+                    display_name: analyticsPayoutModal.display_name || undefined,
                     amount,
                     paid_at: analyticsPayoutDate,
                     note: analyticsPayoutNote.trim() || undefined,
                 }),
             });
             if (!ok) {
-                alert(data?.error || 'Could not record payment');
+                setAnalyticsPayoutError(data?.error || 'Could not record payment');
                 return;
             }
+            applyRecordedCollaboratorPayout(listId, data?.payout, amount);
             setAnalyticsPayoutModal(null);
             await fetchAnalytics();
         } catch (err) {
-            alert(err.message || 'Network error');
+            setAnalyticsPayoutError(err.message || 'Network error');
         } finally {
             setRecordingAnalyticsPayout(false);
         }
     };
 
     useEffect(() => {
-        if (activeTab === 'analytics' && user?.id) {
-            fetchAnalytics();
-        }
-    }, [activeTab, umbrellaOnly, user?.id, isMasterAdmin, demoPreview]);
+        if (activeTab !== 'analytics' || !user?.id) return;
+        if (!demoPreview && !umbrellaStatusReady) return;
+        fetchAnalytics();
+    }, [activeTab, umbrellaOnly, umbrellaStatusReady, user?.id, isMasterAdmin, demoPreview]);
 
 
 
@@ -1931,44 +2456,22 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         <div className={`dashboard-container ${sidebar ? "" : " large-container"}`}>
             {/* Tab Navigation */}
             <div className="dashboard-tabs">
-                {umbrellaOnly ? (
-                <button 
-                    className={`tab-button ${activeTab === 'videos' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('videos')}
-                >
-                    📹 Videos ({videos.length})
-                </button>
-                ) : null}
                 <button 
                     className={`tab-button ${activeTab === 'favorites' ? 'active' : ''}`}
                     onClick={() => {
                         setActiveTab('favorites');
                     }}
                 >
-                    ⭐ Pages ({favoritePages.length})
+                    {umbrellaOnly ? 'Pages' : `⭐ Pages (${favoritePages.length})`}
                 </button>
-                {umbrellaOnly ? (
                 <button
                     className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
-                    onClick={() => {
-                        setActiveTab('analytics');
-                        fetchAnalytics();
-                    }}
+                    onClick={() => setActiveTab('analytics')}
                 >
                     📊 Analytics
                 </button>
-                ) : null}
                 {!umbrellaOnly && (
                 <>
-                <button 
-                    className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
-                    onClick={() => {
-                        setActiveTab('analytics');
-                        fetchAnalytics();
-                    }}
-                >
-                    📊 Analytics
-                </button>
                 <button 
                     className={`tab-button ${activeTab === 'payout' ? 'active' : ''}`}
                     onClick={() => setActiveTab('payout')}
@@ -1995,119 +2498,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
 
             {/* Tab Content */}
             <div className="tab-content">
-                {/* Videos Tab */}
-                {umbrellaOnly && activeTab === 'videos' && (
-                    <div className="videos-tab">
-                        {/* Getting Started Tips - Moved to top */}
-                        <div className="getting-started-section">
-                            <h2>Getting Started</h2>
-                            <div className="tips-grid">
-                                {!umbrellaOnly && (
-                                <div className="tip-card clickable" onClick={() => setActiveTab('personalization')}>
-                                    <h4>🎨 Customize Your Channel</h4>
-                                    <p>Add a cover image, profile picture, and bio in Personalization.</p>
-                                    <div className="card-action">Open Personalization →</div>
-                                </div>
-                                )}
-                                <div className="tip-card clickable" onClick={() => navigate('/upload')}>
-                                    <h4>📹 Upload Content</h4>
-                                    <p>Start sharing your videos and build your audience.</p>
-                                    <div className="card-action">Click to upload →</div>
-                                </div>
-                                <div className="tip-card">
-                                    <h4>📊 Check Your Analytics</h4>
-                                    <p>Monitor your sales and track your performance.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* User's Videos Section */}
-                        <div className="user-videos-section">
-                            <div className="section-header">
-                                <h2>Your Videos ({videos.length})</h2>
-                                <button
-                                    type="button"
-                                    className="add-favorite-btn"
-                                    onClick={() => navigate('/upload')}
-                                >
-                                    Upload video
-                                </button>
-                            </div>
-                            
-                            {videos.length > 0 ? (
-                                <div className="dashboard-video-grid">
-                                    {videos.map(video => (
-                                        <div 
-                                            key={video.id} 
-                                            className="dashboard-video-card"
-                                            onClick={() => {
-                                                // For creators, navigate to screenshot selection page (product page in creator mode)
-                                                // Save video data to localStorage for ProductPage to use
-                                                // Note: videos2 table doesn't have screenshots field, so we'll use empty array
-                                                // Screenshots can be generated from video or added later
-                                                const merchData = {
-                                                    thumbnail: video.thumbnail || '',
-                                                    screenshots: video.screenshots || [], // Empty if not available
-                                                    videoUrl: video.video_url || '',
-                                                    videoTitle: video.title || 'Unknown Video',
-                                                    creatorName: userProfile?.display_name || userProfile?.username || 'Unknown Creator',
-                                                    videoId: video.id
-                                                };
-                                                savePendingMerchData(merchData);
-                                                localStorage.setItem('creator_favorites_mode', 'true');
-                                                // Navigate to product page in creator favorites mode
-                                                navigate('/product/browse?category=mens&creatorMode=favorites');
-                                            }}
-                                        >
-                                            <img src={video.thumbnail} alt={video.title} className="dashboard-video-thumbnail" />
-                                            <div className="dashboard-video-info">
-                                                <h4>{video.title}</h4>
-                                                <p>{new Date(video.created_at).toLocaleDateString()}</p>
-                                                <span className="video-views">0 views</span>
-                                            </div>
-                                            <button className="edit-video-btn" onClick={(e) => handleEditVideo(video, e)} title="Edit Video">
-                                                ✏️
-                                            </button>
-                                            <button className="delete-video-btn" onClick={(e) => handleDeleteVideo(video.id, video.title, e)} title="Delete Video">
-                                                🗑️
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div
-                                    className="no-videos-placeholder no-videos-placeholder--clickable"
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => navigate('/upload')}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault();
-                                            navigate('/upload');
-                                        }
-                                    }}
-                                >
-                                    <div className="placeholder-content">
-                                        <h3>No videos yet</h3>
-                                        <p>Start building your content library by uploading your first video!</p>
-                                        <button
-                                            type="button"
-                                            className="add-favorite-btn"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                navigate('/upload');
-                                            }}
-                                        >
-                                            + Add your first video
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Favorites Tab */}
+                {/* Pages Tab */}
                 {activeTab === 'favorites' && (
                     <div className="favorites-tab">
                         {!umbrellaOnly && (
@@ -2194,18 +2585,18 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                     <button
                                         type="button"
                                         className="add-favorite-btn favorites-upload-btn favorite-pages-ctrl"
-                                        onClick={openFavoriteUploadModal}
-                                        disabled={demoPreview}
-                                    >
-                                        Image Upload
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="add-favorite-btn favorites-upload-btn favorite-pages-ctrl"
                                         onClick={() => navigate('/upload')}
                                         disabled={demoPreview}
                                     >
                                         Video Upload
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="add-favorite-btn favorites-upload-btn favorite-pages-ctrl"
+                                        onClick={openFavoriteUploadModal}
+                                        disabled={demoPreview}
+                                    >
+                                        Image Upload
                                     </button>
                                     {favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_primary === false
                                         && !favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_collaborator_page && (
@@ -2227,16 +2618,16 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                 <button
                                     type="button"
                                     className="add-favorite-btn favorites-upload-btn"
-                                    onClick={openFavoriteUploadModal}
+                                    onClick={() => navigate('/upload')}
                                 >
-                                    Upload image
+                                    Upload video
                                 </button>
                                 <button
                                     type="button"
                                     className="add-favorite-btn favorites-upload-btn"
-                                    onClick={() => navigate('/upload')}
+                                    onClick={openFavoriteUploadModal}
                                 >
-                                    Upload video
+                                    Upload image
                                 </button>
                             </div>
                         )}
@@ -2248,6 +2639,60 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                 <button type="button" className="framesnag-paste-banner-dismiss" onClick={() => setShowPasteHint(false)} aria-label="Dismiss">×</button>
                             </div>
                         )}
+
+                        <section className="page-media-section" aria-label="Videos on this page">
+                            <h3>Videos ({pageVideos.length})</h3>
+                            {pageVideos.length > 0 ? (
+                                <div className="page-media-scroller">
+                                    {pageVideos.map((video) => {
+                                        const canManage = !demoPreview && String(video.user_id || '') === String(user?.id || '');
+                                        return (
+                                            <div
+                                                key={video.id}
+                                                className="dashboard-video-card"
+                                                onClick={() => {
+                                                    if (canManage) openVideoForMerch(video);
+                                                    else navigate(`/video/${video.categoryId || 0}/${video.id}`);
+                                                }}
+                                            >
+                                                <span className="page-item-badge">Video</span>
+                                                <img
+                                                    src={video.thumbnail || video.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
+                                                    alt={video.title}
+                                                    className="dashboard-video-thumbnail"
+                                                />
+                                                <div className="dashboard-video-info">
+                                                    <h4>{video.title}</h4>
+                                                    <span className="video-views">{video.created_at ? new Date(video.created_at).toLocaleDateString() : ''}</span>
+                                                </div>
+                                                {canManage ? (
+                                                    <>
+                                                        <button className="edit-video-btn" onClick={(e) => handleEditVideo(video, e)} title="Edit Video">
+                                                            ✏️
+                                                        </button>
+                                                        <button className="delete-video-btn" onClick={(e) => handleDeleteVideo(video.id, video.title, e)} title="Delete Video">
+                                                            🗑️
+                                                        </button>
+                                                    </>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <p className="page-media-empty">
+                                    No videos on this page yet.{' '}
+                                    <button
+                                        type="button"
+                                        className="page-media-empty-action"
+                                        onClick={() => navigate('/upload')}
+                                        disabled={demoPreview}
+                                    >
+                                        Upload a video
+                                    </button>
+                                </p>
+                            )}
+                        </section>
 
                         <section className="page-media-section" aria-label="Images on this page">
                             <h3>Images ({favorites.length})</h3>
@@ -2322,51 +2767,17 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="page-media-empty">No images on this page yet. Use Upload to add artwork, screenshots, or a custom thumbnail.</p>
-                            )}
-                        </section>
-
-                        <section className="page-media-section" aria-label="Videos on this page">
-                            <h3>Videos ({pageVideos.length})</h3>
-                            {pageVideos.length > 0 ? (
-                                <div className="page-media-scroller">
-                                    {pageVideos.map((video) => {
-                                        const canManage = !demoPreview && String(video.user_id || '') === String(user?.id || '');
-                                        return (
-                                            <div
-                                                key={video.id}
-                                                className="dashboard-video-card"
-                                                onClick={() => {
-                                                    if (canManage) openVideoForMerch(video);
-                                                    else navigate(`/video/${video.categoryId || 0}/${video.id}`);
-                                                }}
-                                            >
-                                                <span className="page-item-badge">Video</span>
-                                                <img
-                                                    src={video.thumbnail || video.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
-                                                    alt={video.title}
-                                                    className="dashboard-video-thumbnail"
-                                                />
-                                                <div className="dashboard-video-info">
-                                                    <h4>{video.title}</h4>
-                                                    <span className="video-views">{video.created_at ? new Date(video.created_at).toLocaleDateString() : ''}</span>
-                                                </div>
-                                                {canManage ? (
-                                                    <>
-                                                        <button className="edit-video-btn" onClick={(e) => handleEditVideo(video, e)} title="Edit Video">
-                                                            ✏️
-                                                        </button>
-                                                        <button className="delete-video-btn" onClick={(e) => handleDeleteVideo(video.id, video.title, e)} title="Delete Video">
-                                                            🗑️
-                                                        </button>
-                                                    </>
-                                                ) : null}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <p className="page-media-empty">No videos on this page yet. Use Upload to add a video.</p>
+                                <p className="page-media-empty">
+                                    No images on this page yet.{' '}
+                                    <button
+                                        type="button"
+                                        className="page-media-empty-action"
+                                        onClick={openFavoriteUploadModal}
+                                        disabled={demoPreview}
+                                    >
+                                        Upload an image
+                                    </button>
+                                </p>
                             )}
                         </section>
 
@@ -2514,25 +2925,11 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                     <div className="analytics-tab">
                         {/* Sales Analytics Section */}
                         <div className="sales-analytics-section">
-                            <div className="section-header">
-                                <h2>
-                                    📊 Sales Analytics Dashboard{isMasterAdmin ? ' — all storefronts' : ''}
-                                    {umbrellaOnly && analyticsData.page_name ? ` — ${analyticsData.page_name}` : ''}
-                                </h2>
-                                {umbrellaOnly ? (
-                                    <p className="umbrella-analytics-intro">
-                                        Sales from shoppers who checked out while viewing your{' '}
-                                        <strong>{analyticsData.page_name || 'page'}</strong>
-                                        {analyticsData.storefront_owner_name ? (
-                                            <> on <strong>{analyticsData.storefront_owner_name}</strong></>
-                                        ) : null}
-                                        .
-                                    </p>
-                                ) : null}
+                            <div className={`section-header analytics-section-header${analyticsError || (isMasterAdmin && !umbrellaOnly) ? ' analytics-section-header--keep' : ''}`}>
+                                <div className="analytics-header-row">
+                                <h2>Sales Analytics Dashboard</h2>
+                                {isMasterAdmin && !umbrellaOnly ? (
                                 <div className="analytics-summary">
-                                    <span className="total-sales">Total Sales: {analyticsLoading ? 'Loading...' : analyticsData.total_sales}</span>
-                                    <span className="total-revenue">Total Revenue: ${analyticsLoading ? '0.00' : analyticsData.total_revenue.toFixed(2)}</span>
-                                    {isMasterAdmin && !umbrellaOnly && (
                                     <button 
                                         onClick={async () => {
                                             if (!window.confirm('⚠️ WARNING: This will permanently delete all your sales data. This action cannot be undone. Are you absolutely sure?')) {
@@ -2589,44 +2986,29 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                     >
                                         🔄 Reset Sales
                                     </button>
-                                    )}
                                 </div>
+                                ) : null}
+                                </div>
+                                {umbrellaOnly ? (
+                                    <p className="umbrella-analytics-intro">
+                                        Sales from shoppers who purchased from your storefront.
+                                    </p>
+                                ) : null}
+                                {analyticsError ? (
+                                    <p className="umbrella-analytics-intro" role="alert">
+                                        {analyticsError}
+                                    </p>
+                                ) : null}
                             </div>
                             
                             <div className="analytics-dashboard">
-                                {/* Sales Per Day Overview */}
-                                <div className="analytics-overview-cards">
-                                    <div className="analytics-card">
-                                        <h4>📈 Sales Per Day</h4>
-                                        <div className="analytics-amount">{analyticsLoading ? '...' : analyticsData.total_sales}</div>
-                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.total_sales > 0 ? 'Active sales' : 'No data yet'}</div>
-                                    </div>
-                                    <div className="analytics-card">
-                                        <h4>🛍️ Products Sold</h4>
-                                        <div className="analytics-amount">{analyticsLoading ? '...' : analyticsData.products_sold_count}</div>
-                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.products_sold_count > 0 ? 'Products selling' : 'No data yet'}</div>
-                                    </div>
-                                    <div className="analytics-card">
-                                        <h4>{umbrellaOnly ? '📄 Your page' : '🎬 Videos with Sales'}</h4>
-                                        <div className="analytics-amount">
-                                            {analyticsLoading ? '...' : (umbrellaOnly ? (analyticsData.page_name || '—') : analyticsData.videos_with_sales_count)}
-                                        </div>
-                                        <div className="analytics-change">
-                                            {analyticsLoading ? 'Loading...' : umbrellaOnly ? 'Attributed to your page' : (analyticsData.videos_with_sales_count > 0 ? 'Videos performing' : 'No data yet')}
-                                        </div>
-                                    </div>
-                                    <div className="analytics-card">
-                                        <h4>💰 Avg Order Value</h4>
-                                        <div className="analytics-amount">${analyticsLoading ? '0.00' : analyticsData.avg_order_value.toFixed(2)}</div>
-                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.avg_order_value > 0 ? 'Good average' : 'No data yet'}</div>
-                                    </div>
-                                </div>
                                 
                                 {/* Enhanced Sales Chart */}
                                 <div className="sales-chart-section">
                                     {/* Weekly Summary */}
                                     <div className="weekly-summary">
-                                        <h4>📊 Weekly Summary</h4>
+                                        <h2 className="analytics-mobile-heading">Sales Analytics Dashboard</h2>
+                                        <h4>Weekly summary</h4>
                                         {(() => {
                                             const ps = analyticsData.payout_summary || {};
                                             const gross = Number(ps.gross_amount ?? analyticsData.total_revenue ?? 0);
@@ -2653,7 +3035,30 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                             );
                                             const nextPay = ps.next_payout_date || nextPayoutDate;
                                             const collabPayTotal = collabPay;
+                                            const collabFeeTaken = Number(
+                                                ps.owner_fee_amount
+                                                ?? analyticsData.owner_fee_amount
+                                                ?? 0
+                                            );
+                                            const shareBeforeFee = Number(
+                                                ps.collaborator_share_before_fee
+                                                ?? analyticsData.collaborator_share_before_fee
+                                                ?? 0
+                                            );
+                                            const feePerItem = Number(
+                                                ps.owner_fee_per_item
+                                                ?? analyticsData.owner_fee_per_item
+                                                ?? 0
+                                            );
                                             const merchCost = Number(ps.merch_cost_amount ?? 0);
+                                            const weekSales = Number(
+                                                analyticsData.week_sales_count == null
+                                                    ? (analyticsData.daily_sales || []).reduce(
+                                                        (sum, day) => sum + Number(day.sales_count || 0),
+                                                        0
+                                                    )
+                                                    : analyticsData.week_sales_count
+                                            );
                                             const netLabel = umbrellaOnly
                                                 ? 'Your payout'
                                                 : (isMasterAdmin ? 'Creator payouts' : 'Your payout');
@@ -2661,43 +3066,34 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                 ? (collabPay || (Number(analyticsData.collaborator_net_owed ?? 0) + Number(analyticsData.paid_total ?? 0)))
                                                 : (isMasterAdmin ? ownerPayout : pendingFromScreenmerch);
                                             const netSubtitle = umbrellaOnly
-                                                ? 'Earned on your page ($6/item)'
+                                                ? (feePerItem > 0
+                                                    ? `${money(COLLAB_SHARE_PER_ITEM - feePerItem)} per item after ${money(feePerItem)} storefront fee`
+                                                    : '$6 per item')
                                                 : (isMasterAdmin
                                                     ? 'Owed to storefront owners ($6/item)'
                                                     : (pendingFromScreenmerch > 0
                                                         ? `Pending payout ${formatPayoutDate(nextPay)}`
                                                         : `Paid up · payout ${formatPayoutDate(nextPay)}`));
+                                            const payoutCard = (
+                                            <div className="summary-card highlight">
+                                                <div className="summary-label">{netLabel}</div>
+                                                <div className="summary-value">${netValue.toFixed(2)}</div>
+                                                <div className="summary-subtitle">{netSubtitle}</div>
+                                            </div>
+                                            );
                                             return (
-                                        <div className="summary-grid">
+                                        <>
+                                        <div className={`summary-grid${!umbrellaOnly && !isMasterAdmin ? ' summary-grid--five' : ''}`}>
                                             <div className="summary-card">
-                                                <div className="summary-label">This Week</div>
-                                                <div className="summary-value">{analyticsData.total_sales}</div>
-                                                <div className="summary-subtitle">Total Sales</div>
+                                                <div className="summary-label">This week</div>
+                                                <div className="summary-value">{weekSales}</div>
+                                                <div className="summary-subtitle">Orders</div>
                                             </div>
                                             <div className="summary-card">
                                                 <div className="summary-label">Gross Revenue</div>
                                                 <div className="summary-value">${gross.toFixed(2)}</div>
                                                 <div className="summary-subtitle">Before fees</div>
                                             </div>
-                                            <div className="summary-card highlight">
-                                                <div className="summary-label">{netLabel}</div>
-                                                <div className="summary-value">${netValue.toFixed(2)}</div>
-                                                <div className="summary-subtitle">{netSubtitle}</div>
-                                            </div>
-                                            {isMasterAdmin ? (
-                                                <div className="summary-card">
-                                                    <div className="summary-label">Platform fee</div>
-                                                    <div className="summary-value">${platformFee.toFixed(2)}</div>
-                                                    <div className="summary-subtitle">ScreenMerch</div>
-                                                </div>
-                                            ) : null}
-                                            {!umbrellaOnly && collabPayTotal > 0 ? (
-                                                <div className="summary-card">
-                                                    <div className="summary-label">Collaborator pay</div>
-                                                    <div className="summary-value">${collabPayTotal.toFixed(2)}</div>
-                                                    <div className="summary-subtitle">Umbrella pages</div>
-                                                </div>
-                                            ) : null}
                                             {!umbrellaOnly && merchCost > 0 ? (
                                                 <div className="summary-card">
                                                     <div className="summary-label">Merch cost</div>
@@ -2705,13 +3101,45 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                     <div className="summary-subtitle">Fulfillment overhead</div>
                                                 </div>
                                             ) : null}
-                                            {!umbrellaOnly && !isMasterAdmin && collaboratorPayoutRows.length > 0 ? (
-                                                <div className="summary-card highlight-collab">
-                                                    <div className="summary-label">Owed to collaborators</div>
-                                                    <div className="summary-value">${collaboratorOwedTotal.toFixed(2)}</div>
-                                                    <div className="summary-subtitle">Pay off-platform</div>
+                                            {isMasterAdmin ? (
+                                                <div className="summary-card">
+                                                    <div className="summary-label">Platform fee</div>
+                                                    <div className="summary-value">${platformFee.toFixed(2)}</div>
+                                                    <div className="summary-subtitle">ScreenMerch</div>
                                                 </div>
                                             ) : null}
+                                            {!umbrellaOnly && (collabPayTotal > 0 || collaboratorPayoutRows.length > 0) ? (
+                                                <div className={`summary-card${collaboratorOwedTotal > 0 && !isMasterAdmin ? ' highlight-collab' : ''}`}>
+                                                    <div className="summary-label">Collaborator pay</div>
+                                                    <div className="summary-value">${collabPayTotal.toFixed(2)}</div>
+                                                    <div className="summary-subtitle">
+                                                        {isMasterAdmin
+                                                            ? 'Umbrella pages'
+                                                            : collaboratorOwedTotal > 0
+                                                                ? `Owed ${money(collaboratorOwedTotal)} · Pay off-platform`
+                                                                : 'Paid up'}
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                            {!umbrellaOnly && collabFeeTaken > 0 ? (
+                                                <div className="summary-card">
+                                                    <div className="summary-label">Collaborator fees</div>
+                                                    <div className="summary-value">{money(collabFeeTaken)}</div>
+                                                    <div className="summary-subtitle">Kept from umbrella sales</div>
+                                                </div>
+                                            ) : null}
+                                            {umbrellaOnly && (collabFeeTaken > 0 || shareBeforeFee > 0) ? (
+                                                <div className="summary-card">
+                                                    <div className="summary-label">Storefront fee</div>
+                                                    <div className="summary-value">{money(collabFeeTaken)}</div>
+                                                    <div className="summary-subtitle">
+                                                        {feePerItem > 0
+                                                            ? `${money(feePerItem)} per item taken out`
+                                                            : 'None taken out'}
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                            {(umbrellaOnly || isMasterAdmin) ? payoutCard : null}
                                             {umbrellaOnly && analyticsData.collaborator_net_owed > 0 ? (
                                                 <div className="summary-card highlight-collab">
                                                     <div className="summary-label">Unpaid balance</div>
@@ -2720,28 +3148,18 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                 </div>
                                             ) : null}
                                         </div>
-                                            );
-                                        })()}
-                                        {isMasterAdmin && !umbrellaOnly ? (
-                                            <div className="collaborator-payout-panel owner-earnings-panel">
-                                                <h5>Storefront owner payments</h5>
-                                                <p className="hint">
-                                                    ScreenMerch.com does not earn a storefront-owner payout. Record PayPal (or other) payments to storefront owners in{' '}
-                                                    <strong>Admin → Payouts</strong>. Each confirmation appears here on that owner&apos;s dashboard.
-                                                </p>
-                                            </div>
-                                        ) : null}
                                         {!umbrellaOnly && !isMasterAdmin ? (
-                                            <>
-                                            <div className={`collaborator-payout-panel owner-earnings-panel${screenmerchPayouts.length > 0 ? ' screenmerch-payments-received' : ''}`}>
+                                            <div className="owner-payout-note-row">
+                                                {payoutCard}
+                                            <div className={`collaborator-payout-panel owner-earnings-panel owner-payout-note${screenmerchPayouts.length > 0 ? ' screenmerch-payments-received' : ''}`}>
                                                 <h5>Payments from ScreenMerch</h5>
                                                 <p className="hint">
                                                     When ScreenMerch sends you a PayPal payment, the latest one shows here.
+                                                    That payout can include collaborator earnings when applicable. You are responsible for paying collaborators their share.
                                                 </p>
                                                 {screenmerchPayouts.length > 0 ? (
                                                     (() => {
-                                                        const payoutTime = (payout) => new Date(payout.paid_at || payout.payout_date || 0).getTime();
-                                                        const sortedPayouts = [...screenmerchPayouts].sort((a, b) => payoutTime(b) - payoutTime(a));
+                                                        const sortedPayouts = sortPayoutsNewestFirst(screenmerchPayouts);
                                                         const currentPayout = sortedPayouts[0];
                                                         const previousPayouts = sortedPayouts.slice(1);
                                                         const renderPaymentRow = (payout) => (
@@ -2789,73 +3207,83 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                     <p className="hint">No ScreenMerch payouts recorded yet.</p>
                                                 )}
                                             </div>
+                                            </div>
+                                            ) : null}
+                                        </>
+                                            );
+                                        })()}
+                                        {isMasterAdmin && !umbrellaOnly ? (
                                             <div className="collaborator-payout-panel owner-earnings-panel">
-                                                <h5>Storefront owner purchase log</h5>
+                                                <h5>Storefront owner payments</h5>
                                                 <p className="hint">
-                                                    ScreenMerch pays $6.00 per item on your pages when pending earnings reach $50.
+                                                    ScreenMerch.com does not earn a storefront-owner payout. Record PayPal (or other) payments to storefront owners in{' '}
+                                                    <strong>Admin → Payouts</strong>. Each confirmation appears here on that owner&apos;s dashboard.
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                        {!umbrellaOnly && !isMasterAdmin ? (
+                                            <>
+                                            <div className="collaborator-payout-panel owner-earnings-panel">
+                                                <h5>Latest Storefront owner earnings log</h5>
+                                                <p className="hint">
+                                                    Orders are processed manually. As stated in the{' '}
+                                                    <Link to="/terms-of-service">Terms of Service</Link> (Section 10), you earn $6 per qualifying item.
+                                                    That $6 is Your Earnings in this log, not the rest of the retail price, which covers fulfillment, platform, and processing.
+                                                    When ScreenMerch records a payment, this log shows earnings since that payment. Earlier calculations stay in Prior earnings records.
                                                 </p>
                                                 {(() => {
-                                                    const ownerPayout = Number(
-                                                        ownerEarningsSummary?.owner_page_payout
-                                                        ?? ownerPayoutRows.reduce((sum, row) => sum + Number(row.pay_owner_amount ?? 0), 0)
-                                                    );
-                                                    const umbrellaPayout = collaboratorPayoutRows.reduce(
-                                                        (sum, row) => sum + Number(row.pay_collaborator_amount ?? 0),
-                                                        0
-                                                    );
-                                                    const feeAmount = Number(ownerEarningsSummary?.owner_fee_amount ?? 0);
-                                                    const hasEarningsLog = ownerPayout > 0 || umbrellaPayout > 0 || feeAmount > 0 || ownerRecentSales.length > 0;
-                                                    if (!hasEarningsLog) {
+                                                    const ownerSales = (
+                                                        ownerEarningsSummary?.owner_earnings_owner_sales?.length
+                                                            ? ownerEarningsSummary.owner_earnings_owner_sales
+                                                            : ownerRecentSales
+                                                    ) || [];
+                                                    const collabSales = [
+                                                        ...(
+                                                            ownerEarningsSummary?.owner_earnings_collaborator_sales?.length
+                                                                ? ownerEarningsSummary.owner_earnings_collaborator_sales
+                                                                : collaboratorPayoutRows.flatMap((row) =>
+                                                                    (row.recent_sales || []).map((sale) => ({
+                                                                        ...sale,
+                                                                        display_name: collaboratorPayoutHeading(row),
+                                                                    }))
+                                                                )
+                                                        ),
+                                                    ].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+                                                    const periods = buildOwnerEarningsPeriods(ownerSales, collabSales, screenmerchPayouts);
+                                                    const latest = periods[0];
+                                                    const history = periods.slice(1).filter((period) => period.hasActivity);
+                                                    const hasAnyEarnings = latest?.hasActivity || history.length > 0;
+                                                    if (!hasAnyEarnings) {
                                                         return <p className="hint">No sales recorded yet.</p>;
                                                     }
                                                     return (
-                                                        <details className="owner-purchase-log-details owner-earnings-log">
-                                                            <summary>Earnings log</summary>
-                                                            <ul className="collaborator-payout-list owner-earnings-log-totals">
-                                                                <li>
-                                                                    <div className="collab-payout-row-main">
-                                                                        <strong>Your Earnings</strong>
-                                                                        <span>${ownerPayout.toFixed(2)}</span>
-                                                                    </div>
-                                                                </li>
-                                                                {umbrellaPayout > 0 ? (
-                                                                    <li>
-                                                                        <div className="collab-payout-row-main">
-                                                                            <strong>Umbrella Earnings</strong>
-                                                                            <span>${umbrellaPayout.toFixed(2)}</span>
+                                                        <>
+                                                            <OwnerEarningsFigures
+                                                                period={latest}
+                                                                emptyMessage="No new earnings since the last ScreenMerch payment."
+                                                            />
+                                                            {screenmerchPayouts.length > 0 ? (
+                                                                <details className="owner-purchase-log-details screenmerch-all-payments">
+                                                                    <summary>
+                                                                        Prior earnings records ({history.length})
+                                                                    </summary>
+                                                                    {history.length === 0 ? (
+                                                                        <p className="screenmerch-all-payments-empty">
+                                                                            No earlier earnings records yet.
+                                                                        </p>
+                                                                    ) : history.map((period) => (
+                                                                        <div key={period.key} className="owner-earnings-prior-record">
+                                                                            <p className="hint">
+                                                                                {period.payout
+                                                                                    ? `Included in ScreenMerch payment ${money(period.payout.amount)} · ${formatPayoutDate(period.payout.paid_at || period.payout.payout_date)}${period.payout.payment_method ? ` · ${period.payout.payment_method}` : ''}`
+                                                                                    : 'Earlier earnings'}
+                                                                            </p>
+                                                                            <OwnerEarningsFigures period={period} />
                                                                         </div>
-                                                                    </li>
-                                                                ) : null}
-                                                                <li>
-                                                                    <div className="collab-payout-row-main">
-                                                                        <strong>Fees</strong>
-                                                                        <span>
-                                                                            {feeAmount > 0
-                                                                                ? `You keep $${feeAmount.toFixed(2)}`
-                                                                                : 'None'}
-                                                                        </span>
-                                                                    </div>
-                                                                </li>
-                                                            </ul>
-                                                            {ownerRecentSales.length > 0 ? (
-                                                                <ul className="collaborator-payout-list owner-purchase-log">
-                                                                    {ownerRecentSales.map((sale, idx) => (
-                                                                        <li key={String(sale.id || idx)}>
-                                                                            <div className="collab-payout-row-main">
-                                                                                <strong>{sale.product_name || 'Item'}</strong>
-                                                                                <span>
-                                                                                    {sale.display_name || 'Your page'}
-                                                                                    {' · '}
-                                                                                    {formatPayoutDate(sale.created_at)}
-                                                                                    {' · '}
-                                                                                    Your payout ${Number(sale.pay_owner_amount ?? 0).toFixed(2)}
-                                                                                </span>
-                                                                            </div>
-                                                                        </li>
                                                                     ))}
-                                                                </ul>
+                                                                </details>
                                                             ) : null}
-                                                        </details>
+                                                        </>
                                                     );
                                                 })()}
                                             </div>
@@ -2869,7 +3297,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                     You can choose to set a percentage or flat per-item fee under each creator; if you do, that amount stays with you instead of being paid to them.
                                                 </p>
                                                 <ul className="collaborator-payout-list">
-                                                    {collaboratorPayoutRows.map((row) => {
+                                                    {collaboratorPayoutRows.map((row, idx) => {
                                                         const listId = String(row.favorite_list_id);
                                                         const balance = Number(row.balance_owed ?? 0);
                                                         const payCollab = Number(row.pay_collaborator_amount ?? 0);
@@ -2885,7 +3313,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                         const recentSales = row.recent_sales || [];
                                                         const hasEarningsLog = payCollab > 0 || feeAmount > 0 || recentSales.length > 0;
                                                         return (
-                                                            <li key={listId}>
+                                                            <li key={listId || row.display_name || idx}>
                                                                 <div className="collab-payout-row-main">
                                                                     <strong>{collaboratorPayoutHeading(row)}</strong>
                                                                     <div className="collab-payout-amount-row">
@@ -2899,12 +3327,23 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                                             ) : (
                                                                                 <>Owed $0.00</>
                                                                             )}
+                                                                            {feeAmount > 0 ? (
+                                                                                <small className="collab-fee-taken-note">
+                                                                                    {' '}Storefront fee {money(feeAmount)} already taken out
+                                                                                </small>
+                                                                            ) : null}
                                                                         </span>
                                                                         {canRecord ? (
                                                                             <button
                                                                                 type="button"
                                                                                 className="btn-record-collab-payout"
-                                                                                onClick={() => openAnalyticsPayoutModal(row)}
+                                                                                onPointerDown={(ev) => ev.stopPropagation()}
+                                                                                onClick={(ev) => {
+                                                                                    ev.preventDefault();
+                                                                                    ev.stopPropagation();
+                                                                                    if (demoPreview) return;
+                                                                                    openAnalyticsPayoutModal(row);
+                                                                                }}
                                                                                 disabled={demoPreview}
                                                                             >
                                                                                 Record payment
@@ -2922,6 +3361,8 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                                     listId={listId}
                                                                     feeType={draft.feeType}
                                                                     feeValue={draft.feeValue}
+                                                                    salesFeeAmount={feeAmount}
+                                                                    salesItemCount={Number(row.order_count || recentSales.length || 0)}
                                                                     onTypeChange={(nextType) => {
                                                                         updateCollabFeeDraft(listId, {
                                                                             feeType: nextType,
@@ -2966,7 +3407,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                                                             <span>
                                                                                                 {formatPayoutDate(sale.created_at)}
                                                                                                 {' · '}
-                                                                                                Pay collaborator ${Number(sale.pay_collaborator_amount ?? 0).toFixed(2)}
+                                                                                                {saleSoldLabel(sale)}
+                                                                                                {' · '}
+                                                                                                {saleCollaboratorPayoutLabel(sale)}
                                                                                             </span>
                                                                                         </div>
                                                                                     </li>
@@ -2981,27 +3424,87 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                 </ul>
                                             </div>
                                         ) : null}
-                                        {umbrellaOnly && analyticsData.payout_note ? (
-                                            <p className="umbrella-analytics-payout-note">
-                                              {String(analyticsData.payout_note).replace(
-                                                /paying umbrella collaborators monthly/gi,
-                                                'paying umbrella collaborators bi-monthly'
-                                              )}
-                                            </p>
-                                        ) : null}
-                                        {umbrellaOnly && analyticsData.last_payout ? (
-                                            <p className="umbrella-analytics-last-payout">
-                                                Last payment from {analyticsData.storefront_owner_name || 'store owner'}:{' '}
-                                                ${Number(analyticsData.last_payout.amount || 0).toFixed(2)} on{' '}
-                                                {formatPayoutDate(analyticsData.last_payout.paid_at)}
-                                                {analyticsData.last_payout.note ? ` (${analyticsData.last_payout.note})` : ''}
-                                            </p>
-                                        ) : null}
+                                        {umbrellaOnly ? (() => {
+                                            const payCollab = Number(analyticsData.pay_collaborator_amount ?? 0);
+                                            const balance = Number(analyticsData.collaborator_net_owed ?? 0);
+                                            const isPaidUp = analyticsData.is_paid_up ?? (payCollab > 0 && balance <= 0);
+                                            const feeAmount = Number(analyticsData.owner_fee_amount ?? 0);
+                                            const feeType = analyticsData.owner_fee_type || 'none';
+                                            const feeValue = (feeType === 'none')
+                                                ? ''
+                                                : String(analyticsData.owner_fee_value ?? 0);
+                                            const salesItemCount = productSalesItemCount(analyticsData);
+                                            return (
+                                            <div className="collaborator-payout-panel">
+                                                <p className="hint">
+                                                    Same fee and payout status your storefront owner sees.
+                                                    They pay you on the 1st and 15th when your owed balance exceeds $50.
+                                                </p>
+                                                <ul className="collaborator-payout-list">
+                                                    <li>
+                                                        <div className="collab-payout-row-main">
+                                                            <strong>
+                                                                {collaboratorPayoutHeading({
+                                                                    display_name: analyticsData.page_name,
+                                                                    member_label: analyticsData.page_name,
+                                                                })}
+                                                            </strong>
+                                                            <div className="collab-payout-amount-row">
+                                                                <span>
+                                                                    {payCollab <= 0 ? (
+                                                                        <>Owed $0.00</>
+                                                                    ) : isPaidUp ? (
+                                                                        <span className="paid-up-label">Paid up ✓</span>
+                                                                    ) : balance > 0 ? (
+                                                                        <>Owed <strong>${balance.toFixed(2)}</strong></>
+                                                                    ) : (
+                                                                        <>Owed $0.00</>
+                                                                    )}
+                                                                    {feeAmount > 0 ? (
+                                                                        <small className="collab-fee-taken-note">
+                                                                            {' '}Storefront fee {money(feeAmount)} already taken out
+                                                                        </small>
+                                                                    ) : null}
+                                                                </span>
+                                                            </div>
+                                                            {analyticsData.last_payout ? (
+                                                                <small>
+                                                                    Last paid ${Number(analyticsData.last_payout.amount || 0).toFixed(2)} on {formatPayoutDate(analyticsData.last_payout.paid_at)}
+                                                                    {analyticsData.last_payout.note ? ` · ${analyticsData.last_payout.note}` : ''}
+                                                                </small>
+                                                            ) : null}
+                                                        </div>
+                                                        <CollaboratorFeeForm
+                                                            listId="umbrella-self"
+                                                            feeType={feeType}
+                                                            feeValue={feeValue}
+                                                            salesFeeAmount={feeAmount}
+                                                            salesItemCount={salesItemCount}
+                                                            onTypeChange={() => {}}
+                                                            onValueChange={() => {}}
+                                                            onSave={(e) => e.preventDefault()}
+                                                            saving={false}
+                                                            message=""
+                                                            readOnly
+                                                            hideSave
+                                                            collaboratorView
+                                                        />
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            );
+                                        })() : null}
                                     </div>
 
-                                    {/* Products Sold Chart — same card as payouts, no gap/bar */}
+                                    <details className="owner-purchase-log-details owner-earnings-log product-sales-analytics-details">
+                                    <summary>
+                                        Product sales analytics
+                                        {productSalesItemCount(analyticsData) > 0
+                                            ? ` (${productSalesItemCount(analyticsData)})`
+                                            : ''}
+                                    </summary>
                                     <div className="products-sold-chart">
-                                    <h3>🛍️ Products Sold (Last 7 Days)</h3>
+                                    <h3>Products sold</h3>
                                     
                                     {analyticsData.products_sold && analyticsData.products_sold.length > 0 ? (
                                         <div className="products-chart-container">
@@ -3015,14 +3518,14 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                             <div className="product-name">{product.product}</div>
                                                             <div className="product-stats">
                                                                 <span className="quantity">{product.quantity} sold</span>
-                                                                <span className="revenue">Gross ${product.revenue.toFixed(2)}</span>
+                                                                <span className="revenue">Gross ${Number(product.revenue || 0).toFixed(2)}</span>
                                                             </div>
                                                         </div>
                                                         <div className="product-chart-bar-container">
                                                             <div 
                                                                 className="product-chart-bar" 
                                                                 style={{width: `${barWidth}%`}}
-                                                                title={`${product.quantity} units sold - Gross $${product.revenue.toFixed(2)}`}
+                                                                title={`${product.quantity} units sold - Gross $${Number(product.revenue || 0).toFixed(2)}`}
                                                             >
                                                                 <span className="bar-label">{product.quantity}</span>
                                                             </div>
@@ -3035,18 +3538,48 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                         <div className="products-chart-empty">
                                             <div className="empty-icon">📦</div>
                                             <h4>No products sold yet</h4>
-                                            <p>Start creating content to see your sales data here!</p>
+                                            <p>
+                                                {umbrellaOnly
+                                                    ? 'Sales attributed to this page will show up here.'
+                                                    : 'Start creating content to see your sales data here.'}
+                                            </p>
                                         </div>
                                     )}
                                     </div>
+                                    {umbrellaOnly && (analyticsData.fee_sales || []).length > 0 ? (
+                                        <ul className="collaborator-payout-list owner-purchase-log">
+                                            {(analyticsData.fee_sales || []).map((sale, idx) => (
+                                                <li key={String(sale.id || idx)}>
+                                                    <div className="collab-payout-row-main">
+                                                        <strong>{sale.product_name || 'Item'}</strong>
+                                                        <span>
+                                                            {formatPayoutDate(sale.created_at)}
+                                                            {' · '}
+                                                            {saleSoldLabel(sale)}
+                                                            {' · '}
+                                                            {saleCollaboratorPayoutLabel(sale)}
+                                                        </span>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : null}
+                                    </details>
                                 </div>
 
                             </div>
                         </div>
                     </div>
 
-                    {analyticsPayoutModal ? (
-                        <div className="umbrella-payout-modal-backdrop" onClick={closeAnalyticsPayoutModal} role="presentation">
+                    {analyticsPayoutModal ? createPortal(
+                        <div
+                            className="umbrella-payout-modal-backdrop"
+                            onClick={(ev) => {
+                                if (ev.target !== ev.currentTarget) return;
+                                closeAnalyticsPayoutModal();
+                            }}
+                            role="presentation"
+                        >
                             <div
                                 className="umbrella-payout-modal"
                                 role="dialog"
@@ -3057,6 +3590,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                 <p className="hint">
                                     Confirm you paid <strong>{collaboratorPayoutHeading(analyticsPayoutModal)}</strong> off-platform.
                                 </p>
+                                {analyticsPayoutError ? (
+                                    <p className="owner-fee-message error" role="alert">{analyticsPayoutError}</p>
+                                ) : null}
                                 <form onSubmit={submitAnalyticsPayout}>
                                     <label>
                                         Amount
@@ -3088,7 +3624,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                         />
                                     </label>
                                     <div className="umbrella-payout-modal-actions">
-                                        <button type="button" onClick={closeAnalyticsPayoutModal} disabled={recordingAnalyticsPayout}>
+                                        <button type="button" onClick={() => closeAnalyticsPayoutModal(true)} disabled={recordingAnalyticsPayout}>
                                             Cancel
                                         </button>
                                         <button type="submit" disabled={recordingAnalyticsPayout}>
@@ -3097,7 +3633,8 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                     </div>
                                 </form>
                             </div>
-                        </div>
+                        </div>,
+                        document.body
                     ) : null}
                     </>
                 )}

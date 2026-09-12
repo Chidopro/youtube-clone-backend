@@ -35,24 +35,203 @@
 }
 
 @media (max-width: 768px) {
-  /* Raise toward the visual center of the video frame */
+  .play-start-overlay,
   .play-icon-overlay {
-    margin-top: 8px;
+    display: none !important;
+    pointer-events: none !important;
   }
 }
 
-/* Ensure video controls are visible and clickable */
+/* Ensure video controls are visible and clickable on desktop native controls */
 .play-video video {
   pointer-events: auto !important;
   user-select: none;
 }
 
-.play-video video::-webkit-media-controls-panel {
-  display: flex !important;
+@media (min-width: 769px) {
+  .play-video:not(.play-video--mobile) video::-webkit-media-controls-panel {
+    display: flex !important;
+  }
+
+  .play-video:not(.play-video--mobile) video::-webkit-media-controls-play-button {
+    display: flex !important;
+  }
 }
 
-.play-video video::-webkit-media-controls-play-button {
-  display: flex !important;
+.play-video--chrome-hidden video::-webkit-media-controls,
+.play-video--chrome-hidden video::-webkit-media-controls-enclosure,
+.play-video--chrome-hidden video::-webkit-media-controls-panel,
+.play-video--chrome-hidden video::-webkit-media-controls-timeline {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.play-video.crop-mode-active video {
+  pointer-events: none !important;
+}
+
+.play-video.crop-mode-active video::-webkit-media-controls-panel,
+.play-video.crop-mode-active video::-webkit-media-controls {
+  display: none !important;
+}
+
+.play-video .inline-crop-overlay {
+  z-index: 60;
+  pointer-events: auto;
+}
+
+.play-video .mobile-video-frame-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #000;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.play-video .mobile-video-frame-cover.is-playing {
+  display: none;
+}
+
+.play-video .mobile-video-frame-cover.with-bar {
+  bottom: 36px;
+}
+
+.play-video .mobile-video-frame-cover img,
+.play-video .mobile-video-frame-cover canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.play-video .mobile-video-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.play-video .mobile-video-bar.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.play-video .mobile-video-bar-play {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  font-size: 12px !important;
+}
+
+.play-video .mobile-video-bar-seek {
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+  margin: 0;
+  accent-color: #fff;
+}
+
+.play-video .mobile-video-bar-speed {
+  flex: 0 0 auto;
+  min-width: 36px;
+  min-height: 0 !important;
+  height: 28px;
+  margin: 0;
+  padding: 0 4px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 12px !important;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.play-video .inline-crop-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  position: relative;
+  z-index: 50;
+  pointer-events: auto;
+  flex: 0 0 auto;
+}
+
+.play-video .inline-crop-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+  min-height: 0;
+  min-width: 0;
+}
+
+.play-video .inline-crop-btn--cancel {
+  background: #6c757d;
+}
+
+.play-video .inline-crop-btn--apply {
+  background: #007bff;
+}
+
+.play-video .inline-crop-btn:disabled {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+@media (max-width: 768px) {
+  .play-video .inline-crop-controls {
+    margin: 6px 0 2px;
+    gap: 6px;
+  }
+
+  .play-video .inline-crop-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
 }
 
 /* Crop Tool Styles */
@@ -145,33 +324,53 @@
   100% { opacity: 0; transform: translateY(-10px); }
 }
 
-/* Mobile: keep video inline, prevent fullscreen takeover (scoped to play-video only) */
+/* Mobile: keep video inline, never use native WebKit overlays or control chrome */
 @media (max-width: 768px) {
-  /* Hide fullscreen / cast; keep native play controls so there is no custom tint overlay */
+  .play-video video::-webkit-media-controls,
+  .play-video video::-webkit-media-controls-enclosure,
+  .play-video video::-webkit-media-controls-panel,
+  .play-video video::-webkit-media-controls-play-button,
+  .play-video video::-webkit-media-controls-start-playback-button,
+  .play-video video::-webkit-media-controls-overlay-enclosure,
+  .play-video video::-webkit-media-controls-overlay-play-button,
+  .play-video video::-webkit-media-controls-rewind-button,
+  .play-video video::-webkit-media-controls-return-to-realtime-button,
+  .play-video video::-webkit-media-controls-skip-back-button,
+  .play-video video::-webkit-media-controls-skip-forward-button,
   .play-video video::-webkit-media-controls-fullscreen-button,
   .play-video video::-internal-media-controls-overlay-cast-button {
-    display: none !important;
-  }
-
-  /* Hide the native pause / ±10s overlay only while the video is playing */
-  .play-video video.mobile-playing::-webkit-media-controls-overlay-enclosure,
-  .play-video video.mobile-playing::-webkit-media-controls-overlay-play-button,
-  .play-video video.mobile-playing::-webkit-media-controls-rewind-button,
-  .play-video video.mobile-playing::-webkit-media-controls-return-to-realtime-button,
-  .play-video video.mobile-playing::-webkit-media-controls-skip-back-button,
-  .play-video video.mobile-playing::-webkit-media-controls-skip-forward-button,
-  .play-video video.mobile-playing::-webkit-media-controls-start-playback-button {
     display: none !important;
     opacity: 0 !important;
     pointer-events: none !important;
     width: 0 !important;
     height: 0 !important;
+    -webkit-appearance: none !important;
   }
+}
 
-  .play-video video.mobile-playing::-webkit-media-controls {
-    background: transparent !important;
-  }
-  
+.play-video--mobile video::-webkit-media-controls,
+.play-video--mobile video::-webkit-media-controls-enclosure,
+.play-video--mobile video::-webkit-media-controls-panel,
+.play-video--mobile video::-webkit-media-controls-play-button,
+.play-video--mobile video::-webkit-media-controls-start-playback-button,
+.play-video--mobile video::-webkit-media-controls-overlay-enclosure,
+.play-video--mobile video::-webkit-media-controls-overlay-play-button,
+.play-video--mobile video::-webkit-media-controls-rewind-button,
+.play-video--mobile video::-webkit-media-controls-return-to-realtime-button,
+.play-video--mobile video::-webkit-media-controls-skip-back-button,
+.play-video--mobile video::-webkit-media-controls-skip-forward-button,
+.play-video--mobile video::-webkit-media-controls-fullscreen-button,
+.play-video--mobile video::-internal-media-controls-overlay-cast-button {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  -webkit-appearance: none !important;
+}
+
+/* Mobile: keep video inline, prevent fullscreen takeover (scoped to play-video only) */
+@media (max-width: 768px) {
   /* Force inline playback on iOS and Android — do not target all site videos */
   .play-video video[playsinline],
   .play-video video[webkit-playsinline="true"] {
@@ -324,15 +523,8 @@
     touch-action: manipulation;
   }
   
-  /* Mobile: keep a slim bottom bar only — never tint the whole frame */
-  .play-video video::-webkit-media-controls-panel {
-    padding: 8px;
-    background: rgba(0,0,0,0.7);
-    border-radius: 0 0 12px 12px;
-  }
-  
-  /* Larger touch targets for mobile */
-  .play-video button,
+  /* Larger touch targets for mobile — not the slim in-player bar */
+  .play-video button:not(.mobile-video-bar-play):not(.mobile-video-bar-speed):not(.inline-crop-btn),
   .play-video .btn {
     min-height: 44px;
     min-width: 44px;
@@ -1224,6 +1416,25 @@
     background: #c82333 !important;
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(220, 53, 69, 0.4);
+}
+
+@keyframes screenshotBtnPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.35), 0 0 0 0 rgba(220, 53, 69, 0.45);
+  }
+  50% {
+    transform: scale(1.045);
+    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.55), 0 0 0 10px rgba(220, 53, 69, 0);
+  }
+}
+
+.screenmerch-btn.screenshot-btn-pulse:not(:disabled) {
+    animation: screenshotBtnPulse 1.4s ease-in-out infinite !important;
+}
+
+.screenmerch-btn.screenshot-btn-pulse:not(:disabled):hover {
+    animation: screenshotBtnPulse 1.4s ease-in-out infinite !important;
 }
 
 /* Make Merch button - Green */

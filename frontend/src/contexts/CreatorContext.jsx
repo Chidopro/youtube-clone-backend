@@ -84,10 +84,10 @@ export const CreatorProvider = ({ children }) => {
           
           // Update favicon
           if (userData.custom_favicon_url) {
-            let link = document.querySelector("link[rel*='icon']");
+            let link = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
             if (!link) {
               link = document.createElement('link');
-              link.rel = 'shortcut icon';
+              link.rel = 'icon';
               document.getElementsByTagName('head')[0].appendChild(link);
             }
             link.href = userData.custom_favicon_url;

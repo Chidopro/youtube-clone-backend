@@ -424,11 +424,48 @@ def platform_revenue_attribution_for_earning(
     }
 
 
-def reset_creator_sales_records(client, user_id, order_store=None, log=None):
-    """Clear sales + earnings + payout ledgers (+ in-memory orders) for one storefront owner."""
+def _storefront_list_ids_for_reset(client, user_id, log=None):
+    """Favorite-list IDs owned by or hosted on this storefront (owner pages + friends)."""
     uid = str(user_id)
+    ids = []
+    seen = set()
+    for col in ("storefront_owner_id", "owner_user_id"):
+        try:
+            res = client.table("creator_favorite_lists").select("id").eq(col, uid).execute()
+            for row in res.data or []:
+                lid = str(row.get("id") or "")
+                if lid and lid not in seen:
+                    seen.add(lid)
+                    ids.append(lid)
+        except Exception as err:
+            if log:
+                log.warning("Could not load favorite lists for reset (%s): %s", col, err)
+    return ids
+
+
+def reset_creator_sales_records(client, user_id, order_store=None, log=None):
+    """Clear sales + earnings + payout ledgers (+ in-memory orders) for one storefront.
+
+    Includes friend/umbrella pages on that storefront — not only rows keyed to the owner user_id.
+    """
+    uid = str(user_id)
+    list_ids = _storefront_list_ids_for_reset(client, uid, log)
     deleted_sales = client.table("sales").delete().eq("user_id", uid).execute()
     deleted_sales_count = len(deleted_sales.data or [])
+    if list_ids:
+        try:
+            extra = client.table("sales").delete().in_("favorite_list_id", list_ids).execute()
+            deleted_sales_count += len(extra.data or [])
+        except Exception as err:
+            if log:
+                log.warning("Could not delete sales by favorite_list_id: %s", err)
+            for lid in list_ids:
+                try:
+                    extra = client.table("sales").delete().eq("favorite_list_id", lid).execute()
+                    deleted_sales_count += len(extra.data or [])
+                except Exception as one_err:
+                    if log:
+                        log.warning("Could not delete sales for list %s: %s", lid, one_err)
     deleted_earnings_count = 0
     try:
         earnings_res = client.table("creator_earnings").delete().eq("user_id", uid).execute()
@@ -438,11 +475,13 @@ def reset_creator_sales_records(client, user_id, order_store=None, log=None):
             log.warning("Could not delete creator_earnings for %s: %s", uid, err)
 
     purged_order_store_count = 0
+    list_id_set = set(list_ids)
     if order_store is not None:
         for order_id in list(order_store.keys()):
             od = order_store.get(order_id) or {}
             creator_uid = str(od.get("creator_user_id") or od.get("user_id") or "")
-            if creator_uid == uid:
+            fav = str(od.get("favorite_list_id") or "")
+            if creator_uid == uid or (fav and fav in list_id_set):
                 order_store.pop(order_id, None)
                 purged_order_store_count += 1
 

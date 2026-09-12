@@ -675,6 +675,28 @@ const PersonalizationSettings = ({ readOnly = false }) => {
     }
   };
 
+  useEffect(() => {
+    const focusLogo = () => {
+      const el = document.getElementById('personalization-custom-logo');
+      if (!el) return false;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('setting-group--logo-focus');
+      window.setTimeout(() => el.classList.remove('setting-group--logo-focus'), 2000);
+      const urlInput = el.querySelector('input[type="url"]');
+      if (urlInput && typeof urlInput.focus === 'function') {
+        urlInput.focus({ preventScroll: true });
+      }
+      return true;
+    };
+
+    const tryFocusFromHash = () => {
+      if (window.location.hash !== '#custom-logo') return;
+      if (!focusLogo()) requestAnimationFrame(() => focusLogo());
+    };
+
+    tryFocusFromHash();
+  }, [loading]);
+
   if (loading) {
     return <div className="personalization-settings-loading">Loading settings...</div>;
   }
@@ -762,7 +784,7 @@ const PersonalizationSettings = ({ readOnly = false }) => {
             <p className="help-text">Connect your own domain (requires DNS configuration)</p>
           </div>
           
-          <div className="setting-group">
+          <div className="setting-group" id="personalization-custom-logo">
             <label className="setting-label">Custom Logo URL</label>
             <input
               type="url"

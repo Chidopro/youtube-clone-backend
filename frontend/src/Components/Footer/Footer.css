@@ -70,6 +70,24 @@
   text-decoration: underline;
 }
 
+.footer-home-screen {
+  display: none;
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.footer-home-screen a {
+  color: #6c757d;
+  text-decoration: none;
+}
+
+.footer-home-screen a:hover {
+  color: #3f51b5;
+  text-decoration: underline;
+}
+
 .footer-copyright {
   display: flex;
   align-items: center;
@@ -96,6 +114,10 @@
   .footer-links-section {
     gap: 20px;
     justify-content: center;
+  }
+
+  .footer-home-screen {
+    display: block;
   }
   
   .site-footer {

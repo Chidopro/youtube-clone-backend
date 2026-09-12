@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import './Navbar.css'
-import menu_icon from '../../assets/menu.png'
 import logo from '../../assets/screenmerch_logo.png.png'
 import search_icon from '../../assets/search.png'
 import upload_icon from '../../assets/upload.png'
-import more_icon from '../../assets/more.png'
-import notification_icon from '../../assets/notification.png'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import SubscriptionModal from '../SubscriptionModal/SubscriptionModal'
 import SignUpChoiceModal from '../SignUpChoiceModal/SignUpChoiceModal'
@@ -20,8 +17,30 @@ import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
 import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
 import { cropCustomLogoFromUrl } from '../../utils/logoBackground'
-import Sidebar from '../Sidebar/Sidebar'
+import { apiJoin, getBackendUrl } from '../../config/apiConfig'
 import ShipToPicker from '../ShipToPicker/ShipToPicker'
+
+const creatorSearchText = (creator) =>
+    [creator?.name, creator?.username, creator?.subdomain]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+const filterCreators = (creators, query) => {
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) return creators;
+    return creators.filter((creator) => creatorSearchText(creator).includes(q));
+};
+
+const creatorAutofillSuffix = (query, creators) => {
+    const typed = String(query || '');
+    if (!typed) return '';
+    const match = creators.find((creator) =>
+        String(creator?.name || '').toLowerCase().startsWith(typed.toLowerCase())
+    );
+    if (!match) return '';
+    return String(match.name).slice(typed.length);
+};
 
 const isUsableHexColor = (value) =>
     typeof value === 'string' && /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value.trim());
@@ -42,7 +61,7 @@ const clampOpacityPercent = (value) => {
     return Math.max(0, Math.min(100, Math.round(n)));
 };
 
-const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) => {
+const Navbar = ({ resetCategory }) => {
     const creatorContext = useCreator();
     const creatorSettings = creatorContext?.creatorSettings ?? null;
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
@@ -55,6 +74,11 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [oauthProcessing, setOauthProcessing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [creators, setCreators] = useState([]);
+    const [creatorsLoaded, setCreatorsLoaded] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [highlightIndex, setHighlightIndex] = useState(0);
+    const searchWrapRef = useRef(null);
     const [cartCount, setCartCount] = useState(() => getCartItemCount());
     const [isOrderProcessingAdmin, setIsOrderProcessingAdmin] = useState(false);
     const [isFullAdmin, setIsFullAdmin] = useState(false);
@@ -571,7 +595,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
         return () => document.removeEventListener('click', handleClickOutside);
     }, [dropdownOpen]);
 
-    // Enrich user with role/status from backend so pencil (edit logo) and upload show for creators
+    // Enrich user with role/status from backend so upload and creator controls show correctly
     useEffect(() => {
         let isMounted = true;
         const userId = user?.id;
@@ -726,15 +750,143 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
         navigate('/join-channel');
     };
 
-    const handleSearch = () => {
-        if (searchQuery.trim()) {
-            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    const filteredCreators = useMemo(
+        () => filterCreators(creators, searchQuery),
+        [creators, searchQuery]
+    );
+    const autofillSuffix = searchOpen ? creatorAutofillSuffix(searchQuery, filteredCreators) : '';
+
+    useEffect(() => {
+        if (isStorefront) return undefined;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch(apiJoin('/api/creators/list'));
+                const data = await res.json().catch(() => ({}));
+                if (cancelled) return;
+                if (res.ok && data?.success && Array.isArray(data.creators)) {
+                    setCreators(
+                        data.creators
+                            .map((creator) => {
+                                const subdomain = (creator.subdomain || '').trim();
+                                const username = (creator.username || '').trim();
+                                const rawName = String(creator.name || '').trim();
+                                const name =
+                                    rawName && rawName.toLowerCase() !== 'creator'
+                                        ? rawName
+                                        : subdomain || username || 'Creator';
+                                return {
+                                    ...creator,
+                                    subdomain,
+                                    username,
+                                    name,
+                                };
+                            })
+                            .filter((creator) => creator.subdomain || creator.username)
+                    );
+                } else {
+                    setCreators([]);
+                }
+            } catch (_) {
+                if (!cancelled) setCreators([]);
+            } finally {
+                if (!cancelled) setCreatorsLoaded(true);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [isStorefront]);
+
+    useEffect(() => {
+        setHighlightIndex(0);
+    }, [searchQuery, searchOpen]);
+
+    useEffect(() => {
+        if (!searchOpen) return undefined;
+        const closeSearchFromOutside = (event) => {
+            if (searchWrapRef.current?.contains(event.target)) return;
+            setSearchOpen(false);
+            searchWrapRef.current?.querySelector('input')?.blur();
+            if (window.innerWidth > 768) return;
+            const viewport = document.querySelector('meta[name="viewport"]');
+            if (!viewport) return;
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
+            window.setTimeout(() => {
+                viewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+            }, 50);
+        };
+        const timer = window.setTimeout(() => {
+            document.addEventListener('pointerdown', closeSearchFromOutside);
+        }, 0);
+        return () => {
+            window.clearTimeout(timer);
+            document.removeEventListener('pointerdown', closeSearchFromOutside);
+        };
+    }, [searchOpen]);
+
+    const goToCreator = (creator) => {
+        if (!creator) return;
+        const subdomain = (creator.subdomain || '').trim();
+        const username = (creator.username || '').trim();
+        setSearchOpen(false);
+        setSearchQuery('');
+        searchWrapRef.current?.querySelector('input')?.blur();
+        if (subdomain) {
+            window.location.href = `https://${subdomain}.screenmerch.com`;
+            return;
+        }
+        if (username) {
+            navigate(`/profile/${encodeURIComponent(username)}`);
         }
     };
 
-    const handleSearchKeyPress = (e) => {
+    const selectHighlightedCreator = () => {
+        const match = filteredCreators[highlightIndex] || filteredCreators[0];
+        if (match) {
+            goToCreator(match);
+            return;
+        }
+        if (searchQuery.trim()) {
+            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+            setSearchOpen(false);
+        }
+    };
+
+    const handleSearchKeyDown = (e) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSearchOpen(true);
+            setHighlightIndex((prev) =>
+                filteredCreators.length ? (prev + 1) % filteredCreators.length : 0
+            );
+            return;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSearchOpen(true);
+            setHighlightIndex((prev) =>
+                filteredCreators.length
+                    ? (prev - 1 + filteredCreators.length) % filteredCreators.length
+                    : 0
+            );
+            return;
+        }
+        if (e.key === 'Tab' && autofillSuffix) {
+            e.preventDefault();
+            const match = filteredCreators.find((creator) =>
+                String(creator?.name || '').toLowerCase().startsWith(searchQuery.toLowerCase())
+            );
+            if (match?.name) setSearchQuery(match.name);
+            return;
+        }
         if (e.key === 'Enter') {
-            handleSearch();
+            e.preventDefault();
+            selectHighlightedCreator();
+            return;
+        }
+        if (e.key === 'Escape') {
+            setSearchOpen(false);
         }
     };
 
@@ -796,7 +948,12 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                 }}
                 role="menu"
             >
-                <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name || user?.email}</strong></p>
+                <p className="user-dropdown-identity">
+                    Signed in as
+                    <strong>
+                        {user?.user_metadata?.name || user?.display_name || user?.email}
+                    </strong>
+                </p>
                 <hr />
                 {!adminPortalOnlyMenu && (
                     <button
@@ -895,37 +1052,8 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                 className={`flex-div${dropdownOpen ? ' nav-dropdown-active' : ''}${logoOrientation === 'horizontal' ? ' nav--logo-horizontal' : ''}${storefrontHeaderGradient ? ' nav--brand-gradient' : ''}`}
                 style={storefrontHeaderGradient ? { backgroundColor: '#fff', backgroundImage: storefrontHeaderGradient } : undefined}
             >
-                <div className="nav-left flex-div">
-                    <img
-                        src={menu_icon}
-                        alt="Menu"
-                        className="menu-icon menu-icon--hamburger"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setSidebar(prev => !prev);
-                        }}
-                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    />
-                    <button
-                        type="button"
-                        className="menu-icon menu-icon--more"
-                        aria-label="Menu"
-                        aria-expanded={!!sidebar}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setSidebar(prev => !prev);
-                        }}
-                    >
-                        <svg width="6" height="20" viewBox="0 0 6 20" aria-hidden="true">
-                            <circle cx="3" cy="3" r="2.2" fill="currentColor" />
-                            <circle cx="3" cy="10" r="2.2" fill="currentColor" />
-                            <circle cx="3" cy="17" r="2.2" fill="currentColor" />
-                        </svg>
-                    </button>
-                </div>
                 <div className={`navbar-logo-wrap navbar-logo-wrap--${logoOrientation}`}>
+                    <div className="navbar-logo-mark">
                     <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}>
                         {logoSrc ? (
                         <img
@@ -952,68 +1080,117 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         />
                         ) : null}
                     </Link>
+                    </div>
                     {showStorefrontHeaderLinks ? (
                         <div className="storefront-nav-links" role="navigation" aria-label="Store sections">
                             <Link
                                 to="/favorites"
                                 className={storefrontPageActive ? 'is-active' : undefined}
-                                onClick={() => setSidebar(false)}
                             >
                                 Page
                             </Link>
                             <Link
                                 to="/friend-pages"
                                 className={storefrontFriendsActive ? 'is-active' : undefined}
-                                onClick={() => setSidebar(false)}
                             >
                                 Friends
                             </Link>
                             <Link
                                 to="/shop"
                                 className={storefrontShopActive ? 'is-active' : undefined}
-                                onClick={() => setSidebar(false)}
                             >
                                 Shop
                             </Link>
                         </div>
                     ) : null}
-                    {location.pathname.includes('/dashboard') && user && !isDemoPreviewUser(user) && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && (
-                        <Link to="/dashboard?tab=personalization" className="navbar-logo-edit" aria-label="Edit logo in Personalization" title="Edit logo">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                        </Link>
-                    )}
                 </div>
-                {sidebar && !isOrderSuccessPage && createPortal(
-                    <div className="nav-mobile-menu" role="dialog" aria-label="Menu">
-                        <button
-                            type="button"
-                            className="nav-mobile-menu-backdrop"
-                            aria-label="Close menu"
-                            onClick={() => setSidebar(false)}
-                        />
-                        <div className="nav-mobile-menu-panel" onClick={(e) => e.stopPropagation()}>
-                            <Sidebar
-                                sidebar={sidebar}
-                                category={category}
-                                setCategory={setCategory}
-                                setSidebar={setSidebar}
-                            />
-                        </div>
-                    </div>,
-                    document.body
-                )}
                 <div className="nav-center-right flex-div">
                     {isStorefront ? null : (
                     <div className="nav-middle flex-div">
-                        <div className="search-box flex-div">
-                            <input
-                                type="text"
-                                placeholder="Search channels"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyPress={handleSearchKeyPress}
-                            />
-                            <img src={search_icon} alt="" onClick={handleSearch} style={{ cursor: 'pointer' }} />
+                        <div className="search-box-wrap" ref={searchWrapRef}>
+                            <div className={`search-box flex-div${searchOpen ? ' is-open' : ''}`}>
+                                <div className="search-input-slot">
+                                    {autofillSuffix ? (
+                                        <div className="search-autofill" aria-hidden="true">
+                                            <span className="search-autofill-typed">{searchQuery}</span>
+                                            <span className="search-autofill-rest">{autofillSuffix}</span>
+                                        </div>
+                                    ) : null}
+                                    <input
+                                        type="text"
+                                        placeholder="Search channels"
+                                        value={searchQuery}
+                                        autoComplete="off"
+                                        spellCheck="false"
+                                        role="combobox"
+                                        aria-autocomplete="list"
+                                        aria-expanded={searchOpen}
+                                        aria-controls="navbar-creator-suggest"
+                                        onFocus={() => setSearchOpen(true)}
+                                        onClick={() => setSearchOpen(true)}
+                                        onBlur={() => {
+                                            window.setTimeout(() => {
+                                                if (searchWrapRef.current?.contains(document.activeElement)) return;
+                                                setSearchOpen(false);
+                                            }, 0);
+                                        }}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
+                                            setSearchOpen(true);
+                                        }}
+                                        onKeyDown={handleSearchKeyDown}
+                                    />
+                                </div>
+                                <img
+                                    src={search_icon}
+                                    alt=""
+                                    onClick={selectHighlightedCreator}
+                                    style={{ cursor: 'pointer' }}
+                                />
+                            </div>
+                            {searchOpen ? (
+                                <ul className="search-suggest" id="navbar-creator-suggest" role="listbox">
+                                    {filteredCreators.length === 0 ? (
+                                        <li className="search-suggest-empty">
+                                            {!creatorsLoaded
+                                                ? 'Loading creators…'
+                                                : searchQuery.trim()
+                                                    ? 'No creators found'
+                                                    : 'No creators yet'}
+                                        </li>
+                                    ) : (
+                                        filteredCreators.map((creator, index) => (
+                                            <li key={creator.id || creator.username || creator.subdomain || index} role="presentation">
+                                                <button
+                                                    type="button"
+                                                    role="option"
+                                                    aria-selected={index === highlightIndex}
+                                                    className={index === highlightIndex ? 'is-active' : undefined}
+                                                    onMouseEnter={() => setHighlightIndex(index)}
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        goToCreator(creator);
+                                                    }}
+                                                >
+                                                    {creator.avatar ? (
+                                                        <img src={creator.avatar} alt="" />
+                                                    ) : (
+                                                        <span className="search-suggest-avatar">
+                                                            {(creator.name || '?').charAt(0).toUpperCase()}
+                                                        </span>
+                                                    )}
+                                                    <span className="search-suggest-copy">
+                                                        <span className="search-suggest-name">{creator.name}</span>
+                                                        {creator.subdomain ? (
+                                                            <span className="search-suggest-host">{creator.subdomain}.screenmerch.com</span>
+                                                        ) : null}
+                                                    </span>
+                                                </button>
+                                            </li>
+                                        ))
+                                    )}
+                                </ul>
+                            ) : null}
                         </div>
                     </div>
                     )}
@@ -1152,7 +1329,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                             Sign Out
                         </button>
                     ) : (
-                        // Not logged in - show Sign In button
+                        // Not logged in - show Sign In / Sign Up
                         <>
                             <button 
                                 className="sign-in-btn" 
@@ -1207,21 +1384,18 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                     <Link
                         to="/favorites"
                         className={storefrontPageActive ? 'is-active' : undefined}
-                        onClick={() => setSidebar(false)}
                     >
                         Page
                     </Link>
                     <Link
                         to="/friend-pages"
                         className={storefrontFriendsActive ? 'is-active' : undefined}
-                        onClick={() => setSidebar(false)}
                     >
                         Friends
                     </Link>
                     <Link
                         to="/shop"
                         className={storefrontShopActive ? 'is-active' : undefined}
-                        onClick={() => setSidebar(false)}
                     >
                         Shop
                     </Link>
@@ -1238,12 +1412,14 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
             <SignUpChoiceModal
                 isOpen={isSignUpChoiceOpen}
                 onClose={() => setIsSignUpChoiceOpen(false)}
+                onCreatorSignUp={() => setIsCreatorSignupModalOpen(true)}
             />
 
             <CreatorSignupModal
                 isOpen={isCreatorSignupModalOpen}
                 onClose={handleCloseCreatorSignupModal}
                 onSignup={handleCreatorSignup}
+                apiBase={getBackendUrl() || 'https://screenmerch.fly.dev'}
             />
         </>
     )

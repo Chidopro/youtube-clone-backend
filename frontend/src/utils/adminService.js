@@ -1,18 +1,14 @@
 import { supabase } from '../supabaseClient.js';
-import { API_CONFIG } from '../config/apiConfig.js';
+import { API_CONFIG, getBackendUrl } from '../config/apiConfig.js';
 
 // Cache for admin status to avoid repeated API calls
 let adminStatusCache = null;
 let adminStatusCacheTime = 0;
 const CACHE_DURATION = 60000; // 1 minute cache
 
-/** When on screenmerch.com, use same-origin /api so Netlify proxies to Fly and avoids CORS/403. */
+/** Same-origin /api on *.screenmerch.com (Netlify → Fly). Avoids CSP blocks on api.screenmerch.com. */
 function getAdminApiBase() {
-  if (typeof window !== 'undefined') {
-    const o = (window.location?.origin || '').toLowerCase();
-    if (o === 'https://screenmerch.com' || o === 'https://www.screenmerch.com') return '';
-  }
-  return API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+  return getBackendUrl();
 }
 
 function adminApiUrl(path) {
@@ -273,67 +269,34 @@ export class AdminService {
   static async getUsers(page = 0, limit = 20, search = '', status = 'all', role = 'all') {
     try {
       const currentUser = await this.getCurrentUser();
-      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
-      if (currentUser?.userEmail) {
-        const params = new URLSearchParams({ page: String(page), limit: String(limit), status, role });
-        if (search) params.set('search', search);
-        const res = await fetch(`${apiUrl}/api/admin/users?${params}`, {
-          method: 'GET',
-          headers: { 'X-User-Email': currentUser.userEmail },
-          credentials: 'include'
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && Array.isArray(json.users)) {
-            console.log('👥 Fetching users from database...');
-            console.log('👥 Users fetched:', json.users.length, 'users');
-            console.log('👥 Total count:', json.total ?? json.users.length);
-            return {
-              users: json.users,
-              total: json.total ?? 0,
-              page: json.page ?? page,
-              limit: json.limit ?? limit,
-              totalPages: json.totalPages ?? 1
-            };
-          }
-        }
+      if (!currentUser?.userEmail) {
+        return { users: [], total: 0, page, limit, totalPages: 0 };
       }
-      console.log('👥 Fetching users from database...');
-      let query = supabase
-        .from('users')
-        .select('*', { count: 'exact' });
-
-      if (search) {
-        query = query.or(`display_name.ilike.%${search}%,email.ilike.%${search}%`);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        status,
+        role,
+      });
+      if (search) params.set('search', search);
+      const res = await fetch(adminApiUrl(`/api/admin/users?${params}`), {
+        method: 'GET',
+        headers: { 'X-User-Email': currentUser.userEmail },
+        credentials: 'include',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) {
+        console.error('👥 Error fetching users:', json.error || res.status);
+        return { users: [], total: 0, page, limit, totalPages: 0 };
       }
-
-      if (status !== 'all') {
-        query = query.eq('status', status);
-      }
-
-      if (role !== 'all' && (role === 'creator' || role === 'customer')) {
-        query = query.eq('role', role);
-      }
-      /* master_admin and admin are filtered client-side by is_admin/admin_role */
-
-      const { data, error, count } = await query
-        .order('created_at', { ascending: false })
-        .range(page * limit, (page + 1) * limit - 1);
-
-      if (error) {
-        console.error('👥 Error fetching users:', error);
-        throw error;
-      }
-
-      console.log('👥 Users fetched:', data?.length || 0, 'users');
-      console.log('👥 Total count:', count);
-
+      const users = Array.isArray(json.users) ? json.users : [];
+      console.log('👥 Users fetched:', users.length, 'users');
       return {
-        users: data || [],
-        total: count || 0,
-        page,
-        limit,
-        totalPages: Math.ceil((count || 0) / limit)
+        users,
+        total: json.total ?? users.length,
+        page: json.page ?? page,
+        limit: json.limit ?? limit,
+        totalPages: json.totalPages ?? 1,
       };
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -350,9 +313,8 @@ export class AdminService {
   static async updateUserRole(userId, payload) {
     try {
       const currentUser = await this.getCurrentUser();
-      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
       if (!currentUser?.userEmail) throw new Error('Not authenticated');
-      const res = await fetch(`${apiUrl}/api/admin/users/${userId}/role`, {
+      const res = await fetch(adminApiUrl(`/api/admin/users/${userId}/role`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
         credentials: 'include',
@@ -1946,14 +1908,12 @@ export class AdminService {
         return { success: false, error: 'Not authenticated' };
       }
       
-      // Use API endpoint
-      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
       const headers = {
         'Content-Type': 'application/json',
         'X-User-Email': userEmail
       };
       
-      const response = await fetch(`${apiUrl}/api/admin/reset-sales`, {
+      const response = await fetch(adminApiUrl('/api/admin/reset-sales'), {
         method: 'POST',
         credentials: 'include',
         headers,

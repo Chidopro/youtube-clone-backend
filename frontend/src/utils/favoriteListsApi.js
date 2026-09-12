@@ -23,6 +23,7 @@ export async function favoriteListsJson(path, options = {}, retried = false) {
   try {
     res = await fetch(`${getBackendUrl()}${path}`, {
       credentials: 'include',
+      cache: 'no-store',
       ...options,
       headers: { ...base, ...options.headers },
     });

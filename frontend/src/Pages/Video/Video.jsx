@@ -20,7 +20,6 @@ const Video = ({ sidebar }) => {
   const [videoData, setVideoData] = useState(null);
   const videoRef = useRef(null);
   const captureScreenshotRef = useRef(null);
-  const [screenshotCount, setScreenshotCount] = useState(0);
   const [videoHasPlayed, setVideoHasPlayed] = useState(false); // Track if video has been played
   const [pulseStep2, setPulseStep2] = useState(false); // Step 2 only pulses after video is played
   const [pulseStep3, setPulseStep3] = useState(false); // Step 3 starts not pulsing
@@ -119,9 +118,6 @@ const Video = ({ sidebar }) => {
 
   // Update screenshot count when screenshots change
   useEffect(() => {
-    setScreenshotCount(screenshots.length);
-    
-    // Check if user has manually taken screenshots (more than just the automatic thumbnail)
     const hasUserScreenshots = userHasTakenScreenshot || screenshots.length > 1;
     
     if (hasUserScreenshots) {
@@ -329,33 +325,6 @@ const Video = ({ sidebar }) => {
 
         {/* Middle Column - Screenshots */}
         <div className="screenshots-section" id="screenshotsSection">
-          {/* Screenshot Counter - Mobile Only on Video Page */}
-          {isMobile && videoId && (
-            <div 
-              id="screenshotCounter"
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                background: screenshotCount >= 6 ? '#ff4444' : '#fff',
-                border: `2px solid ${screenshotCount >= 6 ? '#ff4444' : '#ddd'}`,
-                borderRadius: '50%',
-                width: '40px',
-                height: '40px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                color: screenshotCount >= 6 ? '#fff' : '#333',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                zIndex: 100
-              }}
-            >
-              {screenshotCount}
-            </div>
-          )}
-          
           <ScreenmerchImages 
             thumbnail={thumbnail} 
             screenshots={screenshots} 
@@ -366,7 +335,7 @@ const Video = ({ sidebar }) => {
             <div className="screenmerch-actions screenmerch-actions--sidebar">
               <button
                 type="button"
-                className="screenmerch-btn screenshot-btn"
+                className={`screenmerch-btn screenshot-btn${videoHasPlayed && screenshots.length < 6 ? ' screenshot-btn-pulse' : ''}`}
                 onClick={handleGrabScreenshot}
                 disabled={screenshots.length >= 6}
               >

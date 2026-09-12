@@ -245,67 +245,78 @@
 
 .umbrella-earnings-table-wrap {
   width: 100%;
+  box-sizing: border-box;
   overflow-x: auto;
   margin-top: 8px;
+  padding: 0 20px 8px;
 }
 
 .channel-umbrella-earnings-table {
+  display: grid;
+  grid-template-columns:
+    minmax(max-content, 1.5fr)
+    repeat(6, minmax(max-content, 1fr))
+    minmax(max-content, 1.25fr);
+  column-gap: 8px;
+  justify-content: stretch;
+  align-items: end;
   width: 100%;
-  min-width: 880px;
-  table-layout: fixed;
-  border-collapse: collapse;
   font-size: 0.9rem;
   background: #fff;
 }
 
-.channel-umbrella-earnings-table th,
-.channel-umbrella-earnings-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #dee2e6;
-  vertical-align: middle;
+.umbrella-earnings-head,
+.umbrella-earnings-group,
+.umbrella-earnings-row {
+  display: contents;
 }
 
-.channel-umbrella-earnings-table th {
+.umbrella-earnings-head > span,
+.umbrella-earnings-row > span {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 10px 14px 8px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.umbrella-earnings-head > span {
   color: #6c757d;
   font-weight: 600;
   font-size: 0.82rem;
   line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
+  padding-top: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #dee2e6;
 }
 
-.channel-umbrella-earnings-table th.col-page,
-.channel-umbrella-earnings-table td.col-page {
-  text-align: left;
-  width: 12%;
+.umbrella-earnings-row > span {
+  border-bottom: 1px solid #dee2e6;
+}
+
+.umbrella-earnings-head > .col-page,
+.umbrella-earnings-row > .col-page {
+  padding-left: 4px;
+}
+
+.umbrella-earnings-head > .col-action,
+.umbrella-earnings-row > .col-action {
+  padding-right: 4px;
+}
+
+.umbrella-earnings-row > .col-page {
   font-weight: 600;
 }
 
-.channel-umbrella-earnings-table th.col-num,
-.channel-umbrella-earnings-table td.col-num {
-  text-align: right;
-  width: 10%;
-}
-
-.channel-umbrella-earnings-table td.col-num {
-  white-space: nowrap;
-}
-
-.channel-umbrella-earnings-table th.col-action,
-.channel-umbrella-earnings-table td.col-action {
-  text-align: center;
-  width: 150px;
-}
-
-.channel-umbrella-earnings-table td.col-pay {
+.channel-umbrella-earnings-table .col-pay {
   font-weight: 700;
 }
 
-.umbrella-row-payout-meta td {
-  padding-top: 0;
-  padding-bottom: 12px;
+.umbrella-row-payout-meta {
+  grid-column: 1 / -1;
+  padding: 2px 4px 12px;
   border-bottom: 1px solid #dee2e6;
-  background: #fafbfc;
+  background: transparent;
 }
 
 .umbrella-balance-owed {
@@ -379,26 +390,6 @@
   font-size: 1rem;
 }
 
-.umbrella-owner-payout-card {
-  margin: 12px 0 20px;
-  padding: 14px 16px;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  max-width: 720px;
-}
-
-.umbrella-owner-payout-amount {
-  margin: 8px 0 0;
-  font-size: 1rem;
-}
-
-.umbrella-owner-payout-meta {
-  color: #6c757d;
-  font-size: 0.85rem;
-  font-weight: 400;
-}
-
 .umbrella-payout-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -470,21 +461,21 @@
 @media (max-width: 768px) {
   .umbrella-earnings-table-wrap {
     overflow: visible;
+    padding: 0;
   }
 
   .channel-umbrella-earnings-table {
-    min-width: 0;
+    display: block;
     width: 100%;
-    table-layout: auto;
-    border-collapse: separate;
+    max-width: none;
     background: transparent;
   }
 
-  .channel-umbrella-earnings-table thead {
+  .umbrella-earnings-head {
     display: none;
   }
 
-  .channel-umbrella-earnings-table tbody {
+  .umbrella-earnings-group {
     display: block;
     background: #fff;
     border: 1px solid #dee2e6;
@@ -493,16 +484,14 @@
     overflow: hidden;
   }
 
-  .channel-umbrella-earnings-table tr {
+  .umbrella-earnings-row {
     display: block;
     width: 100%;
   }
 
-  .channel-umbrella-earnings-table th,
-  .channel-umbrella-earnings-table td {
+  .umbrella-earnings-row > span {
     display: flex;
     width: 100%;
-    max-width: none;
     justify-content: space-between;
     align-items: center;
     gap: 12px;
@@ -512,7 +501,7 @@
     white-space: normal;
   }
 
-  .channel-umbrella-earnings-table td.col-page {
+  .umbrella-earnings-row > .col-page {
     width: 100%;
     font-size: 1.05rem;
     padding-top: 12px;
@@ -521,12 +510,7 @@
     background: #f8f9fa;
   }
 
-  .channel-umbrella-earnings-table td.col-num,
-  .channel-umbrella-earnings-table td.col-action {
-    width: 100%;
-  }
-
-  .channel-umbrella-earnings-table td[data-label]::before {
+  .umbrella-earnings-row > span[data-label]::before {
     content: attr(data-label);
     font-weight: 600;
     color: #6c757d;
@@ -534,17 +518,21 @@
     flex: 1 1 auto;
   }
 
-  .channel-umbrella-earnings-table td.col-action {
+  .umbrella-earnings-row > .col-page::before {
+    content: none;
+  }
+
+  .umbrella-earnings-row > .col-action {
     border-bottom: none;
     padding-top: 10px;
     padding-bottom: 12px;
   }
 
-  .channel-umbrella-earnings-table td.col-action:has(.btn-record-payout) {
+  .umbrella-earnings-row > .col-action:has(.btn-record-payout) {
     display: block;
   }
 
-  .channel-umbrella-earnings-table td.col-action:has(.btn-record-payout)::before {
+  .umbrella-earnings-row > .col-action:has(.btn-record-payout)::before {
     content: none;
   }
 
@@ -553,16 +541,12 @@
     width: 100%;
   }
 
-  .channel-umbrella-earnings-table .umbrella-row-payout-meta td {
-    display: block;
+  .umbrella-row-payout-meta {
+    grid-column: auto;
     padding: 10px 14px 14px;
     border-bottom: none;
     background: #fafbfc;
     text-align: left;
-  }
-
-  .channel-umbrella-earnings-table .umbrella-row-payout-meta td::before {
-    content: none;
   }
 
   .umbrella-last-paid-row {

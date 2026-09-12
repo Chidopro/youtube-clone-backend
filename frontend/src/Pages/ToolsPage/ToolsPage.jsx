@@ -61,6 +61,22 @@ function isShirtOrHoodieApparel(productName, category) {
   return cat === 'womens' || cat === 'mens' || cat === 'kids' || !cat;
 }
 
+// Landscape shirts fill the chest print, so crop pan is locked. Mugs and other
+// non-shirt products keep Move Horizontal / Move Vertical in any orientation.
+function locksImageOffsetsInLandscape(productName, orientation) {
+  return orientation === 'landscape' && isApparelChestPrintProduct(productName);
+}
+
+function printBoxObjectPosition(productName, orientation, offsetX, offsetY) {
+  if (locksImageOffsetsInLandscape(productName, orientation)) {
+    return { x: 50, y: 50 };
+  }
+  return {
+    x: Math.max(0, Math.min(100, 50 + (Number(offsetX) || 0) / 2)),
+    y: Math.max(0, Math.min(100, 50 + (Number(offsetY) || 0) / 2)),
+  };
+}
+
 /**
  * Per-product overlay size/placement. This is the Ribbed Neck / Micro-Rib /
  * Racerback logic: map the overlay to the mint→pink print rectangle painted
@@ -1524,12 +1540,9 @@ const ProductPreviewWithDrag = ({
             const oriented = overlayFitForPreview(printBox);
             const scaledWidth = oriented.width * scaleFactor;
             const scaledHeight = oriented.height * scaleFactor;
-            const posX = imageOrientation === 'landscape'
-              ? 50
-              : Math.max(0, Math.min(100, 50 + imageOffsetX / 2));
-            const posY = imageOrientation === 'landscape'
-              ? 50
-              : Math.max(0, Math.min(100, 50 + imageOffsetY / 2));
+            const objectPos = printBoxObjectPosition(placeName, imageOrientation, imageOffsetX, imageOffsetY);
+            const posX = objectPos.x;
+            const posY = objectPos.y;
             const overlayFitClass = imageOrientation === 'landscape' ? ' product-preview-overlay-landscape' : '';
             const clipRadius = overlayCornerRadiusPx(cornerRadius, scaledWidth, scaledHeight);
             const featherMask = overlayFeatherMaskStyle(featherEdge, scaledWidth, scaledHeight, clipRadius);
@@ -1644,6 +1657,7 @@ function ScreenshotPreviewPane({
   blackAndWhite = false,
   featherFadeEnabled = false,
   featherFadeColor = 'white',
+  boxWidth = 176,
 }) {
   if (!src) {
     return (
@@ -1653,10 +1667,11 @@ function ScreenshotPreviewPane({
     );
   }
   const aspect = printBoxPreviewAspect(productName, productSize, imageOrientation, printAreaFit);
-  const boxW = 176;
+  const boxW = boxWidth > 0 ? boxWidth : 176;
   const boxH = boxW / (aspect > 0 ? aspect : 1);
-  const posX = imageOrientation === 'landscape' ? 50 : Math.max(0, Math.min(100, 50 + imageOffsetX / 2));
-  const posY = imageOrientation === 'landscape' ? 50 : Math.max(0, Math.min(100, 50 + imageOffsetY / 2));
+  const objectPos = printBoxObjectPosition(productName, imageOrientation, imageOffsetX, imageOffsetY);
+  const posX = objectPos.x;
+  const posY = objectPos.y;
   const clipRadius = overlayCornerRadiusPx(cornerRadius, boxW, boxH);
   const featherMask = overlayFeatherMaskStyle(featherEdge, boxW, boxH, clipRadius);
   const previewFrame = frameEnabled
@@ -2976,6 +2991,9 @@ const ToolsPage = () => {
 
   useEffect(() => {
     if (imageOrientation !== 'landscape') return;
+    const product = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
+    const name = selectedProductName || product?.name || '';
+    if (!locksImageOffsetsInLandscape(name, imageOrientation)) return;
     setImageOffsetX(0);
     setImageOffsetY(0);
     if (selectedCartProductIndex == null) return;
@@ -2984,7 +3002,7 @@ const ToolsPage = () => {
       if (cur && cur.x === 0 && cur.y === 0) return prev;
       return { ...prev, [selectedCartProductIndex]: { x: 0, y: 0 } };
     });
-  }, [imageOrientation, selectedCartProductIndex]);
+  }, [imageOrientation, selectedCartProductIndex, selectedProductName, cartProducts]);
 
   // When Fit to Print names a product that is not the current cart item,
   // load that product's mockup so the screenshot can be tested on it.
@@ -4680,29 +4698,47 @@ const ToolsPage = () => {
                         return <ToolsUnavailableNotice info={toolsUnavailable} />;
                       }
                       
-                      // Mugs: Show "Preview Not Available" message, but allow tools
+                      // Mugs: show the edited screenshot only (no product mockup)
                       if (isMug) {
-                        return (
-                          <div style={{
-                            padding: '20px',
-                            textAlign: 'center',
-                            background: '#e7f3ff',
-                            border: '2px solid #b3d9ff',
-                            borderRadius: '8px',
-                            color: '#004085',
-                            minHeight: '150px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            alignItems: 'center'
-                          }}>
-                            <div style={{ fontSize: '24px', marginBottom: '10px' }}>☕</div>
-                            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Preview Not Available</div>
-                            <div style={{ fontSize: '14px' }}>
+                        const mugNotice = (
+                          <div className="product-preview-unavailable-note">
+                            <div className="product-preview-unavailable-note-title">Preview Not Available</div>
+                            <div className="product-preview-unavailable-note-text">
                               Mug preview is not available due to the curved surface, but you can still use the editing tools to customize your screenshot.
                             </div>
                           </div>
                         );
+                        if (currentImage) {
+                          return (
+                            <div>
+                              <div className="mug-product-preview-image">
+                                <ScreenshotPreviewPane
+                                  src={overlayScreenshot}
+                                  productName={productName}
+                                  productSize={product.size}
+                                  imageOrientation={imageOrientation}
+                                  printAreaFit={printAreaFit}
+                                  imageOffsetX={imageOffsetX}
+                                  imageOffsetY={imageOffsetY}
+                                  featherEdge={featherEdge}
+                                  cornerRadius={cornerRadius}
+                                  frameEnabled={frameEnabled}
+                                  frameColor={frameColor}
+                                  frameWidth={frameWidth}
+                                  doubleFrame={doubleFrame}
+                                  blackAndWhite={blackAndWhite}
+                                  featherFadeEnabled={featherFadeEnabled}
+                                  featherFadeColor={featherFadeColor}
+                                  sourceWidth={currentImageDimensions.width}
+                                  sourceHeight={currentImageDimensions.height}
+                                  boxWidth={240}
+                                />
+                              </div>
+                              {mugNotice}
+                            </div>
+                          );
+                        }
+                        return mugNotice;
                       }
                       
                       // Misc products (no preview needed): Allow tools but no preview
@@ -5005,14 +5041,21 @@ const ToolsPage = () => {
                       orientationUserSetRef.current = true;
                       rememberArtworkOrientation('landscape');
                       setImageOrientation('landscape');
-                      setImageOffsetX(0);
-                      setImageOffsetY(0);
+                      const landscapeName = selectedProductName
+                        || (selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex]?.name : '')
+                        || '';
+                      if (locksImageOffsetsInLandscape(landscapeName, 'landscape')) {
+                        setImageOffsetX(0);
+                        setImageOffsetY(0);
+                        if (selectedCartProductIndex !== null) {
+                          setProductImageOffsets((prev) => ({
+                            ...prev,
+                            [selectedCartProductIndex]: { x: 0, y: 0 },
+                          }));
+                        }
+                      }
                       if (selectedCartProductIndex !== null) {
                         fitUserSetRef.current[selectedCartProductIndex] = true;
-                        setProductImageOffsets((prev) => ({
-                          ...prev,
-                          [selectedCartProductIndex]: { x: 0, y: 0 },
-                        }));
                       }
                       if (selectedProductName && printAreaFit === 'none') {
                         setPrintAreaFit('product');
@@ -5057,7 +5100,10 @@ const ToolsPage = () => {
               </select>
             </div>
             
-            {printAreaFit !== 'none' && imageOrientation !== 'landscape' && (
+            {printAreaFit !== 'none' && !locksImageOffsetsInLandscape(
+              selectedProductName || selectedCartProduct?.name || '',
+              imageOrientation
+            ) && (
               <>
                 <div className="slider-control" style={{ marginTop: '1rem' }}>
                   <label>Move Horizontal:</label>

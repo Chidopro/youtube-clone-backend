@@ -91,6 +91,23 @@
   margin-bottom: 25px;
 }
 
+.setting-group--logo-focus {
+  outline: 2px solid #667eea;
+  outline-offset: 10px;
+  border-radius: 10px;
+  animation: logo-focus-pulse 1.6s ease;
+  scroll-margin-top: 130px;
+}
+
+#personalization-custom-logo {
+  scroll-margin-top: 130px;
+}
+
+@keyframes logo-focus-pulse {
+  0% { background: rgba(102, 126, 234, 0.16); }
+  100% { background: transparent; }
+}
+
 .setting-label {
   display: block;
   margin-bottom: 8px;

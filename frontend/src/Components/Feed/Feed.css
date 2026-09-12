@@ -10,6 +10,24 @@
   align-items: start;
 }
 
+.feed-hubs--shuffle {
+  margin-top: 0;
+}
+
+.feed-hubs--shuffle .hub-card--shuffle > img,
+.feed-hubs--shuffle .hub-card--shuffle > .hub-card-empty {
+  border-radius: 5px;
+}
+
+.feed-hubs--shuffle .hub-card--shuffle img {
+  animation: hub-shuffle-fade 0.5s ease;
+}
+
+@keyframes hub-shuffle-fade {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
 .feed {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

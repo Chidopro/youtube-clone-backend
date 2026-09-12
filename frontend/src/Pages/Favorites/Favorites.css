@@ -59,7 +59,7 @@
   margin: 0;
 }
 
-/* Let the Images/Videos rows own sideways scroll instead of the page. */
+/* Let the Videos/Images rows own sideways scroll instead of the page. */
 .container.favorites-root {
   overflow-x: visible !important;
   min-width: 0;
@@ -191,7 +191,16 @@
   max-width: 100%;
 }
 
+.favorites-shelf--videos {
+  order: 1;
+}
+
+.favorites-shelf--images {
+  order: 2;
+}
+
 .favorites-extra-page {
+  order: 3;
   min-width: 0;
   max-width: 100%;
   padding-top: 8px;
@@ -514,6 +523,18 @@
   aspect-ratio: 16/9;
   overflow: hidden;
   background: #111;
+}
+
+button.favorites-card-image--clickable {
+  display: block;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .favorites-card-image img {

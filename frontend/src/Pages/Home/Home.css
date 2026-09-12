@@ -119,6 +119,59 @@ body {
   /* This class is no longer needed for padding but may be used elsewhere */
 }
 
+/* Storefront home: header keeps its natural height (grid auto row).
+   The body row fills the rest of the window so the footer sits at the bottom. */
+.app-shell--storefront-home {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto 1fr;
+  min-height: 100dvh;
+}
+
+.app-shell--storefront-home > nav {
+  grid-row: 1;
+}
+
+.app-shell--storefront-home > .page-top-banner {
+  grid-row: 2;
+}
+
+.app-shell--storefront-home > .app-shell-body {
+  grid-row: 3;
+}
+
+.app-shell--storefront-home .app-shell-body,
+.app-shell--storefront-home .main-content-area {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.app-shell--storefront-home .main-content-area {
+  flex: 1 0 auto;
+  padding-bottom: 0;
+}
+
+.app-shell--storefront-home .main-content-inner {
+  flex: 0 0 auto;
+}
+
+.home-page--hubs {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell--storefront-home .site-footer {
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .home-page--hubs {
+    padding-top: 8px;
+  }
+}
+
 /* Desktop: keep 1/2/3 bar in the same inset as hamburger / Sign Up (no uneven breakout) */
 @media (min-width: 769px) {
   .home-page .user-flow-section {

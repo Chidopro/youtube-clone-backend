@@ -17,6 +17,20 @@ import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchS
 const SCREENSHOT_MAX_EDGE = 1080;
 const SCREENSHOT_JPEG_QUALITY = 0.8;
 
+function getUseCustomPlayer() {
+    if (typeof window === 'undefined') return false;
+    if (window.matchMedia('(max-width: 768px)').matches) return true;
+    if (window.matchMedia('(pointer: coarse)').matches) return true;
+    return /iPhone|iPod|iPad|Android/i.test(navigator.userAgent || '');
+}
+
+const PLAYBACK_RATES = [0.5, 1, 1.25, 1.5, 2];
+
+function formatPlaybackRate(rate) {
+    const n = Number(rate) || 1;
+    return `${n}x`;
+}
+
 function exportCanvasJpeg(canvas) {
     try {
         const url = canvas.toDataURL('image/jpeg', SCREENSHOT_JPEG_QUALITY);
@@ -78,6 +92,115 @@ function captureVideoFrameJpeg(videoElement) {
     }
 }
 
+/** Visible video pixels inside the player box (object-fit: contain letterboxing). */
+function getVideoContentBox(videoElement) {
+    const rect = videoElement.getBoundingClientRect();
+    const displayW = rect.width;
+    const displayH = rect.height;
+    const videoW = videoElement.videoWidth || 0;
+    const videoH = videoElement.videoHeight || 0;
+    if (!videoW || !videoH || !displayW || !displayH) {
+        return { x: 0, y: 0, width: displayW, height: displayH, videoW, videoH, displayW, displayH };
+    }
+    const displayAspect = displayW / displayH;
+    const videoAspect = videoW / videoH;
+    let width;
+    let height;
+    let x;
+    let y;
+    if (displayAspect > videoAspect) {
+        height = displayH;
+        width = height * videoAspect;
+        x = (displayW - width) / 2;
+        y = 0;
+    } else {
+        width = displayW;
+        height = width / videoAspect;
+        x = 0;
+        y = (displayH - height) / 2;
+    }
+    return { x, y, width, height, videoW, videoH, displayW, displayH };
+}
+
+function clampCropToContent(crop, content) {
+    const minSize = 50;
+    const maxW = Math.max(minSize, content.width);
+    const maxH = Math.max(minSize, content.height);
+    const width = Math.min(Math.max(minSize, crop.width), maxW);
+    const height = Math.min(Math.max(minSize, crop.height), maxH);
+    const x = Math.min(Math.max(content.x, crop.x), content.x + content.width - width);
+    const y = Math.min(Math.max(content.y, crop.y), content.y + content.height - height);
+    return { x, y, width, height };
+}
+
+function cropAreaToSourceRect(cropArea, content, sourceWidth, sourceHeight) {
+    if (!content.width || !content.height || !sourceWidth || !sourceHeight) {
+        return { sx: 0, sy: 0, sw: sourceWidth || 1, sh: sourceHeight || 1 };
+    }
+    const relX = (cropArea.x - content.x) / content.width;
+    const relY = (cropArea.y - content.y) / content.height;
+    const relW = cropArea.width / content.width;
+    const relH = cropArea.height / content.height;
+    let sx = Math.round(relX * sourceWidth);
+    let sy = Math.round(relY * sourceHeight);
+    let sw = Math.round(relW * sourceWidth);
+    let sh = Math.round(relH * sourceHeight);
+    sx = Math.max(0, Math.min(sourceWidth - 1, sx));
+    sy = Math.max(0, Math.min(sourceHeight - 1, sy));
+    sw = Math.max(1, Math.min(sourceWidth - sx, sw));
+    sh = Math.max(1, Math.min(sourceHeight - sy, sh));
+    return { sx, sy, sw, sh };
+}
+
+function cropVideoFrameJpeg(videoElement, cropArea) {
+    const content = getVideoContentBox(videoElement);
+    if (!content.videoW || !content.videoH) return null;
+    const { sx, sy, sw, sh } = cropAreaToSourceRect(cropArea, content, content.videoW, content.videoH);
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = sw;
+        canvas.height = sh;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(videoElement, sx, sy, sw, sh, 0, 0, sw, sh);
+        return downsampleCanvasJpeg(canvas);
+    } catch {
+        return null;
+    }
+}
+
+function cropImageDataUrl(dataUrl, cropArea, videoElement) {
+    return new Promise((resolve, reject) => {
+        if (!dataUrl) {
+            reject(new Error('No screenshot to crop'));
+            return;
+        }
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const content = getVideoContentBox(videoElement);
+                const sourceWidth = img.naturalWidth || img.width;
+                const sourceHeight = img.naturalHeight || img.height;
+                const { sx, sy, sw, sh } = cropAreaToSourceRect(cropArea, content, sourceWidth, sourceHeight);
+                const canvas = document.createElement('canvas');
+                canvas.width = sw;
+                canvas.height = sh;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('Could not crop screenshot'));
+                    return;
+                }
+                ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+                resolve(downsampleCanvasJpeg(canvas) || canvas.toDataURL('image/jpeg', SCREENSHOT_JPEG_QUALITY));
+            } catch (error) {
+                reject(error);
+            }
+        };
+        img.onerror = () => reject(new Error('Failed to load screenshot for cropping'));
+        img.src = dataUrl;
+    });
+}
+
 function capDataUrlJpeg(dataUrl) {
     return new Promise((resolve) => {
         if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
@@ -108,12 +231,14 @@ function capDataUrlJpeg(dataUrl) {
 
 // Mobile detection hook
 const useIsMobile = () => {
-    const [isMobile, setIsMobile] = useState(false);
-    const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+    const [isMobile, setIsMobile] = useState(() => getUseCustomPlayer());
+    const [isMobilePortrait, setIsMobilePortrait] = useState(() => (
+        getUseCustomPlayer() && typeof window !== 'undefined' && window.innerHeight > window.innerWidth
+    ));
     
     useEffect(() => {
         const checkIsMobile = () => {
-            const mobile = window.innerWidth <= 768;
+            const mobile = getUseCustomPlayer();
             const portrait = mobile && window.innerHeight > window.innerWidth;
             setIsMobile(mobile);
             setIsMobilePortrait(portrait);
@@ -122,10 +247,16 @@ const useIsMobile = () => {
         checkIsMobile();
         window.addEventListener('resize', checkIsMobile);
         window.addEventListener('orientationchange', checkIsMobile);
+        const narrow = window.matchMedia('(max-width: 768px)');
+        const coarse = window.matchMedia('(pointer: coarse)');
+        narrow.addEventListener?.('change', checkIsMobile);
+        coarse.addEventListener?.('change', checkIsMobile);
         
         return () => {
             window.removeEventListener('resize', checkIsMobile);
             window.removeEventListener('orientationchange', checkIsMobile);
+            narrow.removeEventListener?.('change', checkIsMobile);
+            coarse.removeEventListener?.('change', checkIsMobile);
         };
     }, []);
     
@@ -161,6 +292,7 @@ const PlayVideo = ({
     const pendingSeekRef = useRef(null);
     const playbackUrlRef = useRef('');
     const playStartedAtRef = useRef(0);
+    const pausedCanvasRef = useRef(null);
     
     // Video container ref
     const [videoContainerRef] = useState(useRef(null));
@@ -169,6 +301,12 @@ const PlayVideo = ({
     const [videoHasPlayed, setVideoHasPlayed] = useState(false);
     // Mobile native controls draw a full-frame pause / ±10s overlay for ~3s after play.
     const [mobilePlaying, setMobilePlaying] = useState(false);
+    const [playerTime, setPlayerTime] = useState(0);
+    const [playerDuration, setPlayerDuration] = useState(0);
+    const [hideMediaChrome, setHideMediaChrome] = useState(false);
+    const [playbackRate, setPlaybackRate] = useState(1);
+    const hideChromeTimerRef = useRef(null);
+    const videoHasPlayedRef = useRef(false);
     
     // Ref to track if screenshot function has been passed to prevent loops
     const screenshotFunctionPassedRef = useRef(false);
@@ -179,11 +317,16 @@ const PlayVideo = ({
     
     // Inline crop tool state
     const [isCropMode, setIsCropMode] = useState(false);
+    const [isApplyingCrop, setIsApplyingCrop] = useState(false);
     const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 200, height: 200 });
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
     const [resizeDirection, setResizeDirection] = useState(null);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const cropAreaRef = useRef(cropArea);
+    const isDraggingRef = useRef(false);
+    const isResizingRef = useRef(false);
+    const resizeDirectionRef = useRef(null);
+    const dragStartRef = useRef({ x: 0, y: 0 });
     
     // Screenshot timestamps (seconds in video). Parent can own state so "Make Merch" in Video.jsx saves real values.
     const [screenshotTimestampsInternal, setScreenshotTimestampsInternal] = useState([]);
@@ -197,6 +340,36 @@ const PlayVideo = ({
         return;
     }, []);
 
+    const stripNativeControls = useCallback((el) => {
+        const video = el || videoRef.current;
+        if (!video) return;
+        video.controls = false;
+        video.removeAttribute('controls');
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
+    }, [videoRef]);
+
+    const drawPausedFrame = useCallback(() => {
+        const video = videoRef.current;
+        const canvas = pausedCanvasRef.current;
+        if (!video || !canvas) return;
+        const width = Math.max(1, video.clientWidth || 390);
+        const height = Math.max(1, video.clientHeight || 320);
+        const scale = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.round(width * scale);
+        canvas.height = Math.round(height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        if (video.readyState < 2) return;
+        try {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        } catch (_) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }, [videoRef]);
+
     // Configure video for mobile inline playback
     useEffect(() => {
         if (videoRef.current && isMobile) {
@@ -207,33 +380,40 @@ const PlayVideo = ({
             video.setAttribute('webkit-playsinline', 'true');
             video.setAttribute('x-webkit-airplay', 'allow');
             video.setAttribute('preload', 'auto');
+            stripNativeControls(video);
             
             // Prevent fullscreen on mobile
-            video.addEventListener('webkitbeginfullscreen', (e) => {
+            const preventBeginFullscreen = (e) => {
                 e.preventDefault();
-                video.webkitExitFullscreen();
-            });
+                video.webkitExitFullscreen?.();
+            };
             
-            video.addEventListener('webkitendfullscreen', (e) => {
+            const preventEndFullscreen = (e) => {
                 e.preventDefault();
-            });
+            };
             
             // Ensure video stays inline
-            const preventFullscreen = (e) => {
+            const preventFullscreen = () => {
                 if (video.webkitPresentationMode === 'fullscreen') {
                     video.webkitSetPresentationMode('inline');
                 }
             };
             
+            video.addEventListener('webkitbeginfullscreen', preventBeginFullscreen);
+            video.addEventListener('webkitendfullscreen', preventEndFullscreen);
             video.addEventListener('webkitpresentationmodechanged', preventFullscreen);
+
+            const mo = new MutationObserver(() => stripNativeControls(video));
+            mo.observe(video, { attributes: true, attributeFilter: ['controls'] });
             
             return () => {
-                video.removeEventListener('webkitbeginfullscreen', preventFullscreen);
-                video.removeEventListener('webkitendfullscreen', preventFullscreen);
+                mo.disconnect();
+                video.removeEventListener('webkitbeginfullscreen', preventBeginFullscreen);
+                video.removeEventListener('webkitendfullscreen', preventEndFullscreen);
                 video.removeEventListener('webkitpresentationmodechanged', preventFullscreen);
             };
         }
-    }, [isMobile, videoRef.current]);
+    }, [isMobile, stripNativeControls, videoRef]);
     
 
 
@@ -352,24 +532,61 @@ const PlayVideo = ({
         setVideoError(null);
         // Reset video played state when video changes
         setVideoHasPlayed(false);
+        videoHasPlayedRef.current = false;
         setMobilePlaying(false);
+        setHideMediaChrome(false);
+        setPlaybackRate(1);
+        if (hideChromeTimerRef.current) {
+            window.clearTimeout(hideChromeTimerRef.current);
+            hideChromeTimerRef.current = null;
+        }
     }, [videoId, setScreenshots]);
 
-    // Strip the native mobile overlay as soon as playback starts (CSS cannot hide it on iOS).
+    // Keep the bottom control bar; never let WebKit re-enable native controls.
+    const revealMediaChrome = useCallback((el) => {
+        if (hideChromeTimerRef.current) {
+            window.clearTimeout(hideChromeTimerRef.current);
+            hideChromeTimerRef.current = null;
+        }
+        setHideMediaChrome(false);
+        const videoElement = el || videoRef.current;
+        if (!videoElement) return;
+        if (!isMobile && !isCropMode) {
+            videoElement.controls = true;
+        } else {
+            videoElement.controls = false;
+            videoElement.removeAttribute('controls');
+        }
+    }, [videoRef, isMobile, isCropMode]);
+
+    const concealMediaChrome = useCallback((el) => {
+        if (hideChromeTimerRef.current) {
+            window.clearTimeout(hideChromeTimerRef.current);
+            hideChromeTimerRef.current = null;
+        }
+        setHideMediaChrome(true);
+        const videoElement = el || videoRef.current;
+        if (videoElement) {
+            videoElement.controls = false;
+            videoElement.removeAttribute('controls');
+        }
+    }, [videoRef]);
+
+    const scheduleHideMediaChrome = useCallback((el) => {
+        if (hideChromeTimerRef.current) {
+            window.clearTimeout(hideChromeTimerRef.current);
+        }
+        hideChromeTimerRef.current = window.setTimeout(() => {
+            concealMediaChrome(el);
+        }, 500);
+    }, [concealMediaChrome]);
+
     const hideMobileNativeOverlay = useCallback((el) => {
         const videoElement = el || videoRef.current;
         if (!isMobile || !videoElement) return;
         playStartedAtRef.current = Date.now();
-        if (!videoElement.controls) return;
-        const resumeIfNeeded = !videoElement.paused;
-        videoElement.controls = false;
-        requestAnimationFrame(() => {
-            if (!videoElement.paused) videoElement.controls = false;
-            if (resumeIfNeeded && videoElement.paused) {
-                videoElement.play().catch(() => {});
-            }
-        });
-    }, [isMobile, videoRef]);
+        stripNativeControls(videoElement);
+    }, [isMobile, stripNativeControls]);
 
     // Listen for video play event using addEventListener for reliability
     useEffect(() => {
@@ -379,10 +596,12 @@ const PlayVideo = ({
         const stripOverlay = () => {
             hideMobileNativeOverlay(videoElement);
             if (isMobile) setMobilePlaying(true);
+            scheduleHideMediaChrome(videoElement);
         };
         
         const handlePlay = () => {
             stripOverlay();
+            videoHasPlayedRef.current = true;
             if (!videoHasPlayed) {
                 console.log('Video play event detected - activating step 2 red pulse');
                 setVideoHasPlayed(true);
@@ -395,9 +614,14 @@ const PlayVideo = ({
         };
 
         const handlePause = () => {
-            if (!isMobile || videoElement.seeking) return;
-            setMobilePlaying(false);
-            videoElement.controls = true;
+            if (videoElement.seeking) return;
+            if (isMobile) {
+                setMobilePlaying(false);
+                requestAnimationFrame(() => drawPausedFrame());
+            }
+            if (videoHasPlayedRef.current || videoElement.currentTime > 0.05) {
+                revealMediaChrome(videoElement);
+            }
         };
         
         videoElement.addEventListener('play', handlePlay);
@@ -411,7 +635,24 @@ const PlayVideo = ({
             videoElement.removeEventListener('pause', handlePause);
             videoElement.removeEventListener('ended', handlePause);
         };
-    }, [videoRef, videoHasPlayed, onVideoPlayed, isMobile, hideMobileNativeOverlay]);
+    }, [videoRef, videoHasPlayed, onVideoPlayed, isMobile, hideMobileNativeOverlay, drawPausedFrame, scheduleHideMediaChrome, revealMediaChrome]);
+
+    useEffect(() => () => {
+        if (hideChromeTimerRef.current) {
+            window.clearTimeout(hideChromeTimerRef.current);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!isMobile || mobilePlaying || isCropMode) return;
+        const id = requestAnimationFrame(() => drawPausedFrame());
+        return () => cancelAnimationFrame(id);
+    }, [isMobile, mobilePlaying, isCropMode, playerTime, drawPausedFrame, videoId]);
+
+    useEffect(() => {
+        const el = videoRef.current;
+        if (el) el.playbackRate = playbackRate;
+    }, [playbackRate, videoId, videoRef]);
 
 
 
@@ -626,380 +867,229 @@ const PlayVideo = ({
         navigate(`/merchandise${qs}`);
     };
     
-    // Inline crop tool functions
+    const updateCropArea = (next) => {
+        cropAreaRef.current = next;
+        setCropArea(next);
+    };
+
+    const endCropPointer = () => {
+        isDraggingRef.current = false;
+        isResizingRef.current = false;
+        resizeDirectionRef.current = null;
+        setIsDragging(false);
+        setIsResizing(false);
+        setResizeDirection(null);
+    };
+
+    const applyCropPointerMove = (clientX, clientY) => {
+        if (!isDraggingRef.current && !isResizingRef.current) return;
+        const videoElement = videoRef.current;
+        if (!videoElement) return;
+        const rect = videoElement.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        const content = getVideoContentBox(videoElement);
+        const prev = cropAreaRef.current;
+
+        if (isDraggingRef.current) {
+            updateCropArea(clampCropToContent({
+                ...prev,
+                x: x - dragStartRef.current.x,
+                y: y - dragStartRef.current.y,
+            }, content));
+            return;
+        }
+
+        const dir = resizeDirectionRef.current || '';
+        let { x: newX, y: newY, width: newWidth, height: newHeight } = prev;
+        if (dir.includes('right')) newWidth = x - prev.x;
+        if (dir.includes('left')) {
+            newX = x;
+            newWidth = prev.x + prev.width - newX;
+        }
+        if (dir.includes('bottom')) newHeight = y - prev.y;
+        if (dir.includes('top')) {
+            newY = y;
+            newHeight = prev.y + prev.height - newY;
+        }
+        updateCropArea(clampCropToContent({ x: newX, y: newY, width: newWidth, height: newHeight }, content));
+    };
+
+    useEffect(() => {
+        cropAreaRef.current = cropArea;
+    }, [cropArea]);
+
+    useEffect(() => {
+        if (!isCropMode) return undefined;
+
+        const onMouseMove = (e) => applyCropPointerMove(e.clientX, e.clientY);
+        const onTouchMove = (e) => {
+            if (!isDraggingRef.current && !isResizingRef.current) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            if (touch) applyCropPointerMove(touch.clientX, touch.clientY);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', endCropPointer);
+        document.addEventListener('touchmove', onTouchMove, { passive: false });
+        document.addEventListener('touchend', endCropPointer);
+        document.addEventListener('touchcancel', endCropPointer);
+        return () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', endCropPointer);
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', endCropPointer);
+            document.removeEventListener('touchcancel', endCropPointer);
+        };
+    }, [isCropMode]);
+
     const handleToggleCropMode = () => {
-        setIsCropMode(!isCropMode);
-        if (!isCropMode) {
-            // Initialize crop area in center of video
-            const videoElement = videoRef.current;
-            if (videoElement) {
-                const rect = videoElement.getBoundingClientRect();
-                const centerX = rect.width / 2 - 100;
-                const centerY = rect.height / 2 - 100;
-                setCropArea({ x: centerX, y: centerY, width: 200, height: 200 });
-            }
+        if (isCropMode) {
+            endCropPointer();
+            setIsCropMode(false);
+            setIsApplyingCrop(false);
+            return;
+        }
+
+        const videoElement = videoRef.current;
+        if (videoElement && !videoElement.paused) {
+            videoElement.pause();
+        }
+        if (videoElement) {
+            const content = getVideoContentBox(videoElement);
+            const width = Math.min(200, Math.max(50, content.width * 0.4));
+            const height = Math.min(200, Math.max(50, content.height * 0.4));
+            updateCropArea(clampCropToContent({
+                x: content.x + (content.width - width) / 2,
+                y: content.y + (content.height - height) / 2,
+                width,
+                height,
+            }, content));
+        }
+        setIsCropMode(true);
+    };
+
+    const startCropDrag = (clientX, clientY) => {
+        const videoElement = videoRef.current;
+        if (!videoElement) return;
+        const rect = videoElement.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        const area = cropAreaRef.current;
+        if (x >= area.x && x <= area.x + area.width && y >= area.y && y <= area.y + area.height) {
+            isDraggingRef.current = true;
+            isResizingRef.current = false;
+            dragStartRef.current = { x: x - area.x, y: y - area.y };
+            setIsDragging(true);
+            setIsResizing(false);
         }
     };
 
     const handleCropMouseDown = (e) => {
-        if (!isCropMode) return;
-        
-        const videoElement = videoRef.current;
-        if (!videoElement) return;
-        
-        const rect = videoElement.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        // Check if clicking inside crop area
-        if (x >= cropArea.x && x <= cropArea.x + cropArea.width &&
-            y >= cropArea.y && y <= cropArea.y + cropArea.height) {
-            setIsDragging(true);
-            setDragStart({ x: x - cropArea.x, y: y - cropArea.y });
-        }
+        if (!isCropMode || isApplyingCrop) return;
+        if (e.target.closest && (e.target.closest('button') || e.target.closest('.resize-handle'))) return;
+        startCropDrag(e.clientX, e.clientY);
     };
 
-    const handleCropMouseMove = (e) => {
-        if (!isCropMode || (!isDragging && !isResizing)) return;
-        
-        const videoElement = videoRef.current;
-        if (!videoElement) return;
-        
-        const rect = videoElement.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        if (isDragging) {
-            const newX = Math.max(0, Math.min(rect.width - cropArea.width, x - dragStart.x));
-            const newY = Math.max(0, Math.min(rect.height - cropArea.height, y - dragStart.y));
-            setCropArea(prev => ({ ...prev, x: newX, y: newY }));
-        } else if (isResizing) {
-            // Handle resizing based on direction
-            let newWidth = cropArea.width;
-            let newHeight = cropArea.height;
-            let newX = cropArea.x;
-            let newY = cropArea.y;
-            
-            if (resizeDirection.includes('right')) {
-                newWidth = Math.max(50, x - cropArea.x);
-            }
-            if (resizeDirection.includes('left')) {
-                const maxLeft = cropArea.x + cropArea.width - 50;
-                newX = Math.min(maxLeft, x);
-                newWidth = cropArea.x + cropArea.width - newX;
-            }
-            if (resizeDirection.includes('bottom')) {
-                newHeight = Math.max(50, y - cropArea.y);
-            }
-            if (resizeDirection.includes('top')) {
-                const maxTop = cropArea.y + cropArea.height - 50;
-                newY = Math.min(maxTop, y);
-                newHeight = cropArea.y + cropArea.height - newY;
-            }
-            
-            setCropArea({ x: newX, y: newY, width: newWidth, height: newHeight });
-        }
-    };
-
-    const handleCropMouseUp = () => {
-        setIsDragging(false);
-        setIsResizing(false);
-        setResizeDirection(null);
-    };
-
-    // Mobile touch event handlers
     const handleCropTouchStart = (e) => {
-        if (!isCropMode) return;
-        e.preventDefault(); // Prevent scrolling
-        e.stopPropagation(); // Stop event bubbling
-        
-        const videoElement = videoRef.current;
-        if (!videoElement) return;
-        
+        if (!isCropMode || isApplyingCrop) return;
+        if (e.target.closest && (e.target.closest('button') || e.target.closest('.resize-handle'))) return;
+        e.preventDefault();
         const touch = e.touches[0];
-        const rect = videoElement.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        // Check if touching inside crop area
-        if (x >= cropArea.x && x <= cropArea.x + cropArea.width &&
-            y >= cropArea.y && y <= cropArea.y + cropArea.height) {
-            setIsDragging(true);
-            setDragStart({ x: x - cropArea.x, y: y - cropArea.y });
-        }
-    };
-
-    const handleCropTouchMove = (e) => {
-        if (!isCropMode || (!isDragging && !isResizing)) return;
-        e.preventDefault(); // Prevent scrolling
-        e.stopPropagation(); // Stop event bubbling
-        
-        const videoElement = videoRef.current;
-        if (!videoElement) return;
-        
-        const touch = e.touches[0];
-        const rect = videoElement.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        if (isDragging) {
-            const newX = Math.max(0, Math.min(rect.width - cropArea.width, x - dragStart.x));
-            const newY = Math.max(0, Math.min(rect.height - cropArea.height, y - dragStart.y));
-            setCropArea(prev => ({ ...prev, x: newX, y: newY }));
-        } else if (isResizing) {
-            // Handle resizing based on direction
-            let newWidth = cropArea.width;
-            let newHeight = cropArea.height;
-            let newX = cropArea.x;
-            let newY = cropArea.y;
-            
-            if (resizeDirection.includes('right')) {
-                newWidth = Math.max(50, x - cropArea.x);
-            }
-            if (resizeDirection.includes('left')) {
-                const maxLeft = cropArea.x + cropArea.width - 50;
-                newX = Math.min(maxLeft, x);
-                newWidth = cropArea.x + cropArea.width - newX;
-            }
-            if (resizeDirection.includes('bottom')) {
-                newHeight = Math.max(50, y - cropArea.y);
-            }
-            if (resizeDirection.includes('top')) {
-                const maxTop = cropArea.y + cropArea.height - 50;
-                newY = Math.min(maxTop, y);
-                newHeight = cropArea.y + cropArea.height - newY;
-            }
-            
-            setCropArea({ x: newX, y: newY, width: newWidth, height: newHeight });
-        }
-    };
-
-    const handleCropTouchEnd = (e) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        setIsDragging(false);
-        setIsResizing(false);
-        setResizeDirection(null);
+        if (touch) startCropDrag(touch.clientX, touch.clientY);
     };
 
     const handleResizeStart = (direction, e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isApplyingCrop) return;
+        isResizingRef.current = true;
+        isDraggingRef.current = false;
+        resizeDirectionRef.current = direction;
         setIsResizing(true);
+        setIsDragging(false);
         setResizeDirection(direction);
     };
 
-    const handleResizeTouchStart = (direction, e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        setIsResizing(true);
-        setResizeDirection(direction);
-    };
-
-    const handleResizeTouchMove = (e) => {
-        if (!isResizing) return;
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const videoElement = videoRef.current;
-        if (!videoElement) return;
-        
-        const touch = e.touches[0];
-        const rect = videoElement.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        // Handle resizing based on direction
-        let newWidth = cropArea.width;
-        let newHeight = cropArea.height;
-        let newX = cropArea.x;
-        let newY = cropArea.y;
-        
-        if (resizeDirection.includes('right')) {
-            newWidth = Math.max(50, x - cropArea.x);
-        }
-        if (resizeDirection.includes('left')) {
-            const maxLeft = cropArea.x + cropArea.width - 50;
-            newX = Math.min(maxLeft, x);
-            newWidth = cropArea.x + cropArea.width - newX;
-        }
-        if (resizeDirection.includes('bottom')) {
-            newHeight = Math.max(50, y - cropArea.y);
-        }
-        if (resizeDirection.includes('top')) {
-            const maxTop = cropArea.y + cropArea.height - 50;
-            newY = Math.min(maxTop, y);
-            newHeight = cropArea.y + cropArea.height - newY;
-        }
-        
-        setCropArea({ x: newX, y: newY, width: newWidth, height: newHeight });
-    };
-
-    const handleResizeTouchEnd = (e) => {
+    const handleApplyCrop = async (e) => {
         if (e) {
             e.preventDefault();
             e.stopPropagation();
         }
-        setIsResizing(false);
-        setResizeDirection(null);
-    };
+        if (!isCropMode || isApplyingCrop) return;
 
-    const handleApplyCrop = async () => {
-        if (!isCropMode) return;
-        
         const videoElement = videoRef.current;
         if (!videoElement) return;
-        
+        if (screenshots.length >= 6) {
+            alert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
+            return;
+        }
+
+        const area = cropAreaRef.current || cropArea;
+        const currentTime = videoElement.currentTime || 0;
+        setIsApplyingCrop(true);
+
         try {
-            // Try server-side screenshot capture first, but fallback to client-side if it fails
-            let fullScreenshot = null;
-            let useServerScreenshot = false;
-            
-            if (screenshotSourceUrl(video) || video?.video_url) {
-                try {
-                    const currentTime = videoElement.currentTime || 0;
-                    const videoUrl = screenshotSourceUrl(video) || video.video_url;
-                    
-                    console.log(`Requesting server-side screenshot at ${currentTime}s from ${videoUrl}`);
-                    
-                    const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            video_url: videoUrl,
-                            timestamp: currentTime,
-                            quality: 95
-                        })
-                    });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        
-                        if (result.success && result.screenshot) {
-                            fullScreenshot = await capDataUrlJpeg(result.screenshot);
-                            useServerScreenshot = true;
-                            console.log('Server screenshot captured successfully');
-                        } else {
-                            console.warn('Server returned unsuccessful result:', result.error || 'Unknown error');
+            let croppedImageUrl = cropVideoFrameJpeg(videoElement, area);
+
+            if (!croppedImageUrl) {
+                const videoUrl = screenshotSourceUrl(video) || video?.video_url;
+                if (videoUrl) {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 8000);
+                    try {
+                        const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                video_url: videoUrl,
+                                timestamp: currentTime,
+                                quality: 95
+                            }),
+                            signal: controller.signal
+                        });
+                        if (response.ok) {
+                            const result = await response.json();
+                            if (result.success && result.screenshot) {
+                                const fullScreenshot = await capDataUrlJpeg(result.screenshot);
+                                croppedImageUrl = await cropImageDataUrl(fullScreenshot, area, videoElement);
+                            }
                         }
-                    } else {
-                        const errorText = await response.text();
-                        console.warn(`Server error ${response.status}: ${errorText}`);
+                    } finally {
+                        clearTimeout(timeoutId);
                     }
-                } catch (serverError) {
-                    console.warn('Server screenshot capture failed, using fallback:', serverError);
                 }
             }
-            
-            // Fallback to client-side screenshot capture if server failed
-            if (!fullScreenshot) {
-                console.log('Using client-side screenshot capture as fallback');
-                fullScreenshot = captureVideoFrameJpeg(videoElement);
-                useServerScreenshot = false;
+
+            if (!croppedImageUrl) {
+                alert('Failed to crop image. Please try again.');
+                return;
             }
-            
-            // Create a new canvas to crop the screenshot
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const img = new Image();
-            
-            img.onload = () => {
-                try {
-                    // Get the display dimensions of the video
-                    const displayRect = videoElement.getBoundingClientRect();
-                    const displayWidth = displayRect.width;
-                    const displayHeight = displayRect.height;
-                    
-                    // Calculate scale factors between screenshot and display
-                    // If using server screenshot, it might be scaled differently
-                    const scaleX = img.width / displayWidth;
-                    const scaleY = img.height / displayHeight;
-                    
-                    // Convert display crop coordinates to screenshot coordinates
-                    const screenshotCropX = Math.round(cropArea.x * scaleX);
-                    const screenshotCropY = Math.round(cropArea.y * scaleY);
-                    const screenshotCropWidth = Math.round(cropArea.width * scaleX);
-                    const screenshotCropHeight = Math.round(cropArea.height * scaleY);
-                    
-                    // Ensure crop area is within image bounds
-                    const finalCropX = Math.max(0, Math.min(img.width - screenshotCropWidth, screenshotCropX));
-                    const finalCropY = Math.max(0, Math.min(img.height - screenshotCropHeight, screenshotCropY));
-                    const finalCropWidth = Math.min(screenshotCropWidth, img.width - finalCropX);
-                    const finalCropHeight = Math.min(screenshotCropHeight, img.height - finalCropY);
-                    
-                    // console.log('Crop coordinates:', {
-                    //     display: cropArea,
-                    //     screenshot: { x: finalCropX, y: finalCropY, width: finalCropWidth, height: finalCropHeight },
-                    //     scale: { x: scaleX, y: scaleY },
-                    //     imageSize: { width: img.width, height: img.height },
-                    //     displaySize: { width: displayWidth, height: displayHeight }
-                    // });
-                    
-                    // Set canvas size to crop area
-                    canvas.width = finalCropWidth;
-                    canvas.height = finalCropHeight;
-                    
-                    // Clear canvas
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
-                    // Draw the cropped portion from the screenshot
-                    ctx.drawImage(
-                        img,
-                        finalCropX, finalCropY, finalCropWidth, finalCropHeight,  // Source rectangle
-                        0, 0, finalCropWidth, finalCropHeight  // Destination rectangle
-                    );
-                    
-                    // Convert to data URL
-                    const croppedImageUrl = downsampleCanvasJpeg(canvas)
-                        || canvas.toDataURL('image/jpeg', SCREENSHOT_JPEG_QUALITY);
-                    
-                    // console.log('Crop successful, image size:', finalCropWidth, 'x', finalCropHeight);
-                    
-                    // Add to screenshots
-                    setScreenshots(prev => {
-                        const newScreenshots = prev.length < 6 ? [...prev, croppedImageUrl] : prev;
-                        return newScreenshots;
-                    });
-                    
-                    // Exit crop mode
-                    setIsCropMode(false);
-                    
-                } catch (error) {
-                    console.error('Error cropping screenshot:', error);
-                    alert('Failed to crop image. Please try again.');
-                }
-            };
-            
-            img.onerror = () => {
-                console.error('Failed to load screenshot for cropping');
-                alert('Failed to load screenshot for cropping. Please try again.');
-            };
-            
-            // Load the screenshot
-            img.src = fullScreenshot;
-            
+
+            setScreenshots(prev => (prev.length < 6 ? [...prev, croppedImageUrl] : prev));
+            setScreenshotTimestamps(prev => (prev.length < 6 ? [...prev, currentTime] : prev));
+            endCropPointer();
+            setIsCropMode(false);
         } catch (error) {
             console.error('Error applying crop:', error);
-            console.error('Error details:', {
-                videoElement: !!videoElement,
-                videoReadyState: videoElement?.readyState,
-                cropArea,
-                errorMessage: error.message
-            });
             alert(`Failed to crop image: ${error.message || 'Unknown error'}. Please try again.`);
+        } finally {
+            setIsApplyingCrop(false);
         }
     };
 
-    const handleCancelCrop = () => {
+    const handleCancelCrop = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        endCropPointer();
+        setIsApplyingCrop(false);
         setIsCropMode(false);
-        setIsDragging(false);
-        setIsResizing(false);
-        setResizeDirection(null);
     };
 
     // Test video playback function
@@ -1109,7 +1199,7 @@ const PlayVideo = ({
     );
 
     return (
-        <div className={`play-video ${isCropMode ? 'crop-mode-active' : ''}`}>
+        <div className={`play-video ${isCropMode ? 'crop-mode-active' : ''} ${isMobile ? 'play-video--mobile' : ''}${hideMediaChrome ? ' play-video--chrome-hidden' : ''}`}>
             <div 
                 className="video-container" 
                 ref={videoContainerRef}
@@ -1128,8 +1218,8 @@ const PlayVideo = ({
                     <video 
                         key={videoId}
                         ref={videoRef} 
-                        className={isMobile && mobilePlaying ? 'mobile-playing' : ''}
-                        controls={!isMobile || !mobilePlaying}
+                        className={isMobile ? 'mobile-inline-controls' : ''}
+                        controls={!isMobile && !isCropMode && !hideMediaChrome}
                         controlsList="nodownload nofullscreen noremoteplayback"
                         poster={video.thumbnail || ''}
                         width="100%" 
@@ -1139,7 +1229,8 @@ const PlayVideo = ({
                             width: '100%',
                             height: isMobile ? '320px' : '360px',
                             objectFit: 'contain',
-                            outline: 'none'
+                            outline: 'none',
+                            pointerEvents: (isCropMode || (isMobile && !mobilePlaying)) ? 'none' : 'auto'
                         }} 
                         src={video.video_url}
                         crossOrigin="anonymous"
@@ -1149,12 +1240,29 @@ const PlayVideo = ({
                         preload="auto"
                         disablePictureInPicture
                         disableRemotePlayback
+                        onTimeUpdate={() => {
+                            const el = videoRef.current;
+                            if (!el) return;
+                            setPlayerTime(el.currentTime || 0);
+                            if (el.duration && Number.isFinite(el.duration)) {
+                                setPlayerDuration(el.duration);
+                            }
+                        }}
+                        onLoadedMetadata={() => {
+                            const el = videoRef.current;
+                            if (!el) return;
+                            if (el.duration && Number.isFinite(el.duration)) {
+                                setPlayerDuration(el.duration);
+                            }
+                            setPlayerTime(el.currentTime || 0);
+                            if (isMobile && el.paused) requestAnimationFrame(() => drawPausedFrame());
+                        }}
                         onClick={(e) => {
                             if (isCropMode) return;
                             const el = videoRef.current;
                             if (!el) return;
                             const rect = el.getBoundingClientRect();
-                            if (e.clientY > rect.bottom - 44) return;
+                            if (!hideMediaChrome && e.clientY > rect.bottom - 44) return;
                             if (Date.now() - playStartedAtRef.current < 400) return;
                             if (el.paused) {
                                 el.play().catch(() => {});
@@ -1163,19 +1271,16 @@ const PlayVideo = ({
                             }
                         }}
                         onCanPlay={() => {
-                            // console.log('Video can play');
                             setLoading(false);
                             setIsBuffering(false);
                         }}
                         onCanPlayThrough={() => {
-                            // Video has buffered enough to play through without stopping
                             setIsBuffering(false);
                             setLoading(false);
                         }}
                         onLoadedData={() => {
-                            // console.log('Video data loaded');
                             setLoading(false);
-                            setVideoError(null); // Clear any previous errors
+                            setVideoError(null);
                             const pending = pendingSeekRef.current;
                             const el = videoRef.current;
                             if (pending && el) {
@@ -1189,25 +1294,21 @@ const PlayVideo = ({
                                     /* ignore seek errors while swapping playback file */
                                 }
                             }
+                            if (isMobile && el?.paused) requestAnimationFrame(() => drawPausedFrame());
                         }}
                         onWaiting={() => {
-                            // Video is waiting for more data (buffering)
                             setIsBuffering(true);
                         }}
                         onStalled={() => {
-                            // Video download has stalled
                             setIsBuffering(true);
                         }}
                         onProgress={() => {
-                            // Video is downloading - check if enough is buffered
                             if (videoRef.current) {
-                                const video = videoRef.current;
-                                if (video.buffered.length > 0) {
-                                    const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-                                    const currentTime = video.currentTime;
+                                const playing = videoRef.current;
+                                if (playing.buffered.length > 0) {
+                                    const bufferedEnd = playing.buffered.end(playing.buffered.length - 1);
+                                    const currentTime = playing.currentTime;
                                     const remaining = bufferedEnd - currentTime;
-                                    
-                                    // If we have more than 3 seconds buffered, we're good
                                     if (remaining > 3) {
                                         setIsBuffering(false);
                                     }
@@ -1215,12 +1316,13 @@ const PlayVideo = ({
                             }
                         }}
                         onPlaying={() => {
-                            // Video started playing
                             setIsBuffering(false);
                             if (isMobile) {
                                 setMobilePlaying(true);
                                 hideMobileNativeOverlay();
                             }
+                            videoHasPlayedRef.current = true;
+                            scheduleHideMediaChrome();
                         }}
                         onError={(e) => {
                             const videoElement = e.target;
@@ -1228,22 +1330,17 @@ const PlayVideo = ({
                             let errorMessage = 'Video failed to load.';
                             
                             if (errorCode) {
-                                // MediaError code constants:
-                                // MEDIA_ERR_ABORTED = 1
-                                // MEDIA_ERR_NETWORK = 2
-                                // MEDIA_ERR_DECODE = 3
-                                // MEDIA_ERR_SRC_NOT_SUPPORTED = 4
                                 switch (errorCode.code) {
-                                    case 1: // MEDIA_ERR_ABORTED
+                                    case 1:
                                         errorMessage = 'Video loading was aborted.';
                                         break;
-                                    case 2: // MEDIA_ERR_NETWORK
+                                    case 2:
                                         errorMessage = 'Network error while loading video. Please check your connection.';
                                         break;
-                                    case 3: // MEDIA_ERR_DECODE
+                                    case 3:
                                         errorMessage = 'Video format not supported or file is corrupted.';
                                         break;
-                                    case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+                                    case 4:
                                         errorMessage = 'Video format not supported or URL is invalid.';
                                         break;
                                     default:
@@ -1266,28 +1363,123 @@ const PlayVideo = ({
                                 setMobilePlaying(true);
                                 hideMobileNativeOverlay();
                             }
+                            videoHasPlayedRef.current = true;
+                            scheduleHideMediaChrome();
                             if (!videoHasPlayed) {
                                 setVideoHasPlayed(true);
-                                // Safely call onVideoPlayed if it exists
                                 if (typeof onVideoPlayed === 'function') {
                                     onVideoPlayed();
                                 }
                             }
                         }}
                         onPause={() => {
-                            if (!isMobile) return;
-                            const el = videoRef.current;
-                            if (el?.seeking) return;
-                            setMobilePlaying(false);
+                            if (isMobile) {
+                                const el = videoRef.current;
+                                if (el?.seeking) return;
+                                setMobilePlaying(false);
+                                requestAnimationFrame(() => drawPausedFrame());
+                            }
+                            if (videoHasPlayedRef.current) revealMediaChrome();
                         }}
                         onEnded={() => {
-                            if (isMobile) setMobilePlaying(false);
+                            if (isMobile) {
+                                setMobilePlaying(false);
+                                requestAnimationFrame(() => drawPausedFrame());
+                            }
+                            revealMediaChrome();
                         }}
                     />
+
+                    {isMobile && !isCropMode && (
+                        <button
+                            type="button"
+                            className={`mobile-video-frame-cover${mobilePlaying ? ' is-playing' : ''}${hideMediaChrome ? '' : ' with-bar'}`}
+                            aria-label="Play"
+                            aria-hidden={mobilePlaying}
+                            tabIndex={mobilePlaying ? -1 : 0}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (mobilePlaying) return;
+                                videoRef.current?.play().catch(() => {});
+                            }}
+                        >
+                            {video.thumbnail ? (
+                                <img src={video.thumbnail} alt="" draggable="false" />
+                            ) : null}
+                            <canvas ref={pausedCanvasRef} />
+                        </button>
+                    )}
+
+                    {isMobile && !isCropMode && (
+                        <div
+                            className={`mobile-video-bar${hideMediaChrome ? ' is-hidden' : ''}`}
+                            onClick={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                type="button"
+                                className="mobile-video-bar-play"
+                                aria-label={mobilePlaying ? 'Pause' : 'Play'}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const el = videoRef.current;
+                                    if (!el) return;
+                                    if (el.paused) el.play().catch(() => {});
+                                    else el.pause();
+                                }}
+                            >
+                                {mobilePlaying ? (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+                                        <rect x="6" y="5" width="4" height="14" fill="currentColor" />
+                                        <rect x="14" y="5" width="4" height="14" fill="currentColor" />
+                                    </svg>
+                                ) : (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M8 5.14v13.72L19 12 8 5.14z" fill="currentColor" />
+                                    </svg>
+                                )}
+                            </button>
+                            <input
+                                type="range"
+                                className="mobile-video-bar-seek"
+                                min="0"
+                                max={playerDuration > 0 ? playerDuration : 0}
+                                step="0.1"
+                                value={Math.min(playerTime, playerDuration || 0)}
+                                aria-label="Seek"
+                                onChange={(e) => {
+                                    const el = videoRef.current;
+                                    if (!el) return;
+                                    const next = Number(e.target.value);
+                                    el.currentTime = next;
+                                    setPlayerTime(next);
+                                }}
+                            />
+                            <button
+                                type="button"
+                                className="mobile-video-bar-speed"
+                                aria-label={`Playback speed ${formatPlaybackRate(playbackRate)}`}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const el = videoRef.current;
+                                    const idx = PLAYBACK_RATES.indexOf(playbackRate);
+                                    const next = PLAYBACK_RATES[(idx < 0 ? 0 : idx + 1) % PLAYBACK_RATES.length];
+                                    setPlaybackRate(next);
+                                    if (el) el.playbackRate = next;
+                                }}
+                            >
+                                {formatPlaybackRate(playbackRate)}
+                            </button>
+                        </div>
+                    )}
                     
-                    {/* Play overlay is desktop-only; mobile uses native controls so playback isn't covered by a tint. */}
-                    {!isMobile && !videoHasPlayed && !videoError && video && (
+                    {/* Play overlay is desktop-only; mobile never uses the full-frame tint. */}
+                    {!isMobile && !videoHasPlayed && !videoError && video && !isCropMode && (
                         <div 
+                            className="play-start-overlay"
                             onClick={async () => {
                                 if (videoRef.current) {
                                     try {
@@ -1412,22 +1604,20 @@ const PlayVideo = ({
                      {/* Inline Crop Overlay */}
                      {isCropMode && (
                          <div
+                             className="inline-crop-overlay"
                              style={{
                                  position: 'absolute',
                                  top: 0,
                                  left: 0,
                                  right: 0,
                                  bottom: 0,
-                                 zIndex: 5,
-                                 cursor: isDragging ? 'move' : 'default'
+                                 zIndex: 60,
+                                 cursor: isDragging ? 'move' : 'default',
+                                 touchAction: 'none',
+                                 userSelect: 'none'
                              }}
                              onMouseDown={handleCropMouseDown}
-                             onMouseMove={handleCropMouseMove}
-                             onMouseUp={handleCropMouseUp}
-                             onMouseLeave={handleCropMouseUp}
                              onTouchStart={handleCropTouchStart}
-                             onTouchMove={handleCropTouchMove}
-                             onTouchEnd={handleCropTouchEnd}
                          >
                              {/* Crop Area */}
                              <div
@@ -1460,9 +1650,7 @@ const PlayVideo = ({
                                          zIndex: 10
                                      }}
                                      onMouseDown={(e) => handleResizeStart('top-left', e)}
-                                     onTouchStart={(e) => handleResizeTouchStart('top-left', e)}
-                                     onTouchMove={handleResizeTouchMove}
-                                     onTouchEnd={handleResizeTouchEnd}
+                                     onTouchStart={(e) => handleResizeStart('top-left', e)}
                                  />
                                  <div
                                      className="resize-handle"
@@ -1480,9 +1668,7 @@ const PlayVideo = ({
                                          zIndex: 10
                                      }}
                                      onMouseDown={(e) => handleResizeStart('top-right', e)}
-                                     onTouchStart={(e) => handleResizeTouchStart('top-right', e)}
-                                     onTouchMove={handleResizeTouchMove}
-                                     onTouchEnd={handleResizeTouchEnd}
+                                     onTouchStart={(e) => handleResizeStart('top-right', e)}
                                  />
                                  <div
                                      className="resize-handle"
@@ -1500,9 +1686,7 @@ const PlayVideo = ({
                                          zIndex: 10
                                      }}
                                      onMouseDown={(e) => handleResizeStart('bottom-left', e)}
-                                     onTouchStart={(e) => handleResizeTouchStart('bottom-left', e)}
-                                     onTouchMove={handleResizeTouchMove}
-                                     onTouchEnd={handleResizeTouchEnd}
+                                     onTouchStart={(e) => handleResizeStart('bottom-left', e)}
                                  />
                                  <div
                                      className="resize-handle"
@@ -1520,69 +1704,34 @@ const PlayVideo = ({
                                          zIndex: 10
                                      }}
                                      onMouseDown={(e) => handleResizeStart('bottom-right', e)}
-                                     onTouchStart={(e) => handleResizeTouchStart('bottom-right', e)}
-                                     onTouchMove={handleResizeTouchMove}
-                                     onTouchEnd={handleResizeTouchEnd}
+                                     onTouchStart={(e) => handleResizeStart('bottom-right', e)}
                                  />
                              </div>
-
-                                                           {/* Crop Controls */}
-                              <div
-                                  style={{
-                                      position: 'absolute',
-                                      bottom: '20px',
-                                      left: '50%',
-                                      transform: 'translateX(-50%)',
-                                      display: 'flex',
-                                      gap: '10px',
-                                      zIndex: 6
-                                  }}
-                              >
-                                  <button
-                                      onClick={handleCancelCrop}
-                                      onTouchStart={(e) => e.stopPropagation()}
-                                      onTouchEnd={(e) => e.stopPropagation()}
-                                      style={{
-                                          padding: isMobile ? '12px 20px' : '8px 16px',
-                                          backgroundColor: '#6c757d',
-                                          color: 'white',
-                                          border: 'none',
-                                          borderRadius: '4px',
-                                          cursor: 'pointer',
-                                          fontSize: isMobile ? '16px' : '14px',
-                                          minHeight: isMobile ? '44px' : 'auto',
-                                          minWidth: isMobile ? '80px' : 'auto',
-                                          touchAction: 'manipulation',
-                                          zIndex: 20
-                                      }}
-                                  >
-                                      Cancel
-                                  </button>
-                                  <button
-                                      onClick={handleApplyCrop}
-                                      onTouchStart={(e) => e.stopPropagation()}
-                                      onTouchEnd={(e) => e.stopPropagation()}
-                                      style={{
-                                          padding: isMobile ? '12px 20px' : '8px 16px',
-                                          backgroundColor: '#007bff',
-                                          color: 'white',
-                                          border: 'none',
-                                          borderRadius: '4px',
-                                          cursor: 'pointer',
-                                          fontSize: isMobile ? '16px' : '14px',
-                                          minHeight: isMobile ? '44px' : 'auto',
-                                          minWidth: isMobile ? '80px' : 'auto',
-                                          touchAction: 'manipulation',
-                                          zIndex: 20
-                                      }}
-                                  >
-                                      Apply Crop
-                                  </button>
-                              </div>
                          </div>
                      )}
                 </div>
             </div>
+
+            {isCropMode && (
+                <div className="inline-crop-controls">
+                    <button
+                        type="button"
+                        className="inline-crop-btn inline-crop-btn--cancel"
+                        onClick={handleCancelCrop}
+                        disabled={isApplyingCrop}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        className="inline-crop-btn inline-crop-btn--apply"
+                        onClick={handleApplyCrop}
+                        disabled={isApplyingCrop}
+                    >
+                        {isApplyingCrop ? 'Applying...' : 'Apply Crop'}
+                    </button>
+                </div>
+            )}
             
         {isMobile && (
         <div className="screenmerch-actions" style={{
@@ -1593,7 +1742,7 @@ const PlayVideo = ({
             flexWrap: 'nowrap'
         }}>
                 <button 
-                    className="screenmerch-btn screenshot-btn" 
+                    className={`screenmerch-btn screenshot-btn${videoHasPlayed && screenshots.length < 6 && !isCapturingScreenshot ? ' screenshot-btn-pulse' : ''}`} 
                     onClick={handleGrabScreenshot}
                     disabled={isCapturingScreenshot || screenshots.length >= 6}
                     style={{

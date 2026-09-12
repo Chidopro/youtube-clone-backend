@@ -83,6 +83,14 @@ function writeBrowseCache(category, data) {
   }
 }
 
+const PRODUCT_CARD_CONTROL_SELECTOR = 'select, button, a, input, textarea, label, .product-options, .variant-unavailable-note';
+
+const isProductCardControlClick = (event) => {
+  const target = event?.target;
+  if (!target || typeof target.closest !== 'function') return false;
+  return Boolean(target.closest(PRODUCT_CARD_CONTROL_SELECTOR));
+};
+
 const preloadImageUrls = (urls) => {
   (urls || []).forEach((url) => {
     if (!url || typeof url !== 'string') return;
@@ -312,7 +320,8 @@ const ProductPage = ({ sidebar }) => {
   const [selectedColors, setSelectedColors] = useState({});
   const [selectedSizes, setSelectedSizes] = useState({});
   const [variantAvailability, setVariantAvailability] = useState({});
-  const availabilityReqSeqByIndex = useRef({});
+  const [addingProductIndex, setAddingProductIndex] = useState(null);
+  const addingLockRef = useRef(new Set());
   const [shipToCountry, setShipToCountry] = useState(readShipToCountry);
   const [cartItems, setCartItems] = useState(() => {
     try {
@@ -625,58 +634,6 @@ const ProductPage = ({ sidebar }) => {
     return '';
   };
 
-  const checkSelectionAvailability = async (product, index, color, size) => {
-    const effectiveColor = (color && String(color).trim())
-      ? String(color).trim()
-      : (selectedColors[index] || product?.options?.color?.[0] || product?.options?.handle_color?.[0] || '');
-    const effectiveSize = (size && String(size).trim())
-      ? String(size).trim()
-      : (selectedSizes[index] || product?.options?.size?.[0] || 'One Size');
-    const variantId = resolvePrintfulVariantId(product, effectiveColor, effectiveSize);
-    const nextReqId = (availabilityReqSeqByIndex.current[index] || 0) + 1;
-    availabilityReqSeqByIndex.current[index] = nextReqId;
-    setVariantAvailability((prev) => ({
-      ...prev,
-      [index]: { checking: true, available: true, message: '' },
-    }));
-    try {
-      const apiBase = getBackendUrl().replace(/\/$/, '');
-      const res = await fetch(`${apiBase}/api/check-variant-availability`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          product: product?.name || '',
-          color: effectiveColor,
-          size: effectiveSize,
-          variant_id: variantId,
-          country_code: shipToCountry,
-        }),
-      });
-      let data = {};
-      try { data = await res.json(); } catch (_) {}
-      if (availabilityReqSeqByIndex.current[index] !== nextReqId) return true;
-      if (res.ok && data?.success && data?.available === false) {
-        const msg = data?.error || 'This selection is currently unavailable. Please choose another option.';
-        setVariantAvailability((prev) => ({
-          ...prev,
-          [index]: { checking: false, available: false, message: msg },
-        }));
-        return false;
-      }
-      setVariantAvailability((prev) => ({
-        ...prev,
-        [index]: { checking: false, available: true, message: '' },
-      }));
-      return true;
-    } catch (e) {
-      setVariantAvailability((prev) => ({
-        ...prev,
-        [index]: { checking: false, available: true, message: '' },
-      }));
-      return true;
-    }
-  };
-
   const handleAddToCart = async (product, index, options = {}) => {
     const showModal = options.showModal !== false;
     const chosenColor = selectedColors[index] || (product?.options?.color?.[0] || 'Default');
@@ -692,6 +649,10 @@ const ProductPage = ({ sidebar }) => {
       }));
       return null;
     }
+    if (addingLockRef.current.has(index)) return null;
+    addingLockRef.current.add(index);
+    setAddingProductIndex(index);
+    try {
     if (isShopCatalog) {
       saveShopAddIntent({
         category,
@@ -704,8 +665,6 @@ const ProductPage = ({ sidebar }) => {
       return null;
     }
     rememberPickedProduct(product, index);
-    const isAvailable = await checkSelectionAvailability(product, index, chosenColor, chosenSize);
-    if (!isAvailable) return null;
     // Use the URL stored when user clicked a screenshot so we send the exact image they selected (not thumbnail by mistake)
     const screenshotUrl = screenshotForNewCartItem();
 
@@ -781,6 +740,10 @@ const ProductPage = ({ sidebar }) => {
       setShowAddedToCartModal(true);
     }
     return focusIndex;
+    } finally {
+      addingLockRef.current.delete(index);
+      setAddingProductIndex((current) => (current === index ? null : current));
+    }
   };
 
   const goToToolsPage = async () => {
@@ -1627,13 +1590,21 @@ const ProductPage = ({ sidebar }) => {
             )}
 
             <div className="products-grid">
-              {productData.products && productData.products.map((product, index) => (
+              {productData.products && productData.products.map((product, index) => {
+                const cardUnavailable = variantAvailability[index]?.available === false
+                  || !productShipsToCountry(product, shipToCountry);
+                const isAddingThis = addingProductIndex === index;
+                return (
                 <div
                   key={product?.name ? `${product.name}-${index}` : index}
-                  className={`product-card${highlightedProductIndex === index ? ' product-card-editing' : ''}`}
+                  className={`product-card${highlightedProductIndex === index ? ' product-card-editing' : ''}${cardUnavailable ? ' product-card--unavailable' : ''}${isAddingThis ? ' product-card--adding' : ''}`}
                   ref={(el) => { productCardRefs.current[index] = el; }}
                   onPointerDown={() => rememberToolsProductName(product?.name)}
-                  onClick={() => rememberPickedProduct(product, index)}
+                  onClick={(e) => {
+                    rememberPickedProduct(product, index);
+                    if (isProductCardControlClick(e) || cardUnavailable || isAddingThis) return;
+                    handleAddToCart(product, index);
+                  }}
                 >
                   {/* Product Image - always show; stable URL so images load despite re-renders */}
                   {(() => {
@@ -1669,7 +1640,7 @@ const ProductPage = ({ sidebar }) => {
                   {/* Reserved: product price from API - do not edit price or color variables */}
                   <p className="product-price">${calculatePrice(product, index).toFixed(2)}</p>
                   
-                  <div className="product-options">
+                  <div className="product-options" onClick={(e) => e.stopPropagation()}>
                     {/* Color Options - reserved: use product.options.color / selectedColors only */}
                     {product.options && product.options.color && product.options.color.length > 0 && (() => {
                       const selectedSize = selectedSizes[index] || product.options?.size?.[0];
@@ -1684,7 +1655,7 @@ const ProductPage = ({ sidebar }) => {
                         <select 
                           className="color-select"
                           value={displayColor}
-                          onChange={async (e) => {
+                          onChange={(e) => {
                             rememberPickedProduct(product, index);
                             const newSelectedColors = { ...selectedColors };
                             const newColor = e.target.value;
@@ -1698,9 +1669,6 @@ const ProductPage = ({ sidebar }) => {
                               const newSelectedSizes = { ...selectedSizes };
                               newSelectedSizes[index] = availableSizes[0];
                               setSelectedSizes(newSelectedSizes);
-                              await checkSelectionAvailability(product, index, newColor, availableSizes[0]);
-                            } else {
-                              await checkSelectionAvailability(product, index, newColor, currentSize || '');
                             }
                           }}
                         >
@@ -1760,7 +1728,7 @@ const ProductPage = ({ sidebar }) => {
                           <select 
                             className="size-select"
                             value={displaySize}
-                            onChange={async (e) => {
+                            onChange={(e) => {
                               rememberPickedProduct(product, index);
                               const newSelectedSizes = { ...selectedSizes };
                               const nextSize = e.target.value;
@@ -1772,7 +1740,6 @@ const ProductPage = ({ sidebar }) => {
                                 nextColor = colorsForSize[0];
                                 setSelectedColors({ ...selectedColors, [index]: nextColor });
                               }
-                              await checkSelectionAvailability(product, index, nextColor, nextSize);
                             }}
                           >
                             {availableSizes.map((size, sizeIndex) => (
@@ -1795,24 +1762,32 @@ const ProductPage = ({ sidebar }) => {
                     </div>
                   )}
                   <button 
-                    className="add-to-cart-btn"
+                    type="button"
+                    className={`add-to-cart-btn${isAddingThis ? ' is-busy' : ''}`}
                     disabled={
-                      variantAvailability[index]?.checking
+                      isAddingThis
                       || variantAvailability[index]?.available === false
                       || !productShipsToCountry(product, shipToCountry)
                     }
-                    onClick={() => handleAddToCart(product, index)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCart(product, index);
+                    }}
                   >
-                    {variantAvailability[index]?.checking
-                      ? 'Checking...'
-                      : isShopCatalog
+                    {isAddingThis ? (
+                      <>
+                        <span className="add-to-cart-spinner" aria-hidden="true" />
+                        Adding…
+                      </>
+                    ) : isShopCatalog
                         ? 'Select Image'
                         : isEditingCart
                           ? 'Update Cart'
                           : 'Add to Cart'}
                   </button>
                 </div>
-              ))}
+              );
+              })}
             </div>
 
             {/* Cart Buttons Below Products */}

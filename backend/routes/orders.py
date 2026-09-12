@@ -465,16 +465,34 @@ def _record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=N
         sale_data["favorite_list_id"] = favorite_list_id
 
     try:
+        from app import stamp_sale_owner_fee
+        stamp_sale_owner_fee(sale_data, item, client)
+    except Exception:
+        pass
+
+    try:
         if client:
             try:
                 client.table('sales').insert(sale_data).execute()
             except Exception as ins_err:
-                err_s = str(ins_err).lower()
-                if "favorite_list_id" in err_s and "column" in err_s:
-                    sale_data.pop("favorite_list_id", None)
-                    client.table('sales').insert(sale_data).execute()
-                else:
-                    raise
+                payload = dict(sale_data)
+                last_err = ins_err
+                for col in (
+                    "owner_fee_type", "owner_fee_value", "owner_fee_per_item",
+                    "owner_fee_amount", "pay_collaborator_amount",
+                    "collaborator_share_before_fee", "quantity", "favorite_list_id",
+                ):
+                    err_s = str(last_err).lower()
+                    if col in err_s and col in payload:
+                        payload.pop(col, None)
+                        try:
+                            client.table('sales').insert(payload).execute()
+                            last_err = None
+                            break
+                        except Exception as retry_err:
+                            last_err = retry_err
+                if last_err:
+                    raise last_err
             
             # Create creator earnings if creator_user_id exists
             if creator_user_id:
