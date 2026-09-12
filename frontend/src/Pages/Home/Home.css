@@ -119,7 +119,7 @@ body {
   /* This class is no longer needed for padding but may be used elsewhere */
 }
 
-/* Storefront home: header keeps its natural height (grid auto row).
+/* Storefront home: header stays on the 108px/80px band (grid auto row).
    The body row fills the rest of the window so the footer sits at the bottom. */
 .app-shell--storefront-home {
   display: grid;
@@ -130,6 +130,13 @@ body {
 
 .app-shell--storefront-home > nav {
   grid-row: 1;
+  min-height: 108px;
+}
+
+@media (max-width: 768px) {
+  .app-shell--storefront-home > nav {
+    min-height: 80px;
+  }
 }
 
 .app-shell--storefront-home > .page-top-banner {

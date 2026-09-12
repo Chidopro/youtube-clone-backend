@@ -163,6 +163,11 @@ function newestPayout(payouts) {
     return [...rows].sort((a, b) => payoutNewestTimeMs(b) - payoutNewestTimeMs(a))[0];
 }
 
+function payoutConfirmedAt(payout) {
+    const raw = payout?.confirmed_at;
+    return raw ? String(raw) : '';
+}
+
 function sortPayoutsNewestFirst(payouts) {
     return [...(payouts || [])]
         .map((payout, apiIndex) => ({ payout, apiIndex }))
@@ -776,6 +781,8 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     const [analyticsPayoutNote, setAnalyticsPayoutNote] = useState('');
     const [analyticsPayoutError, setAnalyticsPayoutError] = useState('');
     const [recordingAnalyticsPayout, setRecordingAnalyticsPayout] = useState(false);
+    const [confirmingCollabReceipt, setConfirmingCollabReceipt] = useState(false);
+    const [collabReceiptError, setCollabReceiptError] = useState('');
     const analyticsPayoutIgnoreBackdropUntilRef = useRef(0);
     const analyticsFetchGenRef = useRef(0);
     const recordedCollabPayoutsRef = useRef({});
@@ -2329,6 +2336,37 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         }
     };
 
+    const submitConfirmCollabReceipt = async () => {
+        const payoutId = analyticsData.last_payout?.id
+            ? String(analyticsData.last_payout.id)
+            : '';
+        setConfirmingCollabReceipt(true);
+        setCollabReceiptError('');
+        try {
+            const { ok, data } = await favoriteListsJson('/api/favorite-lists/confirm-collaborator-payout', {
+                method: 'POST',
+                body: JSON.stringify(payoutId ? { payout_id: payoutId } : {}),
+            });
+            if (!ok) {
+                setCollabReceiptError(data?.error || 'Could not confirm receipt');
+                return;
+            }
+            const confirmed = data?.payout;
+            if (confirmed) {
+                setAnalyticsData((prev) => ({
+                    ...prev,
+                    last_payout: newestPayout([confirmed, prev.last_payout, ...(prev.recent_payouts || [])]),
+                    recent_payouts: [confirmed, ...(prev.recent_payouts || []).filter((p) => String(p?.id || '') !== String(confirmed.id || ''))].slice(0, 5),
+                }));
+            }
+            await fetchAnalytics();
+        } catch (err) {
+            setCollabReceiptError(err.message || 'Network error');
+        } finally {
+            setConfirmingCollabReceipt(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab !== 'analytics' || !user?.id) return;
         if (!demoPreview && !umbrellaStatusReady) return;
@@ -3040,17 +3078,16 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                 ?? analyticsData.owner_fee_amount
                                                 ?? 0
                                             );
-                                            const shareBeforeFee = Number(
-                                                ps.collaborator_share_before_fee
-                                                ?? analyticsData.collaborator_share_before_fee
-                                                ?? 0
-                                            );
                                             const feePerItem = Number(
                                                 ps.owner_fee_per_item
                                                 ?? analyticsData.owner_fee_per_item
                                                 ?? 0
                                             );
-                                            const merchCost = Number(ps.merch_cost_amount ?? 0);
+                                            const merchCost = Number(
+                                                ps.merch_cost_amount
+                                                ?? analyticsData.merch_cost_amount
+                                                ?? 0
+                                            );
                                             const weekSales = Number(
                                                 analyticsData.week_sales_count == null
                                                     ? (analyticsData.daily_sales || []).reduce(
@@ -3081,9 +3118,16 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                 <div className="summary-subtitle">{netSubtitle}</div>
                                             </div>
                                             );
+                                            const collabFeesCard = (
+                                            <div className="summary-card">
+                                                <div className="summary-label">Collaborator fees</div>
+                                                <div className="summary-value">{money(collabFeeTaken)}</div>
+                                                <div className="summary-subtitle">Kept from umbrella sales</div>
+                                            </div>
+                                            );
                                             return (
                                         <>
-                                        <div className={`summary-grid${!umbrellaOnly && !isMasterAdmin ? ' summary-grid--five' : ''}`}>
+                                        <div className={`summary-grid${!isMasterAdmin ? ' summary-grid--five' : ''}`}>
                                             <div className="summary-card">
                                                 <div className="summary-label">This week</div>
                                                 <div className="summary-value">{weekSales}</div>
@@ -3094,7 +3138,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                 <div className="summary-value">${gross.toFixed(2)}</div>
                                                 <div className="summary-subtitle">Before fees</div>
                                             </div>
-                                            {!umbrellaOnly && merchCost > 0 ? (
+                                            {umbrellaOnly || !isMasterAdmin || merchCost > 0 ? (
                                                 <div className="summary-card">
                                                     <div className="summary-label">Merch cost</div>
                                                     <div className="summary-value">${merchCost.toFixed(2)}</div>
@@ -3108,7 +3152,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                     <div className="summary-subtitle">ScreenMerch</div>
                                                 </div>
                                             ) : null}
-                                            {!umbrellaOnly && (collabPayTotal > 0 || collaboratorPayoutRows.length > 0) ? (
+                                            {!umbrellaOnly && (!isMasterAdmin || collabPayTotal > 0 || collaboratorPayoutRows.length > 0) ? (
                                                 <div className={`summary-card${collaboratorOwedTotal > 0 && !isMasterAdmin ? ' highlight-collab' : ''}`}>
                                                     <div className="summary-label">Collaborator pay</div>
                                                     <div className="summary-value">${collabPayTotal.toFixed(2)}</div>
@@ -3116,29 +3160,13 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                         {isMasterAdmin
                                                             ? 'Umbrella pages'
                                                             : collaboratorOwedTotal > 0
-                                                                ? `Owed ${money(collaboratorOwedTotal)} · Pay off-platform`
+                                                                ? 'Pay off-platform'
                                                                 : 'Paid up'}
                                                     </div>
                                                 </div>
                                             ) : null}
-                                            {!umbrellaOnly && collabFeeTaken > 0 ? (
-                                                <div className="summary-card">
-                                                    <div className="summary-label">Collaborator fees</div>
-                                                    <div className="summary-value">{money(collabFeeTaken)}</div>
-                                                    <div className="summary-subtitle">Kept from umbrella sales</div>
-                                                </div>
-                                            ) : null}
-                                            {umbrellaOnly && (collabFeeTaken > 0 || shareBeforeFee > 0) ? (
-                                                <div className="summary-card">
-                                                    <div className="summary-label">Storefront fee</div>
-                                                    <div className="summary-value">{money(collabFeeTaken)}</div>
-                                                    <div className="summary-subtitle">
-                                                        {feePerItem > 0
-                                                            ? `${money(feePerItem)} per item taken out`
-                                                            : 'None taken out'}
-                                                    </div>
-                                                </div>
-                                            ) : null}
+                                            {!umbrellaOnly && isMasterAdmin && collabFeeTaken > 0 ? collabFeesCard : null}
+                                            {!umbrellaOnly && !isMasterAdmin ? payoutCard : null}
                                             {(umbrellaOnly || isMasterAdmin) ? payoutCard : null}
                                             {umbrellaOnly && analyticsData.collaborator_net_owed > 0 ? (
                                                 <div className="summary-card highlight-collab">
@@ -3150,7 +3178,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                         </div>
                                         {!umbrellaOnly && !isMasterAdmin ? (
                                             <div className="owner-payout-note-row">
-                                                {payoutCard}
+                                                {collabFeesCard}
                                             <div className={`collaborator-payout-panel owner-earnings-panel owner-payout-note${screenmerchPayouts.length > 0 ? ' screenmerch-payments-received' : ''}`}>
                                                 <h5>Payments from ScreenMerch</h5>
                                                 <p className="hint">
@@ -3289,13 +3317,16 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                             </div>
                                             </>
                                         ) : null}
-                                        {!umbrellaOnly && !isMasterAdmin && collaboratorPayoutRows.length > 0 ? (
+                                        {!umbrellaOnly && !isMasterAdmin ? (
                                             <div className="collaborator-payout-panel">
                                                 <h5>Collaborator payouts</h5>
                                                 <p className="hint">
                                                     Record off-platform payments to umbrella collaborators when their owed balance exceeds $50.
                                                     You can choose to set a percentage or flat per-item fee under each creator; if you do, that amount stays with you instead of being paid to them.
                                                 </p>
+                                                {collaboratorPayoutRows.length === 0 ? (
+                                                    <p className="hint">No umbrella collaborator sales recorded yet.</p>
+                                                ) : null}
                                                 <ul className="collaborator-payout-list">
                                                     {collaboratorPayoutRows.map((row, idx) => {
                                                         const listId = String(row.favorite_list_id);
@@ -3439,6 +3470,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                 <p className="hint">
                                                     Same fee and payout status your storefront owner sees.
                                                     They pay you on the 1st and 15th when your owed balance exceeds $50.
+                                                    After they record a payment, confirm here that you received it.
                                                 </p>
                                                 <ul className="collaborator-payout-list">
                                                     <li>
@@ -3468,10 +3500,37 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                                 </span>
                                                             </div>
                                                             {analyticsData.last_payout ? (
+                                                                <>
                                                                 <small>
-                                                                    Last paid ${Number(analyticsData.last_payout.amount || 0).toFixed(2)} on {formatPayoutDate(analyticsData.last_payout.paid_at)}
+                                                                    Storefront recorded ${Number(analyticsData.last_payout.amount || 0).toFixed(2)} on {formatPayoutDate(analyticsData.last_payout.paid_at)}
                                                                     {analyticsData.last_payout.note ? ` · ${analyticsData.last_payout.note}` : ''}
                                                                 </small>
+                                                                {payoutConfirmedAt(analyticsData.last_payout) ? (
+                                                                    <small className="paid-up-label">
+                                                                        Received ✓ {formatPayoutDate(payoutConfirmedAt(analyticsData.last_payout))}
+                                                                    </small>
+                                                                ) : (
+                                                                    <div className="collab-payout-amount-row">
+                                                                        {collabReceiptError ? (
+                                                                            <small className="owner-fee-message error" role="alert">{collabReceiptError}</small>
+                                                                        ) : null}
+                                                                        <button
+                                                                            type="button"
+                                                                            className="btn-record-collab-payout"
+                                                                            onPointerDown={(ev) => ev.stopPropagation()}
+                                                                            onClick={(ev) => {
+                                                                                ev.preventDefault();
+                                                                                ev.stopPropagation();
+                                                                                if (demoPreview) return;
+                                                                                submitConfirmCollabReceipt();
+                                                                            }}
+                                                                            disabled={demoPreview || confirmingCollabReceipt}
+                                                                        >
+                                                                            {confirmingCollabReceipt ? 'Saving…' : 'Confirm received'}
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                                </>
                                                             ) : null}
                                                         </div>
                                                         <CollaboratorFeeForm

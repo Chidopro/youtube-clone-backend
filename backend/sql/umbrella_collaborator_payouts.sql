@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS public.umbrella_collaborator_payouts (
   amount numeric(10, 2) NOT NULL CHECK (amount > 0),
   paid_at timestamptz NOT NULL,
   note text,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  confirmed_at timestamptz
 );
 
 CREATE INDEX IF NOT EXISTS umbrella_collaborator_payouts_owner_idx

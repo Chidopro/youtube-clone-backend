@@ -7,6 +7,7 @@ nav{
     top: 0;
     z-index: 10050;
     pointer-events: auto;
+    flex-shrink: 0;
 }
 
 /* Opaque backing so scrolled page content cannot show through a low-opacity brand gradient. */
@@ -243,6 +244,8 @@ nav .nav-right .subscribe-btn {
     display: inline-flex;
     align-items: center;
     flex-shrink: 0;
+    max-height: 100%;
+    overflow: hidden;
 }
 
 .storefront-nav-links {
@@ -514,13 +517,16 @@ body.creator-storefront nav {
         justify-content: flex-start;
         align-items: center;
         gap: 8px;
+        height: 80px;
         min-height: 80px;
+        max-height: 80px;
         padding: 4px 12px 6px 12px !important;
         overflow-x: visible;
         width: 100%;
         max-width: 100vw;
         box-sizing: border-box;
         position: sticky;
+        flex-shrink: 0;
     }
 
     .storefront-nav-links {
@@ -952,17 +958,21 @@ body.creator-storefront nav {
 /* Ensure desktop layout for screens larger than 768px */
 @media (min-width: 769px) {
     nav {
-        min-height: 0;
-        height: auto;
+        flex-shrink: 0;
+        min-height: 108px;
+        height: 108px;
+        max-height: 108px;
         align-items: center;
         padding: 4px 10px 4px 10px;
+        box-sizing: border-box;
+        overflow: visible;
     }
 
     /* Same bar height as ScreenMerch; horizontal logo size unchanged, clipped to the band. */
     nav.nav--logo-horizontal {
         height: 108px;
         max-height: 108px;
-        overflow: hidden;
+        overflow: visible;
         align-items: center;
         box-sizing: border-box;
     }

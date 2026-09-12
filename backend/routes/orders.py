@@ -354,6 +354,12 @@ def _resolve_favorite_list_id_for_order(data, creator_user_id_from_subdomain):
         return None
     raw = data.get("favorite_list_id") or data.get("favoriteListId")
     if not raw:
+        for item in data.get("cart") or []:
+            if isinstance(item, dict):
+                raw = item.get("favorite_list_id") or item.get("favoriteListId")
+                if raw:
+                    break
+    if not raw:
         return None
     try:
         uuid.UUID(str(raw))
@@ -473,24 +479,32 @@ def _record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=N
     try:
         if client:
             try:
-                client.table('sales').insert(sale_data).execute()
+                from app import insert_sale_row
+                insert_sale_row(client, sale_data)
             except Exception as ins_err:
                 payload = dict(sale_data)
                 last_err = ins_err
-                for col in (
+                optional_cols = (
                     "owner_fee_type", "owner_fee_value", "owner_fee_per_item",
                     "owner_fee_amount", "pay_collaborator_amount",
-                    "collaborator_share_before_fee", "quantity", "favorite_list_id",
-                ):
+                    "collaborator_share_before_fee", "quantity",
+                )
+                for _ in range(16):
                     err_s = str(last_err).lower()
-                    if col in err_s and col in payload:
-                        payload.pop(col, None)
-                        try:
-                            client.table('sales').insert(payload).execute()
-                            last_err = None
+                    dropped = None
+                    for col in optional_cols:
+                        if col in payload and col in err_s:
+                            dropped = col
                             break
-                        except Exception as retry_err:
-                            last_err = retry_err
+                    if not dropped:
+                        break
+                    payload.pop(dropped, None)
+                    try:
+                        client.table('sales').insert(payload).execute()
+                        last_err = None
+                        break
+                    except Exception as retry_err:
+                        last_err = retry_err
                 if last_err:
                     raise last_err
             

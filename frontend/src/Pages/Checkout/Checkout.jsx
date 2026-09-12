@@ -461,6 +461,10 @@ const Checkout = () => {
       if (it.edited) {
         cleanItem.edited = true;
       }
+      const itemListId = it.favorite_list_id || it.favoriteListId;
+      if (itemListId && String(itemListId).trim()) {
+        cleanItem.favorite_list_id = String(itemListId).trim();
+      }
       return cleanItem;
     });
 
@@ -484,8 +488,12 @@ const Checkout = () => {
     if (selectedScreenshot) payload.selected_screenshot = selectedScreenshot;
 
     try {
-      const flid = localStorage.getItem('sm_favorite_list_id');
-      if (flid && flid.trim()) payload.favorite_list_id = flid.trim();
+      const fromCart = stripeCart
+        .map((it) => it.favorite_list_id)
+        .find((id) => id && String(id).trim());
+      const fromStore = localStorage.getItem('sm_favorite_list_id');
+      const flid = String(fromCart || fromStore || '').trim();
+      if (flid) payload.favorite_list_id = flid;
     } catch (_) { /* ignore */ }
 
     if (!payload.shipping_address?.zip) {

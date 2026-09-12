@@ -179,8 +179,11 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         }
         if (ownerList?.id) {
           try {
-            localStorage.setItem('sm_favorite_list_id', ownerList.id);
-            localStorage.setItem('sm_favorite_list_slug', ownerList.slug || 'owner');
+            const existingId = localStorage.getItem('sm_favorite_list_id');
+            if (!existingId || existingId === ownerList.id) {
+              localStorage.setItem('sm_favorite_list_id', ownerList.id);
+              localStorage.setItem('sm_favorite_list_slug', ownerList.slug || 'owner');
+            }
           } catch (_) {
             /* ignore */
           }

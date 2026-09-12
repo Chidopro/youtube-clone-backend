@@ -12,7 +12,7 @@ import { supabase } from '../../supabaseClient'
 import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from '../../utils/userService'
 import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
-import { isCreatorStorefrontHostname } from '../../utils/subdomainService'
+import { isCreatorStorefrontHostname, peekCachedStorefrontBrand, rememberStorefrontBrand } from '../../utils/subdomainService'
 import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
 import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
@@ -104,7 +104,10 @@ const Navbar = ({ resetCategory }) => {
         && !location.pathname.startsWith('/checkout');
     const customLogoUrl = (creatorSettings?.custom_logo_url || '').trim();
     const logoSrc = customLogoUrl || (!isStorefront ? logo : '');
-    const [logoOrientation, setLogoOrientation] = useState('square');
+    const [logoOrientation, setLogoOrientation] = useState(() => {
+        const cached = peekCachedStorefrontBrand()?.logo_orientation;
+        return cached === 'horizontal' || cached === 'square' ? cached : 'square';
+    });
 
     // Storefront only: Personalization primary+secondary → header gradient; otherwise white
     const storefrontHeaderGradient = (() => {
@@ -121,6 +124,9 @@ const Navbar = ({ resetCategory }) => {
             ? 'square'
             : (img.naturalWidth / img.naturalHeight >= 1.35 ? 'horizontal' : 'square');
         setLogoOrientation((prev) => (prev === next ? prev : next));
+        if (customLogoUrl) {
+            rememberStorefrontBrand({ custom_logo_url: customLogoUrl, logo_orientation: next });
+        }
     };
 
     const prepareNavbarLogo = (img) => {
@@ -144,10 +150,18 @@ const Navbar = ({ resetCategory }) => {
     };
 
     useEffect(() => {
-        if (!creatorSettings?.custom_logo_url) {
+        if (!customLogoUrl) {
             setLogoOrientation('square');
+            return;
         }
-    }, [creatorSettings?.custom_logo_url]);
+        const cached = peekCachedStorefrontBrand();
+        if (
+            cached?.custom_logo_url === customLogoUrl
+            && (cached.logo_orientation === 'horizontal' || cached.logo_orientation === 'square')
+        ) {
+            setLogoOrientation(cached.logo_orientation);
+        }
+    }, [customLogoUrl]);
 
     useEffect(() => {
         document.body.classList.toggle('storefront-tab-bar-visible', showStorefrontTabBar);

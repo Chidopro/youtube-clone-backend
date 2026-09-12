@@ -718,6 +718,12 @@ const ProductPage = ({ sidebar }) => {
         imageOrientation: pendingOrientation
       };
     }
+    if (!item.favorite_list_id) {
+      try {
+        const flid = localStorage.getItem('sm_favorite_list_id');
+        if (flid && flid.trim()) item.favorite_list_id = flid.trim();
+      } catch (_) { /* ignore */ }
+    }
     const next = [...(readCartItems() || cartItems || [])];
     if (isEditingCart) {
       next[editingCartIndex] = item;

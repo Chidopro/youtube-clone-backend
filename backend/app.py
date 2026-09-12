@@ -2750,26 +2750,7 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
     try:
         # Use service role client to bypass RLS for precise tracking
         client_to_use = supabase_admin if supabase_admin else supabase
-        try:
-            client_to_use.table('sales').insert(sale_data).execute()
-        except Exception as sale_insert_err:
-            payload = dict(sale_data)
-            last_err = sale_insert_err
-            for _ in range(12):
-                missing = _pgrst_missing_column(last_err)
-                if missing and missing in payload:
-                    payload.pop(missing, None)
-                    try:
-                        client_to_use.table('sales').insert(payload).execute()
-                        last_err = None
-                        break
-                    except Exception as retry_err:
-                        last_err = retry_err
-                        continue
-                break
-            if last_err:
-                raise last_err
-            logger.warning("sales insert retried without missing columns")
+        insert_sale_row(client_to_use, sale_data)
         logger.info(f"✅ Recorded sale with precise tracking: product={sale_data['product_name']}, creator_user_id={creator_user_id}, amount=${item_price}")
         
         # Create creator earnings record if creator_user_id exists and they are a creator
@@ -2811,8 +2792,8 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
         logger.error(f"❌ Error recording sale: {str(e)}")
         # Try fallback with regular client
         try:
-            supabase.table('sales').insert(sale_data).execute()
-            logger.info(f"✅ Recorded sale (fallback): {sale_data}")
+            insert_sale_row(supabase, sale_data)
+            logger.info(f"✅ Recorded sale (fallback): {sale_data.get('product_name')}")
         except Exception as e2:
             logger.error(f"❌ Error recording sale (fallback): {str(e2)}")
 
@@ -6596,12 +6577,59 @@ def admin_remove_from_payout_list(user_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-_PGRST_MISSING_COL = re.compile(r"Could not find the '([^']+)' column", re.I)
+_PGRST_MISSING_COL = re.compile(
+    r"Could not find the '([^']+)' column"
+    r"|column (?:[\w]+\.)?([A-Za-z_][\w]*) does not exist"
+    r'|column "([^"]+)" of relation',
+    re.I,
+)
 _NOT_NULL_COL = re.compile(r'null value in column "([^"]+)"', re.I)
+_SALES_OPTIONAL_COLS = (
+    "owner_fee_type",
+    "owner_fee_value",
+    "owner_fee_per_item",
+    "owner_fee_amount",
+    "pay_collaborator_amount",
+    "collaborator_share_before_fee",
+    "quantity",
+)
 
 
 def _pgrst_missing_column(err):
-    return (_PGRST_MISSING_COL.search(str(err or "")) or [None, None])[1]
+    m = _PGRST_MISSING_COL.search(str(err or ""))
+    if not m:
+        return None
+    return next((g for g in m.groups() if g), None)
+
+
+def insert_sale_row(client, sale_data):
+    """Insert a sales row, dropping optional snapshot columns the live table lacks."""
+    if not client:
+        raise ValueError("sales client is required")
+    payload = dict(sale_data or {})
+    last_err = None
+    for _ in range(16):
+        try:
+            return client.table("sales").insert(payload).execute()
+        except Exception as e:
+            last_err = e
+            missing = _pgrst_missing_column(e)
+            dropped = False
+            if missing and missing in payload:
+                payload.pop(missing, None)
+                dropped = True
+            else:
+                err_s = str(e).lower()
+                for col in _SALES_OPTIONAL_COLS:
+                    if col in payload and col in err_s:
+                        payload.pop(col, None)
+                        dropped = True
+                        break
+            if not dropped:
+                raise
+    if last_err:
+        raise last_err
+    raise RuntimeError("sales insert failed")
 
 
 def _not_null_column(err):
@@ -11090,8 +11118,8 @@ def _umbrella_payouts_by_list(storefront_owner_id, list_ids=None, collaborator_u
         if not want:
             want = None
     collab_uid = str(collaborator_user_id) if collaborator_user_id else ""
-    cols_full = "id, favorite_list_id, collaborator_user_id, amount, paid_at, note, created_at"
-    cols_min = "id, favorite_list_id, amount, paid_at, note, created_at"
+    cols_full = "id, favorite_list_id, collaborator_user_id, storefront_owner_id, amount, paid_at, note, created_at, confirmed_at"
+    cols_min = "id, favorite_list_id, storefront_owner_id, amount, paid_at, note, created_at"
     rows = []
     try:
         r = (
@@ -11129,9 +11157,45 @@ def _umbrella_payouts_by_list(storefront_owner_id, list_ids=None, collaborator_u
                 continue
         raw = str(lid)
         bucket = out.setdefault(raw, [])
-        bucket.append(row)
+        bucket.append(_normalize_collaborator_payout_row(row))
         if key not in out:
             out[key] = bucket
+    return out
+
+
+_CONFIRMED_NOTE_MARK = "CONFIRMED_AT:"
+
+
+def _payout_confirmed_at(row):
+    if not row:
+        return None
+    raw = row.get("confirmed_at")
+    if raw:
+        return str(raw)
+    note = str(row.get("note") or "")
+    if note.startswith(_CONFIRMED_NOTE_MARK):
+        first, _, _rest = note.partition("\n")
+        stamped = first[len(_CONFIRMED_NOTE_MARK):].strip()
+        return stamped or None
+    return None
+
+
+def _payout_public_note(row):
+    note = str((row or {}).get("note") or "")
+    if note.startswith(_CONFIRMED_NOTE_MARK):
+        _, _, rest = note.partition("\n")
+        return rest.strip() or None
+    return (row or {}).get("note")
+
+
+def _normalize_collaborator_payout_row(row):
+    if not row:
+        return row
+    out = dict(row)
+    out["confirmed_at"] = _payout_confirmed_at(row)
+    note = _payout_public_note(row)
+    if note is not None or "note" in out:
+        out["note"] = note
     return out
 
 
@@ -12178,9 +12242,118 @@ def favorite_lists_record_collaborator_payout():
         payout_row = (ins.data or [row])[0]
         if not ins.data:
             return jsonify({"success": False, "error": "Payment was not saved. Refresh and try again."}), 500
-        return jsonify({"success": True, "payout": payout_row}), 200
+        return jsonify({"success": True, "payout": _normalize_collaborator_payout_row(payout_row)}), 200
     except Exception as e:
         logger.exception("favorite_lists_record_collaborator_payout: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/favorite-lists/confirm-collaborator-payout", methods=["POST", "OPTIONS"])
+def favorite_lists_confirm_collaborator_payout():
+    """Umbrella collaborator confirms they received an off-platform storefront payment."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _authenticated_users_id()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        if not _is_umbrella_collaborator_only(user_id):
+            return jsonify({"success": False, "error": "Only umbrella collaborators can confirm receipt"}), 403
+
+        membership = _cf_umbrella_membership_for_request(user_id)
+        owner_id = (membership or {}).get("channel_owner_id")
+        member_lists = _umbrella_member_lists_for_user(user_id, owner_id)
+        member_list_ids = {str(L.get("id")) for L in member_lists if L and L.get("id")}
+        if not owner_id or not member_list_ids:
+            return jsonify({"success": False, "error": "No umbrella page found for your account"}), 404
+
+        body = request.get_json(silent=True) or {}
+        payout_id = str(body.get("payout_id") or "").strip()
+        payout_row = None
+        if payout_id:
+            try:
+                pr = (
+                    supabase_admin.table("umbrella_collaborator_payouts")
+                    .select("*")
+                    .eq("id", payout_id)
+                    .limit(1)
+                    .execute()
+                )
+                payout_row = (pr.data or [None])[0]
+            except Exception as lookup_err:
+                logger.warning("confirm-collaborator-payout lookup: %s", lookup_err)
+        if not payout_row:
+            payouts_by_list = _umbrella_payouts_by_list(
+                owner_id, member_list_ids, collaborator_user_id=user_id
+            )
+            candidates = _dedupe_payout_rows(
+                [payout for rows in payouts_by_list.values() for payout in (rows or [])]
+            )
+            unconfirmed = [p for p in candidates if not _payout_confirmed_at(p)]
+            unconfirmed.sort(
+                key=lambda p: str(p.get("created_at") or p.get("paid_at") or ""),
+                reverse=True,
+            )
+            payout_row = unconfirmed[0] if unconfirmed else None
+        if not payout_row:
+            return jsonify({"success": False, "error": "No storefront payment is waiting for confirmation"}), 404
+
+        owner_ok = str(payout_row.get("storefront_owner_id") or "") == str(owner_id)
+        collab_ok = str(payout_row.get("collaborator_user_id") or "") == str(user_id)
+        list_ok = str(payout_row.get("favorite_list_id") or "") in member_list_ids
+        if not (collab_ok or list_ok):
+            return jsonify({"success": False, "error": "Payment not found for your page"}), 404
+        if payout_row.get("storefront_owner_id") and not owner_ok:
+            return jsonify({"success": False, "error": "Payment not found for your page"}), 404
+
+        already = _payout_confirmed_at(payout_row)
+        if already:
+            return jsonify({"success": True, "payout": _normalize_collaborator_payout_row(payout_row)}), 200
+
+        from datetime import datetime, timezone
+
+        confirmed_iso = datetime.now(timezone.utc).isoformat()
+        row_id = payout_row.get("id")
+        if not row_id:
+            return jsonify({"success": False, "error": "Payment is missing an ID"}), 400
+
+        updated = None
+        try:
+            upd = (
+                supabase_admin.table("umbrella_collaborator_payouts")
+                .update({"confirmed_at": confirmed_iso})
+                .eq("id", str(row_id))
+                .execute()
+            )
+            updated = (upd.data or [None])[0]
+        except Exception as upd_err:
+            err_s = str(upd_err).lower()
+            missing_col = "confirmed_at" in err_s and ("column" in err_s or "schema" in err_s or "does not exist" in err_s)
+            if not missing_col:
+                logger.exception("confirm-collaborator-payout update: %s", upd_err)
+                return jsonify({"success": False, "error": ("Could not save confirmation: " + str(upd_err))[:280]}), 500
+            public_note = _payout_public_note(payout_row) or ""
+            stamped_note = f"{_CONFIRMED_NOTE_MARK}{confirmed_iso}"
+            if public_note:
+                stamped_note = f"{stamped_note}\n{public_note}"
+            try:
+                upd = (
+                    supabase_admin.table("umbrella_collaborator_payouts")
+                    .update({"note": stamped_note})
+                    .eq("id", str(row_id))
+                    .execute()
+                )
+                updated = (upd.data or [None])[0]
+            except Exception as note_err:
+                logger.exception("confirm-collaborator-payout note fallback: %s", note_err)
+                return jsonify({"success": False, "error": ("Could not save confirmation: " + str(note_err))[:280]}), 500
+
+        saved = _normalize_collaborator_payout_row(updated or {**payout_row, "confirmed_at": confirmed_iso})
+        return jsonify({"success": True, "payout": saved}), 200
+    except Exception as e:
+        logger.exception("favorite_lists_confirm_collaborator_payout: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

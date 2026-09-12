@@ -255,8 +255,7 @@
   display: grid;
   grid-template-columns:
     minmax(max-content, 1.5fr)
-    repeat(6, minmax(max-content, 1fr))
-    minmax(max-content, 1.25fr);
+    repeat(6, minmax(max-content, 1fr));
   column-gap: 8px;
   justify-content: stretch;
   align-items: end;
