@@ -6,6 +6,7 @@ import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCa
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
+import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import {
   CHECKOUT_COUNTRY_OPTIONS,
   US_STATE_OPTIONS,
@@ -26,18 +27,6 @@ function cartItemHasFrame(item) {
   const ts = cartItemToolSettings(item);
   const flag = ts.frameEnabled;
   return flag === true || flag === 1 || flag === '1' || String(flag || '').toLowerCase() === 'true';
-}
-
-function cartItemHasToolsEdit(item) {
-  if (!item) return false;
-  const ts = cartItemToolSettings(item);
-  if (item.edited || item.tools_acknowledged) return true;
-  if (cartItemHasFrame(item)) return true;
-  if (Number(ts.featherEdge) > 0 || Number(ts.cornerRadius) > 0) return true;
-  if (ts.textEnabled && String(ts.textContent || '').trim()) return true;
-  const original = String(item.originalScreenshot || item.original_screenshot || '').trim();
-  const shot = String(item.screenshot || item.selected_screenshot || '').trim();
-  return Boolean(original && shot && original !== shot);
 }
 
 const Checkout = () => {
@@ -595,6 +584,34 @@ const Checkout = () => {
     );
   };
 
+  const changeCartItemImage = (index) => {
+    const item = items[index];
+    if (item) {
+      setToolsFocusCartIndex(index);
+      try {
+        const shot = item.selected_screenshot || item.screenshot;
+        if (shot) applySelectedScreenshot(shot);
+      } catch {
+        /* ignore */
+      }
+    }
+    setShowDesignModal(false);
+    if (isCreatorStorefrontHostname()) {
+      try {
+        const slug = localStorage.getItem('sm_favorite_list_slug');
+        if (slug && slug !== 'owner') {
+          navigate(`/favorites/${encodeURIComponent(slug)}`);
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+      navigate('/favorites');
+      return;
+    }
+    navigate('/merchandise');
+  };
+
   return (
     <div className={`checkout-container${signedIn && items.length === 0 ? ' checkout-container--empty' : ''}`}>
       {isDemoStorefront() ? (
@@ -1062,121 +1079,59 @@ const Checkout = () => {
       {showDesignModal && items.length > 0 && createPortal(
         <div className="design-modal-overlay" onClick={() => setShowDesignModal(false)}>
           <div className="design-modal design-modal--multi" onClick={e => e.stopPropagation()}>
-            <h2>Design preferences</h2>
+            <h2>Confirm Your Design</h2>
 
             <div className="design-modal-items">
               {items.map((item, i) => {
-                const prefs = designPreferences[i] ?? { orientation: '' };
-                const setPref = (key, value) => {
-                  setDesignPreferences(prev => {
-                    const next = prev.slice(0, items.length);
-                    while (next.length <= i) next.push({ orientation: '' });
-                    next[i] = { ...next[i], [key]: value };
-                    designPreferencesRef.current = next;
-                    return next;
-                  });
-                };
                 const itemName = item.name || item.product || `Item ${i + 1}`;
                 const itemSize = (item.size || '').trim();
-                const isShirt = SHIRT_CATEGORIES.includes(item.category);
                 const itemShot = item.screenshot || item.selected_screenshot || item.thumbnail;
                 const hasFrame = cartItemHasFrame(item);
-                const hasEdit = cartItemHasToolsEdit(item);
                 const frameColor = cartItemToolSettings(item).frameColor || '#FF0000';
                 return (
                   <div key={i} className="design-modal-item-block">
-                    <div className="design-modal-item-header">
-                      <h3 className="design-modal-item-title">
-                        {itemName}
-                        {itemSize ? <span className="design-modal-item-size"> · {itemSize}</span> : null}
-                      </h3>
-                      <div className="item-card-actions">
-                        <button
-                          type="button"
-                          className="item-edit-btn"
-                          onClick={() => startEditCartItem(i)}
-                          title="Edit item"
-                          aria-label={`Edit ${itemName}`}
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          type="button"
-                          className="item-delete-btn"
-                          onClick={() => removeCartItem(i)}
-                          title="Remove item"
-                          aria-label={`Remove ${itemName} from cart`}
-                        >
-                          🗑️
-                        </button>
+                    <h3 className="design-modal-item-title">{itemName}</h3>
+                    {itemSize ? <p className="design-modal-item-size">Size: {itemSize}</p> : null}
+                    <div className="design-modal-image-row">
+                      {itemShot ? (
+                        <img
+                          src={itemShot}
+                          alt=""
+                          className={`design-modal-item-shot${hasFrame ? ' design-modal-item-shot--framed' : ''}`}
+                          style={hasFrame ? { borderColor: frameColor } : undefined}
+                        />
+                      ) : (
+                        <div className="design-modal-item-shot design-modal-item-shot--empty" aria-hidden="true" />
+                      )}
+                      <div className="design-modal-image-meta">
+                        <p className="design-modal-image-label">Your Image</p>
+                        <div className="design-modal-text-actions">
+                          <button
+                            type="button"
+                            className="design-modal-text-action"
+                            onClick={() => changeCartItemImage(i)}
+                          >
+                            Change Image
+                          </button>
+                          <span className="design-modal-text-sep" aria-hidden="true">·</span>
+                          <button
+                            type="button"
+                            className="design-modal-text-action"
+                            onClick={() => removeCartItem(i)}
+                          >
+                            Remove Item
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    {(itemShot || hasEdit) && (
-                      <div className="design-modal-edit-row">
-                        {itemShot ? (
-                          <img
-                            src={itemShot}
-                            alt=""
-                            className={`design-modal-item-shot${hasFrame ? ' design-modal-item-shot--framed' : ''}`}
-                            style={hasFrame ? { borderColor: frameColor } : undefined}
-                          />
-                        ) : null}
-                        {hasEdit && (
-                          <span className="design-modal-edit-mark">
-                            {hasFrame ? (
-                              <>
-                                <span className="design-modal-edit-swatch" style={{ background: frameColor }} />
-                                Border added
-                              </>
-                            ) : (
-                              'Edit added'
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {isShirt && (
-                    <div className="design-modal-field">
-                      <div className="design-modal-options design-modal-orientation-options">
-                        <label className="design-modal-orientation-option">
-                          <span className="design-modal-orientation-img-wrap">
-                            <img src="/shirt-portrait.png" alt="Portrait print on shirt" className="design-modal-orientation-img" />
-                          </span>
-                          <span className="design-modal-option-row">
-                            <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'portrait'} onChange={() => setPref('orientation', 'portrait')} />
-                            <span className="design-modal-option-text">Portrait</span>
-                          </span>
-                        </label>
-                        <label className="design-modal-orientation-option">
-                          <span className="design-modal-orientation-img-wrap">
-                            <img src="/shirt-landscape.png" alt="Landscape print on shirt" className="design-modal-orientation-img" />
-                          </span>
-                          <span className="design-modal-option-row">
-                            <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'landscape'} onChange={() => setPref('orientation', 'landscape')} />
-                            <span className="design-modal-option-text">Landscape</span>
-                          </span>
-                        </label>
-                      </div>
-                      <span className="design-modal-field-label design-modal-field-label--under">Image orientation</span>
-                    </div>
-                    )}
                   </div>
                 );
               })}
             </div>
 
             {(() => {
-              const applyOrientationToCart = () => {
+                const applyOrientationToCart = () => {
                 const currentPrefs = designPreferencesRef.current;
-                const hasOrientation = items.every((it, i) => {
-                  if (!SHIRT_CATEGORIES.includes(it.category)) return true;
-                  const o = (currentPrefs[i] ?? {}).orientation || resolveItemImageOrientation(it);
-                  return o === 'portrait' || o === 'landscape';
-                });
-                if (!hasOrientation) {
-                  alert('Please choose Image orientation (Portrait or Landscape) for each shirt item before continuing.');
-                  return null;
-                }
                 const updated = items.map((it, idx) => {
                   if (!SHIRT_CATEGORIES.includes(it.category)) return it;
                   const chosen = ((currentPrefs[idx] ?? {}).orientation || resolveItemImageOrientation(it)) === 'landscape'
@@ -1208,11 +1163,11 @@ const Checkout = () => {
               return (
                 <>
                   <button type="button" className="design-modal-tools-btn" onClick={handleGoToTools}>
-                    Go to Product Preview
+                    Customize Design
                   </button>
                   <div className="design-modal-actions">
                     <button type="button" className="btn-outline" onClick={() => setShowDesignModal(false)}>
-                      Cancel
+                      Back
                     </button>
                     <button type="button" className="btn-primary" onClick={handleContinue}>
                       Continue to Checkout

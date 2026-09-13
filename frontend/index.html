@@ -1,6 +1,14 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      (function () {
+        var host = (location.hostname || '').toLowerCase();
+        if (host.endsWith('.screenmerch.com') && host !== 'www.screenmerch.com') {
+          document.documentElement.classList.add('creator-storefront');
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ScreenMerch - Create Custom Merchandise from Video Content</title>

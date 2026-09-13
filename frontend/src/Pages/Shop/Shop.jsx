@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
+import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import {
   SHOP_CATEGORIES,
   browseShopCategoryPath,
@@ -47,10 +48,10 @@ const Shop = ({ sidebar }) => {
             onClick={() => navigate('/')}
             aria-label="Back"
           >
-            ←
+            <ChevronLeft />
           </button>
           <div className="shop-toolbar-text">
-            <h1 className="shop-page-title">My Shop</h1>
+            <h1 className="shop-page-title">Shop by Category</h1>
           </div>
         </div>
 

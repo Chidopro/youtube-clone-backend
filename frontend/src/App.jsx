@@ -42,7 +42,7 @@ import Shop from "./Pages/Shop/Shop";
 import DemoDashboard from "./Pages/DemoDashboard/DemoDashboard";
 import UmbrellaJoin from "./Pages/UmbrellaJoin/UmbrellaJoin";
 import { CreatorProvider } from "./contexts/CreatorContext";
-import { isCreatorStorefrontHostname } from "./utils/subdomainService";
+import { getSubdomain, isCreatorStorefrontHostname } from "./utils/subdomainService";
 
 const App = () => {
   // Pages keep the full-width layout (the old sidebar menu is gone).
@@ -54,9 +54,17 @@ const App = () => {
   const navigate = useNavigate();
   const oauthSuccessProcessedRef = useRef(false);
 
-  // Apex vs creator storefront: hide 1-2-3 bar on subdomains (CSS), keep markup for easy restore
-  useEffect(() => {
-    document.body.classList.toggle('creator-storefront', isCreatorStorefrontHostname());
+  // Stamp the storefront class before paint so the header never starts on the compact bar.
+  useLayoutEffect(() => {
+    const onStorefront = isCreatorStorefrontHostname();
+    const subdomain = onStorefront ? (getSubdomain() || '') : '';
+    document.documentElement.classList.toggle('creator-storefront', onStorefront);
+    document.body.classList.toggle('creator-storefront', onStorefront);
+    if (subdomain) {
+      document.documentElement.dataset.storefront = subdomain;
+    } else {
+      delete document.documentElement.dataset.storefront;
+    }
   }, [location.pathname]);
 
   // Handle Google OAuth redirect (only process success once per load so we don't clear auth on effect re-run)

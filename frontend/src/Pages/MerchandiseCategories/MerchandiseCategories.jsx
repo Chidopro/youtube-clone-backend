@@ -130,7 +130,7 @@ const MerchandiseCategories = ({ sidebar }) => {
 
       <div className="merchandise-categories">
         <div className="categories-container">
-          <h1 className="categories-title">Choose Category</h1>
+          <h1 className="categories-title">Shop by Category</h1>
 
           <div className="categories-grid">
             {categories.map((cat, i) => (

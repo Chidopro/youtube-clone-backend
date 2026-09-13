@@ -4,6 +4,7 @@ import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, ge
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
 import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest, peekToolsPreviewNewest, rememberArtworkOrientation } from '../../utils/merchSession';
 import { isDemoStorefront } from '../../utils/demoStorefront';
+import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlainText, cornerRadiusPx, featherPx } from '../../utils/editLog';
 import './ToolsPage.css';
 
@@ -2091,8 +2092,8 @@ const ToolsPage = () => {
         }
       }
       if (backBtnRef.current && isDesktopTools) {
-        // Left gutter beside Product Preview, just under the header bar.
-        backBtnRef.current.style.left = `${Math.round(containerRect.left)}px`;
+        // Inset so the hover plate is not clipped at the viewport edge.
+        backBtnRef.current.style.left = `${Math.round(containerRect.left) + 8}px`;
         backBtnRef.current.style.top = `${Math.round(belowHeader + 4)}px`;
       }
     };
@@ -4553,10 +4554,10 @@ const ToolsPage = () => {
         onClick={goBackFromTools}
         aria-label="Back"
       >
-        ←
+        <ChevronLeft />
       </button>
       <div className="tools-page-header">
-        <h1>Edit Tools</h1>
+        <h1>Customize Your Design</h1>
         <p className="tools-subtitle">Edit your screenshot with professional tools</p>
       </div>
 
@@ -4679,7 +4680,7 @@ const ToolsPage = () => {
                         onClick={goBackFromTools}
                         aria-label="Back"
                       >
-                        ←
+                        <ChevronLeft />
                       </button>
                       <div className="product-preview-visual">
                     {(() => {
@@ -4964,7 +4965,7 @@ const ToolsPage = () => {
                     <p className="product-preview-color-note">
                       Color shown is for display only. You&apos;ll receive the color you selected.
                     </p>
-                    <p className="edit-tools-under-preview">Edit Tools</p>
+                    <p className="edit-tools-under-preview">Customize Your Design</p>
                   </div>
                 );
               })()}
@@ -4980,7 +4981,7 @@ const ToolsPage = () => {
 
         {/* Right Column: Tools */}
         <div className="tools-right-column">
-          <h1 className="tools-column-heading">Edit Tools</h1>
+          <h1 className="tools-column-heading">Customize Your Design</h1>
           <div className="tools-controls-section">
           {/* Product Selector - Small dropdown at top of tools */}
           {cartProducts.length > 0 && (
@@ -4990,8 +4991,9 @@ const ToolsPage = () => {
                 position: 'relative'
               }}
             >
-              <h3 style={{ marginTop: 0, marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                Select Product From Cart:
+              <h3 className="tools-cart-product-label">
+                <span className="tools-cart-product-label-desktop">Select Product From Cart:</span>
+                <span className="tools-cart-product-label-mobile">Customize Your Design</span>
               </h3>
               <select
                 value={selectedCartProductIndex !== null ? selectedCartProductIndex : ''}
@@ -5001,6 +5003,7 @@ const ToolsPage = () => {
                 }}
                 className="print-area-select"
                 style={{ width: '100%' }}
+                aria-label="Select product from cart"
               >
                 <option value="">-- Select Product --</option>
                 {cartProducts.map((product, index) => (

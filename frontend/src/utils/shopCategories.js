@@ -9,7 +9,7 @@ export const SHOP_CATEGORIES = [
   { name: 'Mugs', emoji: '☕', category: 'mugs', preview: 'mugwhiteglossymugpreview.png' },
   { name: 'Bags', emoji: '👜', category: 'bags', preview: 'bagslaptopsleevepreview.png' },
   { name: 'Pets', emoji: '🐕', category: 'pets', preview: 'petspetbowlalloverprintpreview.png' },
-  { name: 'Miscellaneous', emoji: '📦', category: 'misc', preview: 'miscellaneoushardcovernotebookpreview.png' },
+  { name: 'Accessories', emoji: '📦', category: 'misc', preview: 'miscellaneoushardcovernotebookpreview.png' },
 ];
 
 export function shopCategoryThumbUrl(previewFile) {

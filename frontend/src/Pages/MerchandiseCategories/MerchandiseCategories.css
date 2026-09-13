@@ -1,11 +1,23 @@
 .merchandise-categories-page {
-  background: #f9f9f9;
+  background: #fff;
   min-height: 100vh;
   overflow-anchor: none;
 }
 
+.container.merchandise-categories-page {
+  padding-top: 0;
+  padding-bottom: 0;
+  background: #fff;
+}
+
 .merchandise-categories-page .categories-title {
   scroll-margin-top: 96px;
+  font-size: 36px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 22px;
+  padding: 0;
+  line-height: 1.2;
 }
 
 /* Match Home / Product page 1-2-3 bar width */
@@ -26,10 +38,6 @@
     margin-left: 0;
     margin-right: 0;
     width: 100%;
-  }
-
-  .categories-title {
-    padding-bottom: 0.5rem;
   }
 }
 
@@ -78,10 +86,10 @@
 }
 
 /* Merchandise Categories Page */
-.merchandise-categories {
+.merchandise-categories-page .merchandise-categories {
   min-height: 0;
-  background: #f9f9f9;
-  padding: 1.5rem 1.25rem 2rem;
+  background: #fff;
+  padding: 40px 24px 50px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -139,21 +147,22 @@
   padding: 20px;
 }
 
-.categories-container {
-  max-width: 1200px;
+.merchandise-categories-page .categories-container {
+  max-width: 1180px;
   width: 100%;
   text-align: center;
-  padding: 0 8px;
+  padding: 0;
   box-sizing: border-box;
 }
 
+.merchandise-categories-page .categories-title,
 .categories-title {
-  font-size: clamp(1.35rem, 3vw, 1.75rem);
-  font-weight: 600;
+  font-size: 36px;
+  font-weight: 700;
   color: #1a1a1a;
-  margin: 0 0 1.25rem;
-  padding: 0 12px;
-  line-height: 1.25;
+  margin: 0 0 22px;
+  padding: 0;
+  line-height: 1.2;
   white-space: normal;
   overflow-wrap: break-word;
   max-width: 100%;
@@ -169,36 +178,38 @@
 .categories-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 3rem;
+  gap: 22px;
+  margin-bottom: 0;
 }
 
 .merchandise-categories .categories-container .categories-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1.5rem;
+  gap: 22px;
 }
 
 /* Button reset + mobile tap hardening (keeps same visuals) */
 .merchandise-categories-page .category-box {
   appearance: none;
   -webkit-appearance: none;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 0;
-  padding: 1.15rem 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  padding: 0;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   position: relative;
   overflow: hidden;
   min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  align-items: center;
+  align-items: stretch;
   text-align: center;
-  gap: 0.75rem;
+  gap: 0;
+  font: inherit;
+  color: inherit;
 
   /* mobile tap niceties */
   -webkit-tap-highlight-color: transparent;
@@ -218,35 +229,35 @@
 }
 
 .merchandise-categories-page .category-box:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  border-color: #667eea;
+  transform: translateY(-3px);
+  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.10);
 }
 
 /* Touch devices hover effects */
 @media (hover: none) and (pointer: coarse) {
   .merchandise-categories-page .category-box:hover {
     transform: none;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
 
   .merchandise-categories-page .category-box:active {
     transform: scale(0.98);
-    box-shadow: 0 4px 16px rgba(147, 51, 234, 0.4);
-    border-color: rgba(147, 51, 234, 0.6);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
 }
 
 .merchandise-categories-page .category-thumb {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f4f5f7;
+  background: #f8f8f8;
   overflow: hidden;
   z-index: 2;
   position: relative;
+  padding: 14px;
+  box-sizing: border-box;
 }
 
 .merchandise-categories-page .category-thumb-img {
@@ -258,15 +269,25 @@
 
 .merchandise-categories-page .category-emoji {
   font-size: 3rem;
-  margin-bottom: 1rem;
+  margin: 0;
+  padding: 14px;
   z-index: 2;
   position: relative;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f8f8;
+  box-sizing: border-box;
 }
 
 .merchandise-categories-page .category-name {
-  font-size: 1.2rem;
+  font-size: 17px;
   font-weight: 600;
-  color: #333;
+  color: #1a1a1a;
+  text-align: center;
+  padding: 13px 10px 16px;
   z-index: 2;
   position: relative;
 }
@@ -283,13 +304,9 @@
   font-weight: 600;
   font-size: 1.1rem;
   z-index: 10;
-  border-radius: 0;
-
-  /* let tap/click events still resolve state transitions */
+  border-radius: 10px;
   pointer-events: none;
 }
-
-/* If any backdrop/modal exists elsewhere, make sure hidden states never capture taps */
 .backdrop--hidden,
 .modal-backdrop--hidden,
 .sidebar-backdrop--hidden {
@@ -387,7 +404,7 @@
 
   .merchandise-categories-page .merchandise-categories {
     min-height: 0;
-    padding: 0.65rem 1rem 0.35rem;
+    padding: 20px 16px 32px;
     overflow-x: hidden !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -421,10 +438,11 @@
   }
 
   .merchandise-categories-page .categories-title {
-    font-size: 1.35rem;
+    font-size: 24px;
+    font-weight: 700;
     margin-top: 0;
-    margin-bottom: 0.75rem;
-    padding: 0 8px;
+    margin-bottom: 16px;
+    padding: 0;
     white-space: normal;
   }
 
@@ -434,48 +452,51 @@
 
   .merchandise-categories-page .categories-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.75rem !important;
+    gap: 14px !important;
     max-width: 100% !important;
     overflow-x: hidden !important;
     width: 100% !important;
     box-sizing: border-box !important;
     display: grid !important;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0;
   }
 
   .merchandise-categories-page .category-box {
-    padding: 0.75rem 0.55rem 0.85rem;
+    padding: 0;
     min-height: 0;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    overflow-x: hidden !important;
-    gap: 0.4rem;
+    overflow: hidden !important;
+    gap: 0;
+    border-radius: 10px;
   }
 
   .merchandise-categories-page .category-emoji {
     font-size: 1.5rem;
-    margin-bottom: 0.25rem;
+    margin: 0;
+    padding: 10px;
   }
 
   .merchandise-categories-page .category-name {
-    font-size: 0.8rem;
+    font-size: 15px;
+    padding: 10px 8px 12px;
   }
 
   .loading-overlay {
     font-size: 0.9rem;
-    border-radius: 0;
+    border-radius: 10px;
   }
 }
 
 /* Extra small mobile devices */
 @media (max-width: 480px) {
   .merchandise-categories-page .merchandise-categories {
-    padding: 0.55rem 0.5rem 0.25rem;
+    padding: 16px 12px 28px;
   }
 
   .merchandise-categories-page .categories-title {
-    font-size: 1.25rem;
-    margin-bottom: 0.55rem;
+    font-size: 22px;
+    margin-bottom: 14px;
     white-space: normal;
   }
 
@@ -485,23 +506,25 @@
 
   .merchandise-categories-page .categories-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.5rem !important;
+    gap: 12px !important;
     display: grid !important;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0;
   }
 
   .merchandise-categories-page .category-box {
-    padding: 0.65rem 0.45rem 0.75rem;
+    padding: 0;
     min-height: 0;
   }
 
   .merchandise-categories-page .category-emoji {
     font-size: 1.5rem;
-    margin-bottom: 0.25rem;
+    margin: 0;
+    padding: 10px;
   }
 
   .merchandise-categories-page .category-name {
-    font-size: 0.8rem;
+    font-size: 14px;
+    padding: 10px 8px 12px;
   }
 }
 
@@ -510,8 +533,8 @@
   .merchandise-categories-page .merchandise-categories .categories-container .categories-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     display: grid !important;
-    gap: 0.75rem !important;
-    margin-bottom: 0.4rem;
+    gap: 14px !important;
+    margin-bottom: 0;
   }
 }
 
@@ -519,7 +542,7 @@
   .merchandise-categories-page .merchandise-categories .categories-container .categories-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     display: grid !important;
-    gap: 0.5rem !important;
-    margin-bottom: 0.25rem;
+    gap: 12px !important;
+    margin-bottom: 0;
   }
 }

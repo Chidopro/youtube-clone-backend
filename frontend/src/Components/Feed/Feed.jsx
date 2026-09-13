@@ -203,7 +203,7 @@ const Feed = ({
           <div className="feed-hubs" aria-label="Storefront sections">
             <button type="button" className="card hub-card" onClick={() => navigate('/favorites')}>
               <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />
-              <h2>My Page</h2>
+              <h2>Featured</h2>
             </button>
             <button
               type="button"
@@ -214,19 +214,19 @@ const Feed = ({
               }}
               onClick={() => navigate('/friend-pages')}
             >
-              <HubThumb src={hubThumbs.friend} emptyLabel="No Friends Yet" />
-              <h2>My Friends</h2>
+              <HubThumb src={hubThumbs.friend} emptyLabel="No Creators Yet" />
+              <h2>Creators</h2>
             </button>
             <button type="button" className="card hub-card" onClick={() => navigate('/shop')}>
-              <HubThumb src={hubThumbs.shop} emptyLabel="My Shop" />
-              <h2>My Shop</h2>
+              <HubThumb src={hubThumbs.shop} emptyLabel="Shop" />
+              <h2>Shop</h2>
             </button>
           </div>
           <div className="feed-hubs feed-hubs--shuffle" aria-label="More from this store">
             <button
               type="button"
               className="card hub-card hub-card--shuffle"
-              aria-label="More from My Page"
+              aria-label="More from Featured"
               onClick={() => navigate('/favorites')}
             >
               <HubThumb
@@ -238,7 +238,7 @@ const Feed = ({
             <button
               type="button"
               className="card hub-card hub-card--shuffle"
-              aria-label="More from My Friends"
+              aria-label="More from Creators"
               onPointerEnter={() => {
                 const sub = getSubdomain();
                 if (sub) fetchPublicFavoriteLists(sub, { lite: true });
@@ -254,7 +254,7 @@ const Feed = ({
             <button
               type="button"
               className="card hub-card hub-card--shuffle"
-              aria-label="More from My Shop"
+              aria-label="More from Shop"
               onClick={() => navigate('/shop')}
             >
               <HubThumb

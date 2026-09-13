@@ -30,7 +30,7 @@
   justify-self: start;
   background: none;
   border: none;
-  color: #444;
+  color: #111;
   font-size: 26px;
   line-height: 1;
   cursor: pointer;
@@ -40,6 +40,12 @@
   justify-content: center;
   border-radius: 8px;
   transition: color 0.2s, background 0.2s;
+}
+
+.friend-pages-back-btn svg {
+  width: 26px;
+  height: 26px;
+  display: block;
 }
 
 .friend-pages-back-btn:hover {

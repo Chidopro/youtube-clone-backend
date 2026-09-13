@@ -426,7 +426,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         />
 
 
-        {/* Main site: creator directory. Subdomains: Page / Friends / Shop only. */}
+        {/* Main site: creator directory. Subdomains: Featured / Creators / Shop only. */}
         {((isMainSite && loading) || (!isMainSite && hubsLoading)) && (
           <div style={{padding: 24}}>Loading...</div>
         )}

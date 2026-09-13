@@ -11,7 +11,9 @@ import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
+import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
+import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { readShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
 import {
   getAvailableColorsForCountry,
@@ -364,6 +366,33 @@ const ProductPage = ({ sidebar }) => {
   const isBrowseMode =
     !productId || productId === 'browse' || productId === 'undefined' || productId === 'null';
   const goToMainCategories = () => navigate(isShopCatalog ? '/shop' : '/merchandise');
+  const handleChangeImage = () => {
+    if (isCreatorStorefrontHostname()) {
+      try {
+        const slug = localStorage.getItem('sm_favorite_list_slug');
+        if (slug && slug !== 'owner') {
+          navigate(`/favorites/${encodeURIComponent(slug)}`);
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+      navigate('/favorites');
+      return;
+    }
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate('/merchandise');
+  };
+  const selectScreenshot = (key, url) => {
+    if (!url) return;
+    setSelectedScreenshot(key);
+    setSelectedScreenshotUrl(url);
+    applySelectedScreenshot(url);
+    if (creatorMode) setSelectedScreenshotForFavorite(key);
+  };
   const openCartIfSignedIn = () => {
     if (isDemoStorefront() || isShopperSignedIn()) {
       setIsCartOpen(true);
@@ -874,10 +903,13 @@ const ProductPage = ({ sidebar }) => {
     }
     try {
       const d = readPendingMerchData();
-      if (d && (d.screenshots?.length || d.thumbnail)) {
+      if (d && (d.screenshots?.length || d.thumbnail || d.selected_screenshot || d.edited_screenshot)) {
+        const chosen = d.edited_screenshot || d.selected_screenshot || d.thumbnail || '';
         setFallbackImages({
-          screenshots: Array.isArray(d?.screenshots) ? d.screenshots.slice(0, 6) : [],
-          thumbnail: d?.thumbnail || ''
+          screenshots: Array.isArray(d?.screenshots) && d.screenshots.length
+            ? d.screenshots.slice(0, 6)
+            : (chosen ? [chosen] : []),
+          thumbnail: d?.thumbnail || chosen || ''
         });
         
         // In creator mode, if we have video data, set up productData structure
@@ -1250,7 +1282,7 @@ const ProductPage = ({ sidebar }) => {
   }
 
   return (
-    <div className={`container product-page${isShopCatalog ? ' product-page--shop-catalog' : ''}${sidebar ? '' : ' large-container'}`}>
+    <div className={`container product-page${isShopCatalog ? ' product-page--shop-catalog' : ''}${!creatorMode && !isShopCatalog ? ' product-page--choose' : ''}${sidebar ? '' : ' large-container'}`}>
       {/* User Flow Section - Step 3 Only - Hide for All Products; storefronts hide via CSS */}
       {(() => {
         const categoryNormalized = (category || '').trim().toLowerCase();
@@ -1317,7 +1349,7 @@ const ProductPage = ({ sidebar }) => {
               onClick={goToMainCategories}
               aria-label="Back to categories"
             >
-              ←
+              <ChevronLeft />
             </button>
             <div className="shop-catalog-toolbar-text">
               <h1 className="product-information-title">Product Information</h1>
@@ -1369,7 +1401,7 @@ const ProductPage = ({ sidebar }) => {
               'hats': "Hats",
               'bags': "Bags",
               'pets': "Pets",
-              'misc': "Miscellaneous"
+              'misc': "Accessories"
             };
 
             return ['womens', 'mens', 'kids', 'mugs', 'hats', 'bags', 'pets', 'misc'].map(cat => {
@@ -1423,7 +1455,14 @@ const ProductPage = ({ sidebar }) => {
           {/* Screenshot Selection Section — hidden in My Shop catalog (blank products only) */}
           {!isShopCatalog && (
           <div className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}`}>
+            {!creatorMode && (
+              <div className="product-choose-header">
+                <h1 className="product-choose-title">Choose a Product</h1>
+                <p className="product-choose-subtitle">Select a product to customize with your image.</p>
+              </div>
+            )}
             <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : (getSelectImageCount() <= 1 ? 'Selected Image' : 'Select Image')}</h2>
+            <div className="selected-image-row">
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail */}
@@ -1433,13 +1472,17 @@ const ProductPage = ({ sidebar }) => {
                   <div 
                     className={`screenshot-item ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
                     aria-current={selectedScreenshot === 'thumbnail' ? 'true' : undefined}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => selectScreenshot('thumbnail', thumbnailUrl)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectScreenshot('thumbnail', thumbnailUrl);
+                      }
+                    }}
                   >
-                    <div onClick={() => {
-                      setSelectedScreenshot('thumbnail');
-                      setSelectedScreenshotUrl(thumbnailUrl);
-                      applySelectedScreenshot(thumbnailUrl);
-                      if (creatorMode) setSelectedScreenshotForFavorite('thumbnail');
-                    }} style={{ cursor: 'pointer' }}>
+                    <div>
                       <img 
                         src={thumbnailUrl} 
                         alt="Thumbnail" 
@@ -1460,13 +1503,17 @@ const ProductPage = ({ sidebar }) => {
                         key={`shot-${index}`}
                         className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
                         aria-current={selectedScreenshot === index ? 'true' : undefined}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => selectScreenshot(index, screenshot)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            selectScreenshot(index, screenshot);
+                          }
+                        }}
                       >
-                        <div onClick={() => {
-                          setSelectedScreenshot(index);
-                          setSelectedScreenshotUrl(screenshot);
-                          applySelectedScreenshot(screenshot);
-                          if (creatorMode) setSelectedScreenshotForFavorite(index);
-                        }} style={{ cursor: 'pointer' }}>
+                        <div>
                           <img 
                             src={screenshot} 
                             alt={`Screenshot ${index + 1}`} 
@@ -1479,6 +1526,16 @@ const ProductPage = ({ sidebar }) => {
                   }) : null;
                 })()}
               </div>
+            </div>
+            {!creatorMode && (
+              <div className="selected-image-meta">
+                <p className="selected-image-label">Selected Image</p>
+                <p className="selected-image-ready">Ready for your custom merchandise</p>
+                <button type="button" className="change-image-link" onClick={handleChangeImage}>
+                  Change Image
+                </button>
+              </div>
+            )}
             </div>
             {creatorMode && (
               <p className="screenshots-subtitle">Choose which screenshot to save to your favorites</p>
@@ -1552,7 +1609,7 @@ const ProductPage = ({ sidebar }) => {
                     onClick={goToMainCategories}
                     aria-label="Back to categories"
                   >
-                    ←
+                    <ChevronLeft />
                   </button>
                   <div className="shop-catalog-toolbar-text">
                     {isShopCatalog ? (
@@ -1576,6 +1633,18 @@ const ProductPage = ({ sidebar }) => {
                 </>
               )}
             </div>
+
+            {!isShopCatalog && (
+              <div className="product-catalog-heading">
+                <h2 className="product-catalog-title">{categoryDisplayName} Products</h2>
+                <p className="product-catalog-subtitle">Choose a product for your selected image.</p>
+                {(category === 'womens' || category === 'mens' || category === 'kids') && (
+                  <p className="product-mockup-color-notice product-mockup-color-notice-intro">
+                    Product mockups show representative colors. Your order will be made in the colors you select.
+                  </p>
+                )}
+              </div>
+            )}
 
             {isEditingCart && editingCartItem && (
               <div className="edit-cart-banner">
@@ -1856,7 +1925,7 @@ const ProductPage = ({ sidebar }) => {
                 <div className="cart-actions">
                   <button className="view-cart-btn" onClick={() => setIsCartOpen(false)}>Continue Shopping</button>
                   <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
-                  <button className="edit-tools-btn" onClick={goToToolsPage}>Go to Product Preview</button>
+                  <button className="edit-tools-btn" onClick={goToToolsPage}>Customize Design</button>
                 </div>
               </div>
             )}
@@ -1898,7 +1967,7 @@ const ProductPage = ({ sidebar }) => {
                     goToToolsPage();
                   }}
                 >
-                  Go to Product Preview
+                  Customize Design
                 </button>
                 <button 
                   className="continue-shopping-btn"

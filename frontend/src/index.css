@@ -42,10 +42,10 @@ img{
 }
 
 /* Creator storefronts (*.screenmerch.com): hide 1-2-3 bar; keep on apex screenmerch.com */
-body.creator-storefront .user-flow-section,
-body.creator-storefront .home-page .user-flow-section,
-body.creator-storefront .merchandise-categories-page .user-flow-section,
-body.creator-storefront .product-page .user-flow-section {
+html.creator-storefront .user-flow-section,
+html.creator-storefront .home-page .user-flow-section,
+html.creator-storefront .merchandise-categories-page .user-flow-section,
+html.creator-storefront .product-page .user-flow-section {
   display: none !important;
   visibility: hidden !important;
   height: 0 !important;

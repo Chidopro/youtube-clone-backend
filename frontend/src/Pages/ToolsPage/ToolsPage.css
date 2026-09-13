@@ -85,10 +85,11 @@
 .tools-back-btn {
   position: fixed;
   top: 112px;
+  left: 12px;
   z-index: 10100;
   background: none;
   border: none;
-  color: #444;
+  color: #111;
   font-size: 26px;
   line-height: 1;
   cursor: pointer;
@@ -99,6 +100,17 @@
   border-radius: 8px;
   transition: color 0.2s, background 0.2s;
   pointer-events: auto;
+}
+
+.tools-back-btn svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+.tools-back-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #000;
 }
 
 .tools-back-btn-preview {
@@ -641,6 +653,16 @@ body.tools-page-active .site-footer {
 
 .tool-control-group.tools-cart-product-group {
   padding-bottom: 0.5rem;
+}
+
+.tools-cart-product-label {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.tools-cart-product-label-mobile {
+  display: none;
 }
 
 .tools-controls-section > .tools-cart-product-group + .tools-orientation-group {
@@ -1203,14 +1225,20 @@ body.tools-page-active .site-footer {
     left: 0;
     top: 0;
     flex: none;
-    width: 30px;
-    height: 30px;
+    width: auto;
+    height: auto;
     margin: 0;
-    padding: 0;
+    padding: 6px 10px;
     font-size: 22px;
     z-index: 5;
     pointer-events: auto;
     opacity: 1;
+    border-radius: 8px;
+  }
+
+  .product-preview-image-row .tools-back-btn-preview svg {
+    width: 22px;
+    height: 22px;
   }
 
   .product-preview-visual {
@@ -1228,7 +1256,7 @@ body.tools-page-active .site-footer {
     font-size: 2rem;
   }
 
-  /* Mobile: Edit Tools sits beside Product Preview. Do not wait for body.tools-page-active. */
+  /* Mobile: keep the page header hidden; the title sits above the cart product select. */
   .tools-page-container:has(.product-preview-heading) .tools-page-header {
     display: none !important;
   }
@@ -1269,14 +1297,27 @@ body.tools-page-active .site-footer {
   }
 
   .tools-column-heading {
-    display: block;
-    text-align: center;
+    display: none;
+  }
+
+  .tools-cart-product-label {
+    margin: 0.25rem 0 0.65rem;
+    width: 100%;
+    text-align: center !important;
     font-size: 18px;
     font-weight: 700;
-    margin: 0.35rem 0 0.65rem;
-    padding: 0;
     line-height: 1.2;
     color: #111;
+  }
+
+  .tools-cart-product-label-desktop {
+    display: none;
+  }
+
+  .tools-cart-product-label-mobile {
+    display: block;
+    width: 100%;
+    text-align: center;
   }
 
   .edit-tools-under-preview {
@@ -1463,9 +1504,9 @@ body.tools-page-active .site-footer {
     padding: 0.25rem 0.5rem 0.5rem;
   }
 
-  /* Move Edit Tools onto the Product Preview row to raise the mockup. */
+  /* Mobile: title belongs above the product dropdown, not above the mockup. */
   body.tools-page-active .tools-page-container:has(.product-preview-heading) .tools-page-header {
-    display: none;
+    display: none !important;
   }
 
   body.tools-page-active .tools-page-header {
@@ -1579,10 +1620,16 @@ body.tools-page-active .site-footer {
     left: 0;
     top: 0;
     flex: none;
-    width: 30px;
-    height: 30px;
+    width: auto;
+    height: auto;
     margin: 0;
-    padding: 0;
+    padding: 6px 10px;
+    border-radius: 8px;
+  }
+
+  body.tools-page-active .product-preview-image-row .tools-back-btn-preview svg {
+    width: 22px;
+    height: 22px;
   }
 
   body.tools-page-active .product-preview-visual {
@@ -1653,15 +1700,24 @@ body.tools-page-active .site-footer {
   }
 
   body.tools-page-active .tools-column-heading {
-    flex-shrink: 0;
-    display: block;
-    text-align: center;
+    display: none;
+  }
+
+  body.tools-page-active .tools-cart-product-label {
+    width: 100%;
+    text-align: center !important;
     font-size: 18px;
     font-weight: 700;
-    margin: 0.25rem 0 0.5rem;
-    padding: 0;
-    color: #111;
-    background: transparent;
+  }
+
+  body.tools-page-active .tools-cart-product-label-desktop {
+    display: none;
+  }
+
+  body.tools-page-active .tools-cart-product-label-mobile {
+    display: block;
+    width: 100%;
+    text-align: center;
   }
 
   body.tools-page-active .tools-controls-section {

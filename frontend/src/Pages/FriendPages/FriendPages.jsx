@@ -15,6 +15,7 @@ import {
 import { friendPageLabel, isCollaboratorFavoriteList } from '../../utils/favoriteListLabels';
 import { HubThumb, rotatingUrl, uniqueUrls, HUB_ROTATE_MS } from '../../Components/Feed/Feed';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
+import { ChevronLeft, ChevronRight } from '../../Components/Chevrons/Chevrons';
 import { apiJoin } from '../../config/apiConfig';
 import './FriendPages.css';
 
@@ -145,7 +146,7 @@ const FriendPages = ({ sidebar }) => {
         const { ok, data } = await fetchPublicFavoriteLists(sub);
         if (!ok || !data?.success) {
           if (!cached) {
-            setError(data?.error || 'Could not load friends list');
+            setError(data?.error || 'Could not load creators list');
             setPages([]);
           }
         } else {
@@ -186,18 +187,18 @@ const FriendPages = ({ sidebar }) => {
             onClick={goBackFromFriends}
             aria-label="Back"
           >
-            ←
+            <ChevronLeft />
           </button>
           <div className="friend-pages-toolbar-text">
-            <h1 className="friend-pages-title">My Friends</h1>
+            <h1 className="friend-pages-title">Creators</h1>
           </div>
           <button
             type="button"
             className="friend-pages-back-btn friend-pages-scroll-right-btn"
             onClick={() => scrollFriends(1)}
-            aria-label="Scroll friends right"
+            aria-label="Scroll creators right"
           >
-            →
+            <ChevronRight />
           </button>
         </div>
 
@@ -207,7 +208,7 @@ const FriendPages = ({ sidebar }) => {
 
         {!loading && !error && pages.length === 0 ? (
           <div className="friend-pages-empty">
-            <h2>No friends yet</h2>
+            <h2>No creators yet</h2>
             <p>When creators join this storefront, their pages will show up here.</p>
           </div>
         ) : null}
@@ -227,7 +228,7 @@ const FriendPages = ({ sidebar }) => {
                     onClick={() => navigate(to)}
                   >
                     <span className="friend-pages-item-thumb">
-                      <HubThumb src={thumbs[key]} emptyLabel="Friend" />
+                      <HubThumb src={thumbs[key]} emptyLabel="Creator" />
                     </span>
                     <span className="friend-pages-item-name">{label}</span>
                   </button>

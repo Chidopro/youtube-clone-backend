@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
 import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, favoriteGalleryUrl, withMemberPublicIdentity, fetchMemberFavorites } from '../../utils/favoriteListsApi';
-import { favoriteListPageHeading } from '../../utils/favoriteListLabels';
+import { favoriteListPageHeading, friendPageLabel } from '../../utils/favoriteListLabels';
 import { apiJoin } from '../../config/apiConfig';
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
 import {
@@ -12,6 +12,7 @@ import {
   clearShopAddIntent,
 } from '../../utils/shopCategories';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
+import { ChevronLeft, ChevronRight } from '../../Components/Chevrons/Chevrons';
 import './Favorites.css';
 
 const sortNewest = (a, b) => {
@@ -26,6 +27,7 @@ function FavoritesShelfTrack({
   pair = false,
   trio = false,
   scrollRef = null,
+  onScrollState = null,
 }) {
   const trackRef = useRef(null);
   const [bar, setBar] = useState({ canScroll: false, thumbPct: 100, leftPct: 0 });
@@ -44,7 +46,12 @@ function FavoritesShelfTrack({
     const thumbPct = canScroll ? Math.min(80, Math.max(16, (clientWidth / scrollWidth) * 100)) : 100;
     const leftPct = canScroll ? (scrollLeft / overflow) * (100 - thumbPct) : 0;
     setBar({ canScroll, thumbPct, leftPct });
-  }, []);
+    onScrollState?.({
+      canScroll,
+      atStart: scrollLeft <= 2,
+      atEnd: !canScroll || scrollLeft >= overflow - 2,
+    });
+  }, [onScrollState]);
 
   useEffect(() => {
     const el = trackRef.current;
@@ -141,6 +148,148 @@ const mapFavoriteImages = (favorites) =>
     }))
     .sort(sortNewest);
 
+function FavoritesSectionHeader({
+  title,
+  leadTitle,
+  showArrows,
+  atStart,
+  atEnd,
+  onPrev,
+  onNext,
+  prevLabel,
+  nextLabel,
+}) {
+  return (
+    <div className="favorites-section-header">
+      <h2 className="favorites-section-title">
+        {leadTitle ? `${leadTitle} ${title}` : title}
+      </h2>
+      {showArrows ? (
+        <div className="favorites-section-arrows">
+          <button
+            type="button"
+            className="favorites-section-arrow"
+            onClick={onPrev}
+            aria-label={prevLabel}
+          >
+            <ChevronLeft />
+          </button>
+          <button
+            type="button"
+            className="favorites-section-arrow"
+            onClick={onNext}
+            aria-label={nextLabel}
+          >
+            <ChevronRight />
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FavoritesMediaSection({
+  id,
+  title,
+  leadTitle,
+  ariaLabel,
+  itemCount,
+  className = '',
+  alwaysShowArrows = false,
+  onPrevAtStart = null,
+  children,
+}) {
+  const trackRef = useRef(null);
+  const shelfScrollTargetRef = useRef(null);
+  const [scrollState, setScrollState] = useState({ canScroll: false, atStart: true, atEnd: true });
+
+  const restoreShelfSnap = (el) => {
+    if (!el) return;
+    const saved = el.dataset.shelfSnap;
+    if (saved == null) return;
+    el.style.scrollSnapType = saved === 'none' ? '' : saved;
+    delete el.dataset.shelfSnap;
+  };
+
+  const scrollBy = (direction) => {
+    const el = trackRef.current;
+    if (!el) return;
+    const from = shelfScrollTargetRef.current != null ? shelfScrollTargetRef.current : el.scrollLeft;
+    if (direction < 0 && from <= 2 && typeof onPrevAtStart === 'function') {
+      onPrevAtStart();
+      return;
+    }
+    const maxLeft = getShelfMaxScroll(el);
+    if (maxLeft <= 1) return;
+
+    const firstCard = el.querySelector('.favorites-card');
+    const styles = window.getComputedStyle(el);
+    const gap = parseFloat(styles.columnGap || styles.gap) || 20;
+    const step = firstCard ? firstCard.getBoundingClientRect().width + gap : Math.max(el.clientWidth * 0.9, 280);
+    let next = from + direction * step;
+    if (next > maxLeft) next = 0;
+    else if (next < 0) next = maxLeft;
+    if (Math.abs(next - from) < 2) {
+      next = direction > 0 ? 0 : maxLeft;
+    }
+    if (Math.abs(next - from) < 2) return;
+
+    if (el.dataset.shelfSnap == null) {
+      el.dataset.shelfSnap = styles.scrollSnapType || 'none';
+    }
+    el.style.scrollSnapType = 'none';
+    shelfScrollTargetRef.current = next;
+    el.scrollTo({ left: next, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    let settle;
+    const onScroll = () => {
+      window.clearTimeout(settle);
+      settle = window.setTimeout(() => {
+        shelfScrollTargetRef.current = null;
+        restoreShelfSnap(el);
+      }, 160);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.clearTimeout(settle);
+      el.removeEventListener('scroll', onScroll);
+      restoreShelfSnap(el);
+    };
+  }, [itemCount]);
+
+  return (
+    <section
+      id={id}
+      className={`favorites-shelf${className ? ` ${className}` : ''}`}
+      aria-label={ariaLabel}
+    >
+      <FavoritesSectionHeader
+        title={title}
+        leadTitle={leadTitle}
+        showArrows={alwaysShowArrows || scrollState.canScroll}
+        atStart={scrollState.atStart}
+        atEnd={scrollState.atEnd}
+        onPrev={() => scrollBy(-1)}
+        onNext={() => scrollBy(1)}
+        prevLabel={`Previous ${title.toLowerCase()}`}
+        nextLabel={`Next ${title.toLowerCase()}`}
+      />
+      <FavoritesShelfTrack
+        itemCount={itemCount}
+        trio
+        scrollRef={trackRef}
+        onScrollState={setScrollState}
+      >
+        {children}
+      </FavoritesShelfTrack>
+    </section>
+  );
+}
+
 function getShelfMaxScroll(el) {
   if (!el) return 0;
   const cards = el.querySelectorAll('.favorites-card');
@@ -189,74 +338,12 @@ const Favorites = ({ sidebar }) => {
   const [extraPages, setExtraPages] = useState([]);
   const images = pageMedia.images;
   const videos = pageMedia.videos;
-  const imageTrackRef = useRef(null);
-  const videoTrackRef = useRef(null);
-  const shelfScrollTargetRef = useRef(null);
-
-  const restoreShelfSnap = (el) => {
-    if (!el) return;
-    const saved = el.dataset.shelfSnap;
-    if (saved == null) return;
-    el.style.scrollSnapType = saved === 'none' ? '' : saved;
-    delete el.dataset.shelfSnap;
-  };
-
-  const getActiveShelfEl = () => videoTrackRef.current || imageTrackRef.current;
 
   const isOnFriendPage = () => {
     if (listMeta?.is_primary || listMeta?.slug === 'owner') return false;
     const slug = (listSlug || '').toLowerCase();
     return !!(slug && slug !== 'owner');
   };
-
-  const goBackFromFavorites = () => {
-    if (isOnFriendPage()) {
-      navigate('/friend-pages');
-      return;
-    }
-    navigate('/');
-  };
-
-  const scrollShelf = (direction) => {
-    const el = getActiveShelfEl();
-    if (!el) return;
-    const maxLeft = getShelfMaxScroll(el);
-    if (maxLeft <= 1) return;
-
-    const firstCard = el.querySelector('.favorites-card');
-    const styles = window.getComputedStyle(el);
-    const gap = parseFloat(styles.columnGap || styles.gap) || 16;
-    const step = firstCard ? firstCard.getBoundingClientRect().width + gap : Math.max(el.clientWidth * 0.9, 280);
-    const from = shelfScrollTargetRef.current != null ? shelfScrollTargetRef.current : el.scrollLeft;
-    const next = Math.max(0, Math.min(maxLeft, from + direction * step));
-    if (Math.abs(next - from) < 2) return;
-
-    if (el.dataset.shelfSnap == null) {
-      el.dataset.shelfSnap = styles.scrollSnapType || 'none';
-    }
-    el.style.scrollSnapType = 'none';
-    shelfScrollTargetRef.current = next;
-    el.scrollTo({ left: next, behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    const el = getActiveShelfEl();
-    if (!el) return;
-    let settle;
-    const onScroll = () => {
-      window.clearTimeout(settle);
-      settle = window.setTimeout(() => {
-        shelfScrollTargetRef.current = null;
-        restoreShelfSnap(el);
-      }, 160);
-    };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.clearTimeout(settle);
-      el.removeEventListener('scroll', onScroll);
-      restoreShelfSnap(el);
-    };
-  }, [loading, images.length, videos.length]);
 
   const effectiveSlug = (listSlug || 'owner').toLowerCase();
 
@@ -397,12 +484,6 @@ const Favorites = ({ sidebar }) => {
     };
   }, [currentCreator?.id, effectiveSlug, creatorLoading, navigate]);
 
-  const pageTitle = listMeta
-    ? favoriteListPageHeading(listMeta, currentCreator?.id)
-    : effectiveSlug === 'owner'
-      ? 'My Page'
-      : 'Page';
-
   const imageItems = useMemo(() => mapFavoriteImages(images), [images]);
 
   const videoItems = useMemo(
@@ -435,6 +516,7 @@ const Favorites = ({ sidebar }) => {
     imageItems.length > 0 ||
     videoItems.length > 0 ||
     visibleExtraPages.some((page) => page.images.length > 0);
+  const onFriendPage = isOnFriendPage();
 
   const handleMakeMerch = (favorite, pageList = listMeta) => {
     const imageUrl = favoriteImageUrl(favorite);
@@ -449,8 +531,9 @@ const Favorites = ({ sidebar }) => {
       thumbnail: imageUrl,
       screenshots: [imageUrl],
       selected_screenshot: imageUrl,
+      imageOrientation: 'portrait',
       videoTitle: favorite.title || 'Image',
-      creatorName: currentCreator?.display_name || 'Creator',
+      creatorName: currentCreator?.display_name || currentCreator?.username || 'Creator',
       screenshot_timestamp: '0:00',
     };
     savePendingMerchData(merchData);
@@ -478,33 +561,16 @@ const Favorites = ({ sidebar }) => {
     navigate(`/video/${video.categoryId || 0}/${video.id}`);
   };
 
+  const creatorHeading = onFriendPage
+    ? friendPageLabel(listMeta, currentCreator?.id)
+    : '';
+
   return (
     <div className={`container favorites-root ${sidebar ? '' : ' large-container'}`}>
       <StorefrontFlowBanner />
 
       <div className="favorites-page favorites-page--in-container">
-        <div className="favorites-toolbar">
-          <button
-            type="button"
-            className="favorites-back-btn"
-            onClick={goBackFromFavorites}
-            aria-label="Back"
-          >
-            ←
-          </button>
-          <div className="favorites-toolbar-text">
-            <h1 className={`favorites-page-title${pageTitle === 'My Page' ? ' favorites-page-title--visually-hidden' : ''}`}>{pageTitle}</h1>
-            {error ? <p className="favorites-error">{error}</p> : null}
-          </div>
-          <button
-            type="button"
-            className="favorites-back-btn favorites-scroll-right-btn"
-            onClick={() => scrollShelf(1)}
-            aria-label="Scroll right"
-          >
-            →
-          </button>
-        </div>
+        {error ? <p className="favorites-error">{error}</p> : null}
 
         {loading ? <div className="favorites-loading">Loading page...</div> : null}
 
@@ -518,72 +584,89 @@ const Favorites = ({ sidebar }) => {
         {!loading && (hasVisibleItems || extraPageItems.length > 0) ? (
           <div className="favorites-shelves">
             {videoItems.length > 0 ? (
-              <section className="favorites-shelf favorites-shelf--videos" aria-label="Videos">
-                <h2 className="favorites-shelf-title">Videos</h2>
-                <FavoritesShelfTrack itemCount={videoItems.length} trio scrollRef={videoTrackRef}>
-                  {videoItems.map((item) => (
-                    <div className="favorites-card favorites-card--video" key={item.id}>
+              <FavoritesMediaSection
+                id="videos"
+                title="Videos"
+                leadTitle={creatorHeading || undefined}
+                ariaLabel={creatorHeading ? `${creatorHeading} Videos` : 'Videos'}
+                itemCount={videoItems.length}
+                className="favorites-shelf--videos"
+                alwaysShowArrows
+                onPrevAtStart={() => navigate(onFriendPage ? '/friend-pages' : '/')}
+              >
+                {videoItems.map((item) => (
+                  <div className="favorites-card favorites-card--video" key={item.id}>
+                    <button
+                      type="button"
+                      className="favorites-card-image favorites-card-image--clickable"
+                      onClick={() => openVideo(item.raw)}
+                      aria-label={`Play video ${item.title}`}
+                    >
+                      <img
+                        src={item.thumb || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
+                        alt=""
+                        loading="eager"
+                        decoding="async"
+                      />
+                    </button>
+                    <div className="favorites-card-content">
+                      <h3>{item.title}</h3>
                       <button
                         type="button"
-                        className="favorites-card-image favorites-card-image--clickable"
+                        className="favorites-make-merch-btn"
                         onClick={() => openVideo(item.raw)}
-                        aria-label={`Play video ${item.title}`}
                       >
-                        <img
-                          src={item.thumb || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
-                          alt=""
-                          loading="eager"
-                          decoding="async"
-                        />
+                        Play Video
                       </button>
-                      <div className="favorites-card-content">
-                        <h3>{item.title}</h3>
-                        <button
-                          type="button"
-                          className="favorites-make-merch-btn"
-                          onClick={() => openVideo(item.raw)}
-                        >
-                          Play Video
-                        </button>
-                      </div>
                     </div>
-                  ))}
-                </FavoritesShelfTrack>
-              </section>
+                  </div>
+                ))}
+              </FavoritesMediaSection>
             ) : null}
 
             {imageItems.length > 0 ? (
-              <section className="favorites-shelf favorites-shelf--images" aria-label="Images">
-                <h2 className="favorites-shelf-title">Images</h2>
-                <FavoritesShelfTrack itemCount={imageItems.length} trio scrollRef={imageTrackRef}>
-                  {imageItems.map((item) => (
-                    <FavoriteImageCard key={item.id} item={item} onMakeMerch={handleMakeMerch} />
-                  ))}
-                </FavoritesShelfTrack>
-              </section>
+              <FavoritesMediaSection
+                id="images"
+                title="Images"
+                leadTitle={creatorHeading && videoItems.length === 0 ? creatorHeading : undefined}
+                ariaLabel="Images"
+                itemCount={imageItems.length}
+                className="favorites-shelf--images"
+              >
+                {imageItems.map((item) => (
+                  <FavoriteImageCard key={item.id} item={item} onMakeMerch={handleMakeMerch} />
+                ))}
+              </FavoritesMediaSection>
             ) : null}
 
             {visibleExtraPages.map((page) => (
-              <section
-                className="favorites-extra-page"
-                key={page.list.id || page.list.slug}
-                aria-label={page.title}
-              >
-                <h2 className="favorites-extra-page-title">{page.title}</h2>
-                {page.images.length > 0 ? (
-                  <FavoritesShelfTrack itemCount={page.images.length} trio>
-                    {page.images.map((item) => (
-                      <FavoriteImageCard
-                        key={item.id}
-                        item={item}
-                        onMakeMerch={(fav) => handleMakeMerch(fav, page.list)}
-                      />
-                    ))}
-                  </FavoritesShelfTrack>
-                ) : (
+              page.images.length > 0 ? (
+                <FavoritesMediaSection
+                  key={page.list.id || page.list.slug}
+                  id={`page-${page.list.slug || page.list.id}`}
+                  title={page.title}
+                  ariaLabel={page.title}
+                  itemCount={page.images.length}
+                  className="favorites-extra-page"
+                >
+                  {page.images.map((item) => (
+                    <FavoriteImageCard
+                      key={item.id}
+                      item={item}
+                      onMakeMerch={(fav) => handleMakeMerch(fav, page.list)}
+                    />
+                  ))}
+                </FavoritesMediaSection>
+              ) : (
+                <section
+                  className="favorites-extra-page"
+                  key={page.list.id || page.list.slug}
+                  aria-label={page.title}
+                >
+                  <FavoritesSectionHeader title={page.title} />
                   <p className="favorites-extra-empty">No images on this page yet.</p>
-                )}
-              </section>
+                </section>
+              )
             ))}
           </div>
         ) : null}

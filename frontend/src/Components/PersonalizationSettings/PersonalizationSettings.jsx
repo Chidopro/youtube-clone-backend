@@ -817,7 +817,7 @@ const PersonalizationSettings = ({ readOnly = false }) => {
                 <img src={normalizeStorageUrl(settings.custom_logo_url)} alt="Logo preview" className="logo-preview" onError={(e) => { e.target.style.display = 'none'; }} />
               </div>
             )}
-            <p className="help-text">Use a PNG with a transparent background so a white box does not show on the header. Upload knocks out a solid white backdrop and trims empty canvas automatically. All storefronts use the same size: wordmarks 32px tall on desktop and 24px on mobile. Square or round marks: 200×200px PNG or SVG. Use &quot;Upload logo&quot; or paste a URL.</p>
+            <p className="help-text">Use a PNG with a transparent background so a white box does not show on the header. Upload knocks out a solid white backdrop and trims empty canvas automatically. All storefronts use the same size: wordmarks 190×58px on desktop, 160×50px on tablet, and 24px tall on mobile. Square or round marks: 200×200px PNG or SVG. Use &quot;Upload logo&quot; or paste a URL.</p>
           </div>
           
           <div className="color-settings">

@@ -5,14 +5,17 @@ alwaysApply: true
 
 # Storefront logo size
 
-Every creator subdomain uses the same header logo sizes. Do not size logos per store (`maxfreedom`, `filialsons`, or any other host). Do not add subdomain checks or one-off CSS to make a mark larger.
+Shared header caps are the default for new stores. Do not resize one store by editing those shared rules — that is what made MaxFreedom huge when Filial Sons needed a mobile bump.
+
+When the user asks to change **one** store’s logo (`maxfreedom`, `filialsons`, or any other host), only that host. Use `html[data-storefront="…"]` in `Navbar.css`. Do not change the other store.
 
 Display caps (maximum, not a target to grow past):
 
-- Wordmark (horizontal custom): **32px** tall on desktop, **24px** tall on mobile (`max-width: 768px`)
-- Square/round custom: **82px** on desktop, **70×56px** on mobile
+- Wordmark (horizontal custom): **190px** wide / **58px** tall on desktop (`min-width: 1024px`), **160px** wide / **50px** tall on tablet (`769px–1023px`)
+- Square/round custom: **58px** on desktop, **50px** on tablet, **70×56px** on mobile
+- Mobile wordmark exceptions (`max-width: 768px`): MaxFreedom **24px** tall (previous size — leave it), Filial Sons **151px** wide / **41px** tall, other stores **160px** wide / **50px** tall
 
-Keep these in `frontend/src/Components/Navbar/Navbar.css` on `.logo--custom.logo--horizontal` and `.logo--custom.logo--square`. Do not raise `height`, `max-height`, `width`, or `max-width` on those rules.
+Keep shared caps in `frontend/src/Components/Navbar/Navbar.css` on `.logo--custom.logo--horizontal` and `.logo--custom.logo--square`. Do not raise those shared rules past the caps above.
 
 Trim empty canvas so a padded PNG still fills these caps instead of looking tiny. Do not scale a mark above the caps to compensate for padding.
 

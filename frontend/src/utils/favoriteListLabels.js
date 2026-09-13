@@ -7,7 +7,7 @@ export function cleanFavoriteListNickname(raw) {
     .trim();
 }
 
-const GENERIC_FRIEND_NAMES = new Set(['collaborator', 'friend', 'member', 'page', 'umbrella']);
+const GENERIC_FRIEND_NAMES = new Set(['collaborator', 'friend', 'member', 'page', 'umbrella', 'creator']);
 
 export function isGenericFriendName(name) {
   const n = (name || '').trim().toLowerCase();
@@ -20,7 +20,7 @@ export function isCollaboratorFavoriteList(list, storefrontOwnerId) {
   return String(list.owner_user_id) !== String(storefrontOwnerId);
 }
 
-/** Hamburger / Home: My Page + friend pages only. Extra owner pages stay on My Page. */
+/** Hamburger / Home: Featured + friend pages only. Extra owner pages stay on Featured. */
 export function isStorefrontNavList(list, storefrontOwnerId) {
   if (!list) return false;
   if (list.is_primary || list.slug === 'owner' || list.is_collaborator_page) return true;
@@ -39,20 +39,20 @@ function publicFriendNickname(list) {
 
 /** Sidebar / hamburger menu label — page nickname */
 export function favoriteListSidebarLabel(list, storefrontOwnerId) {
-  if (!list) return 'My Page';
-  if (list.is_primary || list.slug === 'owner') return 'My Page';
+  if (!list) return 'Featured';
+  if (list.is_primary || list.slug === 'owner') return 'Featured';
   const raw = list.display_name || list.slug || '';
   const nick = cleanFavoriteListNickname(raw);
   if (nick && !/@/.test(nick) && !isGenericFriendName(nick)) return nick;
   return friendPageLabel(list, storefrontOwnerId);
 }
 
-/** Page heading — owner: My Page; collaborator pages: nickname only */
+/** Page heading — owner: Featured; collaborator pages: nickname only */
 export function favoriteListPageHeading(list, storefrontOwnerId) {
-  if (!list) return 'My Page';
-  if (list.is_primary || list.slug === 'owner') return 'My Page';
+  if (!list) return 'Featured';
+  if (list.is_primary || list.slug === 'owner') return 'Featured';
   if (isCollaboratorFavoriteList(list, storefrontOwnerId)) {
-    return publicFriendNickname(list) || 'Friend';
+    return publicFriendNickname(list) || 'Creator';
   }
   const name = cleanFavoriteListNickname(list.display_name) || list.display_name;
   return name || 'Page';
@@ -60,9 +60,9 @@ export function favoriteListPageHeading(list, storefrontOwnerId) {
 
 /** Public label for a friend / umbrella page (no "Favorites" suffix). */
 export function friendPageLabel(list, storefrontOwnerId) {
-  if (!list) return 'Friend';
-  if (list.is_primary || list.slug === 'owner') return 'My Page';
-  return publicFriendNickname(list) || 'Friend';
+  if (!list) return 'Creator';
+  if (list.is_primary || list.slug === 'owner') return 'Featured';
+  return publicFriendNickname(list) || 'Creator';
 }
 
 /** Owner dashboard payout heading: "Collaborator Gee". */

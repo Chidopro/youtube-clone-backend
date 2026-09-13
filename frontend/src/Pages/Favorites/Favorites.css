@@ -46,7 +46,7 @@
 }
 
 .favorites-page {
-  padding: 24px 30px 40px;
+  padding: 0 30px 40px;
   max-width: 1400px;
   margin: 0 auto;
   min-width: 0;
@@ -54,7 +54,7 @@
 }
 
 .favorites-page--in-container {
-  padding: 12px 24px 40px;
+  padding: 0 30px 40px;
   max-width: 100%;
   margin: 0;
 }
@@ -64,18 +64,103 @@
   overflow-x: visible !important;
   min-width: 0;
   max-width: 100%;
+  padding-top: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .favorites-page.large-container {
-  padding: 24px 50px 40px;
+  padding: 0 30px 40px;
+}
+
+.favorites-friends-back {
+  display: inline-flex;
+  align-items: center;
+  margin: 16px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  text-decoration: none;
+}
+
+.favorites-friends-back:hover {
+  color: #111;
+}
+
+.favorites-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.favorites-section-title,
+.favorites-shelf-title,
+.favorites-extra-page-title {
+  position: relative;
+  display: inline-block;
+  margin: 0;
+  padding-bottom: 9px;
+  font-size: 23px;
+  line-height: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
+  width: fit-content;
+  background: none;
+}
+
+.favorites-section-title::after,
+.favorites-shelf-title::after,
+.favorites-extra-page-title::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.favorites-section-arrows {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.favorites-section-arrow {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #111;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.favorites-section-arrow svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+.favorites-section-arrow:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+  color: #000;
+}
+
+.favorites-section-arrow:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .favorites-toolbar {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 8px 12px;
-  margin-bottom: 0;
+  display: none;
 }
 
 .favorites-back-btn {
@@ -136,8 +221,7 @@
 .favorites-error {
   color: #c00;
   font-size: 14px;
-  margin: 8px 0 0 0;
-  text-align: center;
+  margin: 12px 0 0 0;
 }
 
 .favorites-back-btn:hover {
@@ -186,9 +270,10 @@
 .favorites-shelves {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 42px;
   min-width: 0;
   max-width: 100%;
+  margin-top: 28px;
 }
 
 .favorites-shelf--videos {
@@ -203,15 +288,6 @@
   order: 3;
   min-width: 0;
   max-width: 100%;
-  padding-top: 8px;
-  border-top: 1px solid rgba(128, 128, 128, 0.28);
-}
-
-.favorites-extra-page-title {
-  margin: 0 0 14px;
-  font-size: 22px;
-  font-weight: 700;
-  color: #1a1a1a;
 }
 
 .favorites-extra-empty {
@@ -223,19 +299,7 @@
 .favorites-shelf {
   min-width: 0;
   max-width: 100%;
-}
-
-.favorites-shelf-title {
-  margin: 0 0 6px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1a1a1a;
-  width: fit-content;
-  padding-bottom: 6px;
-  background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  background-repeat: no-repeat;
-  background-position: left bottom;
-  background-size: 100% 3px;
+  scroll-margin-top: 112px;
 }
 
 .favorites-shelf-track--pair {
@@ -303,11 +367,12 @@
 }
 
 .favorites-shelf-track--trio {
-  --shelf-gap: 16px;
+  --shelf-gap: 20px;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: calc((100% - 2 * var(--shelf-gap)) / 3);
   gap: var(--shelf-gap);
+  overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   scrollbar-gutter: auto;
@@ -323,7 +388,7 @@
   width: 100%;
   min-width: 0;
   max-width: none;
-  border-radius: 0;
+  border-radius: 7px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   box-sizing: border-box;
 }
@@ -345,18 +410,23 @@
 }
 
 .favorites-shelf-track.favorites-shelf-track--trio .favorites-card-content {
-  padding: 10px 12px 12px;
+  padding: 14px 16px 16px;
 }
 
 .favorites-shelf-track.favorites-shelf-track--trio .favorites-card-content h3 {
-  font-size: 15px;
-  -webkit-line-clamp: 1;
-  margin: 0 0 8px;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  -webkit-line-clamp: unset;
+  margin: 0 0 10px;
 }
 
 .favorites-shelf-track.favorites-shelf-track--trio .favorites-make-merch-btn {
-  font-size: 14px;
-  padding: 10px 14px;
+  height: 44px;
+  font-size: 17px;
+  font-weight: 600;
+  padding: 0 16px;
+  border-radius: 9px;
 }
 
 .favorites-shelf-scroller {
@@ -375,7 +445,7 @@
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 4px 0 14px;
+  padding: 0;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
@@ -393,8 +463,8 @@
 .favorites-shelf-track.favorites-shelf-track--trio {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: calc((100% - 2 * var(--shelf-gap, 16px)) / 3);
-  gap: var(--shelf-gap, 16px);
+  grid-auto-columns: calc((100% - 2 * var(--shelf-gap, 20px)) / 3);
+  gap: var(--shelf-gap, 20px);
 }
 
 .favorites-shelf-track.favorites-shelf-track--pair .favorites-card {
@@ -427,7 +497,7 @@
 
 .favorites-card {
   background: #fff;
-  border-radius: 12px;
+  border-radius: 7px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   transition: transform 0.2s, box-shadow 0.2s;
@@ -443,7 +513,6 @@
 
 .favorites-card--video {
   cursor: default;
-  border-radius: 0;
 }
 
 .page-filter-row {
@@ -458,34 +527,8 @@
 
 @media (min-width: 901px) {
   .favorites-page--in-container {
-    padding-top: 2px;
-    padding-bottom: 20px;
-  }
-
-  .favorites-toolbar {
-    margin-bottom: 0;
-    gap: 0 12px;
-    align-items: center;
-  }
-
-  .favorites-back-btn {
-    margin-top: 0;
-  }
-
-  .favorites-page-title--visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .favorites-shelf-title {
-    margin: 0 0 4px;
+    padding-top: 0;
+    padding-bottom: 40px;
   }
 }
 
@@ -527,6 +570,7 @@
 
 button.favorites-card-image--clickable {
   display: block;
+  width: 100%;
   padding: 0;
   border: none;
   cursor: pointer;
@@ -540,12 +584,13 @@ button.favorites-card-image--clickable {
 .favorites-card-image img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
+  display: block;
 }
 
 .favorites-card-content {
-  padding: 16px;
+  padding: 14px 16px 16px;
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -553,15 +598,14 @@ button.favorites-card-image--clickable {
 }
 
 .favorites-card-content h3 {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #1a1a1a;
-  margin: 0 0 8px 0;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  margin: 0 0 10px;
+  line-height: 24px;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .favorites-card-content p {
@@ -578,21 +622,21 @@ button.favorites-card-image--clickable {
 
 .favorites-make-merch-btn {
   width: 100%;
-  margin-top: auto;
-  padding: 12px 20px;
+  height: 44px;
+  margin-top: 0;
+  padding: 0 16px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 9px;
+  font-size: 17px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.2s;
+  transition: opacity 0.2s;
 }
 
 .favorites-make-merch-btn:hover {
   opacity: 0.9;
-  transform: scale(1.02);
 }
 
 @media (max-width: 1100px) {
@@ -620,19 +664,19 @@ button.favorites-card-image--clickable {
 
   .favorites-page,
   .favorites-page--in-container {
-    padding: 15px 12px 28px;
+    padding: 0 16px 28px;
   }
 
-  .favorites-page-title {
-    font-size: 20px;
+  .favorites-shelves {
+    margin-top: 22px;
+    gap: 32px;
   }
 
-  .favorites-shelf-title {
-    font-size: 16px;
-  }
-
+  .favorites-section-title,
+  .favorites-shelf-title,
   .favorites-extra-page-title {
-    font-size: 18px;
+    font-size: 20px;
+    line-height: 26px;
   }
 
   .favorites-shelf-track {

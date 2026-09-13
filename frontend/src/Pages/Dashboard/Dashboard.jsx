@@ -90,8 +90,40 @@ function timesEquals(count, rate, total) {
     const n = Number(count) || 0;
     const r = Number(rate) || 0;
     const t = Number(total) || 0;
-    if (n > 0 && r > 0) return `${n} × ${money(r)} = ${money(t)}`;
+    if (n > 0 && r > 0 && Math.abs(n * r - t) < 0.02) {
+        return `${n} × ${money(r)} = ${money(t)}`;
+    }
     return money(t);
+}
+
+function roundCents(n) {
+    return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+function saleAmountPerItem(sale, amountKey) {
+    const qty = saleSoldQuantity(sale);
+    const amount = Number(sale?.[amountKey] ?? 0);
+    return qty > 0 ? roundCents(amount / qty) : 0;
+}
+
+function groupSalesByPerItem(sales, amountKey, { skipZero = false } = {}) {
+    const map = new Map();
+    for (const sale of sales || []) {
+        const qty = saleSoldQuantity(sale);
+        if (qty <= 0) continue;
+        const rate = saleAmountPerItem(sale, amountKey);
+        if (skipZero && rate <= 0) continue;
+        map.set(rate, (map.get(rate) || 0) + qty);
+    }
+    return [...map.entries()]
+        .sort((a, b) => b[0] - a[0])
+        .map(([rate, count]) => ({ rate, count }));
+}
+
+function ratesTimesEquals(groups, total) {
+    const parts = (groups || []).filter((g) => g.count > 0);
+    if (!parts.length) return money(total);
+    return `${parts.map((g) => `${g.count} × ${money(g.rate)}`).join(' + ')} = ${money(total)}`;
 }
 
 function sumEquals(parts, subtracted = []) {
@@ -197,13 +229,8 @@ function ownerEarningsFiguresFromSales(ownerSales, collabSales) {
     const collabPay = collabs.reduce((sum, s) => sum + Number(s.pay_collaborator_amount ?? 0), 0);
     const ownerItems = owners.reduce((sum, s) => sum + saleSoldQuantity(s), 0);
     const feeItems = collabs.reduce((sum, s) => sum + saleSoldQuantity(s), 0);
-    const listedFeePerItem = Number(
-        collabs.find((s) => Number(s.owner_fee_per_item) > 0)?.owner_fee_per_item
-        || (feeItems > 0 && feeAmount > 0 ? feeAmount / feeItems : 0)
-    );
-    const collabPayPerItem = listedFeePerItem > 0
-        ? Math.max(0, COLLAB_SHARE_PER_ITEM - listedFeePerItem)
-        : (feeItems > 0 ? collabPay / feeItems : 0);
+    const feeRateGroups = groupSalesByPerItem(collabs, 'owner_fee_amount', { skipZero: true });
+    const payRateGroups = groupSalesByPerItem(collabs, 'pay_collaborator_amount');
     const collabShareTotal = feeAmount + collabPay;
     const totalOwnerEarnings = ownerPayout + collabShareTotal - collabPay;
     return {
@@ -216,8 +243,8 @@ function ownerEarningsFiguresFromSales(ownerSales, collabSales) {
         totalOwnerEarnings,
         ownerItems,
         feeItems,
-        listedFeePerItem,
-        collabPayPerItem,
+        feeRateGroups,
+        payRateGroups,
         ownerDateLabel: saleDateRangeLabel(owners),
         collaboratorDateLabel: saleDateRangeLabel(collabs),
         qualifyingItems: ownerItems + feeItems,
@@ -280,8 +307,8 @@ function OwnerEarningsFigures({ period, emptyMessage, showItemDetails = true }) 
         totalOwnerEarnings,
         ownerItems,
         feeItems,
-        listedFeePerItem,
-        collabPayPerItem,
+        feeRateGroups,
+        payRateGroups,
         ownerSales,
         collabSales,
         ownerDateLabel,
@@ -327,7 +354,7 @@ function OwnerEarningsFigures({ period, emptyMessage, showItemDetails = true }) 
                         <div className="collab-payout-row-main">
                             <strong>Collaborator fees</strong>
                             <span className="owner-earnings-math">
-                                {timesEquals(feeItems, listedFeePerItem, feeAmount)}
+                                {ratesTimesEquals(feeRateGroups, feeAmount)}
                             </span>
                         </div>
                     </li>
@@ -337,7 +364,7 @@ function OwnerEarningsFigures({ period, emptyMessage, showItemDetails = true }) 
                         <div className="collab-payout-row-main">
                             <strong>Collaborator payments</strong>
                             <span className="owner-earnings-math">
-                                {timesEquals(feeItems, collabPayPerItem, collabPay)}
+                                {ratesTimesEquals(payRateGroups, collabPay)}
                             </span>
                         </div>
                     </li>
@@ -590,7 +617,7 @@ function favoritePageSelectLabel(page) {
         );
         if (nick && !/^collaborator$/i.test(nick)) return nick;
         const member = cleanFavoritePageNickname(page.member_label);
-        return member || 'Friend';
+        return member || 'Creator';
     }
     return cleanFavoritePageNickname(page.display_name) || page.slug || 'Page';
 }

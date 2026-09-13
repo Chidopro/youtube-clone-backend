@@ -825,7 +825,7 @@
   }
 }
 
-/* Design preferences modal – matches Order Summary look */
+/* Confirm Your Design modal */
 .design-modal-overlay {
   position: fixed;
   inset: 0;
@@ -842,41 +842,27 @@
 }
 
 .design-modal {
-  background: rgba(255, 255, 255, 0.98);
+  background: #fff;
   border-radius: 16px;
-  padding: 20px 24px;
-  max-width: 440px;
+  padding: 28px 24px;
+  max-width: 420px;
   width: 100%;
-  max-height: calc(100vh - 120px);
-  max-height: calc(100dvh - 120px);
+  max-height: calc(100vh - 80px);
+  max-height: calc(100dvh - 80px);
   margin: 0 auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(20px);
-  border: 3px solid #667eea;
+  border: 1px solid #e5e7eb;
   color: #1a202c;
   box-sizing: border-box;
 }
 
 .design-modal h2 {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #1a202c;
-  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 24px 0;
   letter-spacing: -0.01em;
-  position: relative;
-  flex-shrink: 0;
-  padding-bottom: 12px;
-}
-
-.design-modal h2::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 60px;
-  height: 4px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-  border-radius: 2px;
+  line-height: 1.2;
 }
 
 .design-modal-subtitle {
@@ -888,38 +874,37 @@
 }
 
 .design-modal--multi {
-  max-width: 440px;
-  max-height: calc(100vh - 120px);
-  max-height: calc(100dvh - 120px);
+  max-width: 420px;
+  max-height: none;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .design-modal-items {
-  overflow-y: auto;
-  flex: 1 1 auto;
+  overflow: visible;
+  flex: 0 1 auto;
   min-height: 0;
-  margin-top: 8px;
-  margin-bottom: 12px;
-  padding-right: 4px;
+  margin: 0 0 24px;
+  padding-right: 0;
 }
 
 .design-modal-item-block {
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-}
-
-.design-modal-item-block:last-child {
+  padding: 0 0 24px;
   border-bottom: none;
 }
 
+.design-modal-item-block:last-child {
+  padding-bottom: 0;
+}
+
 .design-modal-item-title {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: #5b4cdb;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
   margin: 0;
   letter-spacing: -0.01em;
+  line-height: 1.3;
 }
 
 .design-modal-item-header {
@@ -935,8 +920,64 @@
 }
 
 .design-modal-item-size {
-  font-weight: 700;
+  margin: 8px 0 0;
+  font-weight: 500;
+  font-size: 16px;
   color: #4a5568;
+  line-height: 1.4;
+}
+
+.design-modal-image-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 24px;
+}
+
+.design-modal-image-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.design-modal-image-label {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  line-height: 1.3;
+}
+
+.design-modal-text-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.design-modal-text-action {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #667eea;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.design-modal-text-action:hover {
+  color: #5a6fd8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.design-modal-text-sep {
+  color: #9aa3b2;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .design-modal-edit-row {
@@ -947,13 +988,17 @@
 }
 
 .design-modal-item-shot {
-  width: 56px;
-  height: 56px;
+  width: 70px;
+  height: 70px;
   object-fit: cover;
   border-radius: 8px;
-  border: 2px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid #e5e7eb;
+  background: #f7f7f8;
   flex-shrink: 0;
+}
+
+.design-modal-item-shot--empty {
+  background: #f3f4f6;
 }
 
 .design-modal-item-shot--framed {
@@ -1087,27 +1132,29 @@
   display: inline-flex !important;
   flex: 1 1 0;
   min-width: 0;
+  min-height: 165px;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: flex-start !important;
-  gap: 8px !important;
-  padding: 12px 10px 10px;
-  border-radius: 10px;
+  gap: 10px !important;
+  padding: 16px 12px 14px;
+  border-radius: 12px;
   border: 2px solid #e5e7eb;
-  background: #fafafa;
-  transition: border-color 0.2s, background 0.2s;
+  background: #fff;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
   cursor: pointer;
   box-sizing: border-box;
 }
 
 .design-modal-orientation-option:hover {
   border-color: #c7d2fe;
-  background: #f5f3ff;
+  background: #f8f7ff;
 }
 
 .design-modal-orientation-option:has(input:checked) {
   border-color: #667eea;
-  background: #eef2ff;
+  background: #f4f2ff;
+  box-shadow: 0 0 0 1px #667eea;
 }
 
 .design-modal-orientation-img-wrap {
@@ -1116,6 +1163,7 @@
   justify-content: center;
   width: 100%;
   height: 96px;
+  flex: 1 1 auto;
   flex-shrink: 0;
 }
 
@@ -1124,8 +1172,8 @@
   display: block;
   width: auto;
   height: auto;
-  max-width: 110px;
-  max-height: 96px;
+  max-width: 140px;
+  max-height: 110px;
   object-fit: contain;
   flex-shrink: 0;
   border-radius: 4px;
@@ -1212,21 +1260,22 @@
 .design-modal-tools-btn {
   width: 100%;
   flex-shrink: 0;
-  margin-bottom: 12px;
-  padding: 12px 18px;
+  margin: 0 0 12px;
+  height: 50px;
+  padding: 0 18px;
   border-radius: 10px;
-  border: 1.5px solid rgba(102, 126, 234, 0.5);
-  background: #fff;
-  color: #4338ca;
-  font-size: 0.95rem;
-  font-weight: 700;
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .design-modal-tools-btn:hover {
-  background: #f8f9ff;
-  border-color: #667eea;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.35);
 }
 
 .design-modal-actions {
@@ -1240,8 +1289,36 @@
 .design-modal-actions .btn-primary {
   flex: 1 1 0;
   min-width: 0;
-  padding: 14px 18px;
-  font-size: 1rem;
+  height: 50px;
+  padding: 0 12px;
+  font-size: 15px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .design-modal {
+    padding: 20px 16px;
+  }
+
+  .design-modal h2 {
+    font-size: 22px;
+    margin-bottom: 18px;
+  }
+
+  .design-modal-actions .btn-outline,
+  .design-modal-actions .btn-primary {
+    font-size: 14px;
+    padding: 0 8px;
+  }
+
+  .design-modal-orientation-options {
+    flex-direction: column;
+  }
+
+  .design-modal-orientation-option {
+    min-height: 150px;
+  }
 }
 
 /* Responsive Design */

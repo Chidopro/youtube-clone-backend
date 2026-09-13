@@ -46,6 +46,8 @@ export const CreatorProvider = ({ children }) => {
           custom_meta_title: creator.custom_meta_title,
           custom_meta_description: creator.custom_meta_description,
           display_name: creator.display_name,
+          username: creator.username,
+          bio: creator.bio,
           subdomain: creator.subdomain,
           personalization_enabled: creator.personalization_enabled,
           profile_image_url: creator.profile_image_url,

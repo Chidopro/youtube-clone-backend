@@ -322,7 +322,7 @@ const ChannelUmbrella = ({ previewMode = false }) => {
     <div className="channel-umbrella">
       <section className="channel-umbrella-section" aria-labelledby="umbrella-collab-heading">
         <h2 id="umbrella-collab-heading" className="channel-umbrella-section-title">
-          My Friends
+          My Creators
         </h2>
         <p className="hint">
           Invite by <strong>email</strong> and ScreenMerch emails them a join link automatically
@@ -423,7 +423,7 @@ const ChannelUmbrella = ({ previewMode = false }) => {
       {!loading && members.length === 0 ? <p className="hint">No approved umbrella members yet.</p> : null}
       {members.map((row) => {
         const label = pendingAccountLabel(row) || 'Member';
-        const pageName = (row.page_name || '').trim() || 'Friend';
+        const pageName = (row.page_name || '').trim() || 'Creator';
         const isPaused = row.status === 'paused';
         const friendId = row.friend_id;
         const busy = busyMember && String(busyMember).endsWith(`:${friendId}`);

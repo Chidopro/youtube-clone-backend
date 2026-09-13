@@ -353,20 +353,33 @@ const PlayVideo = ({
         const video = videoRef.current;
         const canvas = pausedCanvasRef.current;
         if (!video || !canvas) return;
-        const width = Math.max(1, video.clientWidth || 390);
-        const height = Math.max(1, video.clientHeight || 320);
+        if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+            canvas.style.visibility = 'hidden';
+            return;
+        }
+        const content = getVideoContentBox(video);
+        const width = Math.max(1, content.displayW || video.clientWidth || 390);
+        const height = Math.max(1, content.displayH || video.clientHeight || 320);
         const scale = Math.min(2, window.devicePixelRatio || 1);
         canvas.width = Math.round(width * scale);
         canvas.height = Math.round(height * scale);
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        if (video.readyState < 2) return;
         try {
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // Match <video object-fit: contain> — do not stretch the frame to the 16:9 box.
+            ctx.drawImage(
+                video,
+                content.x * scale,
+                content.y * scale,
+                Math.max(1, content.width * scale),
+                Math.max(1, content.height * scale)
+            );
+            canvas.style.visibility = 'visible';
         } catch (_) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.style.visibility = 'hidden';
         }
     }, [videoRef]);
 
@@ -1407,7 +1420,7 @@ const PlayVideo = ({
                             {video.thumbnail ? (
                                 <img src={video.thumbnail} alt="" draggable="false" />
                             ) : null}
-                            <canvas ref={pausedCanvasRef} />
+                            <canvas ref={pausedCanvasRef} style={{ visibility: 'hidden' }} />
                         </button>
                     )}
 

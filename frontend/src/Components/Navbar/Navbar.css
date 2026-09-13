@@ -216,18 +216,18 @@ nav .nav-right .subscribe-btn {
 }
 
 .navbar-logo-wrap .logo.logo--custom.logo--square {
-    width: 100px;
-    max-width: 100px;
-    max-height: 100px;
+    width: 58px;
+    max-width: 58px;
+    max-height: 58px;
     height: auto;
 }
 
-/* Custom wordmarks (all storefronts): 32px desktop / 24px mobile. Do not enlarge. */
+/* Custom wordmarks: 190×58 desktop, 160×50 tablet; mobile is per-store (see data-storefront). */
 .navbar-logo-wrap .logo.logo--custom.logo--horizontal {
-    width: auto;
-    height: 32px;
-    max-width: 640px;
-    max-height: 32px;
+    width: 190px;
+    height: auto;
+    max-width: 190px;
+    max-height: 58px;
     object-fit: contain;
     object-position: left center;
 }
@@ -276,9 +276,9 @@ nav .nav-right .subscribe-btn {
     box-shadow: inset 0 -2px 0 #111;
 }
 
-/* Storefront Sign In / Sign Up / Sign Out: text only, same as Page / Friends / Shop. */
-body.creator-storefront nav .sign-in-btn,
-body.creator-storefront nav .nav-right .subscribe-btn {
+/* Storefront Sign In / Sign Up / Sign Out: text only, same as Featured / Creators / Shop. */
+html.creator-storefront nav .sign-in-btn,
+html.creator-storefront nav .nav-right .subscribe-btn {
     border: none !important;
     background: transparent !important;
     color: #222 !important;
@@ -297,32 +297,32 @@ body.creator-storefront nav .nav-right .subscribe-btn {
     text-overflow: unset !important;
 }
 
-body.creator-storefront nav .sign-in-btn:hover,
-body.creator-storefront nav .nav-right .subscribe-btn:hover {
+html.creator-storefront nav .sign-in-btn:hover,
+html.creator-storefront nav .nav-right .subscribe-btn:hover {
     background: transparent !important;
     color: #000 !important;
     border: none !important;
     transform: none !important;
 }
 
-body.creator-storefront nav .nav-right .subscribe-btn:disabled {
+html.creator-storefront nav .nav-right .subscribe-btn:disabled {
     background: transparent !important;
     color: #888 !important;
     border: none !important;
 }
 
-body.creator-storefront nav .nav-right {
+html.creator-storefront nav .nav-right {
     gap: 16px;
 }
 
 @media (min-width: 769px) {
-    body.creator-storefront nav .nav-right {
+    html.creator-storefront nav .nav-right {
         align-self: center;
         padding-bottom: 0;
     }
 }
 
-body.creator-storefront nav {
+html.creator-storefront nav {
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
 }
 
@@ -525,7 +525,11 @@ body.creator-storefront nav {
         width: 100%;
         max-width: 100vw;
         box-sizing: border-box;
-        position: sticky;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 10050;
         flex-shrink: 0;
     }
 
@@ -572,6 +576,25 @@ body.creator-storefront nav {
     }
 
     /* Home.css zeros body padding with !important; pad the app shell instead. */
+    html {
+        --mobile-nav-height: 80px;
+    }
+
+    html.creator-storefront {
+        --mobile-nav-height: 72px;
+    }
+
+    html:not(.tools-page-active) #root > div {
+        padding-top: var(--mobile-nav-height);
+    }
+
+    html.tools-page-active nav {
+        position: sticky !important;
+        top: 0;
+        left: auto;
+        right: auto;
+    }
+
     body.storefront-tab-bar-visible #root > div {
         padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
     }
@@ -596,12 +619,6 @@ body.creator-storefront nav {
         margin: 0 12px 0 0 !important;
         padding: 0 !important;
         line-height: 0;
-    }
-
-    body.creator-storefront nav .navbar-logo-wrap {
-        align-self: stretch !important;
-        align-items: flex-start !important;
-        padding-top: 8px !important;
     }
 
     .navbar-logo-wrap--square {
@@ -1015,29 +1032,31 @@ body.creator-storefront nav {
         margin-left: 0;
     }
 
-    /* Storefront: logo sits at the top of the bar; Page / Friends / Shop stay centered. */
-    body.creator-storefront nav .navbar-logo-wrap,
-    body.creator-storefront nav .navbar-logo-wrap--square,
-    body.creator-storefront nav .navbar-logo-wrap--horizontal {
-        align-self: stretch;
+    /* Storefront: logo, links, and controls share one vertically centered row. */
+    html.creator-storefront nav .navbar-logo-wrap,
+    html.creator-storefront nav .navbar-logo-wrap--square,
+    html.creator-storefront nav .navbar-logo-wrap--horizontal {
+        align-self: center;
         align-items: center;
     }
 
-    body.creator-storefront nav .navbar-logo-wrap > a,
-    body.creator-storefront nav .navbar-logo-mark {
-        align-self: flex-start;
-        padding-top: 8px;
+    html.creator-storefront nav .navbar-logo-wrap > a,
+    html.creator-storefront nav .navbar-logo-mark {
+        align-self: center;
+        padding-top: 0;
         line-height: 0;
-        display: block;
+        display: flex;
+        align-items: center;
     }
 
-    body.creator-storefront nav .navbar-logo-mark > a {
-        display: block;
+    html.creator-storefront nav .navbar-logo-mark > a {
+        display: flex;
+        align-items: center;
         line-height: 0;
         padding: 0;
     }
 
-    body.creator-storefront nav .storefront-nav-links {
+    html.creator-storefront nav .storefront-nav-links {
         align-self: center;
     }
 
@@ -1557,5 +1576,508 @@ body.creator-storefront nav {
     nav.nav--logo-horizontal .navbar-logo-wrap,
     nav.nav--logo-horizontal .navbar-logo-wrap--horizontal {
         margin-left: 0 !important;
+    }
+}
+
+/* Storefront header targets — desktop exact, tablet scaled. Revert this block if the look is wrong. */
+@media (min-width: 769px) {
+    html.creator-storefront {
+        scroll-padding-top: 88px;
+    }
+
+    html.creator-storefront nav,
+    html.creator-storefront nav.nav--logo-horizontal {
+        height: 88px;
+        min-height: 88px;
+        max-height: 88px;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        box-sizing: border-box;
+        overflow: visible;
+        flex-shrink: 0;
+        box-shadow: none;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap,
+    html.creator-storefront nav .navbar-logo-wrap--square,
+    html.creator-storefront nav .navbar-logo-wrap--horizontal {
+        flex: 0 0 auto;
+        align-self: center;
+        align-items: center;
+        margin: 0;
+        padding: 0;
+        min-width: 0;
+        overflow: visible;
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap > a,
+    html.creator-storefront nav .navbar-logo-mark,
+    html.creator-storefront nav .navbar-logo-mark > a {
+        align-self: center;
+        padding-top: 0;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        line-height: 0;
+        overflow: visible;
+        max-height: none;
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap .logo.logo--custom {
+        transform: translateY(-4px);
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap .logo.logo--custom.logo--horizontal {
+        width: 160px;
+        max-width: 160px;
+        height: auto;
+        max-height: 50px;
+        object-fit: contain;
+        object-position: left center;
+        margin: 0;
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap .logo.logo--custom.logo--square,
+    html.creator-storefront nav:not(.nav--logo-horizontal) .navbar-logo-wrap .logo.logo--custom.logo--square {
+        width: 50px;
+        max-width: 50px;
+        max-height: 50px;
+        height: auto;
+        margin: 0;
+    }
+
+    html.creator-storefront nav .storefront-nav-links {
+        display: flex;
+        align-items: center;
+        align-self: center;
+        gap: 21px;
+        margin: 0 0 0 13px;
+        flex-shrink: 0;
+    }
+
+    html.creator-storefront nav .storefront-nav-links a {
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1;
+        padding: 0;
+    }
+
+    html.creator-storefront nav .nav-center-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        align-self: center;
+        gap: 0;
+        flex-shrink: 0;
+        padding: 0;
+        position: static;
+    }
+
+    html.creator-storefront nav .nav-right,
+    html.creator-storefront nav .nav-right:has(.sign-in-btn),
+    html.creator-storefront nav .nav-right:has(.subscribe-btn) {
+        margin-left: 0;
+        display: flex;
+        align-items: center;
+        align-self: center;
+        gap: 0;
+        padding: 0;
+    }
+
+    html.creator-storefront nav .sign-in-btn {
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        line-height: 1;
+        height: auto !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        color: #222 !important;
+        border-radius: 0;
+    }
+
+    html.creator-storefront nav .nav-right .subscribe-btn {
+        height: 38px !important;
+        padding: 0 14px !important;
+        margin-left: 16px;
+        border-radius: 8px !important;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        line-height: 1;
+        border: 1px solid #111 !important;
+        background: transparent !important;
+        color: #111 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    html.creator-storefront nav .nav-right .subscribe-btn:hover {
+        background: #111 !important;
+        color: #fff !important;
+        border-color: #111 !important;
+        transform: none !important;
+    }
+
+    html.creator-storefront nav .ship-to-picker {
+        margin-left: 16px;
+        margin-right: 0;
+    }
+
+    html.creator-storefront nav .ship-to-picker-btn {
+        width: auto;
+        min-width: 0;
+        height: 36px;
+        padding: 0 7px 0 9px;
+        border-radius: 8px;
+        gap: 5px;
+    }
+
+    html.creator-storefront nav .ship-to-flag-svg {
+        width: 24px;
+        height: auto;
+    }
+
+    html.creator-storefront nav .ship-to-caret {
+        width: 9px;
+        height: 6px;
+    }
+
+    html.creator-storefront nav .nav-cart-btn {
+        margin-left: 14px;
+        margin-right: 0;
+    }
+}
+
+@media (min-width: 1024px) {
+    html.creator-storefront {
+        scroll-padding-top: 96px;
+    }
+
+    html.creator-storefront nav,
+    html.creator-storefront nav.nav--logo-horizontal {
+        height: 96px;
+        min-height: 96px;
+        max-height: 96px;
+        padding: 0 24px;
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap .logo.logo--custom.logo--horizontal {
+        width: 190px;
+        max-width: 190px;
+        max-height: 58px;
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap .logo.logo--custom.logo--square,
+    html.creator-storefront nav:not(.nav--logo-horizontal) .navbar-logo-wrap .logo.logo--custom.logo--square {
+        width: 58px;
+        max-width: 58px;
+        max-height: 58px;
+    }
+
+    html.creator-storefront nav .storefront-nav-links {
+        gap: 31px;
+        margin-left: 27px;
+    }
+
+    html.creator-storefront nav .storefront-nav-links a {
+        font-size: 17px;
+        font-weight: 600;
+    }
+
+    html.creator-storefront nav .sign-in-btn {
+        font-size: 16px !important;
+        font-weight: 600 !important;
+    }
+
+    html.creator-storefront nav .nav-right .subscribe-btn {
+        height: 42px !important;
+        padding: 0 18px !important;
+        margin-left: 22px;
+        border-radius: 8px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+    }
+
+    html.creator-storefront nav .ship-to-picker {
+        margin-left: 20px;
+    }
+
+    html.creator-storefront nav .ship-to-picker-btn {
+        width: auto;
+        min-width: 0;
+        height: 40px;
+        padding: 0 8px 0 10px;
+        border-radius: 8px;
+        gap: 5px;
+    }
+
+    html.creator-storefront nav .ship-to-flag-svg {
+        width: 27px;
+        height: auto;
+    }
+
+    html.creator-storefront nav .ship-to-caret {
+        width: 10px;
+        height: 6px;
+    }
+}
+
+@media (max-width: 768px) {
+    html.creator-storefront {
+        scroll-padding-top: 72px;
+    }
+
+    html.creator-storefront nav,
+    html.creator-storefront nav.nav--logo-horizontal {
+        height: 72px !important;
+        min-height: 72px !important;
+        max-height: 72px !important;
+        padding: 0 12px !important;
+        display: flex !important;
+        flex-wrap: nowrap;
+        align-items: center !important;
+        justify-content: flex-start;
+        box-sizing: border-box;
+        overflow: visible !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        box-shadow: none;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap,
+    html.creator-storefront nav .navbar-logo-wrap--square,
+    html.creator-storefront nav .navbar-logo-wrap--horizontal {
+        align-self: center !important;
+        align-items: center !important;
+        padding-top: 0 !important;
+        margin: 0 8px 0 0 !important;
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: 160px;
+        overflow: visible;
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap > a,
+    html.creator-storefront nav .navbar-logo-mark,
+    html.creator-storefront nav .navbar-logo-mark > a {
+        align-self: center;
+        padding-top: 0;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        line-height: 0;
+        overflow: visible;
+        max-height: none;
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap .logo.logo--custom {
+        transform: translateY(-4px);
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap .logo.logo--custom.logo--horizontal {
+        width: auto !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: 50px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        object-fit: contain !important;
+        object-position: left center !important;
+    }
+
+    /* MaxFreedom: keep the previous 24px mobile wordmark. Do not share Filial Sons sizing. */
+    html[data-storefront="maxfreedom"] nav .navbar-logo-wrap,
+    html[data-storefront="maxfreedom"] nav .navbar-logo-wrap--horizontal {
+        max-width: 280px;
+    }
+    html[data-storefront="maxfreedom"] nav .navbar-logo-wrap .logo.logo--custom.logo--horizontal {
+        width: auto !important;
+        max-width: 280px !important;
+        height: 24px !important;
+        max-height: 24px !important;
+    }
+
+    /* Filial Sons: 41px mobile wordmark (6px under the previous 47px). */
+    html[data-storefront="filialsons"] nav .navbar-logo-wrap,
+    html[data-storefront="filialsons"] nav .navbar-logo-wrap--horizontal {
+        max-width: 151px;
+    }
+    html[data-storefront="filialsons"] nav .navbar-logo-wrap .logo.logo--custom.logo--horizontal {
+        max-height: 41px !important;
+    }
+
+    html.creator-storefront nav .navbar-logo-wrap .logo.logo--custom.logo--square,
+    html.creator-storefront nav:not(.nav--logo-horizontal) .navbar-logo-wrap .logo.logo--custom.logo--square {
+        width: 70px !important;
+        max-width: 70px !important;
+        max-height: 56px !important;
+        height: auto !important;
+        margin: 0 !important;
+    }
+
+    html.creator-storefront nav .nav-left,
+    html.creator-storefront nav .nav-left.flex-div,
+    html.creator-storefront nav.nav--logo-horizontal .nav-left,
+    html.creator-storefront nav.nav--logo-horizontal .nav-left.flex-div {
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        align-items: center !important;
+        align-self: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    html.creator-storefront nav .nav-center-right {
+        position: static !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        margin-left: auto;
+        margin-right: 0;
+        display: flex !important;
+        flex-wrap: nowrap;
+        grid-template-columns: none;
+        grid-template-areas: none;
+        gap: 0 !important;
+        column-gap: 0;
+        row-gap: 0;
+        align-items: center !important;
+        align-self: center !important;
+        justify-content: flex-end;
+        padding: 0 !important;
+        max-width: none;
+    }
+
+    html.creator-storefront nav .nav-right,
+    html.creator-storefront nav .nav-right:has(.sign-in-btn),
+    html.creator-storefront nav .nav-right:has(.subscribe-btn) {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        align-self: center;
+        justify-content: flex-end;
+        gap: 0;
+        padding: 0 !important;
+        grid-area: auto;
+        white-space: nowrap;
+    }
+
+    html.creator-storefront nav .sign-in-btn {
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        padding: 0 !important;
+        height: auto !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    html.creator-storefront nav .nav-right .subscribe-btn {
+        height: 32px !important;
+        padding: 0 10px !important;
+        margin: 0 0 0 10px !important;
+        border-radius: 8px !important;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        line-height: 1;
+        border: 1px solid #111 !important;
+        background: transparent !important;
+        color: #111 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    html.creator-storefront nav .nav-right .subscribe-btn:hover {
+        background: #111 !important;
+        color: #fff !important;
+        border-color: #111 !important;
+        transform: none !important;
+    }
+
+    html.creator-storefront nav .ship-to-picker {
+        margin-left: 10px;
+        margin-right: 0;
+    }
+
+    html.creator-storefront nav .ship-to-picker-btn {
+        width: auto;
+        min-width: 0;
+        height: 32px;
+        padding: 0 6px 0 8px;
+        border-radius: 8px;
+        gap: 4px;
+    }
+
+    html.creator-storefront nav .ship-to-flag-svg {
+        width: 20px;
+        height: auto;
+    }
+
+    html.creator-storefront nav .ship-to-caret {
+        width: 8px;
+        height: 5px;
+    }
+
+    html.creator-storefront nav .nav-cart-btn {
+        margin-left: 8px;
+        margin-right: 0 !important;
+        align-self: center;
+    }
+
+    html.creator-storefront .nav-mobile-menu-panel {
+        top: 72px;
+        max-height: min(70vh, calc(100dvh - 80px));
+    }
+}
+
+@media (max-width: 480px) {
+    html.creator-storefront nav .sign-in-btn {
+        font-size: 13px !important;
+        padding: 0 !important;
+        height: auto !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    html.creator-storefront nav .nav-right .subscribe-btn {
+        height: 30px !important;
+        padding: 0 8px !important;
+        margin: 0 0 0 8px !important;
+        font-size: 12px !important;
+        border: 1px solid #111 !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        color: #111 !important;
+    }
+
+    html.creator-storefront nav .ship-to-picker {
+        margin-left: 8px;
+    }
+
+    html.creator-storefront nav .ship-to-picker-btn {
+        height: 30px;
+        padding: 0 5px 0 6px;
     }
 }

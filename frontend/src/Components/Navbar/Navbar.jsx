@@ -95,8 +95,11 @@ const Navbar = ({ resetCategory }) => {
     const isStorefront = isCreatorStorefrontHostname();
     const isMerchStoreRoute = /^\/(merchandise|product|tools|checkout|shop)(\/|$)/.test(location.pathname);
     const showStorefrontCart = isStorefront && (cartCount > 0 || isMerchStoreRoute);
-    const storefrontPageActive = /^\/favorites(\/|$)/.test(location.pathname);
-    const storefrontFriendsActive = location.pathname === '/friend-pages';
+    const storefrontPath = (location.pathname.replace(/\/+$/, '') || '/').toLowerCase();
+    const storefrontPageActive = storefrontPath === '/favorites' || storefrontPath === '/favorites/owner';
+    const storefrontFriendsActive =
+        storefrontPath === '/friend-pages' ||
+        (storefrontPath.startsWith('/favorites/') && storefrontPath !== '/favorites/owner');
     const storefrontShopActive = isMerchStoreRoute;
     const showStorefrontHeaderLinks = isStorefront && !isOrderSuccessPage;
     const showStorefrontTabBar = showStorefrontHeaderLinks
@@ -1095,29 +1098,29 @@ const Navbar = ({ resetCategory }) => {
                         ) : null}
                     </Link>
                     </div>
-                    {showStorefrontHeaderLinks ? (
-                        <div className="storefront-nav-links" role="navigation" aria-label="Store sections">
-                            <Link
-                                to="/favorites"
-                                className={storefrontPageActive ? 'is-active' : undefined}
-                            >
-                                Page
-                            </Link>
-                            <Link
-                                to="/friend-pages"
-                                className={storefrontFriendsActive ? 'is-active' : undefined}
-                            >
-                                Friends
-                            </Link>
-                            <Link
-                                to="/shop"
-                                className={storefrontShopActive ? 'is-active' : undefined}
-                            >
-                                Shop
-                            </Link>
-                        </div>
-                    ) : null}
                 </div>
+                {showStorefrontHeaderLinks ? (
+                    <div className="storefront-nav-links" role="navigation" aria-label="Store sections">
+                        <Link
+                            to="/favorites"
+                            className={storefrontPageActive ? 'is-active' : undefined}
+                        >
+                            Featured
+                        </Link>
+                        <Link
+                            to="/friend-pages"
+                            className={storefrontFriendsActive ? 'is-active' : undefined}
+                        >
+                            Creators
+                        </Link>
+                        <Link
+                            to="/shop"
+                            className={storefrontShopActive ? 'is-active' : undefined}
+                        >
+                            Shop
+                        </Link>
+                    </div>
+                ) : null}
                 <div className="nav-center-right flex-div">
                     {isStorefront ? null : (
                     <div className="nav-middle flex-div">
@@ -1399,13 +1402,13 @@ const Navbar = ({ resetCategory }) => {
                         to="/favorites"
                         className={storefrontPageActive ? 'is-active' : undefined}
                     >
-                        Page
+                        Featured
                     </Link>
                     <Link
                         to="/friend-pages"
                         className={storefrontFriendsActive ? 'is-active' : undefined}
                     >
-                        Friends
+                        Creators
                     </Link>
                     <Link
                         to="/shop"
