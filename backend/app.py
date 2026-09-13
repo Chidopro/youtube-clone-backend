@@ -7712,6 +7712,8 @@ def get_subdomain_creator(subdomain):
                 "creator": {
                     "id": creator.get('id'),
                     "display_name": creator.get('display_name'),
+                    "username": creator.get('username'),
+                    "bio": creator.get('bio'),
                     "subdomain": creator.get('subdomain'),
                     "personalization_enabled": creator.get('personalization_enabled', False),
                     "primary_color": creator.get('primary_color'),
