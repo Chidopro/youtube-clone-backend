@@ -14,6 +14,10 @@
   }
 }
 
+.play-start-overlay {
+  background: transparent !important;
+}
+
 /* Ensure play icon overlay animation works on both mobile and desktop */
 .play-icon-overlay {
   animation: pulsePlayIcon 2s infinite !important;

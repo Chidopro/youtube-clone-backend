@@ -1458,7 +1458,11 @@ const ProductPage = ({ sidebar }) => {
             {!creatorMode && (
               <div className="product-choose-header">
                 <h1 className="product-choose-title">Choose a Product</h1>
-                <p className="product-choose-subtitle">Select a product to customize with your image.</p>
+                <p className="product-choose-subtitle">
+                  {getVisibleScreenshots().length > 0 && getSelectImageCount() > 1
+                    ? 'Pick a screenshot to customize your selected product.'
+                    : 'Select a product to customize with your image.'}
+                </p>
               </div>
             )}
             <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : (getSelectImageCount() <= 1 ? 'Selected Image' : 'Select Image')}</h2>
@@ -1470,7 +1474,7 @@ const ProductPage = ({ sidebar }) => {
                   const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
                   return thumbnailUrl ? (
                   <div 
-                    className={`screenshot-item ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
+                    className={`screenshot-item screenshot-item--thumbnail ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
                     aria-current={selectedScreenshot === 'thumbnail' ? 'true' : undefined}
                     role="button"
                     tabIndex={0}
@@ -1497,11 +1501,13 @@ const ProductPage = ({ sidebar }) => {
                 {/* Screenshots */}
                 {(() => {
                   const shots = getVisibleScreenshots();
+                  const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
                   return shots && shots.length > 0 ? shots.map((screenshot, index) => {
+                    const isFirstImage = !thumbnailUrl && index === 0;
                     return (
                       <div 
                         key={`shot-${index}`}
-                        className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
+                        className={`screenshot-item${isFirstImage ? ' screenshot-item--thumbnail' : ''} ${selectedScreenshot === index ? 'selected' : ''}`}
                         aria-current={selectedScreenshot === index ? 'true' : undefined}
                         role="button"
                         tabIndex={0}
@@ -1519,7 +1525,7 @@ const ProductPage = ({ sidebar }) => {
                             alt={`Screenshot ${index + 1}`} 
                             className="screenshot-image"
                           />
-                          <div className="screenshot-label">Screenshot {index + 1}</div>
+                          <div className="screenshot-label">{isFirstImage ? 'Thumbnail' : `Screenshot ${index + 1}`}</div>
                         </div>
                       </div>
                     );

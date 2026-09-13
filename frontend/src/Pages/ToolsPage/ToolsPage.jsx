@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName, getProductPrintFilter } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
@@ -651,6 +651,82 @@ function overlayFramePx(frameWidth, overlayW, overlayH, sourceW, sourceH) {
   return Math.max(2, frameWidth * scale);
 }
 
+/** Region of the image that object-fit:cover shows in a print box of this aspect. */
+function coverVisibleRect(imgW, imgH, boxAspect) {
+  const w = Number(imgW) || 0;
+  const h = Number(imgH) || 0;
+  const aspect = Number(boxAspect) || 0;
+  if (!(w > 0 && h > 0)) return { x: 0, y: 0, w, h };
+  if (!(aspect > 0)) return { x: 0, y: 0, w, h };
+  const imgAspect = w / h;
+  if (Math.abs(imgAspect - aspect) < 0.002) return { x: 0, y: 0, w, h };
+  if (imgAspect > aspect) {
+    const visW = h * aspect;
+    return { x: (w - visW) / 2, y: 0, w: visW, h };
+  }
+  const visH = w / aspect;
+  return { x: 0, y: (h - visH) / 2, w, h: visH };
+}
+
+function paintFrameRings(ctx, vis, {
+  frameWidth,
+  frameColor,
+  doubleFrame,
+  cornerRadiusPercent,
+  addRoundedRectPath,
+}) {
+  const x = vis.x;
+  const y = vis.y;
+  const w = vis.w;
+  const h = vis.h;
+  const outer = Math.max(1, Number(frameWidth) || 0);
+  if (!(w > 2 && h > 2) || !(outer > 0) || !ctx) return;
+  const maxR = Math.min(w, h) / 2;
+  const isCircle = cornerRadiusPercent >= 100;
+  const cornerR = isCircle ? maxR : Math.round(((Number(cornerRadiusPercent) || 0) / 100) * maxR);
+
+  ctx.fillStyle = frameColor || '#FF0000';
+  const paintRing = (inset, thickness, radius) => {
+    const ow = w - inset * 2;
+    const oh = h - inset * 2;
+    if (ow < 2 || oh < 2 || !(thickness > 0)) return;
+    const ox = x + inset;
+    const oy = y + inset;
+    const inner = inset + thickness;
+    const iw = w - inner * 2;
+    const ih = h - inner * 2;
+    const outerR = Math.max(0, radius - inset);
+    const innerR = Math.max(0, radius - inner);
+    if (isCircle) {
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.max(0, maxR - inset), 0, Math.PI * 2);
+      ctx.arc(cx, cy, Math.max(0, maxR - inner), 0, Math.PI * 2, true);
+      ctx.fill('evenodd');
+      return;
+    }
+    if (outerR > 0 && typeof addRoundedRectPath === 'function') {
+      ctx.beginPath();
+      addRoundedRectPath(ctx, ox, oy, ow, oh, outerR);
+      if (iw > 1 && ih > 1) {
+        addRoundedRectPath(ctx, ox + thickness, oy + thickness, iw, ih, innerR);
+      }
+      ctx.fill('evenodd');
+      return;
+    }
+    ctx.fillRect(ox, oy, ow, thickness);
+    ctx.fillRect(ox, oy, thickness, oh);
+    ctx.fillRect(ox + ow - thickness, oy, thickness, oh);
+    ctx.fillRect(ox, oy + oh - thickness, ow, thickness);
+  };
+
+  paintRing(0, outer, cornerR);
+  if (doubleFrame) {
+    paintRing(outer + outer * 1.5, Math.max(1, outer * 0.7), cornerR);
+  }
+}
+
 /** Chest print box on the mockup photo (not geometric 50/50 of the PNG). */
 function apparelOverlayPlacement(productName, detected) {
   const box = resolveApparelPrintBox(productName, detected);
@@ -731,9 +807,50 @@ const EDITOR_SLOT_DEFAULTS = {
   textSize: 24,
   textOffsetX: 50,
   textOffsetY: 50,
+  textDirection: 'horizontal',
   imageOffsetX: 0,
   imageOffsetY: 0,
 };
+
+function normalizeTextDirection(value) {
+  return String(value || '').toLowerCase() === 'vertical' ? 'vertical' : 'horizontal';
+}
+
+function drawOverlayText(ctx, {
+  text,
+  fontFamily,
+  color,
+  fontSize,
+  centerX,
+  centerY,
+  direction,
+}) {
+  ctx.save();
+  ctx.font = `${fontSize}px "${fontFamily}", Arial, sans-serif`;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const lines = String(text).trim().split('\n');
+  const lineHeight = fontSize * 1.2;
+  if (direction === 'vertical') {
+    const colWidth = fontSize * 1.15;
+    const startX = centerX - (lines.length - 1) * colWidth / 2;
+    lines.forEach((line, col) => {
+      const chars = Array.from(line);
+      if (!chars.length) return;
+      const startY = centerY - (chars.length - 1) * lineHeight / 2;
+      chars.forEach((ch, i) => {
+        ctx.fillText(ch, startX + col * colWidth, startY + i * lineHeight);
+      });
+    });
+  } else {
+    const startY = centerY - (lines.length - 1) * lineHeight / 2;
+    lines.forEach((line, i) => {
+      ctx.fillText(line, centerX, startY + i * lineHeight);
+    });
+  }
+  ctx.restore();
+}
 
 function editorSlotFromCartItem(item) {
   if (!item || typeof item !== 'object') return null;
@@ -911,7 +1028,8 @@ function ToolsEditLogCard({ log, previewSrc }) {
 }
 
 /** Aspect of the visible print box so Screenshot Preview matches Product Preview. */
-function printBoxPreviewAspect(productName, productSize, orientation, printAreaFit) {
+function printBoxPreviewAspect(productName, productSize, orientation, printAreaFit, overlayW = 0, overlayH = 0) {
+  if (overlayW > 0 && overlayH > 0) return overlayW / overlayH;
   if (printAreaFit === 'horizontal') return 1.5;
   if (printAreaFit === 'square') return 1;
   if (printAreaFit === 'vertical') return 2 / 3;
@@ -959,6 +1077,7 @@ const ProductPreviewWithDrag = ({
   blackAndWhite = false,
   featherFadeEnabled = false,
   featherFadeColor = 'white',
+  onOverlayBoxChange,
 }) => {
   const containerRef = useRef(null);
   const productImageRef = useRef(null);
@@ -1268,6 +1387,27 @@ const ProductPreviewWithDrag = ({
     const raf = requestAnimationFrame(calculateSize);
     return () => cancelAnimationFrame(raf);
   }, [productName, productSize, productImageSize, selectedProductName, printAreaFit, productImage, detectedPrintBox]);
+
+  useLayoutEffect(() => {
+    if (!onOverlayBoxChange) return;
+    if (!(screenshotDisplaySize.width >= 8) || !(screenshotDisplaySize.height >= 8)) return;
+    const printBox = overlaySizeForOrientation(
+      screenshotDisplaySize.width,
+      screenshotDisplaySize.height,
+      imageOrientation,
+      selectedProductName || productName
+    );
+    if (printBox.width > 0 && printBox.height > 0) {
+      onOverlayBoxChange({ width: printBox.width, height: printBox.height });
+    }
+  }, [
+    onOverlayBoxChange,
+    screenshotDisplaySize.width,
+    screenshotDisplaySize.height,
+    imageOrientation,
+    selectedProductName,
+    productName,
+  ]);
 
   // Measure the painted mockup only. naturalWidth is the file size and
   // makes the overlay huge on phones (then too tall once width is matched).
@@ -1606,8 +1746,7 @@ const ProductPreviewWithDrag = ({
                       position: 'absolute',
                       inset: 0,
                       borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
-                      border: `${previewFrame}px solid ${frameColor}`,
-                      boxSizing: 'border-box',
+                      boxShadow: `inset 0 0 0 ${previewFrame}px ${frameColor}`,
                       pointerEvents: 'none'
                     }}
                   />
@@ -1622,8 +1761,7 @@ const ProductPreviewWithDrag = ({
                       bottom: innerOuter,
                       left: innerOuter,
                       borderRadius: innerRadius,
-                      border: `${innerFrameWidth}px solid ${frameColor}`,
-                      boxSizing: 'border-box',
+                      boxShadow: `inset 0 0 0 ${innerFrameWidth}px ${frameColor}`,
                       pointerEvents: 'none'
                     }}
                   />
@@ -1659,6 +1797,8 @@ function ScreenshotPreviewPane({
   featherFadeEnabled = false,
   featherFadeColor = 'white',
   boxWidth = 176,
+  overlayBoxWidth = 0,
+  overlayBoxHeight = 0,
 }) {
   if (!src) {
     return (
@@ -1667,7 +1807,14 @@ function ScreenshotPreviewPane({
       </p>
     );
   }
-  const aspect = printBoxPreviewAspect(productName, productSize, imageOrientation, printAreaFit);
+  const aspect = printBoxPreviewAspect(
+    productName,
+    productSize,
+    imageOrientation,
+    printAreaFit,
+    overlayBoxWidth,
+    overlayBoxHeight
+  );
   const boxW = boxWidth > 0 ? boxWidth : 176;
   const boxH = boxW / (aspect > 0 ? aspect : 1);
   const objectPos = printBoxObjectPosition(productName, imageOrientation, imageOffsetX, imageOffsetY);
@@ -1726,8 +1873,7 @@ function ScreenshotPreviewPane({
               position: 'absolute',
               inset: 0,
               borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
-              border: `${previewFrame}px solid ${frameColor}`,
-              boxSizing: 'border-box',
+              boxShadow: `inset 0 0 0 ${previewFrame}px ${frameColor}`,
               pointerEvents: 'none'
             }}
           />
@@ -1742,8 +1888,7 @@ function ScreenshotPreviewPane({
               bottom: innerOuter,
               left: innerOuter,
               borderRadius: innerRadius,
-              border: `${innerFrameWidth}px solid ${frameColor}`,
-              boxSizing: 'border-box',
+              boxShadow: `inset 0 0 0 ${innerFrameWidth}px ${frameColor}`,
               pointerEvents: 'none'
             }}
           />
@@ -1936,6 +2081,7 @@ const ToolsPage = () => {
   const [textSize, setTextSize] = useState(() => initialEditorSlot.textSize ?? 24);
   const [textOffsetX, setTextOffsetX] = useState(() => initialEditorSlot.textOffsetX ?? 50);
   const [textOffsetY, setTextOffsetY] = useState(() => initialEditorSlot.textOffsetY ?? 50);
+  const [textDirection, setTextDirection] = useState(() => normalizeTextDirection(initialEditorSlot.textDirection));
   const [printAreaFit, setPrintAreaFit] = useState(() => initialEditorSlot.printAreaFit || getInitialCartPrintFit().fit);
   const [imageOrientation, setImageOrientation] = useState(() => (
     initialEditorSlot.imageOrientation === 'landscape' ? 'landscape' : 'portrait'
@@ -1948,6 +2094,15 @@ const ToolsPage = () => {
   const [selectedProductName, setSelectedProductName] = useState(() => getInitialCartPrintFit().name);
   const [currentImageDimensions, setCurrentImageDimensions] = useState({ width: 0, height: 0 });
   const [bakedImageSize, setBakedImageSize] = useState({ width: 0, height: 0 });
+  const [overlayBoxSize, setOverlayBoxSize] = useState({ width: 0, height: 0 });
+  const handleOverlayBoxChange = useCallback((box) => {
+    const width = Number(box?.width) || 0;
+    const height = Number(box?.height) || 0;
+    setOverlayBoxSize((prev) => {
+      if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) return prev;
+      return { width, height };
+    });
+  }, []);
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [upgradeFailed, setUpgradeFailed] = useState(false);
   const upgradeTriggeredRef = useRef(false); // Track if we've already triggered an upgrade for this image
@@ -2164,6 +2319,7 @@ const ToolsPage = () => {
       textSize,
       textOffsetX,
       textOffsetY,
+      textDirection,
       printAreaFit,
       imageOrientation,
       imageOffsetX,
@@ -2197,6 +2353,7 @@ const ToolsPage = () => {
       textSize,
       textOffsetX,
       textOffsetY,
+      textDirection,
       screenshotScale,
       selectedProductName,
       printAreaFit,
@@ -2232,6 +2389,7 @@ const ToolsPage = () => {
     if (typeof saved.textSize === 'number') setTextSize(saved.textSize);
     if (typeof saved.textOffsetX === 'number') setTextOffsetX(saved.textOffsetX);
     if (typeof saved.textOffsetY === 'number') setTextOffsetY(saved.textOffsetY);
+    setTextDirection(normalizeTextDirection(saved.textDirection));
     if (typeof saved.imageOffsetX === 'number') setImageOffsetX(saved.imageOffsetX);
     if (typeof saved.imageOffsetY === 'number') setImageOffsetY(saved.imageOffsetY);
   };
@@ -2267,6 +2425,7 @@ const ToolsPage = () => {
       textSize: slot.textSize,
       textOffsetX: slot.textOffsetX,
       textOffsetY: slot.textOffsetY,
+      textDirection: normalizeTextDirection(slot.textDirection),
       printAreaFit: slot.printAreaFit,
       imageOrientation: slot.imageOrientation,
       selectedProductName: slot.selectedProductName,
@@ -2346,6 +2505,7 @@ const ToolsPage = () => {
     setTextSize(24);
     setTextOffsetX(50);
     setTextOffsetY(50);
+    setTextDirection('horizontal');
     orientationUserSetRef.current = false;
     setImageOrientation('portrait');
     setProductSelectClicked(false);
@@ -2409,7 +2569,7 @@ const ToolsPage = () => {
       selectedCartProductIndex,
     });
     syncLiveEditorToCartItem(idx);
-  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, searchParams]);
+  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, searchParams]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -3648,7 +3808,9 @@ const ToolsPage = () => {
         previewName,
         previewSize,
         imageOrientation,
-        printAreaFit
+        printAreaFit,
+        overlayBoxSize.width,
+        overlayBoxSize.height
       );
       if (targetAspect > 0) {
         cropToAspect(targetAspect);
@@ -3845,91 +4007,21 @@ const ToolsPage = () => {
         flattenCanvasFeatherToColor(ctx, canvas, featherFadeColor);
       }
 
-      // Paint the frame as a filled ring on the same path as the image clip.
-      // A stroke using the raw % slider looked square; this follows Angle Radius.
-      if (frameEnabled) {
-        ctx.fillStyle = frameColor;
-        if (isCircle) {
-          ctx.beginPath();
-          ctx.arc(canvas.width / 2, canvas.height / 2, maxCornerRadius, 0, Math.PI * 2);
-          ctx.arc(
-            canvas.width / 2,
-            canvas.height / 2,
-            Math.max(0, maxCornerRadius - frameWidth),
-            0,
-            Math.PI * 2,
-            true
-          );
-          ctx.fill('evenodd');
-        } else if (effectiveCornerRadius > 0) {
-          ctx.beginPath();
-          addRoundedRectPath(ctx, 0, 0, canvas.width, canvas.height, effectiveCornerRadius);
-          addRoundedRectPath(
-            ctx,
-            frameWidth,
-            frameWidth,
-            canvas.width - frameWidth * 2,
-            canvas.height - frameWidth * 2,
-            Math.max(0, effectiveCornerRadius - frameWidth)
-          );
-          ctx.fill('evenodd');
-        } else {
-          ctx.fillRect(0, 0, canvas.width, frameWidth);
-          ctx.fillRect(0, 0, frameWidth, canvas.height);
-          ctx.fillRect(canvas.width - frameWidth, 0, frameWidth, canvas.height);
-          ctx.fillRect(0, canvas.height - frameWidth, canvas.width, frameWidth);
-        }
-
-        if (doubleFrame) {
-          const innerFrameOffset = frameWidth * 1.5;
-          const innerFrameWidth = frameWidth * 0.7;
-          const innerOuter = frameWidth + innerFrameOffset;
-          const innerInner = innerOuter + innerFrameWidth;
-
-          if (isCircle) {
-            ctx.beginPath();
-            ctx.arc(
-              canvas.width / 2,
-              canvas.height / 2,
-              Math.max(0, maxCornerRadius - innerOuter),
-              0,
-              Math.PI * 2
-            );
-            ctx.arc(
-              canvas.width / 2,
-              canvas.height / 2,
-              Math.max(0, maxCornerRadius - innerInner),
-              0,
-              Math.PI * 2,
-              true
-            );
-            ctx.fill('evenodd');
-          } else if (effectiveCornerRadius > 0) {
-            ctx.beginPath();
-            addRoundedRectPath(
-              ctx,
-              innerOuter,
-              innerOuter,
-              canvas.width - innerOuter * 2,
-              canvas.height - innerOuter * 2,
-              Math.max(0, effectiveCornerRadius - innerOuter)
-            );
-            addRoundedRectPath(
-              ctx,
-              innerInner,
-              innerInner,
-              canvas.width - innerInner * 2,
-              canvas.height - innerInner * 2,
-              Math.max(0, effectiveCornerRadius - innerInner)
-            );
-            ctx.fill('evenodd');
-          } else {
-            ctx.beginPath();
-            ctx.rect(innerOuter, innerOuter, canvas.width - innerOuter * 2, canvas.height - innerOuter * 2);
-            ctx.rect(innerInner, innerInner, canvas.width - innerInner * 2, canvas.height - innerInner * 2);
-            ctx.fill('evenodd');
-          }
-        }
+      // Paint the frame on the cover-visible print box so thickness and the
+      // double-frame gap stay even after object-fit:cover (the canvas aspect
+      // can differ from the mockup overlay).
+      if (frameEnabled && overlayBoxSize.width > 0 && overlayBoxSize.height > 0) {
+        const overlayAspect = overlayBoxSize.width > 0 && overlayBoxSize.height > 0
+          ? overlayBoxSize.width / overlayBoxSize.height
+          : (canvas.width / canvas.height);
+        const vis = coverVisibleRect(canvas.width, canvas.height, overlayAspect);
+        paintFrameRings(ctx, vis, {
+          frameWidth,
+          frameColor,
+          doubleFrame,
+          cornerRadiusPercent: cornerRadius,
+          addRoundedRectPath,
+        });
       }
 
       // Apply text overlay if enabled (position: textOffsetX/Y are 0-100, 50 = center)
@@ -3945,23 +4037,17 @@ const ToolsPage = () => {
           }
         }
         if (cancelled) return;
-        ctx.save();
-        // Headline-style: textSize 100 = ~22% of image min dimension so it stands out (not sentence-sized)
         const minDim = Math.min(canvas.width, canvas.height);
         const fontSize = Math.max(12, Math.min(300, Math.round((textSize / 100) * minDim * 0.22)));
-        ctx.font = `${fontSize}px "${textFont}", Arial, sans-serif`;
-        ctx.fillStyle = textColor;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const centerX = (canvas.width * textOffsetX) / 100;
-        const centerY = (canvas.height * textOffsetY) / 100;
-        const lines = textContent.trim().split('\n');
-        const lineHeight = fontSize * 1.2;
-        const startY = centerY - (lines.length - 1) * lineHeight / 2;
-        lines.forEach((line, i) => {
-          ctx.fillText(line, centerX, startY + i * lineHeight);
+        drawOverlayText(ctx, {
+          text: textContent,
+          fontFamily: textFont,
+          color: textColor,
+          fontSize,
+          centerX: (canvas.width * textOffsetX) / 100,
+          centerY: (canvas.height * textOffsetY) / 100,
+          direction: normalizeTextDirection(textDirection),
         });
-        ctx.restore();
       }
 
       // Convert to data URL
@@ -3987,7 +4073,7 @@ const ToolsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height]);
 
   const rotateScreenshotClockwise = () => {
     const src = (imageUrl || '').trim();
@@ -4289,6 +4375,7 @@ const ToolsPage = () => {
         textSize,
         textOffsetX,
         textOffsetY,
+        textDirection,
         printAreaFit,
         imageOrientation,
         imageOffsetX,
@@ -4343,6 +4430,7 @@ const ToolsPage = () => {
                 textSize,
                 textOffsetX,
                 textOffsetY,
+                textDirection,
                 printAreaFit,
                 imageOrientation,
                 editLog: buildLiveEditLog(selectedProduct)
@@ -4617,6 +4705,8 @@ const ToolsPage = () => {
                   (textEnabled && String(textContent || '').trim()) ||
                   (printAreaFit !== 'none' && printAreaFit !== 'product')
                 );
+                const overlayBoxReady = overlayBoxSize.width > 0 && overlayBoxSize.height > 0;
+                const paintCssFrames = Boolean(frameEnabled && (!overlayNeedsBakedPixels || !overlayBoxReady));
                 const overlayScreenshot = overlayNeedsBakedPixels
                   ? currentImage
                   : (imageUrl || currentImage);
@@ -4632,11 +4722,14 @@ const ToolsPage = () => {
                     position: 'relative'
                   }}>
                     <h3 className="product-preview-heading">
-                      <span className="product-preview-heading-label">
+                      <span className="product-preview-heading-label product-preview-heading-desktop">
                         Product Preview ({selectedCartProductIndex + 1} of {cartProducts.length})
                         {displayName ? (
                           <span className="product-preview-heading-product"> {displayName}</span>
                         ) : null}
+                      </span>
+                      <span className="product-preview-heading-label product-preview-heading-mobile">
+                        Customize Your Design
                       </span>
                     </h3>
                     <div className="product-preview-name-row" style={{
@@ -4723,7 +4816,7 @@ const ToolsPage = () => {
                                   imageOffsetY={imageOffsetY}
                                   featherEdge={featherEdge}
                                   cornerRadius={cornerRadius}
-                                  frameEnabled={frameEnabled}
+                                  frameEnabled={paintCssFrames}
                                   frameColor={frameColor}
                                   frameWidth={frameWidth}
                                   doubleFrame={doubleFrame}
@@ -4732,6 +4825,8 @@ const ToolsPage = () => {
                                   featherFadeColor={featherFadeColor}
                                   sourceWidth={currentImageDimensions.width}
                                   sourceHeight={currentImageDimensions.height}
+                                  overlayBoxWidth={overlayBoxSize.width}
+                                  overlayBoxHeight={overlayBoxSize.height}
                                   boxWidth={240}
                                 />
                               </div>
@@ -4779,7 +4874,7 @@ const ToolsPage = () => {
                                 onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                                 featherEdge={featherEdge}
                                 cornerRadius={cornerRadius}
-                                frameEnabled={frameEnabled}
+                                frameEnabled={paintCssFrames}
                                 frameColor={frameColor}
                                 frameWidth={frameWidth}
                                 doubleFrame={doubleFrame}
@@ -4794,6 +4889,7 @@ const ToolsPage = () => {
                                 blackAndWhite={blackAndWhite}
                                 featherFadeEnabled={featherFadeEnabled}
                                 featherFadeColor={featherFadeColor}
+                                onOverlayBoxChange={handleOverlayBoxChange}
                               />
                               <div style={{
                                 position: 'absolute',
@@ -4869,7 +4965,7 @@ const ToolsPage = () => {
                               onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                               featherEdge={featherEdge}
                               cornerRadius={cornerRadius}
-                              frameEnabled={frameEnabled}
+                              frameEnabled={paintCssFrames}
                               frameColor={frameColor}
                               frameWidth={frameWidth}
                               doubleFrame={doubleFrame}
@@ -4884,6 +4980,7 @@ const ToolsPage = () => {
                               blackAndWhite={blackAndWhite}
                               featherFadeEnabled={featherFadeEnabled}
                               featherFadeColor={featherFadeColor}
+                              onOverlayBoxChange={handleOverlayBoxChange}
                             />
                           );
                         } else {
@@ -4939,7 +5036,7 @@ const ToolsPage = () => {
                             onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                             featherEdge={featherEdge}
                             cornerRadius={cornerRadius}
-                            frameEnabled={frameEnabled}
+                            frameEnabled={paintCssFrames}
                             frameColor={frameColor}
                             frameWidth={frameWidth}
                             doubleFrame={doubleFrame}
@@ -4954,6 +5051,7 @@ const ToolsPage = () => {
                             blackAndWhite={blackAndWhite}
                             featherFadeEnabled={featherFadeEnabled}
                             featherFadeColor={featherFadeColor}
+                            onOverlayBoxChange={handleOverlayBoxChange}
                           />
                         );
                       }
@@ -5240,7 +5338,7 @@ const ToolsPage = () => {
 
                 <div className="tool-control-group">
                   <h3>Text</h3>
-                  <p className="tool-description">Add text to your creation with custom font, color and size</p>
+                  <p className="tool-description">Add text to your creation with custom font, color, size and direction</p>
                   <div className="checkbox-control">
                     <label>
                       <input
@@ -5253,6 +5351,34 @@ const ToolsPage = () => {
                   </div>
                   {textEnabled && (
                     <>
+                      <div className="select-control" style={{ marginTop: '0.75rem' }}>
+                        <h4 style={{ margin: '0 0 0.45rem', fontWeight: 'bold' }}>Direction:</h4>
+                        <div className="tools-text-direction">
+                          <label>
+                            <input
+                              type="radio"
+                              name="textDirection"
+                              value="horizontal"
+                              checked={textDirection === 'horizontal'}
+                              onChange={() => setTextDirection('horizontal')}
+                            />
+                            <span>Horizontal</span>
+                          </label>
+                          <label>
+                            <input
+                              type="radio"
+                              name="textDirection"
+                              value="vertical"
+                              checked={textDirection === 'vertical'}
+                              onChange={() => setTextDirection('vertical')}
+                            />
+                            <span>Vertical</span>
+                          </label>
+                        </div>
+                        <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+                          Vertical stacks letters top to bottom
+                        </small>
+                      </div>
                       <div className="form-group" style={{ marginTop: '0.5rem' }}>
                         <label>Text:</label>
                         <textarea
@@ -5418,6 +5544,8 @@ const ToolsPage = () => {
                           (textEnabled && String(textContent || '').trim()) ||
                           (printAreaFit !== 'none' && printAreaFit !== 'product')
                         );
+                        const overlayBoxReady = overlayBoxSize.width > 0 && overlayBoxSize.height > 0;
+                        const paintCssFrames = Boolean(frameEnabled && (!overlayNeedsBakedPixels || !overlayBoxReady));
                         const previewSrc = overlayNeedsBakedPixels
                           ? (editedImageUrl || imageUrl)
                           : (imageUrl || editedImageUrl);
@@ -5436,7 +5564,7 @@ const ToolsPage = () => {
                             imageOffsetY={imageOffsetY}
                             featherEdge={featherEdge}
                             cornerRadius={cornerRadius}
-                            frameEnabled={frameEnabled}
+                            frameEnabled={paintCssFrames}
                             frameColor={frameColor}
                             frameWidth={frameWidth}
                             doubleFrame={doubleFrame}
@@ -5445,6 +5573,8 @@ const ToolsPage = () => {
                             featherFadeColor={featherFadeColor}
                             sourceWidth={currentImageDimensions.width}
                             sourceHeight={currentImageDimensions.height}
+                            overlayBoxWidth={overlayBoxSize.width}
+                            overlayBoxHeight={overlayBoxSize.height}
                           />
                         );
                       })()}

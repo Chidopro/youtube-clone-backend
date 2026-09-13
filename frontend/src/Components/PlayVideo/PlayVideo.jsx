@@ -1489,7 +1489,7 @@ const PlayVideo = ({
                         </div>
                     )}
                     
-                    {/* Play overlay is desktop-only; mobile never uses the full-frame tint. */}
+                    {/* Play button is desktop-only; no full-frame tint over the video. */}
                     {!isMobile && !videoHasPlayed && !videoError && video && !isCropMode && (
                         <div 
                             className="play-start-overlay"
@@ -1525,7 +1525,7 @@ const PlayVideo = ({
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 pointerEvents: 'auto',
-                                background: 'rgba(0, 0, 0, 0.4)',
+                                background: 'transparent',
                                 borderRadius: 0
                             }}
                         >

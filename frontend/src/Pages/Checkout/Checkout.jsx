@@ -6,7 +6,6 @@ import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCa
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
-import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import {
   CHECKOUT_COUNTRY_OPTIONS,
   US_STATE_OPTIONS,
@@ -107,13 +106,10 @@ const Checkout = () => {
     }
   }, [signedIn, items.length]);
 
-  // When design modal opens, keep a prior Tools/checkout choice; otherwise the shopper must pick.
+  // When design modal opens, the shopper must pick Portrait or Landscape here.
   useEffect(() => {
     if (showDesignModal && items.length > 0) {
-      setDesignPreferences(items.map((it) => {
-        const o = resolveItemImageOrientation(it);
-        return { orientation: o === 'landscape' || o === 'portrait' ? o : '' };
-      }));
+      setDesignPreferences(items.map(() => ({ orientation: '' })));
     }
   }, [showDesignModal, items.length]);
 
@@ -582,34 +578,6 @@ const Checkout = () => {
     navigate(
       `/product/browse?category=${encodeURIComponent(itemCategory)}&authenticated=${isAuthenticated}&email=${encodeURIComponent(userEmail)}&editCart=${index}`
     );
-  };
-
-  const changeCartItemImage = (index) => {
-    const item = items[index];
-    if (item) {
-      setToolsFocusCartIndex(index);
-      try {
-        const shot = item.selected_screenshot || item.screenshot;
-        if (shot) applySelectedScreenshot(shot);
-      } catch {
-        /* ignore */
-      }
-    }
-    setShowDesignModal(false);
-    if (isCreatorStorefrontHostname()) {
-      try {
-        const slug = localStorage.getItem('sm_favorite_list_slug');
-        if (slug && slug !== 'owner') {
-          navigate(`/favorites/${encodeURIComponent(slug)}`);
-          return;
-        }
-      } catch {
-        /* ignore */
-      }
-      navigate('/favorites');
-      return;
-    }
-    navigate('/merchandise');
   };
 
   return (
@@ -1105,15 +1073,41 @@ const Checkout = () => {
                       )}
                       <div className="design-modal-image-meta">
                         <p className="design-modal-image-label">Your Image</p>
+                        {SHIRT_CATEGORIES.includes(item.category) ? (
+                          <div className="design-modal-orient-row" role="group" aria-label="Image orientation">
+                            <label className="design-modal-orient-check">
+                              <input
+                                type="checkbox"
+                                checked={(designPreferences[i]?.orientation || '') === 'portrait'}
+                                onChange={() => {
+                                  setDesignPreferences((prev) => {
+                                    const next = prev.slice();
+                                    while (next.length <= i) next.push({ orientation: '' });
+                                    next[i] = { ...(next[i] || {}), orientation: 'portrait' };
+                                    return next;
+                                  });
+                                }}
+                              />
+                              Portrait
+                            </label>
+                            <label className="design-modal-orient-check">
+                              <input
+                                type="checkbox"
+                                checked={(designPreferences[i]?.orientation || '') === 'landscape'}
+                                onChange={() => {
+                                  setDesignPreferences((prev) => {
+                                    const next = prev.slice();
+                                    while (next.length <= i) next.push({ orientation: '' });
+                                    next[i] = { ...(next[i] || {}), orientation: 'landscape' };
+                                    return next;
+                                  });
+                                }}
+                              />
+                              Landscape
+                            </label>
+                          </div>
+                        ) : null}
                         <div className="design-modal-text-actions">
-                          <button
-                            type="button"
-                            className="design-modal-text-action"
-                            onClick={() => changeCartItemImage(i)}
-                          >
-                            Change Image
-                          </button>
-                          <span className="design-modal-text-sep" aria-hidden="true">·</span>
                           <button
                             type="button"
                             className="design-modal-text-action"
@@ -1132,11 +1126,17 @@ const Checkout = () => {
             {(() => {
                 const applyOrientationToCart = () => {
                 const currentPrefs = designPreferencesRef.current;
+                for (let idx = 0; idx < items.length; idx += 1) {
+                  if (!SHIRT_CATEGORIES.includes(items[idx].category)) continue;
+                  const chosen = (currentPrefs[idx] ?? {}).orientation;
+                  if (chosen !== 'landscape' && chosen !== 'portrait') {
+                    alert('Please choose Portrait or Landscape for your design.');
+                    return false;
+                  }
+                }
                 const updated = items.map((it, idx) => {
                   if (!SHIRT_CATEGORIES.includes(it.category)) return it;
-                  const chosen = ((currentPrefs[idx] ?? {}).orientation || resolveItemImageOrientation(it)) === 'landscape'
-                    ? 'landscape'
-                    : 'portrait';
+                  const chosen = ((currentPrefs[idx] ?? {}).orientation);
                   return withItemImageOrientation(it, chosen);
                 });
                 setItems(updated);

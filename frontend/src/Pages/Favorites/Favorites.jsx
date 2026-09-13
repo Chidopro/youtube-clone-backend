@@ -214,28 +214,49 @@ function FavoritesMediaSection({
   const scrollBy = (direction) => {
     const el = trackRef.current;
     if (!el) return;
+    const cards = [...el.querySelectorAll('.favorites-card')];
+    if (!cards.length) return;
+
+    const trackLeft = el.getBoundingClientRect().left;
+    const positions = cards.map(
+      (card) => el.scrollLeft + card.getBoundingClientRect().left - trackLeft
+    );
+    const maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
     const from = shelfScrollTargetRef.current != null ? shelfScrollTargetRef.current : el.scrollLeft;
+
     if (direction < 0 && from <= 2 && typeof onPrevAtStart === 'function') {
       onPrevAtStart();
       return;
     }
-    const maxLeft = getShelfMaxScroll(el);
     if (maxLeft <= 1) return;
 
-    const firstCard = el.querySelector('.favorites-card');
-    const styles = window.getComputedStyle(el);
-    const gap = parseFloat(styles.columnGap || styles.gap) || 20;
-    const step = firstCard ? firstCard.getBoundingClientRect().width + gap : Math.max(el.clientWidth * 0.9, 280);
-    let next = from + direction * step;
-    if (next > maxLeft) next = 0;
-    else if (next < 0) next = maxLeft;
+    let current = 0;
+    let nearest = Infinity;
+    positions.forEach((pos, idx) => {
+      const delta = Math.abs(pos - from);
+      if (delta < nearest) {
+        nearest = delta;
+        current = idx;
+      }
+    });
+
+    let nextIndex = current + direction;
+    if (nextIndex >= cards.length) nextIndex = 0;
+    else if (nextIndex < 0) nextIndex = cards.length - 1;
+
+    let next = positions[nextIndex];
+    if (next > maxLeft + 1) {
+      next = from >= maxLeft - 2 ? 0 : maxLeft;
+    } else if (next < 0) {
+      next = 0;
+    }
     if (Math.abs(next - from) < 2) {
       next = direction > 0 ? 0 : maxLeft;
     }
     if (Math.abs(next - from) < 2) return;
 
     if (el.dataset.shelfSnap == null) {
-      el.dataset.shelfSnap = styles.scrollSnapType || 'none';
+      el.dataset.shelfSnap = window.getComputedStyle(el).scrollSnapType || 'none';
     }
     el.style.scrollSnapType = 'none';
     shelfScrollTargetRef.current = next;
@@ -251,7 +272,7 @@ function FavoritesMediaSection({
       settle = window.setTimeout(() => {
         shelfScrollTargetRef.current = null;
         restoreShelfSnap(el);
-      }, 160);
+      }, 320);
     };
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => {
@@ -270,7 +291,7 @@ function FavoritesMediaSection({
       <FavoritesSectionHeader
         title={title}
         leadTitle={leadTitle}
-        showArrows={alwaysShowArrows || scrollState.canScroll}
+        showArrows={alwaysShowArrows}
         atStart={scrollState.atStart}
         atEnd={scrollState.atEnd}
         onPrev={() => scrollBy(-1)}
@@ -288,18 +309,6 @@ function FavoritesMediaSection({
       </FavoritesShelfTrack>
     </section>
   );
-}
-
-function getShelfMaxScroll(el) {
-  if (!el) return 0;
-  const cards = el.querySelectorAll('.favorites-card');
-  const nativeMax = Math.max(0, el.scrollWidth - el.clientWidth);
-  if (!cards.length) return nativeMax;
-  const last = cards[cards.length - 1];
-  const paddingRight = parseFloat(window.getComputedStyle(el).paddingRight) || 0;
-  const lastEnd = last.offsetLeft + last.offsetWidth + paddingRight;
-  const showLast = Math.max(0, lastEnd - el.clientWidth);
-  return Math.max(0, Math.min(nativeMax, showLast));
 }
 
 const preloadThumbUrls = (urls, timeoutMs = 1200) =>
@@ -592,7 +601,7 @@ const Favorites = ({ sidebar }) => {
                 itemCount={videoItems.length}
                 className="favorites-shelf--videos"
                 alwaysShowArrows
-                onPrevAtStart={() => navigate(onFriendPage ? '/friend-pages' : '/')}
+                onPrevAtStart={() => navigate('/')}
               >
                 {videoItems.map((item) => (
                   <div className="favorites-card favorites-card--video" key={item.id}>

@@ -67,6 +67,7 @@ export function buildEditLog({
   textSize = 24,
   textOffsetX = 50,
   textOffsetY = 50,
+  textDirection = 'horizontal',
   printAreaFit = 'none',
   imageOrientation = 'portrait',
   imageOffsetX = 0,
@@ -116,6 +117,7 @@ export function buildEditLog({
     textSize: asNumber(textSize, 24),
     textOffsetX: asNumber(textOffsetX, 50),
     textOffsetY: asNumber(textOffsetY, 50),
+    textDirection: String(textDirection || '').toLowerCase() === 'vertical' ? 'vertical' : 'horizontal',
     printAreaFit: printAreaFit || 'none',
     imageOrientation: imageOrientation === 'landscape' ? 'landscape' : 'portrait',
     imageOffsetX: asNumber(imageOffsetX),
@@ -200,7 +202,7 @@ export function formatEditLogLines(log) {
     const shown = snippet.length > 60 ? `${snippet.slice(0, 57)}...` : snippet;
     lines.push({
       label: 'Text',
-      value: `"${shown}" · ${log.textFont || 'Arial'} · ${log.textColor || '#000'} · ${asNumber(log.textSize, 24)}px · pos ${asNumber(log.textOffsetX, 50)}%, ${asNumber(log.textOffsetY, 50)}%`,
+      value: `"${shown}" · ${String(log.textDirection || '').toLowerCase() === 'vertical' ? 'vertical' : 'horizontal'} · ${log.textFont || 'Arial'} · ${log.textColor || '#000'} · ${asNumber(log.textSize, 24)}px · pos ${asNumber(log.textOffsetX, 50)}%, ${asNumber(log.textOffsetY, 50)}%`,
     });
   }
   return lines;
@@ -236,6 +238,7 @@ export function editLogFromToolSettings(ts) {
     textSize: ts.textSize,
     textOffsetX: ts.textOffsetX,
     textOffsetY: ts.textOffsetY,
+    textDirection: ts.textDirection,
     printAreaFit: ts.printAreaFit,
     imageOrientation: ts.imageOrientation,
     imageOffsetX: ts.imageOffsetX || ts.offsetX,
