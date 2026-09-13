@@ -11120,35 +11120,33 @@ def _umbrella_payouts_by_list(storefront_owner_id, list_ids=None, collaborator_u
         if not want:
             want = None
     collab_uid = str(collaborator_user_id) if collaborator_user_id else ""
-    cols_full = "id, favorite_list_id, collaborator_user_id, storefront_owner_id, amount, paid_at, note, created_at, confirmed_at"
+    from utils.payout import is_missing_payout_table_error
+
     cols_min = "id, favorite_list_id, storefront_owner_id, amount, paid_at, note, created_at"
     rows = []
-    try:
-        r = (
-            supabase_admin.table("umbrella_collaborator_payouts")
-            .select(cols_full)
-            .eq("storefront_owner_id", str(storefront_owner_id))
-            .order("paid_at", desc=True)
-            .execute()
-        )
-        rows = r.data or []
-    except Exception as err:
-        err_s = str(err).lower()
-        table_missing = "umbrella_collaborator_payouts" in err_s or "does not exist" in err_s
-        if table_missing:
-            return out
+    last_err = None
+    # Prefer * so a missing confirmed_at column cannot 400 the whole ledger read.
+    for cols in ("*", cols_min):
         try:
             r = (
                 supabase_admin.table("umbrella_collaborator_payouts")
-                .select(cols_min)
+                .select(cols)
                 .eq("storefront_owner_id", str(storefront_owner_id))
                 .order("paid_at", desc=True)
                 .execute()
             )
             rows = r.data or []
-        except Exception as retry_err:
-            logger.warning("umbrella payouts lookup failed: %s", retry_err)
-            return out
+            last_err = None
+            break
+        except Exception as err:
+            last_err = err
+            if is_missing_payout_table_error(err):
+                logger.warning("umbrella payouts table missing: %s", err)
+                return out
+            logger.warning("umbrella payouts lookup retry (%s): %s", cols, err)
+    if last_err is not None:
+        logger.warning("umbrella payouts lookup failed: %s", last_err)
+        return out
     for row in rows:
         lid = row.get("favorite_list_id")
         key = _payout_list_key(lid)
@@ -12218,8 +12216,9 @@ def favorite_lists_record_collaborator_payout():
         try:
             ins = _insert_payout(row)
         except Exception as ins_err:
-            err_s = str(ins_err).lower()
-            if "umbrella_collaborator_payouts" in err_s or "does not exist" in err_s:
+            from utils.payout import is_missing_payout_table_error
+
+            if is_missing_payout_table_error(ins_err):
                 return jsonify(
                     {
                         "success": False,

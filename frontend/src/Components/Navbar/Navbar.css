@@ -79,7 +79,7 @@ nav.nav-dropdown-active {
     gap: 10px;
 }
 
-/* Header Sign In / Sign Up / Sign Out: text only */
+/* Header Sign In / Sign Up / Sign Out: text only (Sign Up on ScreenMerch.com is boxed below). */
 nav .sign-in-btn,
 nav .nav-right .subscribe-btn {
     border: none;
@@ -152,6 +152,31 @@ nav .nav-right .subscribe-btn {
     padding-right: 0;
     justify-content: center;
     border-radius: 0;
+}
+
+/* ScreenMerch.com Sign Up: same outlined box as storefront Sign Up. */
+html:not(.creator-storefront) nav .nav-right .subscribe-btn {
+    height: 38px !important;
+    padding: 0 14px !important;
+    border: 1px solid #111 !important;
+    border-radius: 8px !important;
+    background: transparent !important;
+    color: #111 !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    line-height: 1;
+    box-shadow: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    transform: none !important;
+}
+
+html:not(.creator-storefront) nav .nav-right .subscribe-btn:hover {
+    background: #111 !important;
+    color: #fff !important;
+    border-color: #111 !important;
+    transform: none !important;
 }
 
 .nav-right img{
@@ -910,6 +935,23 @@ html.creator-storefront nav {
          color: #000 !important;
          border: none !important;
      }
+
+    html:not(.creator-storefront) nav .nav-right .subscribe-btn {
+        height: 32px !important;
+        padding: 0 10px !important;
+        font-size: 13px !important;
+        border: 1px solid #111 !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        color: #111 !important;
+        margin: 0 !important;
+    }
+
+    html:not(.creator-storefront) nav .nav-right .subscribe-btn:hover {
+        background: #111 !important;
+        color: #fff !important;
+        border-color: #111 !important;
+    }
 }
 
 /* Extra small mobile devices */
@@ -931,6 +973,17 @@ html.creator-storefront nav {
         height: auto !important;
         margin: 0 !important;
         font-weight: 600;
+    }
+
+    html:not(.creator-storefront) nav .nav-right .subscribe-btn {
+        height: 30px !important;
+        padding: 0 8px !important;
+        font-size: 12px !important;
+        border: 1px solid #111 !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        color: #111 !important;
+        margin: 0 !important;
     }
 
     .nav-middle .search-box {
@@ -1178,6 +1231,16 @@ html.creator-storefront nav {
         color: #222;
         z-index: 10001;
         position: relative;
+    }
+
+    html:not(.creator-storefront) nav .nav-right .subscribe-btn {
+        height: 38px !important;
+        padding: 0 14px !important;
+        font-size: 15px !important;
+        border: 1px solid #111 !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        color: #111 !important;
     }
 }
 

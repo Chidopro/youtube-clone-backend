@@ -35,6 +35,19 @@ function sourceIdentity(data) {
 
 export const PENDING_MERCH_UPDATED_EVENT = 'screenmerch-pending-merch-updated';
 
+/** True when merch was captured from a video (thumbnail + screenshots). False for stills from Pages. */
+export function isVideoScreenshotMerch(data) {
+  const d = data && typeof data === 'object' ? data : (readPendingMerchData() || {});
+  const source = String(d.source || d.imageSource || '').toLowerCase();
+  if (source === 'image' || source === 'favorite' || source === 'page') return false;
+  if (source === 'video') return true;
+  const url = String(d.videoUrl || d.video_url || '');
+  if (/\/video\//i.test(url)) return true;
+  const thumb = d.thumbnail || '';
+  const shots = (Array.isArray(d.screenshots) ? d.screenshots : []).filter(Boolean);
+  return shots.some((s) => s && s !== thumb);
+}
+
 export function emitPendingMerchUpdated() {
   try {
     window.dispatchEvent(new Event(PENDING_MERCH_UPDATED_EVENT));

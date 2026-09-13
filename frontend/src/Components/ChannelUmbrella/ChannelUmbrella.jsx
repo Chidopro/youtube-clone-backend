@@ -159,6 +159,12 @@ const ChannelUmbrella = ({ previewMode = false }) => {
     loadSalesSummary();
   }, [loadSalesSummary]);
 
+  useEffect(() => {
+    const onPayoutsChanged = () => loadSalesSummary();
+    window.addEventListener('screenmerch-collab-payouts-changed', onPayoutsChanged);
+    return () => window.removeEventListener('screenmerch-collab-payouts-changed', onPayoutsChanged);
+  }, [loadSalesSummary]);
+
   const copyInviteUrl = async (url) => {
     if (!url) return;
     try {

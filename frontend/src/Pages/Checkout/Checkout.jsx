@@ -1162,15 +1162,15 @@ const Checkout = () => {
               };
               return (
                 <>
-                  <button type="button" className="design-modal-tools-btn" onClick={handleGoToTools}>
-                    Customize Design
+                  <button type="button" className="design-modal-tools-btn" onClick={handleContinue}>
+                    Continue to Checkout
                   </button>
                   <div className="design-modal-actions">
                     <button type="button" className="btn-outline" onClick={() => setShowDesignModal(false)}>
                       Back
                     </button>
-                    <button type="button" className="btn-primary" onClick={handleContinue}>
-                      Continue to Checkout
+                    <button type="button" className="btn-primary" onClick={handleGoToTools}>
+                      Customize Design
                     </button>
                   </div>
                 </>

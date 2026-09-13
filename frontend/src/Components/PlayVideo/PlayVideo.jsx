@@ -868,6 +868,7 @@ const PlayVideo = ({
         markMerchIntentStarted();
         const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : (screenshotTimestamps[0] ?? 0);
         savePendingMerchData({
+            source: 'video',
             thumbnail,
             videoUrl: video?.video_url || window.location.href,
             screenshots: screenshots.slice(0, 6),

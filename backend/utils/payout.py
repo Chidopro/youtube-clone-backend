@@ -12,6 +12,21 @@ PLATFORM_FEE_PER_MARKUP_SALE = 6.00
 # Minimum owed balance before a storefront owner can record an off-platform collaborator payout.
 UMBRELLA_COLLABORATOR_PAYOUT_MINIMUM = 50.0
 
+
+def is_missing_payout_table_error(err):
+    """True when the payouts relation is missing — not when one column is missing."""
+    s = str(err or "").lower()
+    table = "umbrella_collaborator_payouts"
+    if "column" in s:
+        return False
+    if f'relation "{table}" does not exist' in s or f"relation '{table}' does not exist" in s:
+        return True
+    if "pgrst205" in s and table in s:
+        return True
+    if "could not find the table" in s and table in s:
+        return True
+    return False
+
 # Storefront-owner ScreenMerch payouts: on or about the 1st and 15th (Terms §10.2).
 CREATOR_PAYOUT_DAYS = (1, 15)
 

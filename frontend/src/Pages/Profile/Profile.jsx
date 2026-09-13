@@ -107,6 +107,7 @@ const Profile = ({ sidebar }) => {
     if (!isLoggedIn) {
       // Store favorite data for after login
       const merchData = {
+        source: 'image',
         thumbnail: favorite.image_url || favorite.thumbnail_url,
         screenshots: [favorite.image_url || favorite.thumbnail_url],
         videoUrl: window.location.href,
@@ -122,6 +123,7 @@ const Profile = ({ sidebar }) => {
     
     // User is authenticated, proceed with merch creation
     const merchData = {
+      source: 'image',
       thumbnail: favorite.image_url || favorite.thumbnail_url,
       screenshots: [favorite.image_url || favorite.thumbnail_url],
       videoUrl: window.location.href,

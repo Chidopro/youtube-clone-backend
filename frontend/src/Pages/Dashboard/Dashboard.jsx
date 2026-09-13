@@ -49,6 +49,33 @@ function formatPayoutDate(iso) {
     }
 }
 
+function formatPaymentMethodName(method) {
+    const raw = String(method || '').trim();
+    if (!raw) return '';
+    const key = raw.toLowerCase();
+    if (key === 'paypal') return 'PayPal';
+    if (key === 'zelle') return 'Zelle';
+    if (key === 'venmo') return 'Venmo';
+    if (key === 'bank') return 'Bank';
+    if (key === 'other') return 'Other';
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function formatPayoutPaymentMeta(payout) {
+    const date = formatPayoutDate(payout.paid_at || payout.payout_date);
+    const rawNote = String(payout.note || payout.notes || '').trim();
+    const methodFromNote = rawNote.match(/Method:\s*([^\s·]+)/i)?.[1];
+    const methodLabel = formatPaymentMethodName(payout.payment_method || methodFromNote);
+    const leftoverNote = rawNote
+        .replace(/(?:^|\s*·\s*)Method:\s*[^\s·]+/gi, '')
+        .replace(/^\s*·\s*|\s*·\s*$/g, '')
+        .trim();
+    const parts = [date];
+    if (methodLabel) parts.push(`Method: ${methodLabel}`);
+    if (leftoverNote) parts.push(leftoverNote);
+    return parts.join(' · ');
+}
+
 function todayPayoutInputDate() {
     const d = new Date();
     const y = d.getFullYear();
@@ -1445,6 +1472,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
 
     const openVideoForMerch = (video) => {
         const merchData = {
+            source: 'video',
             thumbnail: video.thumbnail || video.thumbnail_url || '',
             screenshots: video.screenshots || [],
             videoUrl: video.video_url || '',
@@ -1761,6 +1789,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         if (!isLoggedIn) {
             // Store favorite data for after login
             const merchData = {
+                source: 'image',
                 thumbnail: favorite.image_url || favorite.thumbnail_url,
                 screenshots: [favorite.image_url || favorite.thumbnail_url],
                 videoUrl: window.location.href,
@@ -1774,6 +1803,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         
         // User is authenticated, save data and navigate to merchandise page
         const merchData = {
+            source: 'image',
             thumbnail: favorite.image_url || favorite.thumbnail_url,
             screenshots: [favorite.image_url || favorite.thumbnail_url],
             videoUrl: window.location.href,
@@ -2355,6 +2385,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             }
             applyRecordedCollaboratorPayout(listId, data?.payout, amount);
             setAnalyticsPayoutModal(null);
+            window.dispatchEvent(new Event('screenmerch-collab-payouts-changed'));
             await fetchAnalytics();
         } catch (err) {
             setAnalyticsPayoutError(err.message || 'Network error');
@@ -3224,9 +3255,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                                         Paid ${Number(payout.amount || 0).toFixed(2)} ✓
                                                                     </strong>
                                                                     <span>
-                                                                        {formatPayoutDate(payout.paid_at || payout.payout_date)}
-                                                                        {payout.payment_method ? ` · ${payout.payment_method}` : ''}
-                                                                        {payout.note || payout.notes ? ` · ${payout.note || payout.notes}` : ''}
+                                                                        {formatPayoutPaymentMeta(payout)}
                                                                     </span>
                                                                 </div>
                                                             </li>

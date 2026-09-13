@@ -1,6 +1,20 @@
 import unittest
 
-from utils.payout import payout_list_key, umbrella_payout_balance_fields
+from utils.payout import (
+    is_missing_payout_table_error,
+    payout_list_key,
+    umbrella_payout_balance_fields,
+)
+
+
+class MissingPayoutTableErrorTests(unittest.TestCase):
+    def test_column_missing_is_not_table_missing(self):
+        err = 'column umbrella_collaborator_payouts.confirmed_at does not exist'
+        self.assertFalse(is_missing_payout_table_error(err))
+
+    def test_relation_missing(self):
+        err = 'relation "umbrella_collaborator_payouts" does not exist'
+        self.assertTrue(is_missing_payout_table_error(err))
 
 
 class PayoutListKeyTests(unittest.TestCase):

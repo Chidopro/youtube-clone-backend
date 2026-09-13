@@ -199,6 +199,7 @@ const Video = ({ sidebar }) => {
       const frameSeconds =
         screenshotTimestamps.length > 0 ? screenshotTimestamps[0] : screenshots.length > 0 ? 0 : currentTime;
       const merchData = {
+        source: 'video',
         thumbnail,
         videoUrl: window.location.href,
         screenshots: screenshots.slice(0, 6),
@@ -224,6 +225,7 @@ const Video = ({ sidebar }) => {
       const frameSeconds =
         screenshotTimestamps.length > 0 ? screenshotTimestamps[0] : screenshots.length > 0 ? 0 : currentTime;
       savePendingMerchData({
+          source: 'video',
           thumbnail,
           videoUrl: window.location.href,
           screenshots: screenshots.slice(0, 6),

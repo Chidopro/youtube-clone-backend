@@ -8,7 +8,7 @@ import { getBackendUrl } from '../../config/apiConfig';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
-import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest } from '../../utils/merchSession';
+import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest, isVideoScreenshotMerch } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
@@ -1281,6 +1281,8 @@ const ProductPage = ({ sidebar }) => {
     return <ToolsPage key={`thumb-tools-${shotKey}`} />;
   }
 
+  const showVideoThumbLabel = isVideoScreenshotMerch();
+
   return (
     <div className={`container product-page${isShopCatalog ? ' product-page--shop-catalog' : ''}${!creatorMode && !isShopCatalog ? ' product-page--choose' : ''}${sidebar ? '' : ' large-container'}`}>
       {/* User Flow Section - Step 3 Only - Hide for All Products; storefronts hide via CSS */}
@@ -1469,12 +1471,12 @@ const ProductPage = ({ sidebar }) => {
             <div className="selected-image-row">
             <div className="screenshots-preview">
               <div className="screenshot-grid">
-                {/* Thumbnail */}
+                {/* Thumbnail (video capture only) */}
                 {(() => {
                   const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
                   return thumbnailUrl ? (
                   <div 
-                    className={`screenshot-item screenshot-item--thumbnail ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
+                    className={`screenshot-item${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''} ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
                     aria-current={selectedScreenshot === 'thumbnail' ? 'true' : undefined}
                     role="button"
                     tabIndex={0}
@@ -1489,10 +1491,10 @@ const ProductPage = ({ sidebar }) => {
                     <div>
                       <img 
                         src={thumbnailUrl} 
-                        alt="Thumbnail" 
+                        alt={showVideoThumbLabel ? 'Thumbnail' : 'Selected image'} 
                         className="screenshot-image"
                       />
-                      <div className="screenshot-label">Thumbnail</div>
+                      {showVideoThumbLabel ? <div className="screenshot-label">Thumbnail</div> : null}
                     </div>
                   </div>
                   ) : null;
@@ -1504,10 +1506,13 @@ const ProductPage = ({ sidebar }) => {
                   const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
                   return shots && shots.length > 0 ? shots.map((screenshot, index) => {
                     const isFirstImage = !thumbnailUrl && index === 0;
+                    const label = showVideoThumbLabel
+                      ? (isFirstImage ? 'Thumbnail' : `Screenshot ${index + 1}`)
+                      : '';
                     return (
                       <div 
                         key={`shot-${index}`}
-                        className={`screenshot-item${isFirstImage ? ' screenshot-item--thumbnail' : ''} ${selectedScreenshot === index ? 'selected' : ''}`}
+                        className={`screenshot-item${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''} ${selectedScreenshot === index ? 'selected' : ''}`}
                         aria-current={selectedScreenshot === index ? 'true' : undefined}
                         role="button"
                         tabIndex={0}
@@ -1522,10 +1527,10 @@ const ProductPage = ({ sidebar }) => {
                         <div>
                           <img 
                             src={screenshot} 
-                            alt={`Screenshot ${index + 1}`} 
+                            alt={label || `Image ${index + 1}`} 
                             className="screenshot-image"
                           />
-                          <div className="screenshot-label">{isFirstImage ? 'Thumbnail' : `Screenshot ${index + 1}`}</div>
+                          {label ? <div className="screenshot-label">{label}</div> : null}
                         </div>
                       </div>
                     );

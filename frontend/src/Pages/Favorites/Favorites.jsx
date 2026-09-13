@@ -537,6 +537,7 @@ const Favorites = ({ sidebar }) => {
     markMerchIntentStarted();
 
     const merchData = {
+      source: 'image',
       thumbnail: imageUrl,
       screenshots: [imageUrl],
       selected_screenshot: imageUrl,
