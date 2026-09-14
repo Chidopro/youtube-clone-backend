@@ -6,6 +6,23 @@ function shipToCode(country) {
   return CHECKOUT_COUNTRY_OPTIONS.some((o) => o.code === c) ? c : 'US';
 }
 
+const STOREFRONT_SIZE_FROM_PRINTFUL = {
+  '2XL': 'XXL',
+  '3XL': 'XXXL',
+  '4XL': 'XXXXL',
+  '5XL': 'XXXXXL',
+};
+const STOREFRONT_LETTER_SIZES = new Set(['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL', 'XXXXXL']);
+
+export function canonicalStorefrontSize(size) {
+  const s = String(size || '').trim();
+  if (!s) return s;
+  const upper = s.toUpperCase();
+  if (STOREFRONT_SIZE_FROM_PRINTFUL[upper]) return STOREFRONT_SIZE_FROM_PRINTFUL[upper];
+  if (STOREFRONT_LETTER_SIZES.has(upper)) return upper;
+  return s;
+}
+
 export function shipToCountryName(country) {
   const code = shipToCode(country);
   return CHECKOUT_COUNTRY_OPTIONS.find((o) => o.code === code)?.name || 'United States';
@@ -13,50 +30,85 @@ export function shipToCountryName(country) {
 
 function hasRegionalMatrix(product, country) {
   const code = shipToCode(country);
-  if (code === 'US') return false;
   const regional = product?.regional_size_color_availability;
   return !!(regional && Object.prototype.hasOwnProperty.call(regional, code));
 }
 
+function isPrintfulCatalogProduct(product) {
+  return !!(product?.printful_catalog_product_id || product?.printful_variant_map);
+}
+
 export function sizeColorAvailabilityForCountry(product, country) {
   const code = shipToCode(country);
-  if (code === 'US') return product?.size_color_availability || null;
   const regional = product?.regional_size_color_availability;
   if (regional && Object.prototype.hasOwnProperty.call(regional, code)) {
     return regional[code];
   }
+  if (isPrintfulCatalogProduct(product)) return {};
   return product?.size_color_availability || null;
 }
 
 export function getAvailableSizesForCountry(product, color, country = readShipToCountry()) {
   const apiSizes = product?.options?.size || [];
   const regional = hasRegionalMatrix(product, country);
-  if (!product || !color) return apiSizes;
+  if (!product || !color) return isPrintfulCatalogProduct(product) ? [] : apiSizes;
 
   const sca = sizeColorAvailabilityForCountry(product, country);
   if (sca && typeof sca === 'object') {
     const sizesFromApi = apiSizes.filter((size) => {
-      const colorsForSize = sca[size];
+      const colorsForSize = sca[size] || sca[canonicalStorefrontSize(size)];
       return Array.isArray(colorsForSize) && colorsForSize.includes(color);
     });
     if (sizesFromApi.length > 0) return sizesFromApi;
-    if (regional) return [];
+    if (regional || isPrintfulCatalogProduct(product)) return [];
   }
-  return apiSizes;
+  return isPrintfulCatalogProduct(product) ? [] : apiSizes;
 }
 
 export function getAvailableColorsForCountry(product, size, country = readShipToCountry()) {
   const apiColors = product?.options?.color || [];
   const regional = hasRegionalMatrix(product, country);
-  if (!product || !size) return apiColors;
+  if (!product || !size) return isPrintfulCatalogProduct(product) ? [] : apiColors;
 
   const sca = sizeColorAvailabilityForCountry(product, country);
-  if (sca && typeof sca === 'object' && Array.isArray(sca[size])) {
-    if (sca[size].length === 0) return regional ? [] : apiColors;
-    return apiColors.filter((c) => sca[size].includes(c));
+  const sizeKey = canonicalStorefrontSize(size);
+  const listed = sca && typeof sca === 'object'
+    ? (Array.isArray(sca[size]) ? sca[size] : sca[sizeKey])
+    : null;
+  if (Array.isArray(listed)) {
+    if (listed.length === 0) return (regional || isPrintfulCatalogProduct(product)) ? [] : apiColors;
+    return apiColors.filter((c) => listed.includes(c));
   }
-  if (regional) return [];
+  if (regional || isPrintfulCatalogProduct(product)) return [];
   return apiColors;
+}
+
+/** Colors that have at least one in-stock size for this ship-to country. */
+export function getColorsForCountry(product, country = readShipToCountry()) {
+  const apiColors = product?.options?.color || [];
+  if (!product) return apiColors;
+  const sca = sizeColorAvailabilityForCountry(product, country);
+  if (!sca || typeof sca !== 'object') {
+    return isPrintfulCatalogProduct(product) ? [] : apiColors;
+  }
+  const inStock = new Set();
+  Object.values(sca).forEach((colors) => {
+    if (Array.isArray(colors)) colors.forEach((c) => inStock.add(c));
+  });
+  if (!inStock.size) return isPrintfulCatalogProduct(product) ? [] : apiColors;
+  return apiColors.filter((c) => inStock.has(c));
+}
+
+export function comboAvailableForCountry(product, color, size, country = readShipToCountry()) {
+  if (!product || !color || !size) return null;
+  if (isPrintfulCatalogProduct(product) && !hasRegionalMatrix(product, country)) return false;
+  if (!hasRegionalMatrix(product, country)) return null;
+  const sca = sizeColorAvailabilityForCountry(product, country);
+  if (!sca || typeof sca !== 'object') return false;
+  const sizeKey = canonicalStorefrontSize(size);
+  const colors = Array.isArray(sca[size]) ? sca[size] : sca[sizeKey];
+  if (!Array.isArray(colors)) return false;
+  return colors.includes(color);
 }
 
 function roundMoney(n) {

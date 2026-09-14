@@ -4,7 +4,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import ToolsPage from '../ToolsPage/ToolsPage';
 import { supabase } from '../../supabaseClient';
 import { UserService, claimSessionTokenIfNeeded } from '../../utils/userService';
-import { getBackendUrl } from '../../config/apiConfig';
+import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
@@ -16,8 +16,10 @@ import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { readShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
 import {
+  comboAvailableForCountry,
   getAvailableColorsForCountry,
   getAvailableSizesForCountry,
+  getColorsForCountry,
   productShipsToCountry,
   repriceCartItems,
   shipToCountryName,
@@ -56,7 +58,7 @@ const getProductImageUrl = (product, preferPreview = true) => {
 // Cart screenshots still need a unique query when the same URL is reused.
 const getCacheBuster = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 const categoryBrowseCache = new Map();
-const BROWSE_CACHE_KEY = (category) => `sm_browse_${String(category || '').trim().toLowerCase()}`;
+const BROWSE_CACHE_KEY = (category) => `sm_browse_v5_${String(category || '').trim().toLowerCase()}`;
 
 function readBrowseCache(category) {
   const mem = categoryBrowseCache.get(category);
@@ -75,9 +77,16 @@ function readBrowseCache(category) {
   return null;
 }
 
+function browseNeedsLiveStock(data) {
+  const products = data?.products;
+  if (!Array.isArray(products) || !products.length) return false;
+  return products.some((p) => p?.printful_catalog_product_id && !p?.regional_size_color_availability);
+}
+
 function writeBrowseCache(category, data) {
   if (!data?.products?.length) return;
   categoryBrowseCache.set(category, data);
+  if (browseNeedsLiveStock(data)) return;
   try {
     sessionStorage.setItem(BROWSE_CACHE_KEY(category), JSON.stringify(data));
   } catch {
@@ -618,10 +627,59 @@ const ProductPage = ({ sidebar }) => {
     getAvailableColorsForCountry(product, size, shipToCountry)
   );
 
+  const resolvedColorSize = (product, index) => {
+    const colors = getColorsForCountry(product, shipToCountry);
+    const fallbackColors = product?.options?.color || product?.options?.handle_color || [];
+    let color = selectedColors[index] || colors[0] || fallbackColors[0] || 'Default';
+    if (colors.length && !colors.includes(color)) {
+      color = colors[0];
+    }
+    let size = selectedSizes[index] || '';
+    const sizesForColor = getAvailableSizes(product, color);
+    if (sizesForColor.length && !sizesForColor.includes(size)) {
+      size = sizesForColor[0];
+    } else if (!sizesForColor.length) {
+      size = '';
+    }
+    const colorsForSize = getAvailableColors(product, size);
+    return { color, size, sizesForColor, colorsForSize };
+  };
+
+  const variantSelectable = (product, index) => {
+    if (!productShipsToCountry(product, shipToCountry)) return false;
+    const { color, size, sizesForColor } = resolvedColorSize(product, index);
+    if (product?.options?.size?.length && sizesForColor.length === 0) return false;
+    if (comboAvailableForCountry(product, color, size, shipToCountry) === false) return false;
+    return true;
+  };
+
+  const cartItemUnavailable = (item) => {
+    const products = productData?.products || [];
+    const prod = products.find((p) => p?.name === (item?.name || item?.product));
+    if (!prod) return false;
+    const color = item.color || item.variants?.color;
+    const size = item.size || item.variants?.size;
+    if (comboAvailableForCountry(prod, color, size, shipToCountry) === false) return true;
+    if (color && size) {
+      const sizes = getAvailableSizes(prod, color);
+      if (sizes.length && !sizes.includes(size)) return true;
+    }
+    return !productShipsToCountry(prod, shipToCountry);
+  };
+  const cartHasUnavailableItems = (cartItems || []).some(cartItemUnavailable);
+
+  const goToCheckout = () => {
+    if (cartHasUnavailableItems) {
+      alert(`One or more cart items are out of stock for shipping to ${shipToCountryName(shipToCountry)}. Choose a different size or color.`);
+      return;
+    }
+    navigate('/checkout');
+  };
+
   // Calculate price based on selected size
   const calculatePrice = (product, productIndex) => {
-    const selectedSize = selectedSizes[productIndex] || product?.options?.size?.[0];
-    return unitPriceForCountry(product, selectedSize, shipToCountry);
+    const { size } = resolvedColorSize(product, productIndex);
+    return unitPriceForCountry(product, size, shipToCountry);
   };
 
   const persistCart = (items) => {
@@ -637,6 +695,15 @@ const ProductPage = ({ sidebar }) => {
     if (!product) return;
     lastPickedProductRef.current = { product, index };
     rememberToolsProductName(product?.name);
+  };
+
+  const clearVariantAvailability = (index) => {
+    setVariantAvailability((prev) => {
+      if (!prev[index]) return prev;
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
   };
 
   const cartLineMatchesPick = (item, product, color, size) => {
@@ -665,15 +732,30 @@ const ProductPage = ({ sidebar }) => {
 
   const handleAddToCart = async (product, index, options = {}) => {
     const showModal = options.showModal !== false;
-    const chosenColor = selectedColors[index] || (product?.options?.color?.[0] || 'Default');
-    const chosenSize = selectedSizes[index] || (product?.options?.size?.[0] || 'One Size');
-    if (!productShipsToCountry(product, shipToCountry)) {
+    const { color: chosenColor, size: chosenSize } = resolvedColorSize(product, index);
+    if (!variantSelectable(product, index)) {
+      const oos = comboAvailableForCountry(product, chosenColor, chosenSize, shipToCountry) === false
+        || (product?.options?.size?.length && resolvedColorSize(product, index).sizesForColor.length === 0);
       setVariantAvailability((prev) => ({
         ...prev,
         [index]: {
           checking: false,
           available: false,
-          message: `This item is not available to ship to ${shipToCountryName(shipToCountry)}.`,
+          message: oos
+            ? `${chosenColor} / ${chosenSize} is out of stock for shipping to ${shipToCountryName(shipToCountry)}.`
+            : `This item is not available to ship to ${shipToCountryName(shipToCountry)}.`,
+        },
+      }));
+      return null;
+    }
+    const listedCombo = comboAvailableForCountry(product, chosenColor, chosenSize, shipToCountry);
+    if (listedCombo === false) {
+      setVariantAvailability((prev) => ({
+        ...prev,
+        [index]: {
+          checking: false,
+          available: false,
+          message: `${chosenColor} / ${chosenSize} is out of stock for shipping to ${shipToCountryName(shipToCountry)}.`,
         },
       }));
       return null;
@@ -694,6 +776,58 @@ const ProductPage = ({ sidebar }) => {
       return null;
     }
     rememberPickedProduct(product, index);
+    const printful_variant_id = resolvePrintfulVariantId(product, chosenColor, chosenSize);
+    try {
+      const res = await fetch(apiJoin('/api/check-variant-availability'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product: product?.name || '',
+          color: chosenColor,
+          size: chosenSize,
+          variant_id: printful_variant_id,
+          country_code: shipToCountry,
+        }),
+      });
+      if (!res.ok) {
+        setVariantAvailability((prev) => ({
+          ...prev,
+          [index]: {
+            checking: false,
+            available: false,
+            message: `${chosenColor} / ${chosenSize} could not be confirmed in stock for ${shipToCountryName(shipToCountry)}. Choose a different size or color.`,
+          },
+        }));
+        return null;
+      }
+      const data = await res.json();
+      if (!data?.success || data?.available !== true) {
+        setVariantAvailability((prev) => ({
+          ...prev,
+          [index]: {
+            checking: false,
+            available: false,
+            message: data?.error || `${chosenColor} / ${chosenSize} is out of stock for shipping to ${shipToCountryName(shipToCountry)}.`,
+          },
+        }));
+        return null;
+      }
+    } catch (e) {
+      setVariantAvailability((prev) => ({
+        ...prev,
+        [index]: {
+          checking: false,
+          available: false,
+          message: `${chosenColor} / ${chosenSize} could not be confirmed in stock. Choose a different size or color.`,
+        },
+      }));
+      return null;
+    }
+    setVariantAvailability((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
     // Use the URL stored when user clicked a screenshot so we send the exact image they selected (not thumbnail by mistake)
     const screenshotUrl = screenshotForNewCartItem();
 
@@ -721,7 +855,6 @@ const ProductPage = ({ sidebar }) => {
       Object.entries(videoMetadata).filter(([, value]) => value != null && value !== '')
     );
 
-    const printful_variant_id = resolvePrintfulVariantId(product, chosenColor, chosenSize);
     const item = {
       ...(isEditingCart && editingCartItem ? editingCartItem : {}),
       name: product?.name || 'Product',
@@ -1083,8 +1216,12 @@ const ProductPage = ({ sidebar }) => {
             /* ignore */
           }
           if (data.category && data.category !== wantedCategory) return;
-          writeBrowseCache(wantedCategory, data);
           paintProducts(data);
+          if (browseNeedsLiveStock(data) && attempt < retryDelaysMs.length - 1) {
+            lastError = new Error('catalog stock still warming');
+            continue;
+          }
+          writeBrowseCache(wantedCategory, data);
           return;
         } catch (err) {
           if (cancelled || controller.signal.aborted) return;
@@ -1131,9 +1268,8 @@ const ProductPage = ({ sidebar }) => {
         
         const availableSizes = getAvailableSizes(product, selectedColor);
         if (availableSizes.length === 0) {
-          // If no available sizes found, use first size from product options as fallback
-          if (product.options?.size?.[0] && !prevSizes[index]) {
-            newSelectedSizes[index] = product.options?.size[0];
+          if (prevSizes[index]) {
+            delete newSelectedSizes[index];
             hasChanges = true;
           }
           return;
@@ -1159,8 +1295,7 @@ const ProductPage = ({ sidebar }) => {
       let hasChanges = false;
       productData.products.forEach((product, index) => {
         if (!product?.options?.color?.length) return;
-        const selectedSize = selectedSizes[index] || product.options?.size?.[0];
-        const availableColors = getAvailableColors(product, selectedSize);
+        const availableColors = getColorsForCountry(product, shipToCountry);
         if (availableColors.length === 0) return;
         const currentColor = prevColors[index] || product.options.color[0];
         if (!currentColor || !availableColors.includes(currentColor)) {
@@ -1562,7 +1697,7 @@ const ProductPage = ({ sidebar }) => {
                 </button>
                 <div className="cart-section-buttons">
                   <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
-                  <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+                  <button className="checkout-btn" onClick={goToCheckout} disabled={cartHasUnavailableItems}>Checkout</button>
                 </div>
               </div>
             )}
@@ -1628,7 +1763,7 @@ const ProductPage = ({ sidebar }) => {
                     ) : (
                       <div className="cart-section-buttons">
                         <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
-                        <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+                        <button className="checkout-btn" onClick={goToCheckout} disabled={cartHasUnavailableItems}>Checkout</button>
                       </div>
                     )}
                   </div>
@@ -1639,7 +1774,7 @@ const ProductPage = ({ sidebar }) => {
                 <>
                   <div className="cart-section-buttons">
                     <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
-                    <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+                    <button className="checkout-btn" onClick={goToCheckout} disabled={cartHasUnavailableItems}>Checkout</button>
                   </div>
                 </>
               )}
@@ -1678,7 +1813,7 @@ const ProductPage = ({ sidebar }) => {
             <div className="products-grid">
               {productData.products && productData.products.map((product, index) => {
                 const cardUnavailable = variantAvailability[index]?.available === false
-                  || !productShipsToCountry(product, shipToCountry);
+                  || !variantSelectable(product, index);
                 const isAddingThis = addingProductIndex === index;
                 return (
                 <div
@@ -1729,20 +1864,18 @@ const ProductPage = ({ sidebar }) => {
                   <div className="product-options" onClick={(e) => e.stopPropagation()}>
                     {/* Color Options - reserved: use product.options.color / selectedColors only */}
                     {product.options && product.options.color && product.options.color.length > 0 && (() => {
-                      const selectedSize = selectedSizes[index] || product.options?.size?.[0];
-                      const availableColors = getAvailableColors(product, selectedSize);
-                      const currentColor = selectedColors[index] || product.options?.color?.[0] || '';
-                      const displayColor = availableColors.includes(currentColor)
-                        ? currentColor
-                        : (availableColors[0] || currentColor);
+                      const { color: displayColor } = resolvedColorSize(product, index);
+                      const availableColors = getColorsForCountry(product, shipToCountry);
                       return (
                       <div className="option-group">
                         <label>Color:</label>
                         <select 
                           className="color-select"
-                          value={displayColor}
+                          value={availableColors.includes(displayColor) ? displayColor : (availableColors[0] || '')}
+                          disabled={!availableColors.length}
                           onChange={(e) => {
                             rememberPickedProduct(product, index);
+                            clearVariantAvailability(index);
                             const newSelectedColors = { ...selectedColors };
                             const newColor = e.target.value;
                             newSelectedColors[index] = newColor;
@@ -1758,11 +1891,13 @@ const ProductPage = ({ sidebar }) => {
                             }
                           }}
                         >
-                          {availableColors.map((color, colorIndex) => (
+                          {availableColors.length ? availableColors.map((color, colorIndex) => (
                             <option key={colorIndex} value={color}>
                               {color}
                             </option>
-                          ))}
+                          )) : (
+                            <option value="">Not available</option>
+                          )}
                         </select>
                       </div>
                       );
@@ -1777,6 +1912,7 @@ const ProductPage = ({ sidebar }) => {
                           value={selectedColors[index] || product.options.handle_color[0]}
                           onChange={(e) => {
                             rememberPickedProduct(product, index);
+                            clearVariantAvailability(index);
                             const newSelectedColors = { ...selectedColors };
                             newSelectedColors[index] = e.target.value;
                             setSelectedColors(newSelectedColors);
@@ -1799,13 +1935,11 @@ const ProductPage = ({ sidebar }) => {
                       const currentSize = selectedSizes[index];
                       
                       // Determine the size to display - use current if available, otherwise first available
-                      let displaySize;
+                      let displaySize = '';
                       if (currentSize && availableSizes.includes(currentSize)) {
                         displaySize = currentSize;
                       } else if (availableSizes.length > 0) {
                         displaySize = availableSizes[0];
-                      } else {
-                        displaySize = product.options?.size?.[0];
                       }
                       
                       return (
@@ -1814,8 +1948,10 @@ const ProductPage = ({ sidebar }) => {
                           <select 
                             className="size-select"
                             value={displaySize}
+                            disabled={!availableSizes.length}
                             onChange={(e) => {
                               rememberPickedProduct(product, index);
+                              clearVariantAvailability(index);
                               const newSelectedSizes = { ...selectedSizes };
                               const nextSize = e.target.value;
                               newSelectedSizes[index] = nextSize;
@@ -1828,11 +1964,13 @@ const ProductPage = ({ sidebar }) => {
                               }
                             }}
                           >
-                            {availableSizes.map((size, sizeIndex) => (
+                            {availableSizes.length ? availableSizes.map((size, sizeIndex) => (
                               <option key={sizeIndex} value={size}>
                                 {size}
                               </option>
-                            ))}
+                            )) : (
+                              <option value="">Not available</option>
+                            )}
                           </select>
                         </div>
                       );
@@ -1853,7 +1991,7 @@ const ProductPage = ({ sidebar }) => {
                     disabled={
                       isAddingThis
                       || variantAvailability[index]?.available === false
-                      || !productShipsToCountry(product, shipToCountry)
+                      || !variantSelectable(product, index)
                     }
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1885,7 +2023,7 @@ const ProductPage = ({ sidebar }) => {
               )}
               <div className="cart-section cart-section-bottom">
                 <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
-                <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+                <button className="checkout-btn" onClick={goToCheckout} disabled={cartHasUnavailableItems}>Checkout</button>
               </div>
             </div>
           </div>
@@ -1935,7 +2073,7 @@ const ProductPage = ({ sidebar }) => {
                 </div>
                 <div className="cart-actions">
                   <button className="view-cart-btn" onClick={() => setIsCartOpen(false)}>Continue Shopping</button>
-                  <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+                  <button className="checkout-btn" onClick={goToCheckout} disabled={cartHasUnavailableItems}>Checkout</button>
                   <button className="edit-tools-btn" onClick={goToToolsPage}>Customize Design</button>
                 </div>
               </div>

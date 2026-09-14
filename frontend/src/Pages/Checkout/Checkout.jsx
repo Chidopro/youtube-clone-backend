@@ -26,6 +26,7 @@ const Checkout = () => {
   const [items, setItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
   const [shipping, setShipping] = useState({ cost: 0, tax: 0, taxLabel: '', method: 'Standard Shipping', loading: false, error: '', calculated: false });
+  const [stockError, setStockError] = useState('');
   const [address, setAddress] = useState({ country_code: readShipToCountry(), zip: '', state_code: '' });
   const shippingRef = useRef(shipping);
   // Design preferences modal – per-item orientation; tools live on /tools
@@ -130,8 +131,59 @@ const Checkout = () => {
     }
   }, [address.country_code, items.length]);
 
+  useEffect(() => {
+    if (!items.length) {
+      setStockError('');
+      return undefined;
+    }
+    let cancelled = false;
+    const countryValue = String(address.country_code || 'US').trim();
+    const run = async () => {
+      const unavailable = [];
+      await Promise.all(items.map(async (it) => {
+        const product = it.product || it.name || '';
+        const color = it.color || it.variants?.color || '';
+        const size = it.size || it.variants?.size || '';
+        if (!product || !size) return;
+        try {
+          const res = await fetch(apiJoin('/api/check-variant-availability'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product,
+              color,
+              size,
+              country_code: countryValue,
+            }),
+          });
+          if (!res.ok) {
+            unavailable.push(`${product}${color || size ? ` (${[color, size].filter(Boolean).join(' / ')})` : ''}`);
+            return;
+          }
+          const data = await res.json();
+          if (!data?.success || data?.available !== true) {
+            unavailable.push(`${product}${color || size ? ` (${[color, size].filter(Boolean).join(' / ')})` : ''}`);
+          }
+        } catch {
+          unavailable.push(`${product}${color || size ? ` (${[color, size].filter(Boolean).join(' / ')})` : ''}`);
+        }
+      }));
+      if (cancelled) return;
+      if (unavailable.length) {
+        const dest = CHECKOUT_COUNTRY_OPTIONS.find((o) => o.code === countryValue)?.name || countryValue;
+        setStockError(`These selections are out of stock for shipping to ${dest}: ${unavailable.join('; ')}. Choose a different size or color.`);
+        setShipping((s) => ({ ...s, calculated: false, cost: 0, tax: 0, error: '', loading: false }));
+      } else {
+        setStockError('');
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [address.country_code, items.map((it) => `${it.product || it.name}|${it.color}|${it.size}`).join('|')]);
+
   const fetchShipping = useCallback(async () => {
     if (items.length === 0) return;
+    if (stockError) return;
     const countryValue = String(address.country_code || 'US').trim();
     if (needsStateForShipping(countryValue) && !hasStateSelected(address.state_code)) {
       setShipping((s) => ({ ...s, loading: false }));
@@ -327,14 +379,14 @@ const Checkout = () => {
       shippingRef.current = errorState;
       // Don't show alert here - let the error display inline to avoid duplicate messages
     }
-  }, [items, address]);
+  }, [items, address, stockError]);
 
   // Auto-calculate shipping when ZIP (and US/CA state) look complete (debounced)
   useEffect(() => {
     const cc = String(address.country_code || 'US').trim();
     const zipOk = postalLooksComplete(cc, address.zip);
     const stateOk = !needsStateForShipping(cc) || hasStateSelected(address.state_code);
-    if (zipOk && stateOk && !shipping.calculated && !shipping.loading && items.length > 0) {
+    if (zipOk && stateOk && !stockError && !shipping.calculated && !shipping.loading && items.length > 0) {
       console.log('⏱️ Auto-calculating shipping in 800ms for ZIP:', address.zip);
       const timer = setTimeout(() => {
         console.log('🚀 Triggering auto-calculate shipping...');
@@ -358,6 +410,10 @@ const Checkout = () => {
   /** Run actual checkout (build payload, POST, redirect). Call after design modal "Continue to Checkout". */
   const runCheckout = useCallback(async (cartOverride = null) => {
     if (isDemoStorefront()) return;
+    if (stockError) {
+      alert(stockError);
+      return;
+    }
     if (!isShopperSignedIn()) {
       setShowAuthModal(true);
       return;
@@ -372,6 +428,10 @@ const Checkout = () => {
     }
     const stateUpper = stateTrim ? stateTrim.toUpperCase().slice(0, 32) : '';
     const currentShipping = shippingRef.current;
+    if (currentShipping.error || !currentShipping.calculated || !(Number(currentShipping.cost) > 0)) {
+      alert(currentShipping.error || 'Please wait for shipping to be calculated before checkout.');
+      return;
+    }
     const shippingCost = currentShipping.cost || 0;
     const fulfillmentTax = currentShipping.tax || 0;
 
@@ -802,6 +862,10 @@ const Checkout = () => {
                     <button 
                       className="btn-primary" 
                       onClick={() => {
+                        if (stockError) {
+                          alert(stockError);
+                          return;
+                        }
                         if (!address.zip || !address.zip.trim()) {
                           alert('⚠️ Please enter your ZIP / Postal Code first.');
                           return;
@@ -820,6 +884,7 @@ const Checkout = () => {
                       id="calc-shipping-btn" 
                       disabled={
                         shipping.loading
+                        || !!stockError
                         || !address.zip
                         || !address.zip.trim()
                         || (needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code))
@@ -834,10 +899,10 @@ const Checkout = () => {
                         borderRadius: '12px',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
-                        cursor: (shipping.loading || !address.zip || !address.zip.trim()
+                        cursor: (shipping.loading || !!stockError || !address.zip || !address.zip.trim()
                           || (needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code)))
                           ? 'not-allowed' : 'pointer',
-                        opacity: (shipping.loading || !address.zip || !address.zip.trim()
+                        opacity: (shipping.loading || !!stockError || !address.zip || !address.zip.trim()
                           || (needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code)))
                           ? 0.6 : 1
                       }}
@@ -874,7 +939,19 @@ const Checkout = () => {
                     </button>
                   </div>
                 </div>
-                {shipping.error && (
+                {stockError && (
+                  <div className="error-message" style={{ 
+                    background: '#f8d7da', 
+                    color: '#721c24', 
+                    padding: '12px', 
+                    borderRadius: '8px', 
+                    marginTop: '10px',
+                    border: '1px solid #f5c6cb'
+                  }}>
+                    {stockError}
+                  </div>
+                )}
+                {shipping.error && !stockError && (
                   <div className="error-message" style={{ 
                     background: '#f8d7da', 
                     color: '#721c24', 
@@ -968,26 +1045,38 @@ const Checkout = () => {
               <button 
                 className="btn-primary btn-large" 
                 disabled={
-                  !address.zip
+                  !!stockError
+                  || !address.zip
                   || !address.zip.trim()
                   || shipping.loading
                   || isCheckoutLoading
+                  || !!shipping.error
+                  || !shipping.calculated
+                  || !(Number(shipping.cost) > 0)
                   || (needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code))
                 }
                 style={{
-                  opacity: (!address.zip || !address.zip.trim() || shipping.loading || isCheckoutLoading
+                  opacity: (stockError || !address.zip || !address.zip.trim() || shipping.loading || isCheckoutLoading
+                    || !!shipping.error || !shipping.calculated || !(Number(shipping.cost) > 0)
                     || (needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code)))
                     ? 0.5 : 1,
-                  cursor: (!address.zip || !address.zip.trim() || shipping.loading || isCheckoutLoading
+                  cursor: (stockError || !address.zip || !address.zip.trim() || shipping.loading || isCheckoutLoading
+                    || !!shipping.error || !shipping.calculated || !(Number(shipping.cost) > 0)
                     || (needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code)))
                     ? 'not-allowed' : 'pointer'
                 }}
-                title={!address.zip || !address.zip.trim() 
+                title={stockError
+                  ? stockError
+                  : !address.zip || !address.zip.trim() 
                   ? 'Please enter ZIP code'
                   : (needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code))
                   ? 'Please select state or province'
                   : shipping.loading
                   ? 'Calculating shipping...'
+                  : shipping.error
+                  ? shipping.error
+                  : (!shipping.calculated || !(Number(shipping.cost) > 0))
+                  ? 'Calculate shipping before checkout'
                   : 'Ready to checkout'}
                 onClick={() => {
                 // Require design preferences only for shirts (Womens, Mens, Kids). Other categories skip modal.

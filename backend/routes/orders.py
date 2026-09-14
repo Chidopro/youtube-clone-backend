@@ -47,6 +47,7 @@ from checkout_countries import (
 from printful_catalog import (
     MUG_OZ_CATALOG_PRODUCT_IDS,
     PRINTFUL_PLACEHOLDER_ART_URL,
+    canonical_storefront_size,
     catalog_product_id_for_product_name,
     combo_available_for_country,
     lookup_catalog_variant_id,
@@ -57,7 +58,6 @@ from printful_catalog import (
 from printful_regions import (
     au_state_code_from_postcode,
     normalize_ship_to_country,
-    probe_recipient_for_country,
 )
 from printful_shipping_buckets import printful_table_shipping_floor_usd
 from printful_estimate import (
@@ -74,11 +74,36 @@ logger = logging.getLogger(__name__)
 orders_bp = Blueprint('orders', __name__)
 
 
+_DESTINATION_LABELS = {
+    "US": "the United States",
+    "CA": "Canada",
+    "GB": "the United Kingdom",
+    "IE": "Ireland",
+    "AU": "Australia",
+    "DE": "Germany",
+}
+
+
+def _destination_label(country_code: str) -> str:
+    code = normalize_ship_to_country(country_code)
+    return _DESTINATION_LABELS.get(code, code)
+
+
+def _country_from_order_payload(data) -> str:
+    if not isinstance(data, dict):
+        return "US"
+    addr = data.get("shipping_address")
+    if not isinstance(addr, dict):
+        addr = {}
+    return normalize_ship_to_country(
+        addr.get("country_code") or data.get("country_code") or data.get("country") or "US"
+    )
+
+
 def _line_out_of_stock_message(item: dict) -> str:
     """Human-readable cart line label for shipping/availability errors."""
     name = str(item.get("product") or item.get("name") or "Item").strip()
-    color = str(item.get("color") or "").strip()
-    size = str(item.get("size") or "").strip()
+    color, size = _shipping_line_color_size(item)
     if color and size:
         return f"{name} ({color} / {size})"
     if color:
@@ -535,12 +560,49 @@ def _record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=N
         logger.error(f"❌ Error recording sale: {str(e)}")
 
 
-def _validate_product_availability(cart):
-    """Validate color-size availability for cart items"""
-    for item in cart:
-        product_name = item.get('product', '')
-        color = item.get('variants', {}).get('color', '')
-        size = item.get('variants', {}).get('size', '')
+def _printful_oos_cart_lines(cart, country_code: str) -> list:
+    """Cart lines Printful catalog availability marks out of stock for this ship-to."""
+    unavailable = []
+    dest = normalize_ship_to_country(country_code)
+    for item in cart or []:
+        product_name = str(item.get("product") or item.get("name") or "").strip()
+        color, size = _shipping_line_color_size(item)
+        if not product_name or not size:
+            continue
+        region_ok = combo_available_for_country(product_name, color, size, dest)
+        if region_ok is False:
+            unavailable.append(_line_out_of_stock_message(item))
+        elif region_ok is None and catalog_product_id_for_product_name(product_name):
+            unavailable.append(_line_out_of_stock_message(item))
+    return unavailable
+
+
+def _out_of_stock_payload(unavailable_items: list, country_code: str = "US"):
+    dest = _destination_label(country_code)
+    if unavailable_items:
+        error = (
+            f"These selections are out of stock for shipping to {dest}: "
+            + "; ".join(unavailable_items)
+            + "."
+        )
+    else:
+        error = f"One or more items are out of stock for shipping to {dest}."
+    return {
+        "success": False,
+        "code": "OUT_OF_STOCK",
+        "error": error,
+        "unavailable_items": unavailable_items,
+        "action": "Choose a different color or size, then try again.",
+    }
+
+
+def _validate_product_availability(cart, country_code: str = "US"):
+    """Validate catalog rules plus live Printful region stock for the ship-to country."""
+    dest = normalize_ship_to_country(country_code)
+    for item in cart or []:
+        product_name = str(item.get("product") or item.get("name") or "").strip()
+        color, size = _shipping_line_color_size(item)
+        size_key = canonical_storefront_size(size)
         
         # Women's Ribbed Neck restrictions
         if product_name == "Women's Ribbed Neck":
@@ -550,7 +612,7 @@ def _validate_product_availability(cart):
                 "Cotton Pink", "Lavender"
             ]
             restricted_sizes = ["XXXL", "XXXXL", "XXXXXL"]
-            if color in restricted_colors and size in restricted_sizes:
+            if color in restricted_colors and size_key in restricted_sizes:
                 return False, f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
         
         # Women's Crop Top restrictions
@@ -568,15 +630,15 @@ def _validate_product_availability(cart):
             xl5_colors = {
                 "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather",
             }
-            if size == "XS" and color and color not in xs_colors:
+            if size_key == "XS" and color and color not in xs_colors:
                 return False, f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
-            if size == "XXXXXL" and color and color not in xl5_colors:
+            if size_key == "XXXXXL" and color and color not in xl5_colors:
                 return False, f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
 
         # Mens Fitted T-Shirt — XS color limits
         if product_name == "Mens Fitted T-Shirt":
             xs_colors = {"Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue"}
-            if size == "XS" and color and color not in xs_colors:
+            if size_key == "XS" and color and color not in xs_colors:
                 return False, f"{color} is not available in size XS for Mens Fitted T-Shirt. Please select a different size or color."
 
         # Men's Long Sleeve Shirt — size-specific color limits
@@ -586,9 +648,9 @@ def _validate_product_availability(cart):
                 "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue",
             }
             xxxxl_colors = {"Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"}
-            if size == "XXXL" and color and color not in xxxl_colors:
+            if size_key == "XXXL" and color and color not in xxxl_colors:
                 return False, f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
-            if size == "XXXXL" and color and color not in xxxxl_colors:
+            if size_key == "XXXXL" and color and color not in xxxxl_colors:
                 return False, f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
 
         # Colored Mug — 15 oz does not offer Yellow / Orange / Golden Yellow / Green
@@ -596,6 +658,10 @@ def _validate_product_availability(cart):
             unavailable_in_15oz = ["Yellow", "Orange", "Golden Yellow", "Green"]
             if color in unavailable_in_15oz and size == "15 oz":
                 return False, f"{color} is not available in size 15 oz for Colored Mug. Please select a different size or color."
+
+    oos_lines = _printful_oos_cart_lines(cart, dest)
+    if oos_lines:
+        return False, _out_of_stock_payload(oos_lines, dest)["error"]
     
     return True, None
 
@@ -628,10 +694,12 @@ def place_order():
             response = jsonify({"success": False, "error": "Cart is empty"})
             return _allow_origin(response), 400
         
-        # Validate product availability
-        is_valid, error_msg = _validate_product_availability(cart)
+        ship_country = _country_from_order_payload(data)
+        is_valid, error_msg = _validate_product_availability(cart, ship_country)
         if not is_valid:
-            response = jsonify({"success": False, "error": error_msg})
+            oos = _printful_oos_cart_lines(cart, ship_country)
+            payload = _out_of_stock_payload(oos, ship_country) if oos else {"success": False, "error": error_msg}
+            response = jsonify(payload)
             return _allow_origin(response), 400
         
         # Validate shipping address
@@ -878,9 +946,12 @@ def send_order():
         if not cart:
             return jsonify({"success": False, "error": "Cart is empty"}), 400
         
-        # Validate product availability
-        is_valid, error_msg = _validate_product_availability(cart)
+        ship_country = _country_from_order_payload(data)
+        is_valid, error_msg = _validate_product_availability(cart, ship_country)
         if not is_valid:
+            oos = _printful_oos_cart_lines(cart, ship_country)
+            if oos:
+                return jsonify(_out_of_stock_payload(oos, ship_country)), 400
             return jsonify({"success": False, "error": error_msg}), 400
         
         # Generate order ID
@@ -1079,10 +1150,12 @@ def create_checkout_session():
         product_id = data.get("product_id")
         sms_consent = data.get("sms_consent", False)
         
-        # Validate product availability
-        is_valid, error_msg = _validate_product_availability(cart)
+        ship_country = _country_from_order_payload(data)
+        is_valid, error_msg = _validate_product_availability(cart, ship_country)
         if not is_valid:
-            response = jsonify({"error": error_msg})
+            oos = _printful_oos_cart_lines(cart, ship_country)
+            payload = _out_of_stock_payload(oos, ship_country) if oos else {"error": error_msg}
+            response = jsonify(payload)
             return _allow_origin(response), 400
         
         # Validate shipping address
@@ -1952,6 +2025,10 @@ def calculate_shipping():
                 "success": False,
                 "error": "No cart items provided"
             }), 400
+
+        oos_items = _printful_oos_cart_lines(cart, country)
+        if oos_items:
+            return jsonify(_out_of_stock_payload(oos_items, country)), 409
         
         postal_code = _parse_zip(shipping_address)
         if not postal_code:
@@ -2151,17 +2228,17 @@ def check_variant_availability():
         product = str(data.get("product") or "").strip()
         color = str(data.get("color") or "").strip()
         size = str(data.get("size") or "").strip()
-        variant_id = data.get("variant_id")
         country_code = normalize_ship_to_country(data.get("country_code") or data.get("country") or "US")
 
         if not product:
             return jsonify({"success": False, "error": "Product is required."}), 400
 
-        # First apply local rule-based availability restrictions.
         ok_rules, msg = _validate_product_availability([{
             "product": product,
+            "color": color,
+            "size": size,
             "variants": {"color": color, "size": size},
-        }])
+        }], country_code)
         if not ok_rules:
             return jsonify({
                 "success": True,
@@ -2171,78 +2248,7 @@ def check_variant_availability():
                 "action": "Please choose a different color, size, or product.",
             }), 200
 
-        region_ok = combo_available_for_country(product, color, size, country_code)
-        if region_ok is False:
-            dest = {
-                "US": "the United States",
-                "CA": "Canada",
-                "GB": "the United Kingdom",
-                "IE": "Ireland",
-                "AU": "Australia",
-                "DE": "Germany",
-            }.get(country_code, country_code)
-            return jsonify({
-                "success": True,
-                "available": False,
-                "code": "OUT_OF_STOCK",
-                "error": f"{product} ({color} / {size}) is not available to ship to {dest}.",
-                "action": "Choose another color or size, or switch the ship-to country in the header.",
-            }), 200
-
-        resolved_vid = None
-        try:
-            if variant_id is not None and str(variant_id).strip() != "":
-                resolved_vid = int(variant_id)
-        except (TypeError, ValueError):
-            resolved_vid = None
-        # Browse API payloads often omit printful_variant_map; resolve server-side from catalog.
-        if not resolved_vid and size:
-            cat_id = catalog_product_id_for_product_name(product)
-            if cat_id:
-                resolved_vid = lookup_catalog_variant_id(int(cat_id), color or "", size)
-        if not resolved_vid:
-            # Cannot map to a Printful variant — do not falsely mark out of stock.
-            return jsonify({
-                "success": True,
-                "available": True,
-                "variant_lookup_skipped": True,
-            }), 200
-
-        variant_id = resolved_vid
-
-        printful_api_key = _get_config('PRINTFUL_API_KEY')
-        if not printful_api_key:
-            return jsonify({
-                "success": False,
-                "error": "Live availability check is temporarily unavailable."
-            }), 503
-
-        shipping_payload = {
-            "recipient": probe_recipient_for_country(country_code),
-            "items": [{"variant_id": variant_id, "quantity": 1}],
-            "currency": "USD",
-        }
-        response = requests.post(
-            "https://api.printful.com/shipping/rates",
-            json=shipping_payload,
-            headers=printful_request_headers(printful_api_key, json_body=True),
-            timeout=10,
-        )
-        body_text = (response.text or "")
-        if response.status_code == 200:
-            return jsonify({"success": True, "available": True})
-        if response.status_code == 400 and "out of stock" in body_text.lower():
-            return jsonify({
-                "success": True,
-                "available": False,
-                "code": "OUT_OF_STOCK",
-                "error": f"This option may not be available right now: {product} ({color} / {size}).",
-                "action": "Try another color or size.",
-            }), 200
-        return jsonify({
-            "success": False,
-            "error": "Unable to verify availability right now. Please try again.",
-        }), 503
+        return jsonify({"success": True, "available": True})
     except Exception as e:
         logger.error("check-variant-availability failed: %s", e)
         return jsonify({

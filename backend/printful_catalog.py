@@ -326,6 +326,31 @@ def normalize_printful_size(size: str) -> str:
     return SIZE_TO_PRINTFUL.get(s, s)
 
 
+# Printful catalog labels (5XL) -> storefront option keys (XXXXXL) for hardcoded rules.
+_PRINTFUL_XL_TO_STOREFRONT = {
+    "2XL": "XXL",
+    "3XL": "XXXL",
+    "4XL": "XXXXL",
+    "5XL": "XXXXXL",
+}
+_STOREFRONT_LETTER_SIZES = frozenset({
+    "XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL",
+})
+
+
+def canonical_storefront_size(size: str) -> str:
+    """Map 5XL/4XL/… to XXXXXL/XXXXL/… so availability rules match cart labels."""
+    s = str(size or "").strip()
+    if not s:
+        return s
+    upper = s.upper()
+    if upper in _PRINTFUL_XL_TO_STOREFRONT:
+        return _PRINTFUL_XL_TO_STOREFRONT[upper]
+    if upper in _STOREFRONT_LETTER_SIZES:
+        return upper
+    return s
+
+
 def _apply_catalog_color_aliases(catalog_product_id: int, color: str) -> str:
     aliases = CATALOG_COLOR_ALIASES.get(catalog_product_id, {})
     if not color or not aliases:
@@ -916,11 +941,12 @@ def _storefront_size_color_base(product: Dict[str, Any]) -> Dict[str, List[str]]
 def build_regional_size_color_availability(
     product: Dict[str, Any],
     catalog_product_id: int,
+    fetch_stock: bool = True,
 ) -> Dict[str, Dict[str, List[str]]]:
-    """Filter the US size/color matrix by Printful stock for CA / GB / IE / AU / DE."""
+    """Filter the catalog size/color matrix by live Printful stock for each ship-to country."""
     from printful_regions import (
-        REGIONAL_FILTER_COUNTRIES,
-        get_variant_region_stock,
+        LIVE_STOCK_COUNTRIES,
+        get_variant_region_stock_meta,
         variant_available_for_country,
     )
 
@@ -928,7 +954,7 @@ def build_regional_size_color_availability(
     if not base:
         return {}
     try:
-        stock = get_variant_region_stock(int(catalog_product_id))
+        stock, complete = get_variant_region_stock_meta(int(catalog_product_id), fetch=fetch_stock)
     except Exception as e:
         logger.warning("Region stock load failed catalog_product_id=%s: %s", catalog_product_id, e)
         return {}
@@ -936,17 +962,20 @@ def build_regional_size_color_availability(
         return {}
 
     regional: Dict[str, Dict[str, List[str]]] = {}
-    for country in REGIONAL_FILTER_COUNTRIES:
+    for country in LIVE_STOCK_COUNTRIES:
         filtered: Dict[str, List[str]] = {}
         for size, colors in base.items():
             kept: List[str] = []
             for color in colors:
                 vid = lookup_catalog_variant_id(int(catalog_product_id), color, size)
                 if vid is None:
-                    kept.append(color)
+                    if not complete:
+                        kept.append(color)
                     continue
                 regions = stock.get(int(vid))
                 if regions is None:
+                    if not complete:
+                        kept.append(color)
                     continue
                 if variant_available_for_country(regions, country):
                     kept.append(color)
@@ -961,23 +990,23 @@ def combo_available_for_country(product_name: str, color: str, size: str, countr
     True/False when Printful region stock is known; None when we cannot tell
     (no catalog id, no stock map, or variant lookup miss).
     """
-    from printful_regions import get_variant_region_stock, variant_available_for_country
+    from printful_regions import get_variant_region_stock_meta, variant_available_for_country
 
     pid = catalog_product_id_for_product_name(product_name)
     if not pid:
         return None
     try:
-        stock = get_variant_region_stock(int(pid))
+        stock, complete = get_variant_region_stock_meta(int(pid))
     except Exception:
         return None
     if not stock:
         return None
     vid = lookup_catalog_variant_id(int(pid), color or "", size or "")
     if vid is None:
-        return None
+        return False if complete else None
     regions = stock.get(int(vid))
     if regions is None:
-        return False
+        return False if complete else None
     return variant_available_for_country(regions, country)
 
 
@@ -1010,7 +1039,7 @@ def start_printful_catalog_warmup() -> None:
 
     def _run() -> None:
         logger.info("Printful catalog warmup starting ids=%s", len(ids))
-        with ThreadPoolExecutor(max_workers=6) as pool:
+        with ThreadPoolExecutor(max_workers=1) as pool:
             list(pool.map(_warm_catalog_id, ids))
         logger.info("Printful catalog warmup finished")
 
@@ -1041,21 +1070,23 @@ def attach_printful_catalog_data(product: Dict[str, Any], fetch_if_missing: bool
                     nested[alias] = dict(bucket)
         if nested:
             out["printful_variant_map"] = nested
-            if fetch_if_missing:
-                regional = build_regional_size_color_availability(out, int(pid))
-                if regional:
-                    out["regional_size_color_availability"] = regional
+            regional = build_regional_size_color_availability(
+                out, int(pid), fetch_stock=fetch_if_missing
+            )
+            if regional:
+                out["regional_size_color_availability"] = regional
     except Exception as e:
         logger.warning("attach_printful_catalog_data(%s): %s", name, e)
-    if fetch_if_missing:
-        try:
-            from printful_regions import build_regional_base_prices
+    try:
+        from printful_regions import build_regional_base_prices
 
-            prices = build_regional_base_prices(float(out.get("price") or 0), int(pid))
-            if prices:
-                out["regional_base_prices"] = prices
-        except Exception as e:
-            logger.warning("attach_printful_catalog_data prices (%s): %s", name, e)
+        prices = build_regional_base_prices(
+            float(out.get("price") or 0), int(pid), fetch=fetch_if_missing
+        )
+        if prices:
+            out["regional_base_prices"] = prices
+    except Exception as e:
+        logger.warning("attach_printful_catalog_data prices (%s): %s", name, e)
     return out
 
 
@@ -1081,14 +1112,20 @@ def attach_printful_catalog_data_list(
             seen.add(int(pid))
             unique_ids.append(int(pid))
     if os.getenv("PRINTFUL_API_KEY") and unique_ids:
-        missing = [cid for cid in unique_ids if not _catalog_variant_map_cached(cid)]
+        from printful_regions import variant_region_stock_cached
+
+        missing = [
+            cid
+            for cid in unique_ids
+            if not _catalog_variant_map_cached(cid) or not variant_region_stock_cached(cid)
+        ]
         if missing:
             if blocking:
-                with ThreadPoolExecutor(max_workers=6) as pool:
+                with ThreadPoolExecutor(max_workers=1) as pool:
                     list(pool.map(_warm_catalog_id, missing))
             else:
                 def _bg(ids: List[int] = list(missing)) -> None:
-                    with ThreadPoolExecutor(max_workers=6) as pool:
+                    with ThreadPoolExecutor(max_workers=1) as pool:
                         list(pool.map(_warm_catalog_id, ids))
 
                 threading.Thread(

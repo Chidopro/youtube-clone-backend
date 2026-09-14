@@ -2805,95 +2805,14 @@ def send_order():
         if not cart:
             return jsonify({"success": False, "error": "Cart is empty"}), 400
         
-        # Validate color-size availability for each cart item
-        for item in cart:
-            product_name = item.get('product', '')
-            color = item.get('variants', {}).get('color', '')
-            size = item.get('variants', {}).get('size', '')
-            
-            # Check Women's Ribbed Neck availability
-            if product_name == "Women's Ribbed Neck":
-                # Colors that are NOT available in XXXL, XXXXL, XXXXXL
-                restricted_colors = [
-                    "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite",
-                    "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche",
-                    "Cotton Pink", "Lavender"
-                ]
-                
-                # Sizes that are restricted for certain colors
-                restricted_sizes = ["XXXL", "XXXXL", "XXXXXL"]
-                
-                if color in restricted_colors and size in restricted_sizes:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
-                    }), 400
-            
-            # Check Women's Crop Top availability
-            if product_name == "Women's Crop Top":
-                # Bubblegum is out of stock
-                if color == "Bubblegum":
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
-                    }), 400
-            
-            # Check T-Shirt availability (XS / 5XL color limits)
-            if product_name in ("Unisex T-Shirt", "T-Shirt"):
-                xs_colors = {
-                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red",
-                    "Black Heather", "Kelly", "Heather Midnight Navy", "Heather Prism Ice Blue",
-                    "Heather Prism Lilac", "Soft Cream",
-                }
-                xl5_colors = {
-                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather",
-                }
-                if size == "XS" and color and color not in xs_colors:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
-                    }), 400
-                if size == "XXXXXL" and color and color not in xl5_colors:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
-                    }), 400
-
-            # Check Mens Fitted T-Shirt availability (XS color limits)
-            if product_name == "Mens Fitted T-Shirt":
-                xs_colors = {"Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue"}
-                if size == "XS" and color and color not in xs_colors:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size XS for Mens Fitted T-Shirt. Please select a different size or color."
-                    }), 400
-
-            # Check Men's Long Sleeve Shirt availability
-            if product_name == "Men's Long Sleeve Shirt":
-                xxxl_colors = {
-                    "Black", "White", "Navy", "Royal", "Sport Grey", "Red", "Light Blue",
-                    "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue",
-                }
-                xxxxl_colors = {"Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"}
-                if size == "XXXL" and color and color not in xxxl_colors:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
-                    }), 400
-                if size == "XXXXL" and color and color not in xxxxl_colors:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
-                    }), 400
-
-            # Check Colored Mug availability
-            if product_name == "Colored Mug":
-                unavailable_in_15oz = ["Yellow", "Orange", "Golden Yellow", "Green"]
-                if color in unavailable_in_15oz and size == "15 oz":
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size 15 oz for Colored Mug. Please select a different size or color."
-                    }), 400
+        from routes.orders import _country_from_order_payload, _printful_oos_cart_lines, _out_of_stock_payload, _validate_product_availability
+        ship_country = _country_from_order_payload(data)
+        is_valid, error_msg = _validate_product_availability(cart, ship_country)
+        if not is_valid:
+            oos = _printful_oos_cart_lines(cart, ship_country)
+            if oos:
+                return jsonify(_out_of_stock_payload(oos, ship_country)), 400
+            return jsonify({"success": False, "error": error_msg}), 400
 
         # --- Email Formatting ---
         html_body = "<h1>New ScreenMerch Order</h1>"
@@ -3136,95 +3055,14 @@ def place_order():
                     logger.info(f"📸 Screenshot taken from cart item (not at top-level)")
                     break
 
-        # Validate color-size availability for each cart item
-        for item in cart:
-            product_name = item.get('product', '')
-            color = item.get('variants', {}).get('color', '')
-            size = item.get('variants', {}).get('size', '')
-            
-            # Check Women's Ribbed Neck availability
-            if product_name == "Women's Ribbed Neck":
-                # Colors that are NOT available in XXXL, XXXXL, XXXXXL
-                restricted_colors = [
-                    "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite",
-                    "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche",
-                    "Cotton Pink", "Lavender"
-                ]
-                
-                # Sizes that are restricted for certain colors
-                restricted_sizes = ["XXXL", "XXXXL", "XXXXXL"]
-                
-                if color in restricted_colors and size in restricted_sizes:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
-                    }), 400
-            
-            # Check Women's Crop Top availability
-            if product_name == "Women's Crop Top":
-                # Bubblegum is out of stock
-                if color == "Bubblegum":
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
-                    }), 400
-            
-            # Check T-Shirt availability (XS / 5XL color limits)
-            if product_name in ("Unisex T-Shirt", "T-Shirt"):
-                xs_colors = {
-                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red",
-                    "Black Heather", "Kelly", "Heather Midnight Navy", "Heather Prism Ice Blue",
-                    "Heather Prism Lilac", "Soft Cream",
-                }
-                xl5_colors = {
-                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather",
-                }
-                if size == "XS" and color and color not in xs_colors:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
-                    }), 400
-                if size == "XXXXXL" and color and color not in xl5_colors:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
-                    }), 400
-
-            # Check Mens Fitted T-Shirt availability (XS color limits)
-            if product_name == "Mens Fitted T-Shirt":
-                xs_colors = {"Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue"}
-                if size == "XS" and color and color not in xs_colors:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size XS for Mens Fitted T-Shirt. Please select a different size or color."
-                    }), 400
-
-            # Check Men's Long Sleeve Shirt availability
-            if product_name == "Men's Long Sleeve Shirt":
-                xxxl_colors = {
-                    "Black", "White", "Navy", "Royal", "Sport Grey", "Red", "Light Blue",
-                    "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue",
-                }
-                xxxxl_colors = {"Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"}
-                if size == "XXXL" and color and color not in xxxl_colors:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
-                    }), 400
-                if size == "XXXXL" and color and color not in xxxxl_colors:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
-                    }), 400
-
-            # Check Colored Mug availability
-            if product_name == "Colored Mug":
-                unavailable_in_15oz = ["Yellow", "Orange", "Golden Yellow", "Green"]
-                if color in unavailable_in_15oz and size == "15 oz":
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size 15 oz for Colored Mug. Please select a different size or color."
-                    }), 400
+        from routes.orders import _country_from_order_payload, _printful_oos_cart_lines, _out_of_stock_payload, _validate_product_availability
+        ship_country = _country_from_order_payload(data)
+        is_valid, error_msg = _validate_product_availability(cart, ship_country)
+        if not is_valid:
+            oos = _printful_oos_cart_lines(cart, ship_country)
+            if oos:
+                return jsonify(_out_of_stock_payload(oos, ship_country)), 400
+            return jsonify({"success": False, "error": error_msg}), 400
         
         # Validate shipping address using robust function
         ok, addr_result = require_shipping_address(data)
@@ -3624,87 +3462,14 @@ def create_checkout_session():
         product_id = data.get("product_id")
         sms_consent = data.get("sms_consent", False)
         
-        # Validate color-size availability for each cart item
-        for item in cart:
-            product_name = item.get('product', '')
-            color = item.get('variants', {}).get('color', '')
-            size = item.get('variants', {}).get('size', '')
-            
-            # Check Women's Ribbed Neck availability
-            if product_name == "Women's Ribbed Neck":
-                # Colors that are NOT available in XXXL, XXXXL, XXXXXL
-                restricted_colors = [
-                    "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite",
-                    "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche",
-                    "Cotton Pink", "Lavender"
-                ]
-                
-                # Sizes that are restricted for certain colors
-                restricted_sizes = ["XXXL", "XXXXL", "XXXXXL"]
-                
-                if color in restricted_colors and size in restricted_sizes:
-                    return jsonify({
-                        "error": f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
-                    }), 400
-            
-            # Check Women's Crop Top availability
-            if product_name == "Women's Crop Top":
-                # Bubblegum is out of stock
-                if color == "Bubblegum":
-                    return jsonify({
-                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
-                    }), 400
-            
-            # Check T-Shirt availability (XS / 5XL color limits)
-            if product_name in ("Unisex T-Shirt", "T-Shirt"):
-                xs_colors = {
-                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red",
-                    "Black Heather", "Kelly", "Heather Midnight Navy", "Heather Prism Ice Blue",
-                    "Heather Prism Lilac", "Soft Cream",
-                }
-                xl5_colors = {
-                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather",
-                }
-                if size == "XS" and color and color not in xs_colors:
-                    return jsonify({
-                        "error": f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
-                    }), 400
-                if size == "XXXXXL" and color and color not in xl5_colors:
-                    return jsonify({
-                        "error": f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
-                    }), 400
-
-            # Check Mens Fitted T-Shirt availability (XS color limits)
-            if product_name == "Mens Fitted T-Shirt":
-                xs_colors = {"Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue"}
-                if size == "XS" and color and color not in xs_colors:
-                    return jsonify({
-                        "error": f"{color} is not available in size XS for Mens Fitted T-Shirt. Please select a different size or color."
-                    }), 400
-
-            # Check Men's Long Sleeve Shirt availability
-            if product_name == "Men's Long Sleeve Shirt":
-                xxxl_colors = {
-                    "Black", "White", "Navy", "Royal", "Sport Grey", "Red", "Light Blue",
-                    "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue",
-                }
-                xxxxl_colors = {"Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"}
-                if size == "XXXL" and color and color not in xxxl_colors:
-                    return jsonify({
-                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
-                    }), 400
-                if size == "XXXXL" and color and color not in xxxxl_colors:
-                    return jsonify({
-                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
-                    }), 400
-
-            # Check Colored Mug availability
-            if product_name == "Colored Mug":
-                unavailable_in_15oz = ["Yellow", "Orange", "Golden Yellow", "Green"]
-                if color in unavailable_in_15oz and size == "15 oz":
-                    return jsonify({
-                        "error": f"{color} is not available in size 15 oz for Colored Mug. Please select a different size or color."
-                    }), 400
+        from routes.orders import _country_from_order_payload, _printful_oos_cart_lines, _out_of_stock_payload, _validate_product_availability
+        ship_country = _country_from_order_payload(data)
+        is_valid, error_msg = _validate_product_availability(cart, ship_country)
+        if not is_valid:
+            oos = _printful_oos_cart_lines(cart, ship_country)
+            if oos:
+                return jsonify(_out_of_stock_payload(oos, ship_country)), 400
+            return jsonify({"error": error_msg}), 400
         
         # Validate shipping address using robust function
         ok, addr_result = require_shipping_address(data)

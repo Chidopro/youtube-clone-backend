@@ -1,4 +1,5 @@
-"""Unit tests for Printful ship-to region stock matching (no live API)."""
+import os
+import time
 import unittest
 
 from printful_regions import (
@@ -6,7 +7,10 @@ from printful_regions import (
     regions_in_stock_from_availability_item,
     variant_available_for_country,
 )
-from printful_catalog import _storefront_size_color_base
+from printful_catalog import (
+    _storefront_size_color_base,
+    canonical_storefront_size,
+)
 
 
 class TestVariantAvailableForCountry(unittest.TestCase):
@@ -25,14 +29,15 @@ class TestVariantAvailableForCountry(unittest.TestCase):
     def test_us_not_australia(self):
         stocked = {"usa", "north_america"}
         self.assertTrue(variant_available_for_country(stocked, "US"))
-        self.assertTrue(variant_available_for_country(stocked, "CA"))
+        self.assertFalse(variant_available_for_country(stocked, "CA"))
         self.assertFalse(variant_available_for_country(stocked, "AU"))
         self.assertFalse(variant_available_for_country(stocked, "GB"))
 
     def test_uk_and_europe_for_gb(self):
         self.assertTrue(variant_available_for_country({"uk"}, "GB"))
-        self.assertTrue(variant_available_for_country({"europe"}, "GB"))
+        self.assertFalse(variant_available_for_country({"europe"}, "GB"))
         self.assertTrue(variant_available_for_country({"europe"}, "DE"))
+        self.assertTrue(variant_available_for_country({"germany"}, "DE"))
         self.assertFalse(variant_available_for_country({"uk"}, "DE"))
 
     def test_ireland_uses_europe_not_uk(self):
@@ -43,6 +48,7 @@ class TestVariantAvailableForCountry(unittest.TestCase):
     def test_canada_specific(self):
         self.assertTrue(variant_available_for_country({"canada"}, "CA"))
         self.assertFalse(variant_available_for_country({"canada"}, "US"))
+        self.assertFalse(variant_available_for_country({"usa"}, "CA"))
 
 
 class TestAuStateFromPostcode(unittest.TestCase):
@@ -72,6 +78,129 @@ class TestAvailabilityItemParse(unittest.TestCase):
             ],
         }
         self.assertEqual(regions_in_stock_from_availability_item(item), {"australia"})
+
+    def test_dtg_oos_ignores_embroidery_stock(self):
+        item = {
+            "catalog_variant_id": 5310,
+            "techniques": [
+                {
+                    "technique": "dtg",
+                    "selling_regions": [
+                        {"name": "usa", "availability": "in stock"},
+                        {"name": "australia", "availability": "out of stock"},
+                    ],
+                },
+                {
+                    "technique": "embroidery",
+                    "selling_regions": [
+                        {"name": "usa", "availability": "in stock"},
+                        {"name": "australia", "availability": "in stock"},
+                    ],
+                },
+            ],
+        }
+        self.assertEqual(
+            regions_in_stock_from_availability_item(item, ("dtg",)),
+            {"usa"},
+        )
+        self.assertNotIn("australia", regions_in_stock_from_availability_item(item, ("dtg",)))
+
+    def test_preferred_technique_does_not_fall_back(self):
+        item = {
+            "techniques": [
+                {
+                    "name": "Embroidery",
+                    "selling_regions": [{"name": "australia", "availability": "in stock"}],
+                }
+            ],
+        }
+        self.assertEqual(regions_in_stock_from_availability_item(item, ("dtg",)), set())
+
+    def test_v1_availability_status_maps_dashboard_regions(self):
+        from printful_regions import regions_in_stock_from_v1_variant
+
+        black_5xl = {
+            "id": 12871,
+            "availability_status": [
+                {"region": "US", "status": "in_stock"},
+                {"region": "CA", "status": "in_stock"},
+            ],
+        }
+        black_4xl = {
+            "id": 5310,
+            "availability_status": [
+                {"region": "US", "status": "in_stock"},
+                {"region": "AU", "status": "in_stock"},
+            ],
+        }
+        self.assertEqual(regions_in_stock_from_v1_variant(black_5xl), {"usa", "canada"})
+        self.assertEqual(regions_in_stock_from_v1_variant(black_4xl), {"usa", "australia"})
+        self.assertFalse(variant_available_for_country(regions_in_stock_from_v1_variant(black_5xl), "AU"))
+        self.assertTrue(variant_available_for_country(regions_in_stock_from_v1_variant(black_4xl), "AU"))
+
+    def test_unknown_stock_is_oos_for_catalog_checkout(self):
+        from unittest.mock import patch
+
+        from routes.orders import _printful_oos_cart_lines
+
+        cart = [{"product": "T-Shirt", "color": "Black", "size": "XXXXXL"}]
+        with patch("routes.orders.combo_available_for_country", return_value=None), patch(
+            "routes.orders.catalog_product_id_for_product_name", return_value=71
+        ):
+            lines = _printful_oos_cart_lines(cart, "AU")
+        self.assertEqual(lines, ["T-Shirt (Black / XXXXXL)"])
+
+
+class TestCanonicalStorefrontSize(unittest.TestCase):
+    def test_printful_five_xl_maps_to_storefront(self):
+        self.assertEqual(canonical_storefront_size("5XL"), "XXXXXL")
+        self.assertEqual(canonical_storefront_size("5xl"), "XXXXXL")
+        self.assertEqual(canonical_storefront_size("XXXXXL"), "XXXXXL")
+        self.assertEqual(canonical_storefront_size("XS"), "XS")
+        self.assertEqual(canonical_storefront_size("15 oz"), "15 oz")
+
+
+class TestCheckoutLiveStockGate(unittest.TestCase):
+    def test_white_5xl_blocked_when_printful_oos(self):
+        from unittest.mock import patch
+
+        from routes.orders import _printful_oos_cart_lines, _validate_product_availability
+
+        cart = [{
+            "product": "T-Shirt",
+            "color": "White",
+            "size": "XXXXXL",
+            "variants": {"color": "White", "size": "XXXXXL"},
+        }]
+        with patch("routes.orders.combo_available_for_country", return_value=False):
+            lines = _printful_oos_cart_lines(cart, "US")
+            ok, msg = _validate_product_availability(cart, "US")
+        self.assertEqual(lines, ["T-Shirt (White / XXXXXL)"])
+        self.assertFalse(ok)
+        self.assertIn("out of stock", msg.lower())
+        self.assertIn("White", msg)
+
+    def test_five_xl_alias_uses_live_stock(self):
+        from unittest.mock import patch
+
+        from routes.orders import _validate_product_availability
+
+        cart = [{"name": "T-Shirt", "color": "White", "size": "5XL"}]
+        with patch("routes.orders.combo_available_for_country", return_value=False):
+            ok, msg = _validate_product_availability(cart, "AU")
+        self.assertFalse(ok)
+        self.assertIn("Australia", msg)
+
+    def test_in_stock_combo_still_allowed(self):
+        from unittest.mock import patch
+
+        from routes.orders import _validate_product_availability
+
+        cart = [{"product": "T-Shirt", "color": "White", "size": "M"}]
+        with patch("routes.orders.combo_available_for_country", return_value=True):
+            ok, msg = _validate_product_availability(cart, "US")
+        self.assertTrue(ok)
+        self.assertIsNone(msg)
 
 
 class TestStorefrontSizeColorBase(unittest.TestCase):
@@ -109,13 +238,104 @@ class TestBuildRegionalMatrix(unittest.TestCase):
             "printful_catalog.lookup_catalog_variant_id",
             side_effect=lambda _pid, color, _size: ids.get(color),
         ), patch(
-            "printful_regions.get_variant_region_stock",
-            return_value=stock,
+            "printful_regions.get_variant_region_stock_meta",
+            return_value=(stock, True),
         ):
             regional = build_regional_size_color_availability(product, 71)
         self.assertEqual(regional["AU"]["S"], ["Black"])
-        self.assertEqual(regional["GB"]["S"], ["Black"])
-        self.assertEqual(regional["CA"]["S"], ["Black", "Red"])
+        self.assertEqual(regional.get("GB") or {}, {})
+        self.assertEqual(regional.get("CA") or {}, {})
+        self.assertEqual(regional["US"]["S"], ["Black", "Red"])
+
+    def test_canada_does_not_inherit_usa_stock(self):
+        from unittest.mock import patch
+
+        from printful_catalog import build_regional_size_color_availability
+
+        product = {"size_color_availability": {"XXXXXL": ["Black", "White"]}}
+        ids = {("White", "XXXXXL"): 12872, ("Black", "XXXXXL"): 12871}
+        stock = {
+            12871: {"usa", "canada"},
+            12872: {"usa"},
+        }
+        with patch(
+            "printful_catalog.lookup_catalog_variant_id",
+            side_effect=lambda _pid, color, size: ids.get((color, size)),
+        ), patch(
+            "printful_regions.get_variant_region_stock_meta",
+            return_value=(stock, True),
+        ):
+            regional = build_regional_size_color_availability(product, 71)
+        self.assertEqual(regional["CA"]["XXXXXL"], ["Black"])
+        self.assertNotIn("White", regional["CA"].get("XXXXXL", []))
+        self.assertEqual(regional["US"]["XXXXXL"], ["Black", "White"])
+        self.assertEqual(regional.get("GB") or {}, {})
+        self.assertEqual(regional.get("IE") or {}, {})
+        self.assertEqual(regional.get("DE") or {}, {})
+
+    def test_us_live_stock_drops_oos_combo(self):
+        from unittest.mock import patch
+
+        from printful_catalog import build_regional_size_color_availability
+
+        product = {"size_color_availability": {"XXXXXL": ["Black", "White"]}}
+        ids = {("White", "XXXXXL"): 4012, ("Black", "XXXXXL"): 4011}
+        stock = {
+            4011: {"usa", "north_america"},
+            4012: {"australia"},
+        }
+        with patch(
+            "printful_catalog.lookup_catalog_variant_id",
+            side_effect=lambda _pid, color, size: ids.get((color, size)),
+        ), patch(
+            "printful_regions.get_variant_region_stock_meta",
+            return_value=(stock, True),
+        ):
+            regional = build_regional_size_color_availability(product, 71)
+        self.assertEqual(regional["US"]["XXXXXL"], ["Black"])
+        self.assertEqual(regional["AU"]["XXXXXL"], ["White"])
+        self.assertNotIn("White", regional["US"].get("XXXXXL", []))
+
+
+class TestComboAvailableMissingVsEmpty(unittest.TestCase):
+    def test_empty_regions_is_out_of_stock(self):
+        from unittest.mock import patch
+
+        from printful_catalog import combo_available_for_country
+
+        with patch("printful_catalog.catalog_product_id_for_product_name", return_value=71), patch(
+            "printful_catalog.lookup_catalog_variant_id", return_value=4012
+        ), patch(
+            "printful_regions.get_variant_region_stock_meta",
+            return_value=({4012: set()}, True),
+        ):
+            self.assertFalse(combo_available_for_country("T-Shirt", "White", "XXXXXL", "US"))
+
+    def test_missing_variant_unknown_when_stock_incomplete(self):
+        from unittest.mock import patch
+
+        from printful_catalog import combo_available_for_country
+
+        with patch("printful_catalog.catalog_product_id_for_product_name", return_value=71), patch(
+            "printful_catalog.lookup_catalog_variant_id", return_value=4012
+        ), patch(
+            "printful_regions.get_variant_region_stock_meta",
+            return_value=({99: {"usa"}}, False),
+        ):
+            self.assertIsNone(combo_available_for_country("T-Shirt", "White", "M", "US"))
+
+    def test_missing_variant_oos_when_stock_complete(self):
+        from unittest.mock import patch
+
+        from printful_catalog import combo_available_for_country
+
+        with patch("printful_catalog.catalog_product_id_for_product_name", return_value=71), patch(
+            "printful_catalog.lookup_catalog_variant_id", return_value=4012
+        ), patch(
+            "printful_regions.get_variant_region_stock_meta",
+            return_value=({99: {"usa"}}, True),
+        ):
+            self.assertFalse(combo_available_for_country("T-Shirt", "White", "M", "US"))
 
 
 class TestRegionalBasePrices(unittest.TestCase):
@@ -203,6 +423,68 @@ class TestRegionalBasePrices(unittest.TestCase):
         }]
         item = {"product": "T-Shirt", "price": 21.59, "variants": {"size": "XS"}}
         self.assertEqual(resolve_cart_item_unit_price(item, products, "GB"), 23.42)
+
+
+class TestCachedStockAttach(unittest.TestCase):
+    def test_fetch_false_uses_cache_only(self):
+        from unittest.mock import patch
+
+        from printful_regions import _stock_cache, _stock_lock, get_variant_region_stock
+
+        cid = 71001
+        with _stock_lock:
+            _stock_cache[cid] = (time.time() + 60, {12872: set()})
+        try:
+            with patch("printful_regions._fetch_catalog_region_stock") as fetch:
+                stock = get_variant_region_stock(cid, fetch=False)
+                fetch.assert_not_called()
+            self.assertEqual(stock, {12872: set()})
+        finally:
+            with _stock_lock:
+                _stock_cache.pop(cid, None)
+
+    def test_fetch_false_miss_is_empty(self):
+        from unittest.mock import patch
+
+        from printful_regions import get_variant_region_stock
+
+        with patch("printful_regions._fetch_catalog_region_stock") as fetch:
+            stock = get_variant_region_stock(71002, fetch=False)
+            fetch.assert_not_called()
+        self.assertEqual(stock, {})
+
+    def test_nonblocking_attach_uses_cached_stock(self):
+        from unittest.mock import patch
+
+        from printful_catalog import attach_printful_catalog_data
+
+        product = {
+            "name": "T-Shirt",
+            "price": 21.59,
+            "size_color_availability": {"XXXXXL": ["Black", "White"]},
+            "printful_catalog_product_id": 71,
+        }
+        nested = {
+            "White": {"5XL": 12872, "XXXXXL": 12872},
+            "Black": {"5XL": 12871, "XXXXXL": 12871},
+        }
+        stock = {12871: {"usa"}, 12872: {"australia"}}
+        ids = {"White": 12872, "Black": 12871}
+        with patch.dict(os.environ, {"PRINTFUL_API_KEY": "test"}, clear=False), patch(
+            "printful_catalog._catalog_variant_map_cached", return_value=True
+        ), patch(
+            "printful_catalog.get_nested_variant_map", return_value=nested
+        ), patch(
+            "printful_catalog.lookup_catalog_variant_id",
+            side_effect=lambda _pid, color, _size: ids.get(color),
+        ), patch(
+            "printful_regions.get_variant_region_stock_meta", return_value=(stock, True)
+        ):
+            out = attach_printful_catalog_data(product, fetch_if_missing=False)
+        regional = out.get("regional_size_color_availability") or {}
+        self.assertEqual(regional.get("US", {}).get("XXXXXL"), ["Black"])
+        self.assertEqual(regional.get("AU", {}).get("XXXXXL"), ["White"])
+        self.assertNotIn("White", regional.get("US", {}).get("XXXXXL", []))
 
 
 if __name__ == "__main__":

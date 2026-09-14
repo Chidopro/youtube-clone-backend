@@ -1,0 +1,19 @@
+---
+description: Keep storefront sizes and colors tied to each ship-to country's Printful stock
+alwaysApply: true
+---
+
+# Regional size/color stock
+
+Shoppers pick **Ship to** (US, CA, GB, IE, DE, AU). Size and color lists must match **that country’s** Printful availability, not a nearby region and not the static US catalog.
+
+Do not let Canada inherit `usa` / `north_america` stock. Do not let the UK inherit `europe` stock. Ireland uses `europe` (Printful has no IE region). Germany prefers `germany`, then `europe`. Australia uses `australia` only.
+
+Preserve:
+
+- Live stock from Printful v1 `availability_status` in `backend/printful_regions.py` (`SHIP_TO_REGION_CANDIDATES`, `LIVE_STOCK_COUNTRIES`)
+- Browse `regional_size_color_availability` per country in `attach_printful_catalog_data`
+- Frontend: colors that ship to the country, then sizes for the selected color (`getColorsForCountry` / `getAvailableSizesForCountry` in `frontend/src/utils/regionalAvailability.js`)
+- Out-of-stock combos not choosable; Add to Cart and Place Order fail closed (`ProductPage.jsx`, `Checkout.jsx`, `/api/check-variant-availability`)
+
+Do not fall back to static `size_color_availability` for Printful catalog products when regional data is missing — hide the combo instead. Bump `sm_browse_v*` if the matrix shape changes.
