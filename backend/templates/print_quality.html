@@ -189,6 +189,34 @@
             line-height: 1.15;
             text-align: center;
         }
+        .live-preview-text.is-vertical {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 0.15em;
+            white-space: normal;
+        }
+        .live-preview-text-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.2;
+        }
+        .text-direction-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .text-direction-row label {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            cursor: pointer;
+            font-weight: normal;
+        }
         .download-btn[disabled] {
             background: #ccc;
             cursor: not-allowed;
@@ -473,7 +501,7 @@
                     <div id="screenshotPreview" style="margin: 10px 0; padding: 10px; border: 2px dashed #ccc; text-align: center; background: #f9f9f9; min-height: 80px;">
                         <p style="color: #666;">Select a screenshot in the queue to edit it, or use video/upload below.</p>
                     </div>
-                    <small>This is the order image from the email. Generate 300 DPI, then Optional Tools update that preview as you drag — no Apply step.</small>
+                    <small>This is the original (unedited) screenshot. Frames, radius, and feather from Tools are listed in the edit log and prefilled below — they are applied to the 300 DPI preview after Generate, then baked on Download.</small>
                 </div>
                 
                 <!-- Generate 300 DPI Image - FIRST ACTION (before any tools) -->
@@ -720,6 +748,21 @@
                             <input type="text" id="textColorText" value="#000000" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
                         </div>
                     </div>
+
+                    <div class="form-group">
+                        <label>Direction:</label>
+                        <div class="text-direction-row">
+                            <label>
+                                <input type="radio" name="textDirection" id="textDirectionHorizontal" value="horizontal" checked>
+                                <span>Horizontal</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="textDirection" id="textDirectionVertical" value="vertical">
+                                <span>Vertical</span>
+                            </label>
+                        </div>
+                        <small style="color: #666; display: block; margin-top: 4px;">Vertical stacks letters top to bottom</small>
+                    </div>
                     
                     <div class="form-group">
                         <label for="textSize">Text Size (headline scale):</label>
@@ -761,6 +804,7 @@
         let livePreviewResizeObs = null;
         const overlayFeatherMaskCache = new Map();
         let currentImageDimensions = { width: 0, height: 0 };
+        let toolsFrameSourceSize = { width: 0, height: 0 };
         let currentFeatherValue = 0;  // Track current feather value
         let currentCornerRadiusValue = 0;  // Track current corner radius value
         let loadedCustomer = null;
@@ -872,6 +916,33 @@
             return Math.max(2, frameWidth * scale);
         }
 
+        function setToolsFrameSourceSize(w, h) {
+            w = Number(w) || 0;
+            h = Number(h) || 0;
+            if (w > 0 && h > 0) toolsFrameSourceSize = { width: w, height: h };
+        }
+
+        function frameScaleSourceSize() {
+            if (toolsFrameSourceSize.width > 0 && toolsFrameSourceSize.height > 0) {
+                return toolsFrameSourceSize;
+            }
+            var log = (currentToolSettings && currentToolSettings.editLog && typeof currentToolSettings.editLog === 'object')
+                ? currentToolSettings.editLog
+                : {};
+            var lw = Number(log.imageWidth) || 0;
+            var lh = Number(log.imageHeight) || 0;
+            if (lw > 0 && lh > 0) return { width: lw, height: lh };
+            return { width: 0, height: 0 };
+        }
+
+        function rememberToolsFrameSourceFromSettings(ts) {
+            ts = ts || {};
+            var log = (ts.editLog && typeof ts.editLog === 'object') ? ts.editLog : {};
+            var w = Number(log.imageWidth) || 0;
+            var h = Number(log.imageHeight) || 0;
+            if (w > 0 && h > 0) setToolsFrameSourceSize(w, h);
+        }
+
         function previewSourceSize() {
             var w = currentImageDimensions && currentImageDimensions.width;
             var h = currentImageDimensions && currentImageDimensions.height;
@@ -907,6 +978,114 @@
             };
         }
 
+        function parsePercentInput(el, fallback) {
+            if (!el) return fallback;
+            var n = parseInt(el.value, 10);
+            return isNaN(n) ? fallback : Math.max(0, Math.min(100, n));
+        }
+
+        function normalizeHexColor(value, fallback) {
+            if (arguments.length < 2) fallback = '#000000';
+            var raw = String(value || '').trim();
+            if (!raw) return fallback;
+            var named = {
+                white: '#ffffff', black: '#000000', red: '#ff0000', navy: '#000080',
+                blue: '#0000ff', yellow: '#ffff00', lime: '#00ff00', aqua: '#00ffff',
+                fuchsia: '#ff00ff', silver: '#c0c0c0', gray: '#808080', grey: '#808080',
+                maroon: '#800000', olive: '#808000', purple: '#800080', teal: '#008080',
+                orange: '#ffa500'
+            };
+            var lower = raw.toLowerCase();
+            if (named[lower]) return named[lower];
+            var rgb = lower.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+            if (rgb) {
+                function toHex(n) {
+                    var v = Math.max(0, Math.min(255, parseInt(n, 10) || 0)).toString(16);
+                    return v.length === 1 ? '0' + v : v;
+                }
+                return '#' + toHex(rgb[1]) + toHex(rgb[2]) + toHex(rgb[3]);
+            }
+            var hex = raw.replace(/^#/, '');
+            if (hex.length === 3 && /^[0-9a-f]{3}$/i.test(hex)) {
+                hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+            } else if (hex.length === 8 && /^[0-9a-f]{8}$/i.test(hex)) {
+                hex = hex.slice(0, 6);
+            }
+            if (hex.length === 6 && /^[0-9a-f]{6}$/i.test(hex)) {
+                return '#' + hex.toLowerCase();
+            }
+            return fallback;
+        }
+
+        function setHexColorInputs(pickerId, textId, color, fallback) {
+            var hex = normalizeHexColor(color, fallback);
+            var picker = document.getElementById(pickerId);
+            var text = document.getElementById(textId);
+            if (picker) {
+                try { picker.value = hex; } catch (e) {}
+            }
+            if (text) text.value = hex;
+            return hex;
+        }
+
+        function finiteNum() {
+            for (var i = 0; i < arguments.length; i++) {
+                if (arguments[i] == null || arguments[i] === '') continue;
+                var n = Number(arguments[i]);
+                if (isFinite(n)) return n;
+            }
+            return null;
+        }
+
+        function firstNonEmpty() {
+            for (var i = 0; i < arguments.length; i++) {
+                var v = arguments[i];
+                if (v == null) continue;
+                var s = String(v).trim();
+                if (s) return s;
+            }
+            return '';
+        }
+
+        function normalizeTextDirection(value) {
+            return String(value || '').toLowerCase() === 'vertical' ? 'vertical' : 'horizontal';
+        }
+
+        function selectedTextDirection() {
+            var vertical = document.getElementById('textDirectionVertical');
+            return (vertical && vertical.checked) ? 'vertical' : 'horizontal';
+        }
+
+        function setTextDirectionRadios(direction) {
+            var vertical = normalizeTextDirection(direction) === 'vertical';
+            var h = document.getElementById('textDirectionHorizontal');
+            var v = document.getElementById('textDirectionVertical');
+            if (h) h.checked = !vertical;
+            if (v) v.checked = vertical;
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, function(c) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+            });
+        }
+
+        function renderLivePreviewText(el, text, direction) {
+            el.classList.toggle('is-vertical', direction === 'vertical');
+            if (direction === 'vertical') {
+                var lines = String(text || '').split('\n');
+                el.innerHTML = lines.map(function(line) {
+                    var chars = Array.from(line);
+                    if (!chars.length) return '<span class="live-preview-text-col">&nbsp;</span>';
+                    return '<span class="live-preview-text-col">' + chars.map(function(ch) {
+                        return '<span>' + escapeHtml(ch) + '</span>';
+                    }).join('') + '</span>';
+                }).join('');
+            } else {
+                el.textContent = text;
+            }
+        }
+
         function readLiveToolState() {
             var edgeFeather = !!(document.getElementById('edgeFeather') && document.getElementById('edgeFeather').checked);
             var softCorners = !!(document.getElementById('softCorners') && document.getElementById('softCorners').checked);
@@ -916,6 +1095,8 @@
             var textSizeInput = document.getElementById('textSizeNumber') || document.getElementById('textSize');
             var fadeEnabled = !!(document.getElementById('featherFadeEnabled') && document.getElementById('featherFadeEnabled').checked);
             var fadeBlack = !!(document.getElementById('featherFadeBlack') && document.getElementById('featherFadeBlack').classList.contains('is-active'));
+            var colorText = document.getElementById('textColorText') && document.getElementById('textColorText').value;
+            var colorPicker = document.getElementById('textColor') && document.getElementById('textColor').value;
             return {
                 edgeFeather: edgeFeather,
                 featherEdge: edgeFeather ? (parseInt(document.getElementById('featherRadius').value, 10) || 0) : 0,
@@ -930,10 +1111,11 @@
                 textEnabled: textEnabled && !!textContent,
                 textContent: textContent,
                 textFont: (document.getElementById('textFont') && document.getElementById('textFont').value) || 'Arial',
-                textColor: (document.getElementById('textColor') && document.getElementById('textColor').value) || '#000000',
+                textColor: normalizeHexColor(colorText || colorPicker, '#000000'),
                 textSize: Math.max(12, Math.min(200, parseInt(textSizeInput ? textSizeInput.value : 24, 10) || 24)),
-                textOffsetX: Math.max(0, Math.min(100, parseInt(document.getElementById('textOffsetX') && document.getElementById('textOffsetX').value, 10) || 50)),
-                textOffsetY: Math.max(0, Math.min(100, parseInt(document.getElementById('textOffsetY') && document.getElementById('textOffsetY').value, 10) || 50))
+                textOffsetX: parsePercentInput(document.getElementById('textOffsetX'), 50),
+                textOffsetY: parsePercentInput(document.getElementById('textOffsetY'), 50),
+                textDirection: selectedTextDirection()
             };
         }
 
@@ -1007,7 +1189,7 @@
             var h = img.clientHeight || img.naturalHeight;
             if (!(w > 0) || !(h > 0)) return;
             var s = readLiveToolState();
-            var src = previewSourceSize();
+            var src = frameScaleSourceSize();
             var clipRadius = overlayCornerRadiusPx(s.cornerRadius, w, h);
             var radiusCss = clipRadius > 0 ? clipRadius + 'px' : '0';
             clip.style.borderRadius = radiusCss;
@@ -1024,28 +1206,33 @@
                 if (previewFrame > 0) {
                     frame.style.display = 'block';
                     frame.style.borderRadius = clipRadius > 0 ? clipRadius + 'px' : '0';
-                    frame.style.border = previewFrame + 'px solid ' + s.frameColor;
+                    frame.style.border = 'none';
+                    frame.style.boxShadow = 'inset 0 0 0 ' + previewFrame + 'px ' + s.frameColor;
                 } else {
                     frame.style.display = 'none';
                     frame.style.border = 'none';
+                    frame.style.boxShadow = 'none';
                 }
             }
             if (frameInner) {
                 if (previewFrame > 0 && s.doubleFrame) {
-                    var innerFrameOffset = previewFrame * 1.5;
-                    var innerFrameWidth = previewFrame * 0.7;
-                    var innerOuter = previewFrame + innerFrameOffset;
-                    var innerRadius = Math.max(0, clipRadius - innerOuter);
+                    var innerFrameWidth = previewFrame;
+                    var innerOuter = previewFrame + Math.max(2, previewFrame * 0.25);
+                    var innerBoxW = Math.max(0, w - innerOuter * 2);
+                    var innerBoxH = Math.max(0, h - innerOuter * 2);
+                    var innerRadius = overlayCornerRadiusPx(s.cornerRadius, innerBoxW, innerBoxH);
                     frameInner.style.display = 'block';
                     frameInner.style.top = innerOuter + 'px';
                     frameInner.style.right = innerOuter + 'px';
                     frameInner.style.bottom = innerOuter + 'px';
                     frameInner.style.left = innerOuter + 'px';
-                    frameInner.style.borderRadius = innerRadius + 'px';
-                    frameInner.style.border = innerFrameWidth + 'px solid ' + s.frameColor;
+                    frameInner.style.borderRadius = (innerRadius > 0 ? innerRadius : 0) + 'px';
+                    frameInner.style.border = 'none';
+                    frameInner.style.boxShadow = 'inset 0 0 0 ' + innerFrameWidth + 'px ' + s.frameColor;
                 } else {
                     frameInner.style.display = 'none';
                     frameInner.style.border = 'none';
+                    frameInner.style.boxShadow = 'none';
                 }
             }
             if (textEl) {
@@ -1058,9 +1245,10 @@
                     textEl.style.fontSize = fontSize + 'px';
                     textEl.style.fontFamily = s.textFont;
                     textEl.style.color = s.textColor;
-                    textEl.textContent = s.textContent;
+                    renderLivePreviewText(textEl, s.textContent, s.textDirection);
                 } else {
                     textEl.style.display = 'none';
+                    textEl.classList.remove('is-vertical');
                     textEl.textContent = '';
                 }
             }
@@ -1286,58 +1474,99 @@
             return value === true || value === 1 || value === '1' || String(value || '').toLowerCase() === 'true';
         }
 
-        function toolSettingsHaveEdits(ts) {
+        function itemOriginalScreenshot(product) {
+            if (!product) return '';
+            return String(product.original_screenshot || product.originalScreenshot || '').trim();
+        }
+
+        function itemEditedScreenshot(product) {
+            if (!product) return '';
+            return String(product.screenshot || product.selected_screenshot || '').trim();
+        }
+
+        function itemCleanScreenshot(product) {
+            return itemOriginalScreenshot(product) || itemEditedScreenshot(product);
+        }
+
+        function positiveNum() {
+            for (var i = 0; i < arguments.length; i++) {
+                var n = Number(arguments[i]);
+                if (isFinite(n) && n > 0) return n;
+            }
+            return 0;
+        }
+
+        function mergedToolValues(ts) {
             ts = ts || {};
+            var log = (ts.editLog && typeof ts.editLog === 'object') ? ts.editLog : {};
             var fade = resolveToolFade(ts);
-            return Number(ts.featherEdge) > 0 ||
-                Number(ts.cornerRadius) > 0 ||
-                isToolFlagOn(ts.frameEnabled) ||
-                fade.enabled ||
-                (isToolFlagOn(ts.textEnabled) && String(ts.textContent || '').trim());
+            var featherValue = positiveNum(log.featherPercent, ts.featherEdge);
+            if (fade.enabled && !(featherValue > 0)) featherValue = 20;
+            var textContent = firstNonEmpty(log.textContent, ts.textContent);
+            var textOffsetX = finiteNum(log.textOffsetX, ts.textOffsetX);
+            var textOffsetY = finiteNum(log.textOffsetY, ts.textOffsetY);
+            var textSize = finiteNum(log.textSize, ts.textSize);
+            return {
+                frameEnabled: isToolFlagOn(ts.frameEnabled) || isToolFlagOn(log.frameEnabled),
+                frameColor: log.frameColor || ts.frameColor || '#FF0000',
+                frameWidth: positiveNum(log.frameWidthPx, ts.frameWidth) || 10,
+                doubleFrame: isToolFlagOn(ts.doubleFrame) || isToolFlagOn(log.doubleFrame),
+                featherEdge: featherValue,
+                featherFadeEnabled: fade.enabled,
+                featherFadeColor: fade.color,
+                cornerRadius: positiveNum(log.cornerRadiusPercent, ts.cornerRadius),
+                textEnabled: (isToolFlagOn(ts.textEnabled) || isToolFlagOn(log.textEnabled)) && !!textContent,
+                textContent: textContent,
+                textFont: firstNonEmpty(log.textFont, ts.textFont) || 'Arial',
+                textColor: normalizeHexColor(firstNonEmpty(log.textColor, ts.textColor), '#000000'),
+                textSize: textSize != null ? textSize : 24,
+                textOffsetX: textOffsetX != null ? textOffsetX : 50,
+                textOffsetY: textOffsetY != null ? textOffsetY : 50,
+                textDirection: normalizeTextDirection(firstNonEmpty(log.textDirection, ts.textDirection))
+            };
+        }
+
+        function toolSettingsHaveEdits(ts) {
+            var m = mergedToolValues(ts);
+            return m.featherEdge > 0 ||
+                m.cornerRadius > 0 ||
+                m.frameEnabled ||
+                m.featherFadeEnabled ||
+                m.textEnabled;
         }
 
         function applyToolSettingsToForm(ts) {
             ts = ts || {};
+            rememberToolsFrameSourceFromSettings(ts);
+            var m = mergedToolValues(ts);
             var frameEl = document.getElementById('frameEnabled');
-            if (frameEl) frameEl.checked = isToolFlagOn(ts.frameEnabled);
-            var frameColorEl = document.getElementById('frameColor');
-            var frameColorText = document.getElementById('frameColorText');
-            if (ts.frameColor && frameColorEl) frameColorEl.value = ts.frameColor;
-            if (ts.frameColor && frameColorText) frameColorText.value = ts.frameColor;
+            if (frameEl) frameEl.checked = m.frameEnabled;
+            if (m.frameColor) setHexColorInputs('frameColor', 'frameColorText', m.frameColor, '#FF0000');
             var frameWidthEl = document.getElementById('frameWidth');
-            if (ts.frameWidth != null && frameWidthEl) {
-                frameWidthEl.value = parseInt(ts.frameWidth, 10) || 10;
-            }
+            if (frameWidthEl) frameWidthEl.value = parseInt(m.frameWidth, 10) || 10;
             var doubleEl = document.getElementById('doubleFrame');
-            if (doubleEl) doubleEl.checked = isToolFlagOn(ts.doubleFrame);
-            var fade = resolveToolFade(ts);
+            if (doubleEl) doubleEl.checked = m.doubleFrame;
             var featherEl = document.getElementById('edgeFeather');
             var featherRadius = document.getElementById('featherRadius');
-            var featherValue = Number(ts.featherEdge) || 0;
-            if (fade.enabled && !(featherValue > 0)) featherValue = 20;
-            if (featherEl) featherEl.checked = featherValue > 0 || fade.enabled;
-            if (featherRadius) featherRadius.value = featherValue;
+            if (featherEl) featherEl.checked = m.featherEdge > 0 || m.featherFadeEnabled;
+            if (featherRadius) featherRadius.value = m.featherEdge;
             var fadeEl = document.getElementById('featherFadeEnabled');
-            if (fadeEl) fadeEl.checked = fade.enabled;
-            setFeatherFadeColor(fade.color);
+            if (fadeEl) fadeEl.checked = m.featherFadeEnabled;
+            setFeatherFadeColor(m.featherFadeColor);
             var cornerEl = document.getElementById('softCorners');
             var cornerRadius = document.getElementById('cornerRadius');
-            if (cornerEl) cornerEl.checked = Number(ts.cornerRadius) > 0;
-            if (cornerRadius && ts.cornerRadius != null) {
-                cornerRadius.value = Number(ts.cornerRadius) || 0;
-            }
+            if (cornerEl) cornerEl.checked = m.cornerRadius > 0;
+            if (cornerRadius) cornerRadius.value = m.cornerRadius || 0;
             var textEl = document.getElementById('textEnabled');
-            if (textEl) textEl.checked = isToolFlagOn(ts.textEnabled) && !!String(ts.textContent || '').trim();
+            if (textEl) textEl.checked = m.textEnabled;
             var textContentEl = document.getElementById('textContent');
-            if (textContentEl && ts.textContent != null) textContentEl.value = ts.textContent || '';
+            if (textContentEl) textContentEl.value = m.textContent || '';
             var textFontEl = document.getElementById('textFont');
-            if (textFontEl && ts.textFont) textFontEl.value = ts.textFont;
-            var textColorEl = document.getElementById('textColor');
-            var textColorText = document.getElementById('textColorText');
-            if (ts.textColor && textColorEl) textColorEl.value = ts.textColor;
-            if (ts.textColor && textColorText) textColorText.value = ts.textColor;
-            if (ts.textSize != null) {
-                var n = Math.max(12, Math.min(200, parseInt(ts.textSize, 10) || 24));
+            if (textFontEl && m.textFont) textFontEl.value = m.textFont;
+            setHexColorInputs('textColor', 'textColorText', m.textColor, '#000000');
+            setTextDirectionRadios(m.textDirection);
+            if (m.textSize != null) {
+                var n = Math.max(12, Math.min(200, parseInt(m.textSize, 10) || 24));
                 var textSizeEl = document.getElementById('textSize');
                 var textSizeNumber = document.getElementById('textSizeNumber');
                 var textSizeValue = document.getElementById('textSizeValue');
@@ -1345,15 +1574,15 @@
                 if (textSizeNumber) textSizeNumber.value = n;
                 if (textSizeValue) textSizeValue.textContent = n;
             }
-            if (ts.textOffsetX != null && document.getElementById('textOffsetX')) {
-                document.getElementById('textOffsetX').value = ts.textOffsetX;
+            if (m.textOffsetX != null && document.getElementById('textOffsetX')) {
+                document.getElementById('textOffsetX').value = m.textOffsetX;
                 var ox = document.getElementById('textOffsetXValue');
-                if (ox) ox.textContent = ts.textOffsetX;
+                if (ox) ox.textContent = m.textOffsetX;
             }
-            if (ts.textOffsetY != null && document.getElementById('textOffsetY')) {
-                document.getElementById('textOffsetY').value = ts.textOffsetY;
+            if (m.textOffsetY != null && document.getElementById('textOffsetY')) {
+                document.getElementById('textOffsetY').value = m.textOffsetY;
                 var oy = document.getElementById('textOffsetYValue');
-                if (oy) oy.textContent = ts.textOffsetY;
+                if (oy) oy.textContent = m.textOffsetY;
             }
             syncOptionalToolVisibility();
             updateSliderLabels();
@@ -1363,13 +1592,12 @@
         function editLogFromToolSettings(ts) {
             ts = ts || {};
             var fade = resolveToolFade(ts);
-            if (ts.editLog && typeof ts.editLog === 'object') {
-                return Object.assign({}, ts.editLog, {
-                    featherFadeEnabled: fade.enabled,
-                    featherFadeColor: fade.color
-                });
-            }
-            return ts;
+            var base = (ts.editLog && typeof ts.editLog === 'object')
+                ? Object.assign({}, ts, ts.editLog)
+                : Object.assign({}, ts);
+            base.featherFadeEnabled = fade.enabled;
+            base.featherFadeColor = fade.color;
+            return base;
         }
 
         function formatEditLogRows(log) {
@@ -1424,7 +1652,12 @@
             if (isToolFlagOn(log.textEnabled) && String(log.textContent || '').trim()) {
                 var snippet = String(log.textContent).trim();
                 if (snippet.length > 60) snippet = snippet.slice(0, 57) + '...';
-                rows.push(['Text', '"' + snippet + '" · ' + (log.textFont || 'Arial') + ' · ' + (log.textColor || '#000') + ' · ' + (num(log.textSize) || 24) + 'px']);
+                var dir = normalizeTextDirection(log.textDirection);
+                var ox = finiteNum(log.textOffsetX);
+                var oy = finiteNum(log.textOffsetY);
+                if (ox == null) ox = 50;
+                if (oy == null) oy = 50;
+                rows.push(['Text', '"' + snippet + '" · ' + dir + ' · ' + (log.textFont || 'Arial') + ' · ' + normalizeHexColor(log.textColor, '#000000') + ' · ' + (num(log.textSize) || 24) + 'px · pos ' + ox + '%, ' + oy + '%']);
             }
             return rows;
         }
@@ -1440,11 +1673,6 @@
             panel.classList.toggle('is-visible', show);
             if (!show) return;
             rowsEl.innerHTML = rows.map(function(row) {
-                function escapeHtml(s) {
-                    return String(s).replace(/[&<>"']/g, function(c) {
-                        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
-                    });
-                }
                 return '<p><strong>' + escapeHtml(row[0]) + ':</strong> ' + escapeHtml(row[1]) + '</p>';
             }).join('') || '<p>No edit particulars stored. Use Optional Tools after 300 DPI if needed.</p>';
         }
@@ -1489,11 +1717,12 @@
             currentToolSettings = (selectedProduct.toolSettings && typeof selectedProduct.toolSettings === 'object')
                 ? selectedProduct.toolSettings
                 : {};
-            currentOriginalScreenshot = selectedProduct.original_screenshot || '';
+            currentOriginalScreenshot = itemOriginalScreenshot(selectedProduct);
             currentItemEdited = Boolean(selectedProduct.edited);
             original300DpiImage = null;
             lastPrintResult = null;
             currentImageDimensions = { width: 0, height: 0 };
+            toolsFrameSourceSize = { width: 0, height: 0 };
             var resultDivReset = document.getElementById('result');
             if (resultDivReset) {
                 resultDivReset.style.display = 'none';
@@ -1508,9 +1737,10 @@
             }
             applyFitProductForOrderItem(selectedProduct);
             renderEditLogPanel(selectedProduct);
-            if (selectedProduct.screenshot && selectedProduct.screenshot.trim() !== '') {
-                orderScreenshot = selectedProduct.screenshot;
-                originalScreenshot = selectedProduct.screenshot;
+            var cleanShot = itemCleanScreenshot(selectedProduct);
+            if (cleanShot) {
+                orderScreenshot = cleanShot;
+                originalScreenshot = cleanShot;
                 const preview = document.getElementById('screenshotPreview');
                 const cropToolBtn = document.getElementById('cropToolBtn');
                 if (cropToolBtn) cropToolBtn.hidden = false;
@@ -1533,13 +1763,19 @@
                     <p style="margin-top: 10px; color: green;">✅ Editing: ${(selectedProduct.product || 'Product')} ${selectedProduct.color && selectedProduct.color !== 'N/A' ? ' — ' + selectedProduct.color : ''} ${selectedProduct.size && selectedProduct.size !== 'N/A' ? ' (' + selectedProduct.size + ')' : ''}</p>
                 `;
                 const activeImg = document.getElementById('activeEditImage');
-                if (activeImg) activeImg.src = selectedProduct.screenshot;
+                if (activeImg) activeImg.src = cleanShot;
                 document.getElementById('cropX').value = '';
                 document.getElementById('cropY').value = '';
                 document.getElementById('cropWidth').value = '';
                 document.getElementById('cropHeight').value = '';
                 cropState = { left: 0, top: 0, width: 100, height: 100 };
                 initInteractiveCrop();
+                if (!(toolsFrameSourceSize.width > 0)) {
+                    getImageDimensions(cleanShot).then(function(d) {
+                        if (!(toolsFrameSourceSize.width > 0)) setToolsFrameSourceSize(d.width, d.height);
+                        updateLivePreview();
+                    });
+                }
             } else {
                 orderScreenshot = null;
                 originalScreenshot = null;
@@ -1770,6 +2006,7 @@
                             height: result.dimensions.height
                         };
                     }
+                    applyToolSettingsToForm(currentToolSettings);
                     updateLivePreview();
                 } else {
                     displayError(result.error || 'Failed to generate 300 DPI image');
@@ -1852,16 +2089,20 @@
         document.getElementById('textEnabled').addEventListener('change', onLiveToolChange);
         document.getElementById('doubleFrame').addEventListener('change', onLiveToolChange);
         document.getElementById('textColor').addEventListener('input', function() {
-            document.getElementById('textColorText').value = this.value;
+            document.getElementById('textColorText').value = normalizeHexColor(this.value, '#000000');
             updateLivePreview();
         });
         document.getElementById('textColorText').addEventListener('input', function() {
-            const colorValue = this.value;
-            if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
-                document.getElementById('textColor').value = colorValue;
+            const hex = normalizeHexColor(this.value, '');
+            if (hex) {
+                document.getElementById('textColor').value = hex;
                 updateLivePreview();
             }
         });
+        var textDirH = document.getElementById('textDirectionHorizontal');
+        var textDirV = document.getElementById('textDirectionVertical');
+        if (textDirH) textDirH.addEventListener('change', updateLivePreview);
+        if (textDirV) textDirV.addEventListener('change', updateLivePreview);
         function updateTextSizeDisplay(val) {
             var n = parseInt(val, 10);
             if (isNaN(n)) return;
@@ -1947,14 +2188,24 @@
             const doubleFrame = document.getElementById('doubleFrame').checked;
             const textContent = (document.getElementById('textContent').value || '').trim();
             const textFont = document.getElementById('textFont').value || 'Arial';
-            const textColor = document.getElementById('textColor').value || '#000000';
+            const textColor = normalizeHexColor(
+                (document.getElementById('textColorText') && document.getElementById('textColorText').value) ||
+                (document.getElementById('textColor') && document.getElementById('textColor').value),
+                '#000000'
+            );
             const textSizeInput = document.getElementById('textSizeNumber') || document.getElementById('textSize');
             const textSize = Math.max(12, Math.min(200, parseInt(textSizeInput ? textSizeInput.value : 24, 10) || 24));
-            const textOffsetX = parseInt(document.getElementById('textOffsetX').value, 10);
-            const textOffsetY = parseInt(document.getElementById('textOffsetY').value, 10);
+            const textOffsetX = parsePercentInput(document.getElementById('textOffsetX'), 50);
+            const textOffsetY = parsePercentInput(document.getElementById('textOffsetY'), 50);
+            const textDirection = selectedTextDirection();
             const dpi = parseInt(document.getElementById('dpi').value);
+            let frameSource = frameScaleSourceSize();
+            if (!(frameSource.width > 0) && originalScreenshot) {
+                frameSource = await getImageDimensions(originalScreenshot);
+                setToolsFrameSourceSize(frameSource.width, frameSource.height);
+            }
             
-            console.log(`Applying all effects: Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}, Text: ${textEnabled && textContent ? `enabled (${textContent}, ${textFont}, ${textSize}px, pos ${textOffsetX}%/${textOffsetY}%)` : 'disabled'}`);
+            console.log(`Applying all effects: Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}, Text: ${textEnabled && textContent ? `enabled (${textContent}, ${textFont}, ${textColor}, ${textSize}px, ${textDirection}, pos ${textOffsetX}%/${textOffsetY}%)` : 'disabled'}`);
             
             try {
                 const requestBody = {
@@ -1969,14 +2220,17 @@
                     frame_enabled: frameEnabled,
                     frame_color: frameColor,
                     frame_width: frameWidth,
+                    frame_source_width: frameSource.width || 0,
+                    frame_source_height: frameSource.height || 0,
                     double_frame: doubleFrame,
                     text_enabled: textEnabled && !!textContent,
                     text_content: textContent || '',
                     text_font: textFont,
                     text_color: textColor,
                     text_size: textSize,
-                    text_offset_x: isNaN(textOffsetX) ? 50 : Math.max(0, Math.min(100, textOffsetX)),
-                    text_offset_y: isNaN(textOffsetY) ? 50 : Math.max(0, Math.min(100, textOffsetY)),
+                    text_offset_x: textOffsetX,
+                    text_offset_y: textOffsetY,
+                    text_direction: textDirection,
                     add_white_background: !!(document.getElementById('featherFadeEnabled') && document.getElementById('featherFadeEnabled').checked && featherValue > 0),
                     feather_fade_color: (document.getElementById('featherFadeBlack') && document.getElementById('featherFadeBlack').classList.contains('is-active')) ? 'black' : 'white'
                 };

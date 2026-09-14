@@ -5352,6 +5352,26 @@ def process_thumbnail_print_quality():
         frame_color = data.get("frame_color", "#FF0000")
         frame_width = int(data.get("frame_width", 10))  # Ensure it's an integer
         double_frame = data.get("double_frame", False)
+        text_enabled = data.get("text_enabled", False)
+        text_content = (data.get("text_content") or "").strip()
+        text_font = data.get("text_font", "Arial")
+        text_color = data.get("text_color", "#000000")
+        try:
+            text_size = int(data.get("text_size", 24))
+        except (TypeError, ValueError):
+            text_size = 24
+        text_size = max(12, min(200, text_size))
+        try:
+            text_offset_x = int(round(float(data.get("text_offset_x", 50))))
+        except (TypeError, ValueError):
+            text_offset_x = 50
+        try:
+            text_offset_y = int(round(float(data.get("text_offset_y", 50))))
+        except (TypeError, ValueError):
+            text_offset_y = 50
+        text_offset_x = max(0, min(100, text_offset_x))
+        text_offset_y = max(0, min(100, text_offset_y))
+        text_direction = "vertical" if str(data.get("text_direction") or "").strip().lower() == "vertical" else "horizontal"
         # Flatten feather onto white inside the print shape. Rounded corners stay
         # transparent so Printful does not print white right-angle boxes.
         add_white_background = data.get("add_white_background", True)
@@ -5364,6 +5384,16 @@ def process_thumbnail_print_quality():
         image_orientation = data.get("image_orientation") or data.get("imageOrientation")
         fit_mode = data.get("fit_mode") or data.get("fitMode")
         preserve_edits = bool(data.get("preserve_edits"))
+        try:
+            frame_source_width = int(round(float(data.get("frame_source_width") or data.get("frameSourceWidth") or 0)))
+        except (TypeError, ValueError):
+            frame_source_width = 0
+        try:
+            frame_source_height = int(round(float(data.get("frame_source_height") or data.get("frameSourceHeight") or 0)))
+        except (TypeError, ValueError):
+            frame_source_height = 0
+        frame_source_width = max(0, frame_source_width)
+        frame_source_height = max(0, frame_source_height)
         
         # Validate frame_width is within reasonable bounds (1-100px)
         frame_width = max(1, min(100, frame_width))
@@ -5380,6 +5410,7 @@ def process_thumbnail_print_quality():
         logger.info(f"📧 [PRINT_QUALITY] DPI={print_dpi}, soft_corners={soft_corners}, edge_feather={edge_feather}")
         logger.info(f"📧 [PRINT_QUALITY] corner_radius_percent={corner_radius_percent}, feather_edge_percent={feather_edge_percent}")
         logger.info(f"📧 [PRINT_QUALITY] frame_enabled={frame_enabled}, frame_color={frame_color}, frame_width={frame_width}, double_frame={double_frame}")
+        logger.info(f"📧 [PRINT_QUALITY] text_enabled={text_enabled}, color={text_color}, size={text_size}, pos={text_offset_x}/{text_offset_y}, dir={text_direction}")
         logger.info(f"📧 [PRINT_QUALITY] add_white_background={add_white_background}")
         if crop_area:
             logger.info(f"📧 [PRINT_QUALITY] Crop area provided: {crop_area}")
@@ -5397,13 +5428,23 @@ def process_thumbnail_print_quality():
             frame_color=frame_color,
             frame_width=frame_width,
             double_frame=double_frame,
+            text_enabled=text_enabled and bool(text_content),
+            text_content=text_content,
+            text_font=text_font,
+            text_color=text_color,
+            text_size=text_size,
+            text_offset_x=text_offset_x,
+            text_offset_y=text_offset_y,
+            text_direction=text_direction,
             add_white_background=add_white_background,
             print_area_width=print_area_width,
             print_area_height=print_area_height,
             image_orientation=image_orientation,
             fit_mode=fit_mode,
             preserve_edits=preserve_edits,
-            feather_fade_color=feather_fade_color
+            feather_fade_color=feather_fade_color,
+            frame_source_width=frame_source_width,
+            frame_source_height=frame_source_height,
         )
         
         if result['success']:

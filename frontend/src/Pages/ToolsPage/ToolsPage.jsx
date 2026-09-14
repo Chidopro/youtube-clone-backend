@@ -528,6 +528,33 @@ function overlayCornerRadiusPx(cornerRadius, width, height) {
   return cornerRadius >= 100 ? maxRadius : (cornerRadius / 100) * maxRadius;
 }
 
+/**
+ * Inner ring matches outer thickness and stays a short gutter inside it
+ * so widening the frame does not shove the inner ring toward the center.
+ */
+function doubleFrameSpacing(framePx) {
+  const thickness = Math.max(1, Number(framePx) || 0);
+  const gap = Math.max(2, thickness * 0.25);
+  return { innerFrameWidth: thickness, innerOuter: thickness + gap };
+}
+
+/**
+ * Inner double-frame layout. Uses the same selected corner-radius percent on
+ * the inner box so widening the frame cannot collapse corners to a right angle.
+ */
+function overlayDoubleFrameLayout(previewFrame, boxW, boxH, cornerRadius) {
+  const { innerFrameWidth, innerOuter } = doubleFrameSpacing(previewFrame);
+  const innerBoxW = Math.max(0, boxW - innerOuter * 2);
+  const innerBoxH = Math.max(0, boxH - innerOuter * 2);
+  let innerRadius = overlayCornerRadiusPx(cornerRadius, innerBoxW, innerBoxH);
+  if (innerRadius > 0 && innerFrameWidth > 0 && innerRadius <= innerFrameWidth) {
+    const holeW = Math.max(0, innerBoxW - innerFrameWidth * 2);
+    const holeH = Math.max(0, innerBoxH - innerFrameWidth * 2);
+    innerRadius = innerFrameWidth + overlayCornerRadiusPx(cornerRadius, holeW, holeH);
+  }
+  return { innerFrameWidth, innerOuter, innerRadius };
+}
+
 function roundedRectSdf(x, y, cx, cy, halfW, halfH, radius) {
   const hw = Math.max(0, halfW);
   const hh = Math.max(0, halfH);
@@ -686,7 +713,7 @@ function paintFrameRings(ctx, vis, {
   const cornerR = isCircle ? maxR : Math.round(((Number(cornerRadiusPercent) || 0) / 100) * maxR);
 
   ctx.fillStyle = frameColor || '#FF0000';
-  const paintRing = (inset, thickness, radius) => {
+  const paintRing = (inset, thickness, ringOuterRadius) => {
     const ow = w - inset * 2;
     const oh = h - inset * 2;
     if (ow < 2 || oh < 2 || !(thickness > 0)) return;
@@ -695,8 +722,11 @@ function paintFrameRings(ctx, vis, {
     const inner = inset + thickness;
     const iw = w - inner * 2;
     const ih = h - inner * 2;
-    const outerR = Math.max(0, radius - inset);
-    const innerR = Math.max(0, radius - inner);
+    const outerR = Math.max(0, ringOuterRadius);
+    let innerR = Math.max(0, ringOuterRadius - thickness);
+    if (innerR <= 0 && cornerRadiusPercent > 0 && iw > 1 && ih > 1) {
+      innerR = overlayCornerRadiusPx(cornerRadiusPercent, iw, ih);
+    }
     if (isCircle) {
       const cx = x + w / 2;
       const cy = y + h / 2;
@@ -723,7 +753,9 @@ function paintFrameRings(ctx, vis, {
 
   paintRing(0, outer, cornerR);
   if (doubleFrame) {
-    paintRing(outer + outer * 1.5, Math.max(1, outer * 0.7), cornerR);
+    const { innerFrameWidth, innerOuter } = doubleFrameSpacing(outer);
+    const innerBoxR = overlayCornerRadiusPx(cornerRadiusPercent, w - innerOuter * 2, h - innerOuter * 2);
+    paintRing(innerOuter, innerFrameWidth, innerBoxR);
   }
 }
 
@@ -850,6 +882,70 @@ function drawOverlayText(ctx, {
     });
   }
   ctx.restore();
+}
+
+function overlayTextFontPx(textSize, width, height) {
+  const minDim = Math.min(Number(width) || 0, Number(height) || 0);
+  if (!(minDim > 0)) return 12;
+  return Math.max(8, Math.min(120, Math.round((Number(textSize) || 24) / 100 * minDim * 0.22)));
+}
+
+function ToolsLiveText({
+  enabled,
+  content,
+  font,
+  color,
+  size,
+  offsetX = 50,
+  offsetY = 50,
+  direction,
+  boxWidth,
+  boxHeight,
+}) {
+  const text = String(content || '').trim();
+  if (!enabled || !text || !(boxWidth > 0) || !(boxHeight > 0)) return null;
+  const vertical = normalizeTextDirection(direction) === 'vertical';
+  const fontSize = overlayTextFontPx(size, boxWidth, boxHeight);
+  const lines = text.split('\n');
+  return (
+    <div
+      aria-hidden="true"
+      className={`tools-live-text${vertical ? ' is-vertical' : ''}`}
+      style={{
+        position: 'absolute',
+        left: `${Number(offsetX) || 0}%`,
+        top: `${Number(offsetY) || 0}%`,
+        transform: 'translate(-50%, -50%)',
+        color: color || '#000000',
+        fontFamily: `"${font || 'Arial'}", Arial, sans-serif`,
+        fontSize: `${fontSize}px`,
+        fontWeight: 'bold',
+        lineHeight: 1.2,
+        textAlign: 'center',
+        whiteSpace: vertical ? 'normal' : 'pre',
+        pointerEvents: 'none',
+        display: vertical ? 'flex' : 'block',
+        flexDirection: vertical ? 'row' : undefined,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: vertical ? '0.15em' : undefined,
+        zIndex: 4,
+      }}
+    >
+      {vertical
+        ? lines.map((line, col) => (
+            <span
+              key={col}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}
+            >
+              {(line ? Array.from(line) : [' ']).map((ch, i) => (
+                <span key={i}>{ch}</span>
+              ))}
+            </span>
+          ))
+        : text}
+    </div>
+  );
 }
 
 function editorSlotFromCartItem(item) {
@@ -1057,8 +1153,13 @@ const ProductPreviewWithDrag = ({
   offsetY, 
   onOffsetChange,
   textEnabled,
+  textContent = '',
+  textFont = 'Arial',
+  textColor = '#000000',
+  textSize = 24,
   textOffsetX = 50,
   textOffsetY = 50,
+  textDirection = 'horizontal',
   onTextPositionChange,
   featherEdge,
   cornerRadius,
@@ -1694,10 +1795,12 @@ const ProductPreviewWithDrag = ({
             const previewFrame = frameEnabled
               ? overlayFramePx(frameWidth, scaledWidth, scaledHeight, sourceWidth, sourceHeight)
               : 0;
-            const innerFrameOffset = previewFrame * 1.5;
-            const innerFrameWidth = previewFrame * 0.7;
-            const innerOuter = previewFrame + innerFrameOffset;
-            const innerRadius = Math.max(0, clipRadius - innerOuter);
+            const { innerFrameWidth, innerOuter, innerRadius } = overlayDoubleFrameLayout(
+              previewFrame,
+              scaledWidth,
+              scaledHeight,
+              cornerRadius
+            );
             return (
               <div
                 style={{
@@ -1760,12 +1863,24 @@ const ProductPreviewWithDrag = ({
                       right: innerOuter,
                       bottom: innerOuter,
                       left: innerOuter,
-                      borderRadius: innerRadius,
+                      borderRadius: innerRadius > 0 ? `${innerRadius}px` : 0,
                       boxShadow: `inset 0 0 0 ${innerFrameWidth}px ${frameColor}`,
                       pointerEvents: 'none'
                     }}
                   />
                 )}
+                <ToolsLiveText
+                  enabled={textEnabled}
+                  content={textContent}
+                  font={textFont}
+                  color={textColor}
+                  size={textSize}
+                  offsetX={textOffsetX}
+                  offsetY={textOffsetY}
+                  direction={textDirection}
+                  boxWidth={scaledWidth}
+                  boxHeight={scaledHeight}
+                />
               </div>
             );
           })()}
@@ -1799,6 +1914,14 @@ function ScreenshotPreviewPane({
   boxWidth = 176,
   overlayBoxWidth = 0,
   overlayBoxHeight = 0,
+  textEnabled = false,
+  textContent = '',
+  textFont = 'Arial',
+  textColor = '#000000',
+  textSize = 24,
+  textOffsetX = 50,
+  textOffsetY = 50,
+  textDirection = 'horizontal',
 }) {
   if (!src) {
     return (
@@ -1825,10 +1948,12 @@ function ScreenshotPreviewPane({
   const previewFrame = frameEnabled
     ? overlayFramePx(frameWidth, boxW, boxH, sourceWidth, sourceHeight)
     : 0;
-  const innerFrameOffset = previewFrame * 1.5;
-  const innerFrameWidth = previewFrame * 0.7;
-  const innerOuter = previewFrame + innerFrameOffset;
-  const innerRadius = Math.max(0, clipRadius - innerOuter);
+  const { innerFrameWidth, innerOuter, innerRadius } = overlayDoubleFrameLayout(
+    previewFrame,
+    boxW,
+    boxH,
+    cornerRadius
+  );
   const fill = { position: 'absolute', inset: 0 };
   return (
     <div
@@ -1887,12 +2012,24 @@ function ScreenshotPreviewPane({
               right: innerOuter,
               bottom: innerOuter,
               left: innerOuter,
-              borderRadius: innerRadius,
+              borderRadius: innerRadius > 0 ? `${innerRadius}px` : 0,
               boxShadow: `inset 0 0 0 ${innerFrameWidth}px ${frameColor}`,
               pointerEvents: 'none'
             }}
           />
         )}
+        <ToolsLiveText
+          enabled={textEnabled}
+          content={textContent}
+          font={textFont}
+          color={textColor}
+          size={textSize}
+          offsetX={textOffsetX}
+          offsetY={textOffsetY}
+          direction={textDirection}
+          boxWidth={boxW}
+          boxHeight={boxH}
+        />
       </div>
     </div>
   );
@@ -2089,8 +2226,6 @@ const ToolsPage = () => {
   const [imageOffsetX, setImageOffsetX] = useState(() => initialEditorSlot.imageOffsetX ?? 0);
   const [imageOffsetY, setImageOffsetY] = useState(() => initialEditorSlot.imageOffsetY ?? 0);
   const [editedImageUrl, setEditedImageUrl] = useState('');
-  const [editsAppliedNotice, setEditsAppliedNotice] = useState(false);
-  const editsAppliedNoticeTimerRef = useRef(null);
   const [selectedProductName, setSelectedProductName] = useState(() => getInitialCartPrintFit().name);
   const [currentImageDimensions, setCurrentImageDimensions] = useState({ width: 0, height: 0 });
   const [bakedImageSize, setBakedImageSize] = useState({ width: 0, height: 0 });
@@ -2273,14 +2408,6 @@ const ToolsPage = () => {
   // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (editsAppliedNoticeTimerRef.current) {
-        window.clearTimeout(editsAppliedNoticeTimerRef.current);
-      }
-    };
   }, []);
 
   const buildLiveEditLog = (productOverride = null) => {
@@ -4494,38 +4621,14 @@ const ToolsPage = () => {
     }
   };
 
-  const flashEditsAppliedNotice = () => {
-    setEditsAppliedNotice(true);
-    if (editsAppliedNoticeTimerRef.current) {
-      window.clearTimeout(editsAppliedNoticeTimerRef.current);
-    }
-    editsAppliedNoticeTimerRef.current = window.setTimeout(() => {
-      setEditsAppliedNotice(false);
-      editsAppliedNoticeTimerRef.current = null;
-    }, 2000);
-  };
-
-  const handleApplyEdits = () => {
-    // When opened from order email (order_id in URL): always download, never go to checkout (avoids empty cart)
-    const hasOrderId = searchParams.get('order_id') ||
-      (typeof window !== 'undefined' && (
-        (window.location.search && new URLSearchParams(window.location.search).get('order_id')) ||
-        (window.location.href && window.location.href.includes('order_id='))
-      )) ||
-      isFromOrderEmail;
-    if (hasOrderId) {
-      handleDownload();
-      return;
-    }
-
-    if (!editedImageUrl) {
-      alert('Please wait for the image to process, or select a screenshot first.');
-      return;
-    }
-
-    saveAppliedEditsToCart();
-    flashEditsAppliedNotice();
-  };
+  const toolsHavePixelEdits = Boolean(
+    featherEdge ||
+    cornerRadius ||
+    frameEnabled ||
+    blackAndWhite ||
+    (textEnabled && String(textContent || '').trim())
+  );
+  const checkoutWaitingOnBake = Boolean(imageUrl && toolsHavePixelEdits && !editedImageUrl);
 
   const persistToolsBeforeLeave = () => {
     if (editedImageUrl) {
@@ -4542,6 +4645,10 @@ const ToolsPage = () => {
   };
 
   const handleCheckoutFromTools = () => {
+    if (checkoutWaitingOnBake) {
+      alert('Please wait for the image to process, or select a screenshot first.');
+      return;
+    }
     persistToolsBeforeLeave();
     navigate('/checkout');
   };
@@ -4698,18 +4805,11 @@ const ToolsPage = () => {
                 const cartIndex = product.originalCartIndex;
                 const offset = productImageOffsets[cartIndex] || { x: 0, y: 0 };
                 const currentImage = editedImageUrl || imageUrl;
-                // Radius/feather are clipped in CSS on the visible print box.
-                // Prefer the unbaked screenshot so cover-fit does not hide those
-                // edges, and so baked + CSS do not double-soften the same sides.
-                const overlayNeedsBakedPixels = Boolean(
-                  (textEnabled && String(textContent || '').trim()) ||
-                  (printAreaFit !== 'none' && printAreaFit !== 'product')
-                );
-                const overlayBoxReady = overlayBoxSize.width > 0 && overlayBoxSize.height > 0;
-                const paintCssFrames = Boolean(frameEnabled && (!overlayNeedsBakedPixels || !overlayBoxReady));
-                const overlayScreenshot = overlayNeedsBakedPixels
-                  ? currentImage
-                  : (imageUrl || currentImage);
+                // Live preview always uses the unbaked screenshot plus CSS
+                // feather/frames. Feeding the bake back in (needed for text)
+                // re-feathered the outer ring and washed the frame color out.
+                const paintCssFrames = Boolean(frameEnabled);
+                const overlayScreenshot = imageUrl || currentImage;
                 const showingFitOverride = Boolean(fitPreviewImageUrl);
                 const displayName = showingFitOverride ? selectedProductName : product.name;
                 
@@ -4828,6 +4928,14 @@ const ToolsPage = () => {
                                   overlayBoxWidth={overlayBoxSize.width}
                                   overlayBoxHeight={overlayBoxSize.height}
                                   boxWidth={240}
+                                  textEnabled={textEnabled}
+                                  textContent={textContent}
+                                  textFont={textFont}
+                                  textColor={textColor}
+                                  textSize={textSize}
+                                  textOffsetX={textOffsetX}
+                                  textOffsetY={textOffsetY}
+                                  textDirection={textDirection}
                                 />
                               </div>
                               {mugNotice}
@@ -4869,8 +4977,13 @@ const ToolsPage = () => {
                                   }));
                                 }}
                                 textEnabled={textEnabled}
+                                textContent={textContent}
+                                textFont={textFont}
+                                textColor={textColor}
+                                textSize={textSize}
                                 textOffsetX={textOffsetX}
                                 textOffsetY={textOffsetY}
+                                textDirection={textDirection}
                                 onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                                 featherEdge={featherEdge}
                                 cornerRadius={cornerRadius}
@@ -4960,8 +5073,13 @@ const ToolsPage = () => {
                                 }));
                               }}
                               textEnabled={textEnabled}
+                              textContent={textContent}
+                              textFont={textFont}
+                              textColor={textColor}
+                              textSize={textSize}
                               textOffsetX={textOffsetX}
                               textOffsetY={textOffsetY}
+                              textDirection={textDirection}
                               onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                               featherEdge={featherEdge}
                               cornerRadius={cornerRadius}
@@ -5031,8 +5149,13 @@ const ToolsPage = () => {
                               }));
                             }}
                             textEnabled={textEnabled}
+                            textContent={textContent}
+                            textFont={textFont}
+                            textColor={textColor}
+                            textSize={textSize}
                             textOffsetX={textOffsetX}
                             textOffsetY={textOffsetY}
+                            textDirection={textDirection}
                             onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                             featherEdge={featherEdge}
                             cornerRadius={cornerRadius}
@@ -5540,15 +5663,8 @@ const ToolsPage = () => {
                         Screenshot Preview
                       </h4>
                       {(() => {
-                        const overlayNeedsBakedPixels = Boolean(
-                          (textEnabled && String(textContent || '').trim()) ||
-                          (printAreaFit !== 'none' && printAreaFit !== 'product')
-                        );
-                        const overlayBoxReady = overlayBoxSize.width > 0 && overlayBoxSize.height > 0;
-                        const paintCssFrames = Boolean(frameEnabled && (!overlayNeedsBakedPixels || !overlayBoxReady));
-                        const previewSrc = overlayNeedsBakedPixels
-                          ? (editedImageUrl || imageUrl)
-                          : (imageUrl || editedImageUrl);
+                        const paintCssFrames = Boolean(frameEnabled);
+                        const previewSrc = imageUrl || editedImageUrl;
                         const cartProduct = selectedCartProductIndex != null
                           ? cartProducts[selectedCartProductIndex]
                           : null;
@@ -5575,6 +5691,14 @@ const ToolsPage = () => {
                             sourceHeight={currentImageDimensions.height}
                             overlayBoxWidth={overlayBoxSize.width}
                             overlayBoxHeight={overlayBoxSize.height}
+                            textEnabled={textEnabled}
+                            textContent={textContent}
+                            textFont={textFont}
+                            textColor={textColor}
+                            textSize={textSize}
+                            textOffsetX={textOffsetX}
+                            textOffsetY={textOffsetY}
+                            textDirection={textDirection}
                           />
                         );
                       })()}
@@ -5726,14 +5850,6 @@ const ToolsPage = () => {
               // Cart tools: save in place, then continue shopping, checkout, or stay on Tools
               return (
                 <>
-                  <button 
-                    type="button"
-                    className="apply-edits-btn"
-                    onClick={handleApplyEdits}
-                    disabled={!editedImageUrl}
-                  >
-                    {editsAppliedNotice ? 'Edits Applied' : 'Apply Edits'}
-                  </button>
                   <button
                     type="button"
                     className="reset-btn"
@@ -5752,6 +5868,7 @@ const ToolsPage = () => {
                     type="button"
                     className="tools-checkout-btn"
                     onClick={handleCheckoutFromTools}
+                    disabled={checkoutWaitingOnBake}
                   >
                     Checkout
                   </button>

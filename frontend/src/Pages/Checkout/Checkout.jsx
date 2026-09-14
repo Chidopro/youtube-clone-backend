@@ -18,16 +18,6 @@ import { readShipToCountry, writeShipToCountry, SHIP_TO_UPDATED_EVENT } from '..
 import { repriceCartItems } from '../../utils/regionalAvailability';
 import './Checkout.css';
 
-function cartItemToolSettings(item) {
-  return (item && item.toolSettings && typeof item.toolSettings === 'object') ? item.toolSettings : {};
-}
-
-function cartItemHasFrame(item) {
-  const ts = cartItemToolSettings(item);
-  const flag = ts.frameEnabled;
-  return flag === true || flag === 1 || flag === '1' || String(flag || '').toLowerCase() === 'true';
-}
-
 const Checkout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1054,22 +1044,21 @@ const Checkout = () => {
                 const itemName = item.name || item.product || `Item ${i + 1}`;
                 const itemSize = (item.size || '').trim();
                 const itemShot = item.screenshot || item.selected_screenshot || item.thumbnail;
-                const hasFrame = cartItemHasFrame(item);
-                const frameColor = cartItemToolSettings(item).frameColor || '#FF0000';
                 return (
                   <div key={i} className="design-modal-item-block">
                     <h3 className="design-modal-item-title">{itemName}</h3>
                     {itemSize ? <p className="design-modal-item-size">Size: {itemSize}</p> : null}
                     <div className="design-modal-image-row">
                       {itemShot ? (
-                        <img
-                          src={itemShot}
-                          alt=""
-                          className={`design-modal-item-shot${hasFrame ? ' design-modal-item-shot--framed' : ''}`}
-                          style={hasFrame ? { borderColor: frameColor } : undefined}
-                        />
+                        <div className="design-modal-item-shot-wrap">
+                          <img
+                            src={itemShot}
+                            alt=""
+                            className="design-modal-item-shot"
+                          />
+                        </div>
                       ) : (
-                        <div className="design-modal-item-shot design-modal-item-shot--empty" aria-hidden="true" />
+                        <div className="design-modal-item-shot-wrap design-modal-item-shot-wrap--empty" aria-hidden="true" />
                       )}
                       <div className="design-modal-image-meta">
                         <p className="design-modal-image-label">Your Image</p>

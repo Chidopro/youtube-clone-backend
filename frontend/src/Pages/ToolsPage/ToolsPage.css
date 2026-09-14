@@ -997,9 +997,15 @@ body.tools-page-active .site-footer {
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.tools-checkout-btn:hover {
+.tools-checkout-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.45);
+}
+
+.tools-checkout-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Acknowledgment Modal */

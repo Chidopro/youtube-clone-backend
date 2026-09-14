@@ -125,6 +125,34 @@ class TestEditLog(unittest.TestCase):
         html = order_email.format_item_edit_log_html(item)
         self.assertIn("12%", html)
 
+    def test_text_recipe_prefers_edit_log_over_defaults(self):
+        item = {
+            "toolSettings": {
+                "textEnabled": True,
+                "textContent": "ScreenMerch",
+                "textColor": "#000000",
+                "textOffsetX": 50,
+                "textOffsetY": 50,
+                "textDirection": "horizontal",
+                "textSize": 24,
+                "editLog": {
+                    "textEnabled": True,
+                    "textContent": "ScreenMerch",
+                    "textColor": "#FFFFFF",
+                    "textOffsetX": 50,
+                    "textOffsetY": 12,
+                    "textDirection": "vertical",
+                    "textFont": "Arial",
+                    "textSize": 24,
+                },
+            }
+        }
+        html = order_email.format_item_edit_log_html(item)
+        self.assertIn("#FFFFFF", html)
+        self.assertIn("vertical", html)
+        self.assertIn("12%", html)
+        self.assertIn("pos 50%, 12%", html)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -73,6 +73,31 @@ def item_has_baked_edits(item):
     return bool(orig and shot and orig != shot)
 
 
+def _first_num(*vals, default=0):
+    for value in vals:
+        if value is None or value == "":
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return default
+
+
+def _first_text(*vals, default=""):
+    for value in vals:
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return default
+
+
+def _text_direction(value):
+    return "vertical" if str(value or "").strip().lower() == "vertical" else "horizontal"
+
+
 def _num(value, default=0):
     try:
         if value is None or value == "":
@@ -94,7 +119,7 @@ def item_edit_log(item):
     """Structured edit recipe from toolSettings.editLog or flat toolSettings."""
     ts = get_item_tool_settings(item)
     log = ts.get("editLog") if isinstance(ts.get("editLog"), dict) else {}
-    src = log or ts
+    src = {**ts, **log} if log else dict(ts)
     feather = _num(src.get("featherPercent", src.get("featherEdge")))
     corner = _num(src.get("cornerRadiusPercent", src.get("cornerRadius")))
     text_on = _flag_on(src.get("textEnabled")) and str(src.get("textContent") or "").strip()
@@ -135,11 +160,12 @@ def item_edit_log(item):
         "featherFadeColor": "black" if str(src.get("featherFadeColor") or "").strip().lower() == "black" else "white",
         "textEnabled": bool(text_on),
         "textContent": str(src.get("textContent") or "").strip(),
-        "textFont": str(src.get("textFont") or "Arial"),
-        "textColor": str(src.get("textColor") or "#000000"),
-        "textSize": _num(src.get("textSize"), 24),
-        "textOffsetX": _num(src.get("textOffsetX"), 50),
-        "textOffsetY": _num(src.get("textOffsetY"), 50),
+        "textFont": str(_first_text(log.get("textFont") if log else "", ts.get("textFont"), default="Arial") or "Arial"),
+        "textColor": str(_first_text(log.get("textColor") if log else "", ts.get("textColor"), default="#000000") or "#000000"),
+        "textSize": _first_num(log.get("textSize") if log else None, ts.get("textSize"), default=24),
+        "textOffsetX": _first_num(log.get("textOffsetX") if log else None, ts.get("textOffsetX"), default=50),
+        "textOffsetY": _first_num(log.get("textOffsetY") if log else None, ts.get("textOffsetY"), default=50),
+        "textDirection": _text_direction(_first_text(log.get("textDirection") if log else "", ts.get("textDirection"))),
         "printAreaFit": fit or "none",
         "imageOrientation": "landscape" if orientation == "landscape" else "portrait",
         "imageOffsetX": _num(src.get("imageOffsetX", src.get("offsetX"))),
@@ -203,9 +229,12 @@ def format_item_edit_log_rows(log):
         snippet = str(log.get("textContent"))
         if len(snippet) > 60:
             snippet = snippet[:57] + "..."
+        direction = _text_direction(log.get("textDirection"))
+        ox = _first_num(log.get("textOffsetX"), default=50)
+        oy = _first_num(log.get("textOffsetY"), default=50)
         rows.append((
             "Text",
-            f'"{snippet}" · {log.get("textFont") or "Arial"} · {log.get("textColor") or "#000"} · {int(_num(log.get("textSize"), 24))}px',
+            f'"{snippet}" · {direction} · {log.get("textFont") or "Arial"} · {log.get("textColor") or "#000"} · {int(_num(log.get("textSize"), 24))}px · pos {ox:g}%, {oy:g}%',
         ))
     return rows
 
@@ -540,7 +569,18 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
             tc = (tool_settings.get("textContent") or "").strip()[:50]
             if len((tool_settings.get("textContent") or "").strip()) > 50:
                 tc += "..."
-            text_line = f"<p><strong>Text:</strong> {escape(tc)} (font: {escape(str(tool_settings.get('textFont', 'Arial')))}, color: {escape(str(tool_settings.get('textColor', '#000000')))}, size: {tool_settings.get('textSize', 24)}px)</p>"
+            log = item_edit_log(item) or {}
+            direction = _text_direction(log.get("textDirection") or tool_settings.get("textDirection"))
+            color = log.get("textColor") or tool_settings.get("textColor") or "#000000"
+            ox = _first_num(log.get("textOffsetX"), tool_settings.get("textOffsetX"), default=50)
+            oy = _first_num(log.get("textOffsetY"), tool_settings.get("textOffsetY"), default=50)
+            text_line = (
+                f"<p><strong>Text:</strong> {escape(tc)} "
+                f"(font: {escape(str(log.get('textFont') or tool_settings.get('textFont', 'Arial')))}, "
+                f"color: {escape(str(color))}, "
+                f"size: {int(_first_num(log.get('textSize'), tool_settings.get('textSize'), default=24))}px, "
+                f"{escape(direction)}, pos {ox:g}%/{oy:g}%)</p>"
+            )
         edit_log_html = format_item_edit_log_html(item)
         # Per-product screenshot (item's selected_screenshot or fallback to order/first)
         item_img = _get_item_screenshot(item, fallback=fallback_screenshot)
@@ -652,7 +692,17 @@ def build_customer_order_email(order_id, order_data, cart, order_number, total_a
             tc = (tool_settings.get("textContent") or "").strip()[:50]
             if len((tool_settings.get("textContent") or "").strip()) > 50:
                 tc += "..."
-            text_p = f'<p><strong>Text:</strong> {tc} (font: {tool_settings.get("textFont", "Arial")}, size: {tool_settings.get("textSize", 24)}px)</p>'
+            log = item_edit_log(item) or {}
+            direction = _text_direction(log.get("textDirection") or tool_settings.get("textDirection"))
+            color = log.get("textColor") or tool_settings.get("textColor") or "#000000"
+            ox = _first_num(log.get("textOffsetX"), tool_settings.get("textOffsetX"), default=50)
+            oy = _first_num(log.get("textOffsetY"), tool_settings.get("textOffsetY"), default=50)
+            text_p = (
+                f'<p><strong>Text:</strong> {tc} '
+                f'(font: {log.get("textFont") or tool_settings.get("textFont", "Arial")}, '
+                f'color: {color}, size: {int(_first_num(log.get("textSize"), tool_settings.get("textSize"), default=24))}px, '
+                f'{direction}, pos {ox:g}%/{oy:g}%)</p>'
+            )
         note_p = f'<p><strong>Note:</strong> {note}</p>' if note else ''
         html += f"""
         <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px;">

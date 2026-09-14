@@ -561,9 +561,19 @@ def process_thumbnail_print_quality():
         text_content = (data.get("text_content") or "").strip()
         text_font = data.get("text_font", "Arial")
         text_color = data.get("text_color", "#000000")
-        text_size = int(data.get("text_size", 24))
-        text_offset_x = int(data.get("text_offset_x", 50))
-        text_offset_y = int(data.get("text_offset_y", 50))
+        try:
+            text_size = int(data.get("text_size", 24))
+        except (TypeError, ValueError):
+            text_size = 24
+        try:
+            text_offset_x = int(round(float(data.get("text_offset_x", 50))))
+        except (TypeError, ValueError):
+            text_offset_x = 50
+        try:
+            text_offset_y = int(round(float(data.get("text_offset_y", 50))))
+        except (TypeError, ValueError):
+            text_offset_y = 50
+        text_direction = "vertical" if str(data.get("text_direction") or "").strip().lower() == "vertical" else "horizontal"
         add_white_background = data.get("add_white_background", True)  # ignored when corners are rounded
         feather_fade_color = data.get("feather_fade_color") or data.get("featherFadeColor") or "white"
         print_area_width = data.get("print_area_width")
@@ -571,6 +581,16 @@ def process_thumbnail_print_quality():
         image_orientation = data.get("image_orientation") or data.get("imageOrientation")
         fit_mode = data.get("fit_mode") or data.get("fitMode")
         preserve_edits = bool(data.get("preserve_edits"))
+        try:
+            frame_source_width = int(round(float(data.get("frame_source_width") or data.get("frameSourceWidth") or 0)))
+        except (TypeError, ValueError):
+            frame_source_width = 0
+        try:
+            frame_source_height = int(round(float(data.get("frame_source_height") or data.get("frameSourceHeight") or 0)))
+        except (TypeError, ValueError):
+            frame_source_height = 0
+        frame_source_width = max(0, frame_source_width)
+        frame_source_height = max(0, frame_source_height)
         
         frame_width = max(1, min(100, frame_width))
         text_size = max(12, min(200, text_size))
@@ -615,13 +635,16 @@ def process_thumbnail_print_quality():
             text_size=text_size,
             text_offset_x=text_offset_x,
             text_offset_y=text_offset_y,
+            text_direction=text_direction,
             add_white_background=add_white_background,
             print_area_width=print_area_width,
             print_area_height=print_area_height,
             image_orientation=image_orientation,
             fit_mode=fit_mode,
             preserve_edits=preserve_edits,
-            feather_fade_color=feather_fade_color
+            feather_fade_color=feather_fade_color,
+            frame_source_width=frame_source_width,
+            frame_source_height=frame_source_height,
         )
         
         if result.get('success'):

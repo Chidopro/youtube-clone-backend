@@ -596,9 +596,8 @@ const Favorites = ({ sidebar }) => {
             {videoItems.length > 0 ? (
               <FavoritesMediaSection
                 id="videos"
-                title="Videos"
-                leadTitle={creatorHeading || undefined}
-                ariaLabel={creatorHeading ? `${creatorHeading} Videos` : 'Videos'}
+                title="View Clip"
+                ariaLabel="View Clip"
                 itemCount={videoItems.length}
                 className="favorites-shelf--videos"
                 alwaysShowArrows
@@ -610,7 +609,7 @@ const Favorites = ({ sidebar }) => {
                       type="button"
                       className="favorites-card-image favorites-card-image--clickable"
                       onClick={() => openVideo(item.raw)}
-                      aria-label={`Play video ${item.title}`}
+                      aria-label={`Watch ${item.title}`}
                     >
                       <img
                         src={item.thumb || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
@@ -626,7 +625,7 @@ const Favorites = ({ sidebar }) => {
                         className="favorites-make-merch-btn"
                         onClick={() => openVideo(item.raw)}
                       >
-                        Play Video
+                        Watch
                       </button>
                     </div>
                   </div>

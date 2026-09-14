@@ -6,6 +6,7 @@ Handles video screenshot capture functionality
 
 import cv2
 import numpy as np
+import re
 import requests
 import tempfile
 import os
@@ -13,6 +14,31 @@ from urllib.parse import urlparse
 import logging
 
 logger = logging.getLogger(__name__)
+
+def _corner_radius_px(percent, width, height):
+    """Same selected corner-radius percent used on Tools, in pixels for this box."""
+    if percent <= 0 or width <= 0 or height <= 0:
+        return 0
+    max_radius = min(width, height) / 2.0
+    if percent >= 100:
+        return max_radius
+    return (percent / 100.0) * max_radius
+
+
+def _scale_tools_frame_width(frame_width, print_w, print_h, source_w=0, source_h=0):
+    """Match Tools: slider px is screenshot pixels, scaled by min-side onto this image."""
+    try:
+        fw = float(frame_width)
+    except (TypeError, ValueError):
+        return 0
+    if fw <= 0:
+        return 0
+    print_min = min(float(print_w or 0), float(print_h or 0))
+    source_min = min(float(source_w or 0), float(source_h or 0))
+    scaled = fw * (print_min / source_min) if print_min > 0 and source_min > 0 else fw
+    cap = print_min / 2.0 if print_min > 0 else scaled
+    return max(1, int(round(min(scaled, cap))))
+
 
 def _draw_rounded_rect_filled(img, x, y, width, height, radius, color):
     """Helper function to draw a filled rounded rectangle"""
@@ -874,7 +900,123 @@ def _orientation_print_area(image_orientation, print_area_width, print_area_heig
     return None, None
 
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white'):
+def _overlay_text_direction(value):
+    return "vertical" if str(value or "").strip().lower() == "vertical" else "horizontal"
+
+
+def _percent_0_100(value, default=50):
+    try:
+        if value is None or value == "":
+            n = default
+        else:
+            n = float(value)
+    except (TypeError, ValueError):
+        n = default
+    if n != n:  # NaN
+        n = default
+    return max(0.0, min(100.0, n))
+
+
+def _parse_overlay_hex_color(text_color, mode="RGB"):
+    """Accept #rgb, #rrggbb, rgb(), and common names. Invalid values stay black."""
+    raw = str(text_color or "").strip().lower()
+    named = {
+        "white": "ffffff",
+        "black": "000000",
+        "red": "ff0000",
+        "navy": "000080",
+        "blue": "0000ff",
+        "yellow": "ffff00",
+        "lime": "00ff00",
+        "aqua": "00ffff",
+        "fuchsia": "ff00ff",
+        "silver": "c0c0c0",
+        "gray": "808080",
+        "grey": "808080",
+        "maroon": "800000",
+        "olive": "808000",
+        "purple": "800080",
+        "teal": "008080",
+        "orange": "ffa500",
+    }
+    hex_color = named.get(raw, "")
+    if not hex_color:
+        rgb_match = re.match(r"rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)", raw)
+        if rgb_match:
+            r = max(0, min(255, int(rgb_match.group(1))))
+            g = max(0, min(255, int(rgb_match.group(2))))
+            b = max(0, min(255, int(rgb_match.group(3))))
+            return (r, g, b) if mode == "RGB" else (r, g, b, 255)
+        hex_color = raw.lstrip("#")
+        if len(hex_color) == 3 and all(c in "0123456789abcdef" for c in hex_color):
+            hex_color = "".join(c * 2 for c in hex_color)
+        elif len(hex_color) == 8 and all(c in "0123456789abcdef" for c in hex_color):
+            hex_color = hex_color[:6]
+    if len(hex_color) == 6 and all(c in "0123456789abcdef" for c in hex_color):
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        return (r, g, b) if mode == "RGB" else (r, g, b, 255)
+    return (0, 0, 0) if mode == "RGB" else (0, 0, 0, 255)
+
+
+def _draw_centered_text(draw, xy, text, font, fill):
+    x, y = xy
+    try:
+        draw.text((x, y), text, font=font, fill=fill, anchor="mm")
+        return
+    except TypeError:
+        pass
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw = bbox[2] - bbox[0]
+        th = bbox[3] - bbox[1]
+        draw.text((x - tw // 2, y - th // 2 - bbox[1]), text, font=font, fill=fill)
+        return
+    except AttributeError:
+        pass
+    try:
+        tw, th = draw.textsize(text, font=font)
+    except Exception:
+        tw, th = (0, 0)
+    draw.text((x - tw // 2, y - th // 2), text, font=font, fill=fill)
+
+
+def _draw_print_overlay_text(draw, text, font, fill, center_x, center_y, font_px, direction):
+    """Match ToolsPage drawOverlayText: center at percent coords, optional vertical stack."""
+    lines = str(text).strip().split("\n")
+    if not lines:
+        return
+    line_height = int(font_px * 1.2)
+    if direction == "vertical":
+        col_width = font_px * 1.15
+        start_x = center_x - (len(lines) - 1) * col_width / 2.0
+        for col, line in enumerate(lines):
+            chars = list(line)
+            if not chars:
+                continue
+            start_y = center_y - (len(chars) - 1) * line_height / 2.0
+            for i, ch in enumerate(chars):
+                _draw_centered_text(
+                    draw,
+                    (int(round(start_x + col * col_width)), int(round(start_y + i * line_height))),
+                    ch,
+                    font,
+                    fill,
+                )
+        return
+    start_y = center_y - (len(lines) - 1) * line_height / 2.0
+    for i, line in enumerate(lines):
+        _draw_centered_text(
+            draw,
+            (int(center_x), int(round(start_y + i * line_height))),
+            line,
+            font,
+            fill,
+        )
+
+
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -1184,19 +1326,23 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
         
         # Apply frame border if enabled (AFTER feather to ensure frame is on top and visible)
         if frame_enabled and frame_width > 0:
-            # Ensure frame_width is an integer and within bounds
-            frame_width = int(frame_width)
-            frame_width = max(1, min(100, frame_width))  # Clamp between 1-100px
-            
-            # Scale frame width based on image size for high-resolution images
-            base_width = 1200  # Reference width for 1:1 scaling
-            if target_width > base_width:
-                scale_factor = target_width / base_width
-                scaled_frame_width = int(frame_width * scale_factor)
-                logger.info(f"Scaling frame width: {frame_width}px -> {scaled_frame_width}px (scale factor: {scale_factor:.2f} for {target_width}px wide image)")
-                frame_width = scaled_frame_width
-            else:
-                logger.info(f"Frame width: {frame_width}px (no scaling needed for {target_width}px wide image)")
+            slider_px = max(1, min(100, int(frame_width)))
+            src_w = int(frame_source_width or 0)
+            src_h = int(frame_source_height or 0)
+            # Preserve-edits bake is already 300 DPI, so this call's original size
+            # is not the Tools screenshot. Only fall back to it when we upscaled.
+            if not (src_w > 0 and src_h > 0):
+                print_min = min(target_width, target_height)
+                src_min = min(original_width, original_height)
+                if src_min > 0 and print_min > src_min * 1.05:
+                    src_w, src_h = original_width, original_height
+            frame_width = _scale_tools_frame_width(
+                slider_px, target_width, target_height, src_w, src_h
+            )
+            logger.info(
+                f"Scaling frame width: {slider_px}px Tools -> {frame_width}px "
+                f"(source {src_w}x{src_h} -> print {target_width}x{target_height})"
+            )
             
             logger.info(f"Applying frame border: color={frame_color}, width={frame_width}px, double={double_frame}, image_size={target_width}x{target_height}")
             
@@ -1267,8 +1413,8 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             
             # Draw inner frame for double frame effect
             if double_frame:
-                inner_offset = int(frame_width * 1.5)
-                inner_width = int(frame_width * 0.7)
+                inner_offset = max(2, int(round(frame_width * 0.25)))
+                inner_width = max(1, int(frame_width))
                 inner_frame_mask = np.zeros((target_height, target_width), dtype=np.uint8)
                 
                 if corner_radius_value >= 100:  # Circle
@@ -1280,26 +1426,30 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                     cv2.circle(inner_frame_mask, (target_width // 2, target_height // 2),
                               int(inner_outer_radius - inner_width), 0, -1)
                 elif effective_corner_radius > 0:  # Rounded rectangle
-                    # Inner frame is drawn inside the main frame
-                    inner_outer_radius = max(0, effective_corner_radius - frame_width - inner_offset)
+                    # Inner frame uses the same selected radius percent as the main shape
                     inner_x = frame_width + inner_offset
                     inner_y = frame_width + inner_offset
                     inner_w = target_width - (frame_width + inner_offset) * 2
                     inner_h = target_height - (frame_width + inner_offset) * 2
+                    inner_outer_radius = int(round(_corner_radius_px(corner_radius_value, inner_w, inner_h)))
                     
                     # Draw outer rounded rectangle for inner frame
                     _draw_rounded_rect_filled(inner_frame_mask, inner_x, inner_y,
                                              inner_w, inner_h,
-                                             int(inner_outer_radius), 255)
-                    # Subtract inner rounded rectangle
-                    inner_inner_radius = max(0, inner_outer_radius - inner_width)
+                                             inner_outer_radius, 255)
+                    # Subtract inner rounded rectangle (same selected percent on the hole)
+                    hole_w = inner_w - inner_width * 2
+                    hole_h = inner_h - inner_width * 2
+                    inner_inner_radius = int(round(_corner_radius_px(corner_radius_value, hole_w, hole_h)))
+                    if inner_inner_radius <= 0 and inner_outer_radius > inner_width:
+                        inner_inner_radius = inner_outer_radius - inner_width
                     if inner_inner_radius > 0:
                         _draw_rounded_rect_filled(inner_frame_mask, 
                                                  inner_x + inner_width,
                                                  inner_y + inner_width,
-                                                 inner_w - inner_width * 2,
-                                                 inner_h - inner_width * 2,
-                                                 int(inner_inner_radius), 0)
+                                                 hole_w,
+                                                 hole_h,
+                                                 inner_inner_radius, 0)
                     else:
                         cv2.rectangle(inner_frame_mask,
                                     (inner_x + inner_width, inner_y + inner_width),
@@ -1396,11 +1546,6 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                     # Headline-style: text_size 100 = ~22% of image min dimension (match frontend)
                     min_dim = min(width, height)
                     font_px = max(12, min(300, int((text_size / 100.0) * min_dim * 0.22)))
-                    # Position: 0-100, 50 = center
-                    ox = max(0, min(100, text_offset_x if text_offset_x is not None else 50))
-                    oy = max(0, min(100, text_offset_y if text_offset_y is not None else 50))
-                    center_x = int(width * ox / 100)
-                    center_y = int(height * oy / 100)
                     # Try to load font; fallback to default
                     font_paths = []
                     if os.name == 'nt':  # Windows
@@ -1424,32 +1569,30 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                                 continue
                     if font is None:
                         font = ImageFont.load_default()
-                    # Parse hex color to RGB
-                    hex_color = (text_color or '#000000').lstrip('#')
-                    if len(hex_color) == 6:
-                        r = int(hex_color[0:2], 16)
-                        g = int(hex_color[2:4], 16)
-                        b = int(hex_color[4:6], 16)
-                        fill_tuple = (r, g, b) if pil_image.mode == 'RGB' else (r, g, b, 255)
-                    else:
-                        fill_tuple = (0, 0, 0) if pil_image.mode == 'RGB' else (0, 0, 0, 255)
-                    lines = [line.strip() for line in text_content.strip().split('\n') if line.strip()]
-                    if lines:
-                        # Position text block at center_x, center_y (multiline)
-                        line_height = int(font_px * 1.2)
-                        total_h = (len(lines) - 1) * line_height
-                        start_y = center_y - total_h // 2
-                        for i, line in enumerate(lines):
-                            # Get bbox to center each line (Pillow 8+ has textbbox; older has textsize)
-                            try:
-                                bbox = draw.textbbox((0, 0), line, font=font)
-                                tw = bbox[2] - bbox[0]
-                            except AttributeError:
-                                tw, _ = draw.textsize(line, font=font)
-                            x = center_x - tw // 2
-                            y = start_y + i * line_height
-                            draw.text((x, y), line, font=font, fill=fill_tuple)
-                    logger.info("Text overlay applied successfully")
+                    fill_tuple = _parse_overlay_hex_color(
+                        text_color, "RGB" if pil_image.mode == "RGB" else "RGBA"
+                    )
+                    ox = _percent_0_100(text_offset_x, 50)
+                    oy = _percent_0_100(text_offset_y, 50)
+                    center_x = int(round(width * ox / 100.0))
+                    center_y = int(round(height * oy / 100.0))
+                    _draw_print_overlay_text(
+                        draw,
+                        text_content,
+                        font,
+                        fill_tuple,
+                        center_x,
+                        center_y,
+                        font_px,
+                        _overlay_text_direction(text_direction),
+                    )
+                    logger.info(
+                        "Text overlay applied successfully color=%s pos=%s/%s dir=%s",
+                        text_color,
+                        ox,
+                        oy,
+                        _overlay_text_direction(text_direction),
+                    )
                 except Exception as text_err:
                     logger.warning("Could not apply text overlay: %s", str(text_err))
             

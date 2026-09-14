@@ -10,6 +10,7 @@ from screenshot_capture import (
     _draw_rounded_rect_filled,
     _flatten_alpha_to_white_inside_shape,
     _needs_alpha_pipeline,
+    _scale_tools_frame_width,
     _tools_matching_feather_factor,
     process_thumbnail_for_print,
 )
@@ -267,6 +268,90 @@ class TestFlattenInsideShape(unittest.TestCase):
         self.assertEqual(int(out[4, 4, 3]), 255)
         self.assertGreater(int(out[4, 4, 0]), 120)
         self.assertLess(int(out[4, 4, 0]), 140)
+
+
+class TestOverlayTextColorAndPosition(unittest.TestCase):
+    def test_hex_and_named_colors(self):
+        from screenshot_capture import _parse_overlay_hex_color
+        self.assertEqual(_parse_overlay_hex_color('#FFFFFF'), (255, 255, 255))
+        self.assertEqual(_parse_overlay_hex_color('#fff'), (255, 255, 255))
+        self.assertEqual(_parse_overlay_hex_color('white'), (255, 255, 255))
+        self.assertEqual(_parse_overlay_hex_color('rgb(255, 255, 255)'), (255, 255, 255))
+        self.assertEqual(_parse_overlay_hex_color('nope'), (0, 0, 0))
+
+    def test_white_text_lands_near_top_not_center(self):
+        import base64
+        import io
+        from PIL import Image
+
+        src = np.zeros((200, 200, 3), dtype=np.uint8)
+        src[:] = (40, 80, 160)
+        ok, buf = cv2.imencode('.png', src)
+        self.assertTrue(ok)
+        data_url = 'data:image/png;base64,' + base64.b64encode(buf.tobytes()).decode('ascii')
+        result = process_thumbnail_for_print(
+            data_url,
+            print_dpi=72,
+            preserve_edits=True,
+            fit_mode='preserve',
+            add_white_background=False,
+            text_enabled=True,
+            text_content='W',
+            text_color='#FFFFFF',
+            text_size=100,
+            text_offset_x=50,
+            text_offset_y=12,
+            text_direction='vertical',
+        )
+        self.assertTrue(result.get('success'), result.get('error'))
+        raw = result['screenshot'].split(',', 1)[1]
+        img = Image.open(io.BytesIO(base64.b64decode(raw))).convert('RGB')
+        top = img.crop((70, 0, 130, 50))
+        mid = img.crop((70, 90, 130, 130))
+        self.assertGreater(max(top.getextrema()[0][1], top.getextrema()[1][1], top.getextrema()[2][1]), 200)
+        self.assertLess(max(mid.getextrema()[0][1], mid.getextrema()[1][1], mid.getextrema()[2][1]), 180)
+
+
+class TestToolsFrameWidthScale(unittest.TestCase):
+    def test_slider_px_scale_by_min_side(self):
+        # Tools 26px on an 800px-min screenshot → 78px on a 2400px-min print.
+        self.assertEqual(_scale_tools_frame_width(26, 2400, 3000, 800, 1000), 78)
+
+    def test_missing_source_keeps_slider_px(self):
+        self.assertEqual(_scale_tools_frame_width(26, 2400, 3000, 0, 0), 26)
+
+    def test_preserve_edits_uses_tools_source_not_1200_rule(self):
+        import base64
+        import io
+        from PIL import Image
+
+        src = np.zeros((200, 200, 3), dtype=np.uint8)
+        src[:] = (200, 50, 20)
+        ok, buf = cv2.imencode('.png', src)
+        self.assertTrue(ok)
+        data_url = 'data:image/png;base64,' + base64.b64encode(buf.tobytes()).decode('ascii')
+        result = process_thumbnail_for_print(
+            data_url,
+            print_dpi=72,
+            preserve_edits=True,
+            fit_mode='preserve',
+            add_white_background=False,
+            frame_enabled=True,
+            frame_color='#FF0000',
+            frame_width=10,
+            frame_source_width=100,
+            frame_source_height=100,
+        )
+        self.assertTrue(result.get('success'), result.get('error'))
+        raw = result['screenshot'].split(',', 1)[1]
+        img = Image.open(io.BytesIO(base64.b64decode(raw))).convert('RGB')
+        # 10px Tools on 100px source → 20px on 200px print. Old 1200 rule left this at 10.
+        edge = img.getpixel((5, 100))
+        inside_frame = img.getpixel((15, 100))
+        past_frame = img.getpixel((40, 100))
+        self.assertGreater(edge[0], 200)
+        self.assertGreater(inside_frame[0], 200)
+        self.assertLess(past_frame[0], 80)
 
 
 if __name__ == "__main__":
