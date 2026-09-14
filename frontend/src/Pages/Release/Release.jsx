@@ -7,7 +7,6 @@ const Release = () => {
     <div className="release-page">
       <article className="release-article">
         <h1 className="release-title">The Creator Revolution Has a Storefront:<br />ScreenMerch Officially Launches</h1>
-        <p className="release-dateline">Alameda, California</p>
 
         <p>ScreenMerch is a creator-focused platform designed to transform video moments and photos into merchandise — giving YouTube creators a storefront they own for their content, with room to grow by inviting collaborators onto it.</p>
 

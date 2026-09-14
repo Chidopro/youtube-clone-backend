@@ -1938,8 +1938,10 @@ function ScreenshotPreviewPane({
     overlayBoxWidth,
     overlayBoxHeight
   );
-  const boxW = boxWidth > 0 ? boxWidth : 176;
-  const boxH = boxW / (aspect > 0 ? aspect : 1);
+  const maxSide = boxWidth > 0 ? boxWidth : 176;
+  const safeAspect = aspect > 0 ? aspect : 1;
+  const boxW = safeAspect >= 1 ? maxSide : maxSide * safeAspect;
+  const boxH = safeAspect >= 1 ? maxSide / safeAspect : maxSide;
   const objectPos = printBoxObjectPosition(productName, imageOrientation, imageOffsetX, imageOffsetY);
   const posX = objectPos.x;
   const posY = objectPos.y;
@@ -1958,7 +1960,10 @@ function ScreenshotPreviewPane({
   return (
     <div
       className={`screenshot-preview-stage${imageOrientation === 'landscape' ? ' is-landscape' : ' is-portrait'}`}
-      style={{ aspectRatio: String(aspect) }}
+      style={{
+        aspectRatio: String(safeAspect),
+        '--preview-aspect': String(safeAspect),
+      }}
     >
       <div
         style={{

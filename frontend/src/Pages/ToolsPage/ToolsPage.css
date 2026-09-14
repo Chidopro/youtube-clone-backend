@@ -311,9 +311,19 @@ body.tools-page-active .site-footer {
 }
 
 .mug-product-preview-image {
+  --preview-max-side: 240px;
   width: 100%;
-  max-width: 240px;
+  max-width: var(--preview-max-side);
   margin: 0 auto;
+}
+
+.mug-product-preview-image .screenshot-preview-stage {
+  width: min(100%, calc(var(--preview-max-side) * min(1, var(--preview-aspect, 1))));
+  max-width: min(var(--preview-max-side), calc(var(--preview-max-side) * min(1, var(--preview-aspect, 1))));
+  max-height: var(--preview-max-side);
+  height: auto;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .product-preview-unavailable-note {
@@ -1271,6 +1281,10 @@ body.tools-page-active .site-footer {
     flex: 1 1 auto;
     min-width: 0;
   }
+
+  .mug-product-preview-image {
+    --preview-max-side: 180px;
+  }
   
   .tools-page-header {
     display: block;
@@ -1671,6 +1685,10 @@ body.tools-page-active .site-footer {
     min-width: 0;
   }
 
+  body.tools-page-active .mug-product-preview-image {
+    --preview-max-side: 180px;
+  }
+
   /* Same stage as desktop: 200px cap, height:auto. Do not squash or
      override overlay width — px size comes from the painted mockup. */
   body.tools-page-active .product-preview-stage {
@@ -1785,6 +1803,10 @@ body.tools-page-active .site-footer {
   .tools-preview-section,
   .tools-controls-section {
     padding: 1rem;
+  }
+
+  .mug-product-preview-image {
+    --preview-max-side: 160px;
   }
 
   .tools-actions > .apply-edits-btn,
