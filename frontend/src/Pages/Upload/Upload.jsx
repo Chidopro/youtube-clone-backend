@@ -356,9 +356,9 @@ const Upload = () => {
     const modal = (() => {
         if (loadingUser) {
             return (
-                <div className="upload-modal-overlay" role="dialog" aria-modal="true" aria-label="Upload Video">
+                <div className="upload-modal-overlay" role="dialog" aria-modal="true" aria-label="Upload Clip">
                     <div className="upload-modal-card">
-                        <h2>Upload Video</h2>
+                        <h2>Upload Clip</h2>
                         <div className="upload-form-body">Loading...</div>
                     </div>
                 </div>
@@ -425,7 +425,7 @@ const Upload = () => {
                     >
                         &times;
                     </button>
-                    <h2 id="upload-video-heading">Upload Video</h2>
+                    <h2 id="upload-video-heading">Upload Clip</h2>
                     <form className="upload-form-body" onSubmit={handleSubmit}>
                         <div className="upload-form-group">
                             <label htmlFor="upload-video-title">Title *</label>
@@ -517,7 +517,7 @@ const Upload = () => {
 
                         <div className="upload-form-actions">
                             <button type="submit" className="save-btn" disabled={loading}>
-                                {loading ? 'Uploading...' : 'Upload Video'}
+                                {loading ? 'Uploading...' : 'Upload Clip'}
                             </button>
                             <button
                                 type="button"

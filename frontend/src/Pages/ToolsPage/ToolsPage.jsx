@@ -2036,12 +2036,6 @@ function ScreenshotPreviewPane({
 }
 
 // Helper functions to determine product handling
-const isMugProduct = (productName) => {
-  if (!productName) return false;
-  const mugs = ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"];
-  return mugs.some(mug => productName.includes(mug) || mug.includes(productName));
-};
-
 const isHatProduct = (productName) => {
   if (!productName) return false;
   const productNameLower = productName.toLowerCase().trim();
@@ -2065,9 +2059,13 @@ const isHatProduct = (productName) => {
   return isHat;
 };
 
-const TOOLS_BLOCKED_CATEGORIES = {
+const NO_MOCKUP_PREVIEW_CATEGORIES = {
+  mugs: {
+    products: ['White Glossy Mug', 'Travel Mug', 'Enamel Mug', 'Colored Mug'],
+    message:
+      'Mug preview is not available due to the curved surface, but you can still use the editing tools to customize your screenshot.',
+  },
   bags: {
-    label: 'Bags',
     products: [
       'Laptop Sleeve',
       'All-Over Print Drawstring',
@@ -2078,22 +2076,18 @@ const TOOLS_BLOCKED_CATEGORIES = {
       'Tote Bag',
       'Large Canvas Bag',
     ],
+    message:
+      'Bag preview is not available, but you can still use the editing tools to customize your screenshot.',
   },
   pets: {
-    label: 'Pets',
-    products: [
-      'Pet Bowl All-Over Print',
-      'Pet Bandana Collar',
-    ],
+    products: ['Pet Bowl All-Over Print', 'Pet Bandana Collar'],
+    message:
+      'Pet product preview is not available, but you can still use the editing tools to customize your screenshot.',
   },
   misc: {
-    label: 'Miscellaneous',
-    products: [
-      'Hardcover Bound Notebook',
-      'Apron',
-      'Jigsaw Puzzle with Tin',
-      'Greeting Card',
-    ],
+    products: ['Hardcover Bound Notebook', 'Apron', 'Jigsaw Puzzle with Tin', 'Greeting Card'],
+    message:
+      'Accessory preview is not available, but you can still use the editing tools to customize your screenshot.',
   },
 };
 
@@ -2110,24 +2104,24 @@ const isAllOverPrintProduct = (productName) => {
   return n.includes('all over print') || n.includes('all-over print') || n.includes('apron');
 };
 
-const getToolsUnavailableInfo = (productName, category) => {
+const getNoMockupPreviewInfo = (productName, category) => {
   const cat = String(category || '').toLowerCase().trim();
-  const blockedMeta = TOOLS_BLOCKED_CATEGORIES[cat];
-  if (blockedMeta) {
-    return {
-      title: `No Tools for ${blockedMeta.label}`,
-      message: `Editing tools (feather, corner radius, frame) are not available for ${blockedMeta.label.toLowerCase()} products.`,
-    };
+  if (NO_MOCKUP_PREVIEW_CATEGORIES[cat]) {
+    return NO_MOCKUP_PREVIEW_CATEGORIES[cat];
   }
   if (productName) {
-    for (const meta of Object.values(TOOLS_BLOCKED_CATEGORIES)) {
+    for (const meta of Object.values(NO_MOCKUP_PREVIEW_CATEGORIES)) {
       if (meta.products.some((listed) => productNameMatchesListed(productName, listed))) {
-        return {
-          title: `No Tools for ${meta.label}`,
-          message: `Editing tools (feather, corner radius, frame) are not available for ${meta.label.toLowerCase()} products.`,
-        };
+        return meta;
       }
     }
+  }
+  return null;
+};
+
+const getToolsUnavailableInfo = (productName, category) => {
+  if (getNoMockupPreviewInfo(productName, category)) {
+    return null;
   }
   if (isAllOverPrintProduct(productName)) {
     return {
@@ -2154,15 +2148,6 @@ const ToolsUnavailableNotice = ({ info }) => (
     <div style={{ fontSize: '14px' }}>{info.message}</div>
   </div>
 );
-
-const isMiscProductNoPreview = (productName) => {
-  if (!productName) return false;
-  const miscNoPreview = [
-    "Greeting Card",
-    "Hardcover Bound Notebook"
-  ];
-  return miscNoPreview.some(product => productName.includes(product) || product.includes(productName));
-};
 
 const getGenericHatImage = () => {
   // Use a generic hat image for all hats in tools page
@@ -4878,10 +4863,9 @@ const ToolsPage = () => {
                       <div className="product-preview-visual">
                     {(() => {
                       const productName = selectedProductName || product.name || '';
-                      const isMug = isMugProduct(productName);
                       const isHat = isHatProduct(productName);
+                      const noMockupPreview = getNoMockupPreviewInfo(product.name || productName, product.category);
                       const toolsUnavailable = getToolsUnavailableInfo(product.name || productName, product.category);
-                      const isMiscNoPreview = isMiscProductNoPreview(productName);
                       
                       // Debug logging for hat products
                       if (isHat) {
@@ -4892,13 +4876,13 @@ const ToolsPage = () => {
                         return <ToolsUnavailableNotice info={toolsUnavailable} />;
                       }
                       
-                      // Mugs: show the edited screenshot only (no product mockup)
-                      if (isMug) {
-                        const mugNotice = (
+                      // Mugs, bags, pets, and accessories: edited screenshot only (no product mockup)
+                      if (noMockupPreview) {
+                        const previewNotice = (
                           <div className="product-preview-unavailable-note">
                             <div className="product-preview-unavailable-note-title">Preview Not Available</div>
                             <div className="product-preview-unavailable-note-text">
-                              Mug preview is not available due to the curved surface, but you can still use the editing tools to customize your screenshot.
+                              {noMockupPreview.message}
                             </div>
                           </div>
                         );
@@ -4938,114 +4922,11 @@ const ToolsPage = () => {
                                   textDirection={textDirection}
                                 />
                               </div>
-                              {mugNotice}
+                              {previewNotice}
                             </div>
                           );
                         }
-                        return mugNotice;
-                      }
-                      
-                      // Misc products (no preview needed): Allow tools but no preview
-                      // Still render ProductPreviewWithDrag for size calculation, but use placeholder image
-                      if (isMiscNoPreview) {
-                        if (currentImage) {
-                          // Use a placeholder transparent/white image for size calculation
-                          // Create a data URL for a white rectangle
-                          const placeholderSize = 400;
-                          const canvas = document.createElement('canvas');
-                          canvas.width = placeholderSize;
-                          canvas.height = placeholderSize;
-                          const ctx = canvas.getContext('2d');
-                          ctx.fillStyle = '#f8f9fa';
-                          ctx.fillRect(0, 0, placeholderSize, placeholderSize);
-                          const placeholderImage = canvas.toDataURL();
-                          
-                          return (
-                            <div style={{ position: 'relative' }}>
-                              <ProductPreviewWithDrag
-                                key={`${cartIndex}|${shotFingerprint(placeholderImage)}|${shotFingerprint(overlayScreenshot)}`}
-                                productImage={placeholderImage}
-                                screenshot={overlayScreenshot}
-                                productName={productName}
-                                productSize={product.size}
-                                offsetX={offset.x}
-                                offsetY={offset.y}
-                                onOffsetChange={(x, y) => {
-                                  setProductImageOffsets(prev => ({
-                                    ...prev,
-                                    [cartIndex]: { x, y }
-                                  }));
-                                }}
-                                textEnabled={textEnabled}
-                                textContent={textContent}
-                                textFont={textFont}
-                                textColor={textColor}
-                                textSize={textSize}
-                                textOffsetX={textOffsetX}
-                                textOffsetY={textOffsetY}
-                                textDirection={textDirection}
-                                onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
-                                featherEdge={featherEdge}
-                                cornerRadius={cornerRadius}
-                                frameEnabled={paintCssFrames}
-                                frameColor={frameColor}
-                                frameWidth={frameWidth}
-                                doubleFrame={doubleFrame}
-                                sourceWidth={currentImageDimensions.width}
-                                sourceHeight={currentImageDimensions.height}
-                                printAreaFit={printAreaFit}
-                                selectedProductName={selectedProductName}
-                                screenshotScale={screenshotScale}
-                                imageOffsetX={imageOffsetX}
-                                imageOffsetY={imageOffsetY}
-                                imageOrientation={imageOrientation}
-                                blackAndWhite={blackAndWhite}
-                                featherFadeEnabled={featherFadeEnabled}
-                                featherFadeColor={featherFadeColor}
-                                onOverlayBoxChange={handleOverlayBoxChange}
-                              />
-                              <div style={{
-                                position: 'absolute',
-                                top: '10px',
-                                left: '10px',
-                                right: '10px',
-                                background: 'rgba(255, 255, 255, 0.9)',
-                                padding: '8px',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                textAlign: 'center',
-                                border: '1px solid #dee2e6'
-                              }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Product Preview Not Available</div>
-                                <div style={{ fontSize: '11px', color: '#666' }}>
-                                  Screenshot size reflects selected product print area
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          return (
-                            <div style={{
-                              padding: '20px',
-                              textAlign: 'center',
-                              background: '#f8f9fa',
-                              border: '2px solid #dee2e6',
-                              borderRadius: '8px',
-                              color: '#495057',
-                              minHeight: '150px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: 'center',
-                              alignItems: 'center'
-                            }}>
-                              <div style={{ fontSize: '24px', marginBottom: '10px' }}>✏️</div>
-                              <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Product Preview Not Available</div>
-                              <div style={{ fontSize: '14px' }}>
-                                You can use the editing tools to customize your screenshot for this product.
-                              </div>
-                            </div>
-                          );
-                        }
+                        return previewNotice;
                       }
                       
                       // Hats: Use generic hat image for all hats (always, even without screenshot)
