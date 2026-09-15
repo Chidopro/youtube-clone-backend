@@ -1205,9 +1205,15 @@
             if (frame) {
                 if (previewFrame > 0) {
                     frame.style.display = 'block';
+                    frame.style.top = '0';
+                    frame.style.right = '0';
+                    frame.style.bottom = '0';
+                    frame.style.left = '0';
+                    frame.style.boxSizing = 'border-box';
+                    frame.style.background = 'transparent';
                     frame.style.borderRadius = clipRadius > 0 ? clipRadius + 'px' : '0';
-                    frame.style.border = 'none';
-                    frame.style.boxShadow = 'inset 0 0 0 ' + previewFrame + 'px ' + s.frameColor;
+                    frame.style.border = previewFrame + 'px solid ' + s.frameColor;
+                    frame.style.boxShadow = 'none';
                 } else {
                     frame.style.display = 'none';
                     frame.style.border = 'none';
@@ -1218,17 +1224,17 @@
                 if (previewFrame > 0 && s.doubleFrame) {
                     var innerFrameWidth = previewFrame;
                     var innerOuter = previewFrame + Math.max(2, previewFrame * 0.25);
-                    var innerBoxW = Math.max(0, w - innerOuter * 2);
-                    var innerBoxH = Math.max(0, h - innerOuter * 2);
-                    var innerRadius = overlayCornerRadiusPx(s.cornerRadius, innerBoxW, innerBoxH);
+                    var innerRadius = Math.max(0, clipRadius - innerOuter);
                     frameInner.style.display = 'block';
                     frameInner.style.top = innerOuter + 'px';
                     frameInner.style.right = innerOuter + 'px';
                     frameInner.style.bottom = innerOuter + 'px';
                     frameInner.style.left = innerOuter + 'px';
+                    frameInner.style.boxSizing = 'border-box';
+                    frameInner.style.background = 'transparent';
                     frameInner.style.borderRadius = (innerRadius > 0 ? innerRadius : 0) + 'px';
-                    frameInner.style.border = 'none';
-                    frameInner.style.boxShadow = 'inset 0 0 0 ' + innerFrameWidth + 'px ' + s.frameColor;
+                    frameInner.style.border = innerFrameWidth + 'px solid ' + s.frameColor;
+                    frameInner.style.boxShadow = 'none';
                 } else {
                     frameInner.style.display = 'none';
                     frameInner.style.border = 'none';

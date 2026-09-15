@@ -539,20 +539,32 @@ function doubleFrameSpacing(framePx) {
 }
 
 /**
- * Inner double-frame layout. Uses the same selected corner-radius percent on
- * the inner box so widening the frame cannot collapse corners to a right angle.
+ * Inner double-frame layout. Inset the outer radius by the same gutter as the
+ * box so the inner ring stays concentric (constant distance around the corner).
  */
-function overlayDoubleFrameLayout(previewFrame, boxW, boxH, cornerRadius) {
+function overlayDoubleFrameLayout(previewFrame, outerRadiusPx) {
   const { innerFrameWidth, innerOuter } = doubleFrameSpacing(previewFrame);
-  const innerBoxW = Math.max(0, boxW - innerOuter * 2);
-  const innerBoxH = Math.max(0, boxH - innerOuter * 2);
-  let innerRadius = overlayCornerRadiusPx(cornerRadius, innerBoxW, innerBoxH);
-  if (innerRadius > 0 && innerFrameWidth > 0 && innerRadius <= innerFrameWidth) {
-    const holeW = Math.max(0, innerBoxW - innerFrameWidth * 2);
-    const holeH = Math.max(0, innerBoxH - innerFrameWidth * 2);
-    innerRadius = innerFrameWidth + overlayCornerRadiusPx(cornerRadius, holeW, holeH);
-  }
+  const innerRadius = Math.max(0, (Number(outerRadiusPx) || 0) - innerOuter);
   return { innerFrameWidth, innerOuter, innerRadius };
+}
+
+/** CSS border (not inset box-shadow) so corner thickness matches the straight edges. */
+function overlayFrameRingStyle(inset, thickness, outerRadius, color) {
+  const t = Math.max(0, Number(thickness) || 0);
+  const r = Math.max(0, Number(outerRadius) || 0);
+  const i = Math.max(0, Number(inset) || 0);
+  return {
+    position: 'absolute',
+    top: i,
+    right: i,
+    bottom: i,
+    left: i,
+    boxSizing: 'border-box',
+    border: t > 0 ? `${t}px solid ${color}` : 'none',
+    borderRadius: r > 0 ? `${r}px` : 0,
+    pointerEvents: 'none',
+    background: 'transparent',
+  };
 }
 
 function roundedRectSdf(x, y, cx, cy, halfW, halfH, radius) {
@@ -723,10 +735,7 @@ function paintFrameRings(ctx, vis, {
     const iw = w - inner * 2;
     const ih = h - inner * 2;
     const outerR = Math.max(0, ringOuterRadius);
-    let innerR = Math.max(0, ringOuterRadius - thickness);
-    if (innerR <= 0 && cornerRadiusPercent > 0 && iw > 1 && ih > 1) {
-      innerR = overlayCornerRadiusPx(cornerRadiusPercent, iw, ih);
-    }
+    const innerR = Math.max(0, ringOuterRadius - thickness);
     if (isCircle) {
       const cx = x + w / 2;
       const cy = y + h / 2;
@@ -754,8 +763,7 @@ function paintFrameRings(ctx, vis, {
   paintRing(0, outer, cornerR);
   if (doubleFrame) {
     const { innerFrameWidth, innerOuter } = doubleFrameSpacing(outer);
-    const innerBoxR = overlayCornerRadiusPx(cornerRadiusPercent, w - innerOuter * 2, h - innerOuter * 2);
-    paintRing(innerOuter, innerFrameWidth, innerBoxR);
+    paintRing(innerOuter, innerFrameWidth, Math.max(0, cornerR - innerOuter));
   }
 }
 
@@ -1797,9 +1805,7 @@ const ProductPreviewWithDrag = ({
               : 0;
             const { innerFrameWidth, innerOuter, innerRadius } = overlayDoubleFrameLayout(
               previewFrame,
-              scaledWidth,
-              scaledHeight,
-              cornerRadius
+              clipRadius
             );
             return (
               <div
@@ -1845,28 +1851,13 @@ const ProductPreviewWithDrag = ({
                 {previewFrame > 0 && (
                   <div
                     aria-hidden="true"
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
-                      boxShadow: `inset 0 0 0 ${previewFrame}px ${frameColor}`,
-                      pointerEvents: 'none'
-                    }}
+                    style={overlayFrameRingStyle(0, previewFrame, clipRadius, frameColor)}
                   />
                 )}
                 {previewFrame > 0 && doubleFrame && (
                   <div
                     aria-hidden="true"
-                    style={{
-                      position: 'absolute',
-                      top: innerOuter,
-                      right: innerOuter,
-                      bottom: innerOuter,
-                      left: innerOuter,
-                      borderRadius: innerRadius > 0 ? `${innerRadius}px` : 0,
-                      boxShadow: `inset 0 0 0 ${innerFrameWidth}px ${frameColor}`,
-                      pointerEvents: 'none'
-                    }}
+                    style={overlayFrameRingStyle(innerOuter, innerFrameWidth, innerRadius, frameColor)}
                   />
                 )}
                 <ToolsLiveText
@@ -1952,9 +1943,7 @@ function ScreenshotPreviewPane({
     : 0;
   const { innerFrameWidth, innerOuter, innerRadius } = overlayDoubleFrameLayout(
     previewFrame,
-    boxW,
-    boxH,
-    cornerRadius
+    clipRadius
   );
   const fill = { position: 'absolute', inset: 0 };
   return (
@@ -1999,28 +1988,13 @@ function ScreenshotPreviewPane({
         {previewFrame > 0 && (
           <div
             aria-hidden="true"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
-              boxShadow: `inset 0 0 0 ${previewFrame}px ${frameColor}`,
-              pointerEvents: 'none'
-            }}
+            style={overlayFrameRingStyle(0, previewFrame, clipRadius, frameColor)}
           />
         )}
         {previewFrame > 0 && doubleFrame && (
           <div
             aria-hidden="true"
-            style={{
-              position: 'absolute',
-              top: innerOuter,
-              right: innerOuter,
-              bottom: innerOuter,
-              left: innerOuter,
-              borderRadius: innerRadius > 0 ? `${innerRadius}px` : 0,
-              boxShadow: `inset 0 0 0 ${innerFrameWidth}px ${frameColor}`,
-              pointerEvents: 'none'
-            }}
+            style={overlayFrameRingStyle(innerOuter, innerFrameWidth, innerRadius, frameColor)}
           />
         )}
         <ToolsLiveText

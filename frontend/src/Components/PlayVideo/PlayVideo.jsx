@@ -1530,21 +1530,8 @@ const PlayVideo = ({
                                 borderRadius: 0
                             }}
                         >
-                            <div 
+                            <div
                                 className="play-icon-overlay"
-                                style={{
-                                    background: 'rgba(45, 45, 45, 0.45)',
-                                    borderRadius: '50%',
-                                    width: isMobile ? '120px' : '150px',
-                                    height: isMobile ? '120px' : '150px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(255, 255, 255, 0.2)',
-                                    animation: 'pulsePlayIcon 2s infinite',
-                                    border: '6px solid rgba(255, 255, 255, 0.85)',
-                                    transition: 'all 0.3s ease'
-                                }}
                                 aria-label="Play Video"
                             >
                                 <svg

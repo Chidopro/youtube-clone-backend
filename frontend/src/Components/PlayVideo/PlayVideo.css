@@ -1,16 +1,10 @@
-/* Animation for play icon overlay */
+/* Pulse the ▶ only — no expanding ring or circular chrome. */
 @keyframes pulsePlayIcon {
-  0% {
+  0%, 100% {
     transform: scale(1);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 0 rgba(255, 255, 255, 0.2);
   }
   50% {
     transform: scale(1.15);
-    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55), 0 0 0 20px rgba(255, 255, 255, 0);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 0 rgba(255, 255, 255, 0.2);
   }
 }
 
@@ -18,16 +12,19 @@
   background: transparent !important;
 }
 
-/* Ensure play icon overlay animation works on both mobile and desktop */
 .play-icon-overlay {
   animation: pulsePlayIcon 2s infinite !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background: rgba(45, 45, 45, 0.45) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  width: auto !important;
+  height: auto !important;
+  border-radius: 0 !important;
 }
 
-/* Keep ▶ geometrically centered in the circle */
 .play-icon-overlay .play-icon-glyph {
   display: flex;
   align-items: center;
@@ -36,6 +33,7 @@
   padding: 0;
   transform: translateX(1px);
   line-height: 1;
+  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.55));
 }
 
 @media (max-width: 768px) {

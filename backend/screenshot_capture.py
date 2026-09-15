@@ -1426,23 +1426,21 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                     cv2.circle(inner_frame_mask, (target_width // 2, target_height // 2),
                               int(inner_outer_radius - inner_width), 0, -1)
                 elif effective_corner_radius > 0:  # Rounded rectangle
-                    # Inner frame uses the same selected radius percent as the main shape
+                    # Inner ring is concentric with the outer rounded rect.
                     inner_x = frame_width + inner_offset
                     inner_y = frame_width + inner_offset
                     inner_w = target_width - (frame_width + inner_offset) * 2
                     inner_h = target_height - (frame_width + inner_offset) * 2
-                    inner_outer_radius = int(round(_corner_radius_px(corner_radius_value, inner_w, inner_h)))
+                    inner_outer_radius = max(0, int(effective_corner_radius - inner_x))
                     
                     # Draw outer rounded rectangle for inner frame
                     _draw_rounded_rect_filled(inner_frame_mask, inner_x, inner_y,
                                              inner_w, inner_h,
                                              inner_outer_radius, 255)
-                    # Subtract inner rounded rectangle (same selected percent on the hole)
+                    # Subtract inner rounded rectangle (radius shrinks by ring thickness)
                     hole_w = inner_w - inner_width * 2
                     hole_h = inner_h - inner_width * 2
-                    inner_inner_radius = int(round(_corner_radius_px(corner_radius_value, hole_w, hole_h)))
-                    if inner_inner_radius <= 0 and inner_outer_radius > inner_width:
-                        inner_inner_radius = inner_outer_radius - inner_width
+                    inner_inner_radius = max(0, inner_outer_radius - inner_width)
                     if inner_inner_radius > 0:
                         _draw_rounded_rect_filled(inner_frame_mask, 
                                                  inner_x + inner_width,
