@@ -560,7 +560,7 @@ def _record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=N
         logger.error(f"❌ Error recording sale: {str(e)}")
 
 
-def _printful_oos_cart_lines(cart, country_code: str) -> list:
+def _printful_oos_cart_lines(cart, country_code: str, unknown_is_oos: bool = True) -> list:
     """Cart lines Printful catalog availability marks out of stock for this ship-to."""
     unavailable = []
     dest = normalize_ship_to_country(country_code)
@@ -569,10 +569,13 @@ def _printful_oos_cart_lines(cart, country_code: str) -> list:
         color, size = _shipping_line_color_size(item)
         if not product_name or not size:
             continue
-        region_ok = combo_available_for_country(product_name, color, size, dest)
+        variant_id = item.get("variant_id")
+        if variant_id is None:
+            variant_id = item.get("printful_variant_id")
+        region_ok = combo_available_for_country(product_name, color, size, dest, variant_id=variant_id)
         if region_ok is False:
             unavailable.append(_line_out_of_stock_message(item))
-        elif region_ok is None and catalog_product_id_for_product_name(product_name):
+        elif region_ok is None and unknown_is_oos and catalog_product_id_for_product_name(product_name):
             unavailable.append(_line_out_of_stock_message(item))
     return unavailable
 
@@ -596,7 +599,7 @@ def _out_of_stock_payload(unavailable_items: list, country_code: str = "US"):
     }
 
 
-def _validate_product_availability(cart, country_code: str = "US"):
+def _validate_product_availability(cart, country_code: str = "US", unknown_is_oos: bool = True):
     """Validate catalog rules plus live Printful region stock for the ship-to country."""
     dest = normalize_ship_to_country(country_code)
     for item in cart or []:
@@ -659,7 +662,7 @@ def _validate_product_availability(cart, country_code: str = "US"):
             if color in unavailable_in_15oz and size == "15 oz":
                 return False, f"{color} is not available in size 15 oz for Colored Mug. Please select a different size or color."
 
-    oos_lines = _printful_oos_cart_lines(cart, dest)
+    oos_lines = _printful_oos_cart_lines(cart, dest, unknown_is_oos=unknown_is_oos)
     if oos_lines:
         return False, _out_of_stock_payload(oos_lines, dest)["error"]
     
@@ -2229,6 +2232,9 @@ def check_variant_availability():
         color = str(data.get("color") or "").strip()
         size = str(data.get("size") or "").strip()
         country_code = normalize_ship_to_country(data.get("country_code") or data.get("country") or "US")
+        variant_id = data.get("variant_id")
+        if variant_id is None:
+            variant_id = data.get("printful_variant_id")
 
         if not product:
             return jsonify({"success": False, "error": "Product is required."}), 400
@@ -2237,8 +2243,10 @@ def check_variant_availability():
             "product": product,
             "color": color,
             "size": size,
+            "variant_id": variant_id,
+            "printful_variant_id": variant_id,
             "variants": {"color": color, "size": size},
-        }], country_code)
+        }], country_code, unknown_is_oos=False)
         if not ok_rules:
             return jsonify({
                 "success": True,

@@ -10,6 +10,7 @@ from printful_regions import (
 from printful_catalog import (
     _storefront_size_color_base,
     canonical_storefront_size,
+    lookup_catalog_variant_id,
 )
 
 
@@ -138,6 +139,24 @@ class TestAvailabilityItemParse(unittest.TestCase):
         self.assertFalse(variant_available_for_country(regions_in_stock_from_v1_variant(black_5xl), "AU"))
         self.assertTrue(variant_available_for_country(regions_in_stock_from_v1_variant(black_4xl), "AU"))
 
+    def test_v1_us_mexico_column_counts_as_us(self):
+        from printful_regions import map_v1_status_region, regions_in_stock_from_v1_variant
+
+        self.assertEqual(map_v1_status_region("US / Mexico"), "north_america")
+        self.assertEqual(map_v1_status_region("north_america"), "north_america")
+        self.assertEqual(map_v1_status_region("NA"), "north_america")
+        variant = {
+            "id": 3456,
+            "availability_status": [
+                {"region": "US / Mexico", "status": "in_stock"},
+                {"region": "UK", "status": "in_stock"},
+            ],
+        }
+        regions = regions_in_stock_from_v1_variant(variant)
+        self.assertIn("north_america", regions)
+        self.assertTrue(variant_available_for_country(regions, "US"))
+        self.assertTrue(variant_available_for_country(regions, "GB"))
+
     def test_unknown_stock_is_oos_for_catalog_checkout(self):
         from unittest.mock import patch
 
@@ -149,6 +168,18 @@ class TestAvailabilityItemParse(unittest.TestCase):
         ):
             lines = _printful_oos_cart_lines(cart, "AU")
         self.assertEqual(lines, ["T-Shirt (Black / XXXXXL)"])
+
+    def test_unknown_stock_does_not_block_add_to_cart_check(self):
+        from unittest.mock import patch
+
+        from routes.orders import _printful_oos_cart_lines
+
+        cart = [{"product": "Men's Long Sleeve Shirt", "color": "Black", "size": "S", "variant_id": 3456}]
+        with patch("routes.orders.combo_available_for_country", return_value=None), patch(
+            "routes.orders.catalog_product_id_for_product_name", return_value=57
+        ):
+            lines = _printful_oos_cart_lines(cart, "US", unknown_is_oos=False)
+        self.assertEqual(lines, [])
 
 
 class TestCanonicalStorefrontSize(unittest.TestCase):
@@ -219,6 +250,15 @@ class TestStorefrontSizeColorBase(unittest.TestCase):
         self.assertEqual(
             _storefront_size_color_base(product),
             {"S": ["Black"], "M": ["Black"]},
+        )
+
+    def test_uses_handle_color_when_color_missing(self):
+        product = {
+            "options": {"handle_color": ["Black", "Yellow"], "size": ['16"x20"']},
+        }
+        self.assertEqual(
+            _storefront_size_color_base(product),
+            {'16"x20"': ["Black", "Yellow"]},
         )
 
 
@@ -321,6 +361,9 @@ class TestComboAvailableMissingVsEmpty(unittest.TestCase):
         ), patch(
             "printful_regions.get_variant_region_stock_meta",
             return_value=({99: {"usa"}}, False),
+        ), patch(
+            "printful_regions.fetch_single_variant_regions",
+            return_value=None,
         ):
             self.assertIsNone(combo_available_for_country("T-Shirt", "White", "M", "US"))
 
@@ -336,6 +379,48 @@ class TestComboAvailableMissingVsEmpty(unittest.TestCase):
             return_value=({99: {"usa"}}, True),
         ):
             self.assertFalse(combo_available_for_country("T-Shirt", "White", "M", "US"))
+
+    def test_variant_id_uses_cached_stock_without_full_fetch(self):
+        from unittest.mock import patch
+
+        from printful_catalog import combo_available_for_country
+
+        stock = {3456: {"usa", "north_america"}}
+        with patch("printful_catalog.catalog_product_id_for_product_name", return_value=57), patch(
+            "printful_catalog.lookup_catalog_variant_id"
+        ) as lookup, patch(
+            "printful_regions.get_variant_region_stock_meta",
+            return_value=(stock, True),
+        ) as stock_meta, patch(
+            "printful_regions.fetch_single_variant_regions",
+        ) as single:
+            self.assertTrue(
+                combo_available_for_country(
+                    "Men's Long Sleeve Shirt", "Black", "S", "US", variant_id=3456
+                )
+            )
+            lookup.assert_not_called()
+            stock_meta.assert_called_once_with(57, fetch=False)
+            single.assert_not_called()
+
+    def test_cache_miss_uses_single_variant_us_mexico_stock(self):
+        from unittest.mock import patch
+
+        from printful_catalog import combo_available_for_country
+
+        with patch("printful_catalog.catalog_product_id_for_product_name", return_value=248), patch(
+            "printful_regions.get_variant_region_stock_meta",
+            return_value=({}, False),
+        ), patch(
+            "printful_regions.fetch_single_variant_regions",
+            return_value={"north_america"},
+        ) as single:
+            self.assertTrue(
+                combo_available_for_country(
+                    "Men's Tank Top", "Black", "XS", "US", variant_id=8628
+                )
+            )
+            single.assert_called_once_with(8628)
 
 
 class TestRegionalBasePrices(unittest.TestCase):
@@ -485,6 +570,94 @@ class TestCachedStockAttach(unittest.TestCase):
         self.assertEqual(regional.get("US", {}).get("XXXXXL"), ["Black"])
         self.assertEqual(regional.get("AU", {}).get("XXXXXL"), ["White"])
         self.assertNotIn("White", regional.get("US", {}).get("XXXXXL", []))
+
+
+class TestCatalogSizeAliases(unittest.TestCase):
+    def test_laptop_sleeve_dimension_maps_to_printful_inch_size(self):
+        from unittest.mock import patch
+
+        nested = {
+            "__printful_no_color__": {"13″": 10984, "15″": 10985},
+            "White": {"13″": 10984, "15″": 10985},
+        }
+        with patch("printful_catalog.get_nested_variant_map", return_value=nested):
+            self.assertEqual(lookup_catalog_variant_id(394, "White", '13.5"x10.5"'), 10984)
+            self.assertEqual(lookup_catalog_variant_id(394, "White", '14.75"x11.25"'), 10985)
+
+    def test_utility_bag_dimension_maps_to_one_size(self):
+        from unittest.mock import patch
+
+        nested = {"White": {"One size": 19256}}
+        with patch("printful_catalog.get_nested_variant_map", return_value=nested):
+            self.assertEqual(
+                lookup_catalog_variant_id(744, "White", '5.7"x7.7"x2"'),
+                19256,
+            )
+
+    def test_pet_bandana_circumference_maps_to_letter_size(self):
+        from unittest.mock import patch
+
+        nested = {"Black": {"S": 1, "M": 2, "L": 3, "XL": 4}}
+        with patch("printful_catalog.get_nested_variant_map", return_value=nested):
+            self.assertEqual(
+                lookup_catalog_variant_id(902, "Black", "Small 10″–16.75″"),
+                1,
+            )
+            self.assertEqual(
+                lookup_catalog_variant_id(902, "Black", "Medium 12″–20.25″"),
+                2,
+            )
+            self.assertEqual(
+                lookup_catalog_variant_id(902, "Black", "Large 14.25″–23″"),
+                3,
+            )
+            self.assertEqual(
+                lookup_catalog_variant_id(902, "Black", "XL 15.5″–23.5″"),
+                4,
+            )
+            # Printful only stocks Black; extra storefront colors stay unmapped.
+            self.assertIsNone(lookup_catalog_variant_id(902, "Red", "Small 10″–16.75″"))
+
+    def test_dad_hat_charcoal_gray_maps_to_grey(self):
+        from unittest.mock import patch
+
+        nested = {"Charcoal Grey": {"One size": 4011}, "Navy": {"One size": 4012}}
+        with patch("printful_catalog.get_nested_variant_map", return_value=nested):
+            self.assertEqual(
+                lookup_catalog_variant_id(396, "Charcoal Gray", "One Size"),
+                4011,
+            )
+
+    def test_racerback_vintage_colors_map_to_current_catalog(self):
+        from unittest.mock import patch
+
+        nested = {
+            "Black": {"M": 10},
+            "White": {"M": 11},
+            "Heather Gray": {"M": 12},
+            "Tahiti Blue": {"M": 13},
+        }
+        with patch("printful_catalog.get_nested_variant_map", return_value=nested):
+            self.assertEqual(lookup_catalog_variant_id(857, "Vintage Black", "M"), 10)
+            self.assertEqual(lookup_catalog_variant_id(857, "Heather White", "M"), 11)
+            self.assertEqual(lookup_catalog_variant_id(857, "Premium Heather", "M"), 12)
+            self.assertEqual(lookup_catalog_variant_id(857, "Vintage Turquoise", "M"), 13)
+            self.assertIsNone(lookup_catalog_variant_id(857, "Purple Rush", "M"))
+            self.assertIsNone(lookup_catalog_variant_id(857, "Vintage Navy", "M"))
+
+    def test_baseball_cap_uses_otto_natural_colors_not_trucker(self):
+        from unittest.mock import patch
+
+        from printful_catalog import PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME
+
+        self.assertEqual(PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME["Five Panel Baseball Cap"], 952)
+        self.assertEqual(PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME["Five Panel Trucker Hat"], 100)
+        nested = {"Black/Natural": {"One size": 95201}, "White": {"One size": 95202}}
+        with patch("printful_catalog.get_nested_variant_map", return_value=nested):
+            self.assertEqual(
+                lookup_catalog_variant_id(952, "Black/Natural", "One Size"),
+                95201,
+            )
 
 
 if __name__ == "__main__":

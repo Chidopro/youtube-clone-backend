@@ -153,6 +153,7 @@ const Checkout = () => {
               product,
               color,
               size,
+              variant_id: it.printful_variant_id ?? it.printify_variant_id ?? it.variant_id,
               country_code: countryValue,
             }),
           });

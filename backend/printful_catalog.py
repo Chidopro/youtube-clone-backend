@@ -95,8 +95,9 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Closed Back Cap": 140,
     # Printful: 5 Panel Trucker Cap | Yupoong 6006 — ScreenMerch: "Five Panel Trucker Hat".
     "Five Panel Trucker Hat": 100,
-    # Same Printful catalog as trucker hat — ScreenMerch: "Five Panel Baseball Cap".
-    "Five Panel Baseball Cap": 100,
+    # Printful: 5 Panel Mid-Profile Baseball Cap | Otto Cap 31-069.
+    # Not the Yupoong 6006 trucker (100) — Natural colorways live on this blank.
+    "Five Panel Baseball Cap": 952,
     # Printful: Laptop Sleeve — ScreenMerch: "Laptop Sleeve".
     "Laptop Sleeve": 394,
     # Printful: All-Over Print Drawstring Bag — ScreenMerch: "All-Over Print Drawstring".
@@ -158,6 +159,7 @@ PRINTFUL_DASHBOARD_URLS_BY_CATALOG_ID: Dict[int, str] = {
     396: "https://www.printful.com/dashboard/custom/embroidered/hats/distressed-dad-hat-otto-cap-104-1018",
     140: "https://www.printful.com/dashboard/custom/embroidered/dad-hats/closed-back-cap-flexfit-6277",
     100: "https://www.printful.com/dashboard/custom/embroidered/trucker-hats/5-panel-trucker-cap-yupoong-6006",
+    952: "https://www.printful.com/dashboard/custom/embroidered/dad-hats/5-panel-mid-profile-baseball-cap-otto-cap-31-069",
     394: "https://www.printful.com/dashboard/custom/bags/laptop-cases/laptop-sleeve",
     262: "https://www.printful.com/dashboard/custom/bags/drawstring/all-over-print-drawstring-bag",
     274: "https://www.printful.com/dashboard/custom/bags/totes/all-over-print-large-tote-bag",
@@ -205,6 +207,7 @@ PRINTFUL_CATALOG_TITLES_BY_ID: Dict[int, str] = {
     396: "Distressed Dad Hat | Otto Cap 104-1018",
     140: "Closed-Back Structured Cap | Flexfit 6277",
     100: "5 Panel Trucker Cap | Yupoong 6006",
+    952: "5 Panel Mid-Profile Baseball Cap | Otto Cap 31-069",
     394: "Laptop Sleeve",
     262: "All-Over Print Drawstring Bag",
     274: "All-Over Print Large Tote Bag w/ Pocket",
@@ -226,13 +229,24 @@ CATALOG_COLOR_ALIASES: Dict[int, Dict[str, str]] = {
     906: {"White": "White (glossy)"},
     # White Glossy Mug (catalog 19): storefront "White" → Printful color label.
     19: {"White": "White (glossy)"},
+    # Otto Cap dad hat: US spelling vs Printful Grey.
+    396: {"Charcoal Gray": "Charcoal Grey"},
+    # Next Level 1533: storefront still uses older "Vintage …" labels.
+    # Do not invent mappings for Purple Rush / Vintage Navy / Vintage Red / Vintage Royal
+    # — Printful dropped those SKUs.
+    857: {
+        "Vintage Black": "Black",
+        "Heather White": "White",
+        "Premium Heather": "Heather Gray",
+        "Vintage Turquoise": "Tahiti Blue",
+    },
 }
 
 JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID = 906
 
 # Printful caps / hats fulfilled as embroidery (not DTG). Wrong technique breaks v2/shipping-rates
 # and legacy /shipping/rates often returns a misleading "out of stock" for valid variants.
-HAT_EMBROIDERY_CATALOG_PRODUCT_IDS = frozenset({100, 140, 396})
+HAT_EMBROIDERY_CATALOG_PRODUCT_IDS = frozenset({100, 140, 396, 952})
 
 # Gildan 18500B Youth Heavy Blend Hoodie — Printful catalog sizes use YXS/YS/YM/YL/YXL.
 YOUTH_HEAVY_BLEND_HOODIE_CATALOG_ID = 689
@@ -250,6 +264,28 @@ HOODIE_CATALOG_IDS_ALT_SIZE_WORDS = frozenset({294, 380, 317})
 
 # Bella youth tees (3001Y, 3501Y): Printful catalog often labels sizes YXS/YS/YM/YL while the storefront uses XS/S/M/L.
 YOUTH_BELLA_STYLE_CATALOG_IDS = frozenset({307, 511})
+
+# Printful Laptop Sleeve sizes are 13″ / 15″; storefront uses the sleeve dimensions.
+LAPTOP_SLEEVE_CATALOG_ID = 394
+_LAPTOP_SLEEVE_SIZE_ALIASES = {
+    "13.5x10.5": ('13"', "13″", "13"),
+    "14.75x11.25": ('15"', "15″", "15"),
+}
+
+# Printful Utility Crossbody is "One size"; storefront uses bag dimensions.
+UTILITY_CROSSBODY_CATALOG_ID = 744
+
+# Printful Pet Bandana Collar sizes are S/M/L/XL; storefront uses circumference labels.
+PET_BANDANA_CATALOG_ID = 902
+_PET_BANDANA_SIZE_FIRST_WORD = {
+    "small": "S",
+    "medium": "M",
+    "large": "L",
+    "xl": "XL",
+    "s": "S",
+    "m": "M",
+    "l": "L",
+}
 
 
 def _youth_bella_letter_size_alternates(sz: str) -> List[str]:
@@ -295,6 +331,18 @@ def _sizes_for_catalog_lookup(catalog_product_id: int, size: str) -> List[str]:
             for alt in _youth_bella_letter_size_alternates(existing):
                 if alt not in out:
                     out.append(alt)
+    if catalog_product_id == LAPTOP_SLEEVE_CATALOG_ID:
+        for alt in _LAPTOP_SLEEVE_SIZE_ALIASES.get(_normalize_size_loose(sz), ()):
+            if alt not in out:
+                out.append(alt)
+    if catalog_product_id == UTILITY_CROSSBODY_CATALOG_ID:
+        if "One size" not in out:
+            out.append("One size")
+    if catalog_product_id == PET_BANDANA_CATALOG_ID:
+        first = sz.split()[0].strip().lower() if sz else ""
+        letter = _PET_BANDANA_SIZE_FIRST_WORD.get(first)
+        if letter and letter not in out:
+            out.append(letter)
     return out
 
 
@@ -602,11 +650,14 @@ def lookup_catalog_variant_id(
     catalog_product_id: int,
     color: str,
     size: str,
+    fetch: bool = True,
 ) -> Optional[int]:
     try:
-        m = get_nested_variant_map(catalog_product_id)
+        m = get_nested_variant_map(catalog_product_id, fetch=fetch)
     except Exception as e:
         logger.warning("Variant map load failed for catalog_product_id=%s: %s", catalog_product_id, e)
+        return None
+    if not m:
         return None
 
     if not size:
@@ -616,22 +667,35 @@ def lookup_catalog_variant_id(
     color = _apply_catalog_color_aliases(catalog_product_id, color_in)
     size = str(size).strip()
 
-    by_color = m.get(color) if color else None
-    if by_color is None and color_in:
-        cl = color_in.lower()
-        for k in m:
-            if str(k).lower() == cl:
-                by_color = m[k]
+    color_candidates = []
+    for cand in (color, color_in):
+        if cand and cand not in color_candidates:
+            color_candidates.append(cand)
+
+    by_color = None
+    for cand in color_candidates:
+        by_color = m.get(cand)
+        if by_color is not None:
+            break
+    if by_color is None:
+        for cand in color_candidates:
+            cl = cand.lower()
+            for k in m:
+                if str(k).lower() == cl:
+                    by_color = m[k]
+                    break
+            if by_color is not None:
                 break
     # Storefront "Black" vs catalog "Black / Navy / …" (Bella hoodies, mugs, etc.)
-    if by_color is None and color_in:
-        cl = color_in.strip().lower()
+    if by_color is None:
         best_k = None
-        for k in m:
-            kl = str(k).lower()
-            if kl.startswith(cl + "/") or kl.startswith(cl + " ") or kl == cl:
-                if best_k is None or len(str(k)) < len(str(best_k)):
-                    best_k = k
+        for cand in color_candidates:
+            cl = cand.strip().lower()
+            for k in m:
+                kl = str(k).lower()
+                if kl.startswith(cl + "/") or kl.startswith(cl + " ") or kl == cl:
+                    if best_k is None or len(str(k)) < len(str(best_k)):
+                        best_k = k
         if best_k is not None:
             by_color = m[best_k]
     if not by_color and NO_COLOR_BUCKET_KEY in m:
@@ -932,7 +996,7 @@ def _storefront_size_color_base(product: Dict[str, Any]) -> Dict[str, List[str]]
             return out
     options = product.get("options") if isinstance(product.get("options"), dict) else {}
     sizes = [str(s) for s in (options.get("size") or []) if s]
-    colors = [str(c) for c in (options.get("color") or []) if c]
+    colors = [str(c) for c in (options.get("color") or options.get("handle_color") or []) if c]
     if sizes and colors:
         return {sz: list(colors) for sz in sizes}
     return {}
@@ -985,29 +1049,64 @@ def build_regional_size_color_availability(
     return regional
 
 
-def combo_available_for_country(product_name: str, color: str, size: str, country: str) -> Optional[bool]:
+def _coerce_catalog_variant_id(raw: Any) -> Optional[int]:
+    if raw is None or raw is False:
+        return None
+    try:
+        vid = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return vid if vid > 0 else None
+
+
+def combo_available_for_country(
+    product_name: str,
+    color: str,
+    size: str,
+    country: str,
+    variant_id: Any = None,
+) -> Optional[bool]:
     """
     True/False when Printful region stock is known; None when we cannot tell
     (no catalog id, no stock map, or variant lookup miss).
+
+    Prefer a known catalog ``variant_id`` so add-to-cart does not block on a
+    full product dump (that 502s through the Netlify proxy).
     """
-    from printful_regions import get_variant_region_stock_meta, variant_available_for_country
+    from printful_regions import (
+        fetch_single_variant_regions,
+        get_variant_region_stock_meta,
+        variant_available_for_country,
+    )
 
     pid = catalog_product_id_for_product_name(product_name)
     if not pid:
         return None
-    try:
-        stock, complete = get_variant_region_stock_meta(int(pid))
-    except Exception:
-        return None
-    if not stock:
-        return None
-    vid = lookup_catalog_variant_id(int(pid), color or "", size or "")
+    vid = _coerce_catalog_variant_id(variant_id)
     if vid is None:
-        return False if complete else None
-    regions = stock.get(int(vid))
-    if regions is None:
-        return False if complete else None
-    return variant_available_for_country(regions, country)
+        vid = lookup_catalog_variant_id(int(pid), color or "", size or "", fetch=False)
+
+    try:
+        stock, complete = get_variant_region_stock_meta(int(pid), fetch=False)
+    except Exception:
+        stock, complete = {}, False
+
+    if vid is not None and stock:
+        regions = stock.get(int(vid))
+        if regions is not None:
+            return variant_available_for_country(regions, country)
+        if complete:
+            return False
+
+    if vid is not None:
+        regions = fetch_single_variant_regions(int(vid))
+        if regions is not None:
+            return variant_available_for_country(regions, country)
+        return None
+
+    if complete and stock:
+        return False
+    return None
 
 
 def _catalog_variant_map_cached(catalog_product_id: int) -> bool:

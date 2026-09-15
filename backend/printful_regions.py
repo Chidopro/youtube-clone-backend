@@ -128,7 +128,7 @@ def preferred_stock_techniques(catalog_product_id: int) -> Optional[Tuple[str, .
     AOP/cut-sew catalogs return None so any in-stock technique counts.
     """
     cid = int(catalog_product_id)
-    if cid in (100, 140, 396):
+    if cid in (100, 140, 396, 952):
         return ("embroidery",)
     if cid in (19, 403, 407, 663):
         return ("sublimation",)
@@ -169,13 +169,20 @@ def regions_in_stock_from_availability_item(
 
 
 # Printful v1 GET /products/{id} availability_status.region -> v2 selling_region_name.
+# Dashboard "US / Mexico" is v2 north_america; v1 may send US, MX, NA, or that label.
 _V1_STATUS_REGION_TO_SELLING: Dict[str, str] = {
     "US": "usa",
+    "USA": "usa",
+    "UNITED STATES": "usa",
+    "UNITEDSTATES": "usa",
     "CA": "canada",
+    "CANADA": "canada",
     "AU": "australia",
+    "AUSTRALIA": "australia",
     "UK": "uk",
     "GB": "uk",
     "EU": "europe",
+    "EUROPE": "europe",
     "EU_LV": "europe",
     "EU_ES": "europe",
     "EU_DE": "europe",
@@ -183,13 +190,55 @@ _V1_STATUS_REGION_TO_SELLING: Dict[str, str] = {
     "EU_FR": "europe",
     "EU_IE": "europe",
     "DE": "germany",
+    "GERMANY": "germany",
     "FR": "europe",
     "IE": "europe",
     "MX": "north_america",
+    "MEXICO": "north_america",
+    "NA": "north_america",
+    "NAM": "north_america",
+    "NORTH AMERICA": "north_america",
+    "NORTH_AMERICA": "north_america",
+    "NORTHAMERICA": "north_america",
+    "US/MX": "north_america",
+    "US / MX": "north_america",
+    "USMX": "north_america",
+    "US/MEXICO": "north_america",
+    "US / MEXICO": "north_america",
+    "USMEXICO": "north_america",
     "JP": "japan",
     "NZ": "new_zealand",
     "BR": "brazil",
+    "WORLDWIDE": "worldwide",
 }
+
+# Already-normalized v2 selling_region_name values that v1 sometimes emits as-is.
+_V2_SELLING_REGION_NAMES = frozenset({
+    "usa", "north_america", "canada", "uk", "europe", "germany",
+    "australia", "worldwide", "japan", "new_zealand", "brazil",
+})
+
+# Add-to-cart / checkout must not wait on a full catalog dump (Netlify proxy ~10s).
+_SINGLE_VARIANT_TIMEOUT_SEC = 6
+_variant_stock_lock = threading.Lock()
+# variant_id -> (expires_at, regions)
+_variant_stock_cache: Dict[int, Tuple[float, Set[str]]] = {}
+
+
+def map_v1_status_region(region: Any) -> Optional[str]:
+    """Map a Printful v1 availability region label to a v2 selling_region_name."""
+    raw = str(region or "").strip()
+    if not raw:
+        return None
+    lower = raw.lower().replace("-", "_")
+    if lower in _V2_SELLING_REGION_NAMES:
+        return lower
+    upper = raw.upper()
+    mapped = _V1_STATUS_REGION_TO_SELLING.get(upper)
+    if mapped:
+        return mapped
+    compact = "".join(ch for ch in upper if ch.isalnum())
+    return _V1_STATUS_REGION_TO_SELLING.get(compact)
 
 
 def regions_in_stock_from_v1_variant(variant: Dict[str, Any]) -> Set[str]:
@@ -204,10 +253,73 @@ def regions_in_stock_from_v1_variant(variant: Dict[str, Any]) -> Set[str]:
         status = str(row.get("status") or "").strip().lower().replace("-", "_")
         if status not in _IN_STOCK and status != "in_stock":
             continue
-        region = str(row.get("region") or "").strip().upper()
-        mapped = _V1_STATUS_REGION_TO_SELLING.get(region)
+        region = row.get("region")
+        if region is None:
+            region = row.get("name")
+        mapped = map_v1_status_region(region)
         if mapped:
             found.add(mapped)
+        elif region:
+            logger.info("Unmapped Printful v1 stock region %r", region)
+    return found
+
+
+def fetch_single_variant_regions(variant_id: int) -> Optional[Set[str]]:
+    """
+    In-stock selling regions for one catalog variant.
+
+    None means the lookup failed (do not treat as known OOS).
+    An empty set means Printful listed no in-stock region.
+    """
+    try:
+        vid = int(variant_id)
+    except (TypeError, ValueError):
+        return None
+    now = time.time()
+    with _variant_stock_lock:
+        cached = _variant_stock_cache.get(vid)
+        if cached and cached[0] > now:
+            return set(cached[1])
+
+    api_key = os.getenv("PRINTFUL_API_KEY")
+    if not api_key:
+        return None
+
+    from printful_catalog import printful_request_headers
+
+    headers = printful_request_headers(api_key)
+    try:
+        r = requests.get(
+            f"https://api.printful.com/products/variant/{vid}",
+            headers=headers,
+            timeout=_SINGLE_VARIANT_TIMEOUT_SEC,
+        )
+    except Exception as e:
+        logger.warning("Printful variant %s request failed: %s", vid, e)
+        return None
+    if r.status_code != 200:
+        logger.warning(
+            "Printful variant %s status=%s body=%s",
+            vid,
+            r.status_code,
+            (r.text or "")[:400],
+        )
+        return None
+    try:
+        body = r.json()
+    except Exception:
+        return None
+    result = body.get("result") if isinstance(body, dict) else None
+    variant = None
+    if isinstance(result, dict):
+        variant = result.get("variant") if isinstance(result.get("variant"), dict) else result
+    if not isinstance(variant, dict):
+        return None
+    if not isinstance(variant.get("availability_status"), list):
+        return None
+    found = regions_in_stock_from_v1_variant(variant)
+    with _variant_stock_lock:
+        _variant_stock_cache[vid] = (time.time() + _CACHE_TTL_SEC, found)
     return found
 
 

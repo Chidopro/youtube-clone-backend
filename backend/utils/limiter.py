@@ -8,7 +8,7 @@ def _exempt_browse_and_static():
     try:
         from flask import request
         path = (request.path or "")
-        return path.startswith("/static/") or path.startswith("/api/product/")
+        return path.startswith("/static/") or path.startswith("/api/product/") or path == "/api/check-variant-availability"
     except Exception:
         return False
 

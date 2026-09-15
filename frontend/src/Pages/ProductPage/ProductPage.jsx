@@ -58,7 +58,7 @@ const getProductImageUrl = (product, preferPreview = true) => {
 // Cart screenshots still need a unique query when the same URL is reused.
 const getCacheBuster = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 const categoryBrowseCache = new Map();
-const BROWSE_CACHE_KEY = (category) => `sm_browse_v5_${String(category || '').trim().toLowerCase()}`;
+const BROWSE_CACHE_KEY = (category) => `sm_browse_v7_${String(category || '').trim().toLowerCase()}`;
 
 function readBrowseCache(category) {
   const mem = categoryBrowseCache.get(category);
@@ -789,7 +789,20 @@ const ProductPage = ({ sidebar }) => {
           country_code: shipToCountry,
         }),
       });
-      if (!res.ok) {
+      if (res.ok) {
+        const data = await res.json();
+        if (!data?.success || data?.available !== true) {
+          setVariantAvailability((prev) => ({
+            ...prev,
+            [index]: {
+              checking: false,
+              available: false,
+              message: data?.error || `${chosenColor} / ${chosenSize} is out of stock for shipping to ${shipToCountryName(shipToCountry)}.`,
+            },
+          }));
+          return null;
+        }
+      } else if (listedCombo !== true) {
         setVariantAvailability((prev) => ({
           ...prev,
           [index]: {
@@ -800,28 +813,18 @@ const ProductPage = ({ sidebar }) => {
         }));
         return null;
       }
-      const data = await res.json();
-      if (!data?.success || data?.available !== true) {
+    } catch (e) {
+      if (listedCombo !== true) {
         setVariantAvailability((prev) => ({
           ...prev,
           [index]: {
             checking: false,
             available: false,
-            message: data?.error || `${chosenColor} / ${chosenSize} is out of stock for shipping to ${shipToCountryName(shipToCountry)}.`,
+            message: `${chosenColor} / ${chosenSize} could not be confirmed in stock. Choose a different size or color.`,
           },
         }));
         return null;
       }
-    } catch (e) {
-      setVariantAvailability((prev) => ({
-        ...prev,
-        [index]: {
-          checking: false,
-          available: false,
-          message: `${chosenColor} / ${chosenSize} could not be confirmed in stock. Choose a different size or color.`,
-        },
-      }));
-      return null;
     }
     setVariantAvailability((prev) => {
       const next = { ...prev };
