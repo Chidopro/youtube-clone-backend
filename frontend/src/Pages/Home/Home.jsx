@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Feed from "../../Components/Feed/Feed";
-import CreatorDirectory, { SCREENMERCH_INTRO_TITLE } from "../../Components/Feed/CreatorDirectory";
+import CreatorDirectory from "../../Components/Feed/CreatorDirectory";
 import { supabase } from '../../supabaseClient';
 import './Home.css'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
@@ -14,7 +14,7 @@ import { apiJoin } from '../../config/apiConfig';
 
 const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [videos, setVideos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => isCreatorStorefrontHostname());
   const [error, setError] = useState('');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
@@ -53,31 +53,28 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     return () => window.clearTimeout(t);
   }, [loading, videos.length]);
 
-  const introVideo = React.useMemo(() => {
-    if (!videos.length) return null;
-    const match = videos.find((v) =>
-      (v.title || '').trim().toLowerCase() === SCREENMERCH_INTRO_TITLE.toLowerCase()
-      || /screenmerch\s*introduction/i.test(v.title || '')
-    );
-    return match || null;
-  }, [videos]);
-
   useEffect(() => {
     const fetchVideos = async () => {
+      // Main site directory no longer depends on the intro video.
+      if (isMainSite) {
+        setVideos([]);
+        setError('');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError('');
 
       // Creator storefronts: wait until creator context finishes loading
-      if (!isMainSite) {
-        if (creatorLoading) {
-          setVideos([]);
-          return;
-        }
-        if (!currentCreator?.id) {
-          setVideos([]);
-          setLoading(false);
-          return;
-        }
+      if (creatorLoading) {
+        setVideos([]);
+        return;
+      }
+      if (!currentCreator?.id) {
+        setVideos([]);
+        setLoading(false);
+        return;
       }
 
       const params = new URLSearchParams();
@@ -89,7 +86,6 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         const res = await fetch(url);
         if (!res.ok) {
           setVideos([]);
-          if (isMainSite) setError('Failed to load videos');
         } else {
           const data = await res.json();
           const list = Array.isArray(data) ? data : [];
@@ -102,7 +98,6 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         }
       } catch (_) {
         setVideos([]);
-        if (isMainSite) setError('Failed to load videos');
       }
       setLoading(false);
     };
@@ -343,13 +338,21 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           <Link
             to="/release"
             className="home-launch-banner"
-            aria-label="Launch announcement: The Content Creator Revolution Now Has a Storefront"
+            aria-label="Welcome to ScreenMerch"
+            style={
+              creatorSettings?.primary_color && creatorSettings?.secondary_color
+                ? {
+                    '--primary-color': creatorSettings.primary_color,
+                    '--secondary-color': creatorSettings.secondary_color,
+                  }
+                : undefined
+            }
           >
             <span className="home-launch-banner-desktop">
-              The Content Creator Revolution Now Has a Storefront.
+              Welcome to ScreenMerch
             </span>
             <span className="home-launch-banner-mobile">
-              The Creator Revolution Now Has a Storefront.
+              Welcome to ScreenMerch
             </span>
           </Link>
         ) : null}
@@ -427,23 +430,11 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
 
 
         {/* Main site: creator directory. Subdomains: Featured / Creators / Shop only. */}
-        {((isMainSite && loading) || (!isMainSite && hubsLoading)) && (
+        {!isMainSite && hubsLoading && (
           <div style={{padding: 24}}>Loading...</div>
         )}
         {error && <div style={{padding: 24, color: 'red'}}>{error}</div>}
-        {!loading && isMainSite && (
-          <CreatorDirectory
-            introVideo={introVideo}
-            onIntroUpdated={(next) => {
-              if (next?.id) {
-                setVideos((prev) => {
-                  const rest = prev.filter((v) => v.id !== next.id);
-                  return [next, ...rest];
-                });
-              }
-            }}
-          />
-        )}
+        {isMainSite && <CreatorDirectory />}
         {!hubsLoading && !error && !isMainSite && (
           <Feed
             videos={videos}

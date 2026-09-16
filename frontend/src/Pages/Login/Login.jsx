@@ -6,7 +6,7 @@ import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { safeAuthReturnPath, consumeAuthReturnPath, peekAuthReturnPath } from '../../utils/shopperAuth';
-import { isDemoStorefront, startDemoPreviewSession, endDemoPreviewSession } from '../../utils/demoStorefront';
+import { endDemoPreviewSession } from '../../utils/demoStorefront';
 import CustomerLegalConsent from '../../Components/CustomerLegalConsent/CustomerLegalConsent';
 import './Login.css';
 
@@ -39,13 +39,6 @@ const Login = () => {
 // Customer signup = email-only flow (from "Make a purchase" in Sign Up modal)
   const isCustomerSignup = location.pathname === '/signup' && location.state?.intent === 'customer';
   const requiresCustomerLegalAcceptance = !isLoginMode && !isCreatorSignup;
-  const sampleStorefrontLogin = isDemoStorefront();
-
-  useEffect(() => {
-    if (!sampleStorefrontLogin) return;
-    startDemoPreviewSession();
-    goAfterAuth('/dashboard', navigate, { replace: true });
-  }, [sampleStorefrontLogin, navigate]);
 
   // Force signup view if routed to /signup
   // Check if coming from "Start Free" flow (payment-setup with flow=new_user)
@@ -196,13 +189,6 @@ const Login = () => {
     e.preventDefault();
     setMessage(null);
 
-    if (isDemoStorefront()) {
-      startDemoPreviewSession();
-      setMessage({ type: 'success', text: 'Signed in. Opening the sample dashboard…' });
-      goAfterAuth('/dashboard', navigate);
-      return;
-    }
-
     if (!email.trim()) {
       setMessage({ type: 'error', text: 'Please enter your email.' });
       return;
@@ -301,6 +287,8 @@ const Login = () => {
       }
 
       const data = await response.json();
+
+      endDemoPreviewSession();
 
       if (data?.token) localStorage.setItem('auth_token', data.token);
       try {
@@ -490,10 +478,6 @@ const Login = () => {
     setPassword('');
   };
 
-  if (sampleStorefrontLogin) {
-    return null;
-  }
-
   return (
     <div className="login-page">
       <div className="login-card">
@@ -513,22 +497,18 @@ const Login = () => {
 
         <div className="login-info">
           <strong>
-            {sampleStorefrontLogin
-              ? 'Sample storefront'
-              : isCustomerSignup
-                ? 'Make a purchase'
-                : isLoginMode
-                  ? 'Login Required'
-                  : 'Create Account'}
+            {isCustomerSignup
+              ? 'Make a purchase'
+              : isLoginMode
+                ? 'Login Required'
+                : 'Create Account'}
           </strong>
           <p>
-            {sampleStorefrontLogin
-              ? 'Sign in to open the Maxfreedom creator dashboard. No email or password is needed on this sample shop.'
-              : isCustomerSignup
-                ? 'Enter your email and we’ll send you a link to create your password. Then you can sign in and shop.'
-                : isLoginMode
-                  ? 'To create merchandise, please log in or create an account with your email address.'
-                  : 'Join ScreenMerch and start creating merch from your content.'}
+            {isCustomerSignup
+              ? 'Enter your email and we’ll send you a link to create your password. Then you can sign in and shop.'
+              : isLoginMode
+                ? 'To create merchandise, please log in or create an account with your email address.'
+                : 'Join ScreenMerch and start creating merch from your content.'}
           </p>
         </div>
 
@@ -571,8 +551,8 @@ const Login = () => {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading || sampleStorefrontLogin}
-              required={!sampleStorefrontLogin}
+              disabled={isLoading}
+              required
             />
           </div>
 
@@ -588,8 +568,8 @@ const Login = () => {
                   autoComplete={isLoginMode ? 'current-password' : 'new-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading || sampleStorefrontLogin}
-                  required={!sampleStorefrontLogin}
+                  disabled={isLoading}
+                  required
                 />
                 <button
                   type="button"
@@ -626,14 +606,14 @@ const Login = () => {
               isCustomerSignup ? 'Submit' : isLoginMode ? 'Sign In' : 'Create Account'
             )}
           </button>
-          {isLoginMode && !isCustomerSignup && !sampleStorefrontLogin && (
+          {isLoginMode && !isCustomerSignup && (
             <div className="login-forgot-wrap">
               <Link to="/set-password" className="login-forgot-link">Forgot password? Set password</Link>
             </div>
           )}
         </form>
 
-        {!isCustomerSignup && !sampleStorefrontLogin && (
+        {!isCustomerSignup && (
           <div className="login-toggle">
             <span>{isLoginMode ? "Don't have an account?" : "Already have an account?"}</span>
             <button className="login-toggle-btn" onClick={handleToggleMode} disabled={isLoading}>

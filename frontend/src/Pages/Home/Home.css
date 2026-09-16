@@ -27,6 +27,7 @@ body {
   position: relative;
   cursor: pointer;
   color: #1a1a1a;
+  transition: color 0.2s ease;
 }
 
 @media (min-width: 769px) {
@@ -46,26 +47,34 @@ body {
   }
 }
 
-/* Animated underline */
+/* Resting underline so the title reads as a link; hover uses header brand colors. */
 .home-launch-banner::after {
   content: '';
   position: absolute;
   bottom: 6px;
   left: 50%;
   transform: translateX(-50%);
-  width: 0;
+  width: 36%;
   height: 2px;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  transition: width 0.3s ease;
+  background: linear-gradient(
+    90deg,
+    var(--primary-color, #d4c48a),
+    var(--secondary-color, #c4b070)
+  );
+  transition: width 0.25s ease, opacity 0.25s ease;
   border-radius: 2px;
+  opacity: 0.7;
 }
 
-.home-launch-banner:hover::after {
-  width: 80%;
+.home-launch-banner:hover::after,
+.home-launch-banner:focus-visible::after {
+  width: 100%;
+  opacity: 1;
 }
 
-.home-launch-banner:hover {
-  color: #5568d3;
+.home-launch-banner:hover,
+.home-launch-banner:focus-visible {
+  color: color-mix(in srgb, var(--primary-color, #c4b070) 72%, #1a1a1a);
 }
 
 .home-launch-banner-mobile {

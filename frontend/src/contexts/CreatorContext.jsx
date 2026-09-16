@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getSubdomain, getCreatorFromSubdomain, getCreatorFromCustomDomain, peekCachedStorefrontBrand, rememberStorefrontBrand } from '../utils/subdomainService';
+import { fetchPlatformBranding, peekCachedPlatformBrand } from '../utils/platformBranding';
 import { fetchPublicFavoriteLists } from '../utils/favoriteListsApi';
 import { normalizeStorageUrl } from '../utils/storageUrl';
 import { supabase } from '../supabaseClient';
@@ -8,8 +9,12 @@ const CreatorContext = createContext(null);
 
 export const CreatorProvider = ({ children }) => {
   const [currentCreator, setCurrentCreator] = useState(null);
-  const [creatorSettings, setCreatorSettings] = useState(() => peekCachedStorefrontBrand());
-  const [loading, setLoading] = useState(() => !peekCachedStorefrontBrand());
+  const [creatorSettings, setCreatorSettings] = useState(
+    () => peekCachedStorefrontBrand() || peekCachedPlatformBrand()
+  );
+  const [loading, setLoading] = useState(
+    () => !peekCachedStorefrontBrand() && !peekCachedPlatformBrand()
+  );
 
   const detectCreator = async () => {
     setLoading(true);
@@ -17,6 +22,45 @@ export const CreatorProvider = ({ children }) => {
     try {
       const hostname = window.location.hostname.toLowerCase();
       let creator = null;
+      const isApex =
+        hostname === 'screenmerch.com' ||
+        hostname === 'www.screenmerch.com' ||
+        hostname === 'localhost';
+
+      if (isApex) {
+        const cached = peekCachedPlatformBrand();
+        if (cached) {
+          setCreatorSettings(cached);
+          if (cached.primary_color) {
+            document.documentElement.style.setProperty('--primary-color', cached.primary_color);
+          }
+          if (cached.secondary_color) {
+            document.documentElement.style.setProperty('--secondary-color', cached.secondary_color);
+          }
+        }
+        try {
+          const live = await fetchPlatformBranding();
+          const next = live
+            ? {
+                primary_color: live.primary_color,
+                secondary_color: live.secondary_color,
+                header_opacity: live.header_opacity ?? 100,
+                platform_homepage: true,
+              }
+            : null;
+          setCreatorSettings(next);
+          if (next?.primary_color) {
+            document.documentElement.style.setProperty('--primary-color', next.primary_color);
+          }
+          if (next?.secondary_color) {
+            document.documentElement.style.setProperty('--secondary-color', next.secondary_color);
+          }
+        } catch (_) {
+          if (!cached) setCreatorSettings(null);
+        }
+        setLoading(false);
+        return;
+      }
       
       // Check if this is a screenmerch subdomain first (e.g., testcreator.screenmerch.com)
       // Custom domains won't end with .screenmerch.com

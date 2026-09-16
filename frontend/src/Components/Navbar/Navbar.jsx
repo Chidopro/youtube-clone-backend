@@ -15,10 +15,11 @@ import { useCreator } from '../../contexts/CreatorContext'
 import { isCreatorStorefrontHostname, peekCachedStorefrontBrand, rememberStorefrontBrand } from '../../utils/subdomainService'
 import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
-import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
+import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront } from '../../utils/demoStorefront'
 import { cropCustomLogoFromUrl } from '../../utils/logoBackground'
 import { apiJoin, getBackendUrl } from '../../config/apiConfig'
 import ShipToPicker from '../ShipToPicker/ShipToPicker'
+import DeliveryFlags from '../DeliveryFlags/DeliveryFlags'
 
 const creatorSearchText = (creator) =>
     [creator?.name, creator?.username, creator?.subdomain]
@@ -67,6 +68,12 @@ const Navbar = ({ resetCategory }) => {
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     const [isSignUpChoiceOpen, setIsSignUpChoiceOpen] = useState(false);
     const [isCreatorSignupModalOpen, setIsCreatorSignupModalOpen] = useState(false);
+
+    useEffect(() => {
+        const openCreatorSignup = () => setIsCreatorSignupModalOpen(true);
+        window.addEventListener('screenmerch:open-creator-signup', openCreatorSignup);
+        return () => window.removeEventListener('screenmerch:open-creator-signup', openCreatorSignup);
+    }, []);
     const [user, setUser] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
     const [customerUser, setCustomerUser] = useState(null);
@@ -112,9 +119,10 @@ const Navbar = ({ resetCategory }) => {
         return cached === 'horizontal' || cached === 'square' ? cached : 'square';
     });
 
-    // Storefront only: Personalization primary+secondary → header gradient; otherwise white
+    // Storefront Personalization, or master-admin homepage branding on screenmerch.com
     const storefrontHeaderGradient = (() => {
-        if (!isCreatorStorefrontHostname()) return null;
+        const onHomepage = Boolean(creatorSettings?.platform_homepage) && !isCreatorStorefrontHostname();
+        if (!isCreatorStorefrontHostname() && !onHomepage) return null;
         if (!isUsableHexColor(creatorSettings?.primary_color) || !isUsableHexColor(creatorSettings?.secondary_color)) {
             return null;
         }
@@ -657,11 +665,6 @@ const Navbar = ({ resetCategory }) => {
     }, [user]);
 
     const handleLogin = () => {
-        if (isDemoStorefront()) {
-            startDemoPreviewSession();
-            window.location.assign('/dashboard');
-            return;
-        }
         navigate('/login');
     };
 
@@ -1363,6 +1366,7 @@ const Navbar = ({ resetCategory }) => {
                             </button>
                         </>
                     )}
+                    {!isStorefront ? <DeliveryFlags /> : null}
                     {isStorefront ? (
                     <>
                     <ShipToPicker />

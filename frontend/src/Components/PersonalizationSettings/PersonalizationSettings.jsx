@@ -5,6 +5,9 @@ import { normalizeStorageUrl } from '../../utils/storageUrl';
 import { knockoutLogoWhiteBackground } from '../../utils/logoBackground';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getBackendUrl } from '../../config/apiConfig';
+import { AdminService } from '../../utils/adminService';
+import { isDemoPreviewUser } from '../../utils/demoStorefront';
+import { fetchPlatformBranding, savePlatformBranding } from '../../utils/platformBranding';
 import './PersonalizationSettings.css';
 
 const BUCKET_CREATOR_LOGOS = 'creator-logos';
@@ -36,9 +39,41 @@ const PersonalizationSettings = ({ readOnly = false }) => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState(''); // 'success' or 'error'
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
+  const [homepageSettings, setHomepageSettings] = useState({
+    primary_color: '#667eea',
+    secondary_color: '#764ba2',
+    header_opacity: 100,
+  });
+  const [homepageSaving, setHomepageSaving] = useState(false);
+  const [homepageMessage, setHomepageMessage] = useState('');
+  const [homepageMessageType, setHomepageMessageType] = useState('');
+  const showHomepageBrand = isMasterAdmin && !(typeof window !== 'undefined' && getSubdomain());
 
   useEffect(() => {
     loadSettings();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const ok = await AdminService.isMasterAdmin();
+        if (cancelled) return;
+        setIsMasterAdmin(Boolean(ok));
+        if (!ok || getSubdomain()) return;
+        const live = await fetchPlatformBranding();
+        if (cancelled || !live) return;
+        setHomepageSettings({
+          primary_color: live.primary_color || '#667eea',
+          secondary_color: live.secondary_color || '#764ba2',
+          header_opacity: clampHeaderOpacity(live.header_opacity ?? 100),
+        });
+      } catch (_) {}
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const loadSettings = async () => {
@@ -290,7 +325,7 @@ const PersonalizationSettings = ({ readOnly = false }) => {
         setUploadingLogo(false);
         return;
       }
-      const backendUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) || 'https://screenmerch.fly.dev';
+      const backendUrl = getBackendUrl() || 'https://screenmerch.fly.dev';
       let uploadFile = file;
       if (file.type !== 'image/svg+xml') {
         try {
@@ -330,8 +365,44 @@ const PersonalizationSettings = ({ readOnly = false }) => {
     }
   };
 
+  const handleSaveHomepage = async () => {
+    setHomepageSaving(true);
+    setHomepageMessage('');
+    setHomepageMessageType('');
+    try {
+      const current = await AdminService.getCurrentUser();
+      const saved = await savePlatformBranding({
+        primary_color: homepageSettings.primary_color,
+        secondary_color: homepageSettings.secondary_color,
+        header_opacity: clampHeaderOpacity(homepageSettings.header_opacity),
+        email: current?.userEmail,
+      });
+      setHomepageSettings({
+        primary_color: saved.primary_color,
+        secondary_color: saved.secondary_color,
+        header_opacity: clampHeaderOpacity(saved.header_opacity),
+      });
+      setHomepageMessage('Homepage header saved. screenmerch.com now uses these colors.');
+      setHomepageMessageType('success');
+      window.dispatchEvent(new CustomEvent('creatorSettingsUpdated'));
+      if (refreshCreator) refreshCreator();
+      setTimeout(() => setHomepageMessage(''), 4000);
+    } catch (err) {
+      setHomepageMessage(err?.message || 'Could not save homepage header.');
+      setHomepageMessageType('error');
+    } finally {
+      setHomepageSaving(false);
+    }
+  };
+
   const handleSave = async () => {
-    if (readOnly) return;
+    if (readOnly) {
+      setMessage(
+        'This MaxFreedom dashboard is the sample-store tour, so Save is turned off. Sign in as the store owner at screenmerch.com, then open Dashboard → Personalization.'
+      );
+      setMessageType('error');
+      return;
+    }
     setSaving(true);
     setMessage('');
     setMessageType('');
@@ -378,13 +449,35 @@ const PersonalizationSettings = ({ readOnly = false }) => {
             if (supabaseUser) loggedInUserId = supabaseUser.id;
           }
           
-          // Security: Only allow saving if logged-in user owns the subdomain
-          if (loggedInUserId && loggedInUserId !== targetUserId) {
-            console.error('❌ PersonalizationSettings: Logged-in user does not own this subdomain');
-            setMessage('You can only edit settings for your own subdomain. Please log in as the owner of this subdomain.');
-            setMessageType('error');
-            setSaving(false);
-            return;
+          if (loggedInUserId && String(loggedInUserId) !== String(targetUserId)) {
+            const parsedUser = (() => {
+              try {
+                return userData ? JSON.parse(userData) : null;
+              } catch (_) {
+                return null;
+              }
+            })();
+            if (isDemoPreviewUser(parsedUser) || String(loggedInUserId) === 'demo-preview') {
+              setMessage(
+                'This MaxFreedom dashboard is the sample-store tour, so settings cannot be saved here. Sign in as the store owner at screenmerch.com, then open Dashboard → Personalization.'
+              );
+              setMessageType('error');
+              setSaving(false);
+              return;
+            }
+            let adminOk = false;
+            try {
+              adminOk = await AdminService.isMasterAdmin();
+            } catch (_) {
+              adminOk = false;
+            }
+            if (!adminOk) {
+              console.error('❌ PersonalizationSettings: Logged-in user does not own this subdomain');
+              setMessage('You can only edit settings for your own subdomain. Please log in as the owner of this subdomain.');
+              setMessageType('error');
+              setSaving(false);
+              return;
+            }
           }
           
           // Use the subdomain owner's ID for saving
@@ -537,7 +630,7 @@ const PersonalizationSettings = ({ readOnly = false }) => {
       };
 
       // Try backend first (bypasses RLS – same pattern as color persistence so logo persists on subdomain)
-      const backendUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) || 'https://screenmerch.fly.dev';
+      const backendUrl = getBackendUrl() || 'https://screenmerch.fly.dev';
       if (userId) {
         console.log('💾 PersonalizationSettings: Saving via backend (user_id:', userId, ')');
         try {
@@ -642,29 +735,6 @@ const PersonalizationSettings = ({ readOnly = false }) => {
           document.documentElement.style.setProperty('--secondary-color', settings.secondary_color);
           console.log('✅ Immediately set --secondary-color to:', settings.secondary_color);
         }
-        
-        // Force style recalculation
-        const html = document.documentElement;
-        const originalDisplay = html.style.display;
-        html.style.display = 'none';
-        html.offsetHeight;
-        html.style.display = originalDisplay;
-        
-        // If on the subdomain, refresh the page to see changes immediately
-        const currentHostname = window.location.hostname.toLowerCase();
-        const expectedSubdomain = normalizedSubdomain ? `${normalizedSubdomain}.screenmerch.com` : null;
-        if (expectedSubdomain && (currentHostname === expectedSubdomain || currentHostname.includes(normalizedSubdomain))) {
-          console.log('🔄 On subdomain, reloading page to apply changes');
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
-        } else if (settings.personalization_enabled && normalizedSubdomain) {
-          // If not on subdomain but personalization is enabled, redirect to subdomain
-          console.log('🔄 Redirecting to subdomain to see changes:', expectedSubdomain);
-          setTimeout(() => {
-            window.location.href = `https://${expectedSubdomain}${window.location.pathname}`;
-          }, 500);
-        }
       }
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -731,7 +801,110 @@ const PersonalizationSettings = ({ readOnly = false }) => {
         )}
       </div>
 
-      <h2>Personalize Your ScreenMerch App</h2>
+      {readOnly ? (
+        <div className="settings-message error" role="status">
+          This is the MaxFreedom sample-store tour, so Save Settings is off. To edit this storefront,
+          sign in as the owner at screenmerch.com, then open Dashboard → Personalization.
+        </div>
+      ) : null}
+
+      {showHomepageBrand ? (
+        <div className="homepage-brand-card">
+          <h2>ScreenMerch.com homepage</h2>
+          <p className="personalization-description">
+            These colors are for the main site header only. No subdomain is required.
+          </p>
+          <div className="color-settings">
+            <div className="setting-group">
+              <label className="setting-label">Primary Color</label>
+              <div className="color-input-group">
+                <input
+                  type="color"
+                  value={homepageSettings.primary_color}
+                  onChange={(e) => setHomepageSettings({ ...homepageSettings, primary_color: e.target.value })}
+                  className="color-picker"
+                  disabled={readOnly}
+                />
+                <input
+                  type="text"
+                  value={homepageSettings.primary_color}
+                  onChange={(e) => setHomepageSettings({ ...homepageSettings, primary_color: e.target.value })}
+                  placeholder="#667eea"
+                  className="color-text-input"
+                  disabled={readOnly}
+                  readOnly={readOnly}
+                />
+              </div>
+            </div>
+            <div className="setting-group">
+              <label className="setting-label">Secondary Color</label>
+              <div className="color-input-group">
+                <input
+                  type="color"
+                  value={homepageSettings.secondary_color}
+                  onChange={(e) => setHomepageSettings({ ...homepageSettings, secondary_color: e.target.value })}
+                  className="color-picker"
+                  disabled={readOnly}
+                />
+                <input
+                  type="text"
+                  value={homepageSettings.secondary_color}
+                  onChange={(e) => setHomepageSettings({ ...homepageSettings, secondary_color: e.target.value })}
+                  placeholder="#764ba2"
+                  className="color-text-input"
+                  disabled={readOnly}
+                  readOnly={readOnly}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="setting-group header-opacity-setting">
+            <label className="setting-label" htmlFor="homepage-header-opacity-range">
+              Header Color Opacity
+              <span className="opacity-value">{clampHeaderOpacity(homepageSettings.header_opacity)}%</span>
+            </label>
+            <input
+              id="homepage-header-opacity-range"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={clampHeaderOpacity(homepageSettings.header_opacity)}
+              onChange={(e) => setHomepageSettings({
+                ...homepageSettings,
+                header_opacity: clampHeaderOpacity(e.target.value),
+              })}
+              className="opacity-slider"
+              disabled={readOnly}
+            />
+            <div
+              className="opacity-preview"
+              style={{
+                backgroundImage: `linear-gradient(135deg, ${homepageSettings.primary_color || '#667eea'} 0%, ${homepageSettings.secondary_color || '#764ba2'} 100%)`,
+                opacity: clampHeaderOpacity(homepageSettings.header_opacity) / 100,
+              }}
+              aria-hidden="true"
+            />
+          </div>
+          <div className="settings-actions">
+            <button
+              type="button"
+              onClick={handleSaveHomepage}
+              disabled={homepageSaving || readOnly}
+              className="save-settings-btn"
+            >
+              {homepageSaving ? 'Saving...' : 'Save homepage header'}
+            </button>
+          </div>
+          {homepageMessage ? (
+            <div className={`settings-message ${homepageMessageType}`}>
+              {homepageMessage}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <h2>{showHomepageBrand ? 'Your storefront (optional)' : 'Personalize Your ScreenMerch App'}</h2>
       <p className="personalization-description">
         Create your own branded ScreenMerch app with a custom subdomain, colors, and branding. 
         Your personalized app will show only your content.
@@ -829,6 +1002,7 @@ const PersonalizationSettings = ({ readOnly = false }) => {
                   value={settings.primary_color}
                   onChange={(e) => setSettings({...settings, primary_color: e.target.value})}
                   className="color-picker"
+                  disabled={readOnly}
                 />
                 <input
                   type="text"
@@ -836,6 +1010,8 @@ const PersonalizationSettings = ({ readOnly = false }) => {
                   onChange={(e) => setSettings({...settings, primary_color: e.target.value})}
                   placeholder="#667eea"
                   className="color-text-input"
+                  disabled={readOnly}
+                  readOnly={readOnly}
                 />
               </div>
               <p className="help-text">Main brand color used in the storefront header gradient and buttons</p>
@@ -849,6 +1025,7 @@ const PersonalizationSettings = ({ readOnly = false }) => {
                   value={settings.secondary_color}
                   onChange={(e) => setSettings({...settings, secondary_color: e.target.value})}
                   className="color-picker"
+                  disabled={readOnly}
                 />
                 <input
                   type="text"
@@ -856,6 +1033,8 @@ const PersonalizationSettings = ({ readOnly = false }) => {
                   onChange={(e) => setSettings({...settings, secondary_color: e.target.value})}
                   placeholder="#764ba2"
                   className="color-text-input"
+                  disabled={readOnly}
+                  readOnly={readOnly}
                 />
               </div>
               <p className="help-text">Secondary brand color used in the storefront header gradient</p>
@@ -876,6 +1055,7 @@ const PersonalizationSettings = ({ readOnly = false }) => {
               value={clampHeaderOpacity(settings.header_opacity)}
               onChange={(e) => setSettings({ ...settings, header_opacity: clampHeaderOpacity(e.target.value) })}
               className="opacity-slider"
+              disabled={readOnly}
             />
             <div
               className="opacity-preview"

@@ -24,8 +24,8 @@ PRINT_AREA_PRODUCTS = [
     {"name": "Baby Body Suit", "description": "Baby Body Suit", "width": 7, "height": 8},
     # Men's / Unisex
     {"name": "Classic Tee", "description": "Standard T-Shirt", "width": 12, "height": 15},
-    {"name": "T-Shirt", "description": "T-Shirt", "width": 11.5, "height": 13.8,
-     "sizes": _sizes(("XS-M", 11.5, 13.8), ("L-3XL", 15, 18))},
+    {"name": "T-Shirt", "description": "T-Shirt", "width": 12, "height": 16,
+     "sizes": _sizes(("XS-M", 12, 16), ("L-3XL", 15, 18))},
     {"name": "Men's Tank Top", "description": "Tank Top", "width": 12, "height": 16},
     {"name": "Men's Fitted Long Sleeve", "description": "Long Sleeve Shirt", "width": 12, "height": 16},
     {"name": "Men's Long Sleeve Shirt", "description": "Long Sleeve Shirt", "width": 12, "height": 16},

@@ -1,9 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
-import { AdminService } from '../../utils/adminService';
 import { apiJoin } from '../../config/apiConfig';
-import { requestVideoOptimize } from '../../utils/videoOptimize';
 import './Feed.css';
 import './CreatorDirectory.css';
 import { RESERVE_SLOT_THEMES, TOTAL_CREATOR_SPOTS } from './reserveSlotThemes';
@@ -14,6 +11,12 @@ import {
   storefrontHubPreviews,
 } from '../../utils/favoriteListsApi';
 import { HubThumb, rotatingUrl, uniqueUrls, HUB_ROTATE_MS } from './Feed';
+import {
+  fetchIntroThumbnail,
+  readCachedIntroThumbnail,
+  writeCachedIntroThumbnail,
+} from '../../utils/introThumbnail';
+import reserveStorefrontPreview from '../../assets/reserve-storefront-preview.jpg';
 
 function collectSlotShuffleUrls(lists) {
   const ownerId = (lists || []).find((L) => L?.is_primary || L?.slug === 'owner')
@@ -64,33 +67,14 @@ function pinSoftLaunchSlots(rawSlots, total) {
   });
 }
 
-export const SCREENMERCH_INTRO_TITLE = 'ScreenMerch Introduction Video';
-
-const DEFAULT_INTRO = {
-  id: null,
-  title: SCREENMERCH_INTRO_TITLE,
-  channelTitle: 'ScreenMerch',
-  thumbnail: 'https://via.placeholder.com/640x360/667eea/ffffff?text=ScreenMerch+Intro',
-};
-
-const INTRO_LOCAL_KEY = 'sm_homepage_intro_video';
-
 /**
- * Apex homepage: ScreenMerch intro card + 20 numbered reserve storefront slots (7×3 grid).
- * Reserve → creator signup. Intro editable by master admin (video + thumbnail).
+ * Apex homepage: How it works card + numbered reserve storefront slots.
+ * Reserve → creator signup.
  */
-const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
+const CreatorDirectory = () => {
   const navigate = useNavigate();
-  const [intro, setIntro] = useState(introVideo || DEFAULT_INTRO);
-  const [canEditIntro, setCanEditIntro] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [videoFile, setVideoFile] = useState(null);
-  const [thumbFile, setThumbFile] = useState(null);
-  const [title, setTitle] = useState(SCREENMERCH_INTRO_TITLE);
-  const [saving, setSaving] = useState(false);
-  const [editMsg, setEditMsg] = useState('');
-  const videoInputRef = useRef(null);
-  const thumbInputRef = useRef(null);
+  const cachedThumb = typeof window !== 'undefined' ? readCachedIntroThumbnail() : null;
+  const [introThumb, setIntroThumb] = useState(cachedThumb);
   const [claimedCount, setClaimedCount] = useState(1);
   const [takenBySpot, setTakenBySpot] = useState(() => ({
     1: {
@@ -109,6 +93,24 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
   const visibleSlotThemes = RESERVE_SLOT_THEMES.filter(
     (slot) => takenBySpot[slot.spot] || slot.spot === firstOpenSpot
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const thumb = await fetchIntroThumbnail();
+        if (cancelled) return;
+        setIntroThumb(thumb);
+        writeCachedIntroThumbnail(thumb);
+      } catch (_) {
+        if (!cancelled && !cachedThumb) setIntroThumb(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount; cache seeds first paint
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,200 +189,13 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
     });
   }, [imagesBySpot, tick]);
 
-  useEffect(() => {
-    if (introVideo) {
-      setIntro(introVideo);
-      setTitle(introVideo.title || SCREENMERCH_INTRO_TITLE);
-      return;
-    }
-    try {
-      const raw = localStorage.getItem(INTRO_LOCAL_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        if (saved?.thumbnail || saved?.video_url) {
-          setIntro({ ...DEFAULT_INTRO, ...saved, title: SCREENMERCH_INTRO_TITLE });
-        }
-      }
-    } catch (_) {
-      /* ignore */
-    }
-  }, [introVideo]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const isMaster = await AdminService.isMasterAdmin();
-        if (!cancelled) setCanEditIntro(!!isMaster);
-      } catch (_) {
-        if (!cancelled) setCanEditIntro(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const openIntro = () => {
+  const openHowItWorks = () => {
     navigate('/how-it-works');
   };
 
-  /** Earnings calculator (same page as FAQ “See example earnings”). */
+  /** Open the creator signup window (skip the earnings calculator). */
   const openReserveCta = () => {
-    navigate('/subscription-tiers', { state: { intent: 'creator' } });
-  };
-
-  const openEdit = (e) => {
-    e.stopPropagation();
-    setEditMsg('');
-    setVideoFile(null);
-    setThumbFile(null);
-    setTitle(SCREENMERCH_INTRO_TITLE);
-    setEditOpen(true);
-  };
-
-  const closeEdit = () => {
-    if (saving) return;
-    setEditOpen(false);
-  };
-
-  const saveIntro = async (e) => {
-    e.preventDefault();
-    if (!videoFile && !thumbFile && !intro?.id) {
-      setEditMsg('Choose a video and/or thumbnail to update the intro card.');
-      return;
-    }
-    if (!videoFile && !intro?.video_url && !intro?.id) {
-      setEditMsg('Please select a video file for the ScreenMerch introduction.');
-      return;
-    }
-    if (!thumbFile && !intro?.thumbnail) {
-      setEditMsg('Please select a thumbnail image (16:9 recommended).');
-      return;
-    }
-
-    setSaving(true);
-    setEditMsg('');
-    try {
-      const user = await AdminService.getCurrentUser();
-      if (!user?.id) {
-        setEditMsg('Sign in as master admin to edit the intro card.');
-        return;
-      }
-
-      let videoUrl = intro.video_url || null;
-      let thumbUrl = intro.thumbnail || null;
-      const stamp = Date.now();
-
-      if (videoFile) {
-        if (videoFile.size > 100 * 1024 * 1024) {
-          setEditMsg('Video must be under 100MB (about 2 minutes or less).');
-          return;
-        }
-        const ext = videoFile.name.split('.').pop() || 'mp4';
-        const path = `screenmerch-intro/${stamp}.${ext}`;
-        const { error: upErr } = await supabase.storage.from('videos2').upload(path, videoFile, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-        if (upErr) throw new Error(upErr.message);
-        videoUrl = supabase.storage.from('videos2').getPublicUrl(path).data.publicUrl;
-      }
-
-      if (thumbFile) {
-        if (thumbFile.size > 10 * 1024 * 1024) {
-          setEditMsg('Thumbnail must be under 10MB.');
-          return;
-        }
-        const ext = thumbFile.name.split('.').pop() || 'jpg';
-        const path = `screenmerch-intro/${stamp}_thumb.${ext}`;
-        const { error: thErr } = await supabase.storage.from('thumbnails').upload(path, thumbFile, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-        if (thErr) throw new Error(thErr.message);
-        thumbUrl = supabase.storage.from('thumbnails').getPublicUrl(path).data.publicUrl;
-      }
-
-      const payload = {
-        title: SCREENMERCH_INTRO_TITLE,
-        description:
-          'ScreenMerch introduction — watch how it works, then reserve your free storefront.',
-        channelTitle: 'ScreenMerch',
-        video_url: videoUrl,
-        thumbnail: thumbUrl,
-        user_id: user.id,
-        verification_status: 'screenmerch_homepage_intro',
-        updated_at: new Date().toISOString(),
-      };
-
-      let savedRow = null;
-      if (intro?.id && String(intro.id) !== 'screenmerch-intro') {
-        const { data, error } = await supabase
-          .from('videos2')
-          .update(payload)
-          .eq('id', intro.id)
-          .select()
-          .single();
-        if (error) throw new Error(error.message);
-        savedRow = data;
-      } else {
-        const { data: existing } = await supabase
-          .from('videos2')
-          .select('id')
-          .ilike('title', SCREENMERCH_INTRO_TITLE)
-          .limit(1);
-        if (existing?.[0]?.id) {
-          const { data, error } = await supabase
-            .from('videos2')
-            .update(payload)
-            .eq('id', existing[0].id)
-            .select()
-            .single();
-          if (error) throw new Error(error.message);
-          savedRow = data;
-        } else {
-          const { data, error } = await supabase
-            .from('videos2')
-            .insert([{ ...payload, created_at: new Date().toISOString() }])
-            .select()
-            .single();
-          if (error) throw new Error(error.message);
-          savedRow = data;
-        }
-      }
-
-      const next = {
-        id: savedRow?.id || intro.id,
-        title: SCREENMERCH_INTRO_TITLE,
-        channelTitle: 'ScreenMerch',
-        thumbnail: thumbUrl || savedRow?.thumbnail,
-        video_url: videoUrl || savedRow?.video_url,
-        categoryId: savedRow?.categoryId || 0,
-      };
-      setIntro(next);
-      if (videoFile && (next.video_url || videoUrl)) {
-        requestVideoOptimize({
-          videoId: next.id,
-          videoUrl: videoUrl || next.video_url,
-        });
-      }
-      try {
-        localStorage.setItem(INTRO_LOCAL_KEY, JSON.stringify(next));
-      } catch (_) {
-        /* ignore */
-      }
-      if (typeof onIntroUpdated === 'function') onIntroUpdated(next);
-      setEditMsg('Intro card updated.');
-      setTimeout(() => {
-        setEditOpen(false);
-        setEditMsg('');
-      }, 800);
-    } catch (err) {
-      setEditMsg(err.message || 'Could not save intro video.');
-    } finally {
-      setSaving(false);
-    }
+    window.dispatchEvent(new CustomEvent('screenmerch:open-creator-signup'));
   };
 
   return (
@@ -395,33 +210,31 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
       </div>
 
       <div className="feed creator-directory-grid">
-        {/* First card — ScreenMerch introduction only */}
         <div
           className="card intro-directory-card"
           style={{ cursor: 'pointer' }}
-          onClick={openIntro}
-          onKeyDown={(e) => e.key === 'Enter' && openIntro()}
+          onClick={openHowItWorks}
+          onKeyDown={(e) => e.key === 'Enter' && openHowItWorks()}
           role="button"
           tabIndex={0}
+          aria-label="How ScreenMerch Works"
         >
-          <div style={{ position: 'relative' }}>
-            {canEditIntro && (
-              <button
-                type="button"
-                className="intro-directory-edit-btn"
-                onClick={openEdit}
-                title="Edit ScreenMerch introduction video & thumbnail"
-              >
-                Edit intro
-              </button>
+          <div className={`intro-directory-preview${introThumb ? ' intro-directory-preview--thumb' : ''}`}>
+            {introThumb ? (
+              <img
+                className="intro-directory-thumb"
+                src={introThumb}
+                alt=""
+              />
+            ) : (
+              <>
+                <span className="intro-directory-preview-kicker">Guide</span>
+                <p className="intro-directory-preview-title">How ScreenMerch Works</p>
+              </>
             )}
-            <img
-              src={intro.thumbnail || DEFAULT_INTRO.thumbnail}
-              alt={intro.title || SCREENMERCH_INTRO_TITLE}
-            />
           </div>
-          <h2>{SCREENMERCH_INTRO_TITLE}</h2>
-          <h3>ScreenMerch</h3>
+          <h2>How ScreenMerch Works</h2>
+          <h3>See how moments become merchandise.</h3>
         </div>
 
         {/* Claimed storefronts plus one open reserve seat — hide empty Spot #n placeholders */}
@@ -435,9 +248,21 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
           const shuffleSrc = isTaken
             ? rotatingUrl(imagesBySpot[slot.spot], `spot-${slot.spot}`, tick)
             : null;
+          const openPreviewSrc = isTaken ? null : reserveStorefrontPreview;
+          const previewSrc = shuffleSrc || openPreviewSrc;
+          const isDemo = subdomain === DEMO_STOREFRONT_SUBDOMAIN;
+          const captionTitle = !isTaken
+            ? 'Limited Free Soft Launch'
+            : isDemo
+              ? 'Take a Tour'
+              : storeLabel;
+          const captionBody = !isTaken
+            ? 'Claim one of 20 free creator storefronts.'
+            : isDemo
+              ? 'Explore the storefront, creator tools, and customization features.'
+              : (canVisit ? `${subdomain}.screenmerch.com` : 'Soft launch seat claimed');
           const openSlot = () => {
             if (canVisit) {
-              const isDemo = subdomain === DEMO_STOREFRONT_SUBDOMAIN;
               window.location.href = isDemo ? `${storeHref}?from=hub` : storeHref;
               return;
             }
@@ -457,24 +282,25 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
               tabIndex={isTaken && !canVisit ? -1 : 0}
               aria-label={
                 canVisit
-                  ? `Visit ${storeLabel} storefront, spot ${slot.spot}`
+                  ? (isDemo ? 'Take a Tour' : `Visit ${storeLabel} storefront`)
                   : isTaken
-                    ? `${storeLabel} taken — soft launch spot ${slot.spot}`
-                    : `Reserve storefront spot number ${slot.spot}`
+                    ? `${storeLabel} taken — soft launch seat`
+                    : 'Limited Free Soft Launch — claim a free creator storefront'
               }
               aria-disabled={isTaken && !canVisit}
             >
               <div
-                className={`reserve-slot-preview pattern-${slot.pattern}${shuffleSrc ? ' reserve-slot-preview--shuffle' : ''}`}
+                className={`reserve-slot-preview pattern-${slot.pattern}${previewSrc ? ' reserve-slot-preview--shuffle' : ''}${openPreviewSrc ? ' reserve-slot-preview--photo' : ''}`}
                 style={{ background: slot.gradient }}
               >
                 {shuffleSrc ? (
                   <div className="reserve-slot-shuffle" aria-hidden="true">
                     <HubThumb key={shuffleSrc} src={shuffleSrc} emptyLabel="" />
                   </div>
-                ) : null}
-                {!isTaken ? (
-                  <span className="reserve-slot-number">Spot #{slot.spot}</span>
+                ) : openPreviewSrc ? (
+                  <div className="reserve-slot-shuffle" aria-hidden="true">
+                    <img src={openPreviewSrc} alt="" />
+                  </div>
                 ) : null}
                 {isTaken ? (
                   <>
@@ -489,23 +315,17 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
                   </>
                 ) : (
                   <>
-                    <span className="reserve-slot-icon" aria-hidden="true">
-                      {slot.icon}
-                    </span>
-                    <span className="reserve-slot-cta-pill">Reserve Free</span>
+                    {openPreviewSrc ? null : (
+                      <span className="reserve-slot-icon" aria-hidden="true">
+                        {slot.icon}
+                      </span>
+                    )}
+                    <span className="reserve-slot-cta-pill">Reserve My Spot</span>
                   </>
                 )}
               </div>
-              <h2>{isTaken ? storeLabel : 'Reserve Your Storefront'}</h2>
-              <h3>
-                {isTaken
-                  ? (canVisit
-                    ? (subdomain === DEMO_STOREFRONT_SUBDOMAIN
-                      ? <span className="reserve-slot-tour-line">Take a tour of image and dashboard tools.</span>
-                      : `${subdomain}.screenmerch.com`)
-                    : 'Soft launch seat claimed')
-                  : 'Limited free soft launch'}
-              </h3>
+              <h2>{captionTitle}</h2>
+              <h3>{captionBody}</h3>
             </div>
           );
         })}
@@ -520,70 +340,6 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
           <strong>{availableCount}</strong> available
         </span>
       </div>
-
-      {editOpen && (
-        <div className="intro-edit-overlay" onClick={closeEdit} role="presentation">
-          <div
-            className="intro-edit-modal"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="intro-edit-title"
-          >
-            <button type="button" className="intro-edit-close" onClick={closeEdit} aria-label="Close">
-              ×
-            </button>
-            <h2 id="intro-edit-title">Edit ScreenMerch introduction</h2>
-            <p className="intro-edit-hint">
-              This first homepage card is reserved for ScreenMerch only. Upload a short highlight clip
-              (max 100MB — about 2 minutes or less) and a 16:9 thumbnail.
-            </p>
-            <form onSubmit={saveIntro}>
-              <label className="intro-edit-label">
-                Title (fixed)
-                <input type="text" value={title} readOnly disabled />
-              </label>
-              <label className="intro-edit-label">
-                Video file
-                <input
-                  ref={videoInputRef}
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-                />
-              </label>
-              {videoFile && (
-                <p className="intro-edit-file">
-                  {videoFile.name} ({(videoFile.size / 1024 / 1024).toFixed(2)} MB)
-                </p>
-              )}
-              <label className="intro-edit-label">
-                Thumbnail image (16:9)
-                <input
-                  ref={thumbInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setThumbFile(e.target.files?.[0] || null)}
-                />
-              </label>
-              {thumbFile && (
-                <p className="intro-edit-file">
-                  {thumbFile.name} ({(thumbFile.size / 1024 / 1024).toFixed(2)} MB)
-                </p>
-              )}
-              {editMsg && <p className="intro-edit-msg">{editMsg}</p>}
-              <div className="intro-edit-actions">
-                <button type="button" onClick={closeEdit} disabled={saving}>
-                  Cancel
-                </button>
-                <button type="submit" className="intro-edit-save" disabled={saving}>
-                  {saving ? 'Saving…' : 'Save intro'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

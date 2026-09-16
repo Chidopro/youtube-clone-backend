@@ -68,14 +68,113 @@ function locksImageOffsetsInLandscape(productName, orientation) {
   return orientation === 'landscape' && isApparelChestPrintProduct(productName);
 }
 
+/** Portrait cover: start at the helmet, not the sword/padding above it, so more of the legs stay in. */
+const PORTRAIT_COVER_Y = 26;
+
+const ARTWORK_ZOOM_MIN = 50;
+const ARTWORK_ZOOM_MAX = 150;
+
+function clampArtworkZoom(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 100;
+  return Math.max(ARTWORK_ZOOM_MIN, Math.min(ARTWORK_ZOOM_MAX, Math.round(n)));
+}
+
+/**
+ * Place artwork in a print box. 100% = cover (fill). Below 100% shrinks
+ * inside the box so the shirt shows through. Above 100% crops tighter.
+ */
+function artworkLayoutInBox(boxW, boxH, imgW, imgH, zoomPercent, posX, posY) {
+  const bw = Number(boxW) || 0;
+  const bh = Number(boxH) || 0;
+  const iw = Number(imgW) || 0;
+  const ih = Number(imgH) || 0;
+  if (!(bw > 0 && bh > 0 && iw > 0 && ih > 0)) return null;
+  const zoom = clampArtworkZoom(zoomPercent) / 100;
+  const boxAspect = bw / bh;
+  const imgAspect = iw / ih;
+  let coverW;
+  let coverH;
+  if (imgAspect > boxAspect) {
+    coverH = bh;
+    coverW = bh * imgAspect;
+  } else {
+    coverW = bw;
+    coverH = bw / imgAspect;
+  }
+  const drawW = coverW * zoom;
+  const drawH = coverH * zoom;
+  const px = Math.max(0, Math.min(100, Number(posX) || 0));
+  const py = Math.max(0, Math.min(100, Number(posY) || 0));
+  return {
+    width: drawW,
+    height: drawH,
+    left: (px / 100) * (bw - drawW),
+    top: (py / 100) * (bh - drawH),
+  };
+}
+
+/**
+ * Visible intersection of zoomed artwork with the print box.
+ * Zoom-out is the smaller image; zoom-in / 100% is the full box.
+ */
+function visibleArtworkRect(boxW, boxH, layout) {
+  const bw = Number(boxW) || 0;
+  const bh = Number(boxH) || 0;
+  if (!(bw > 0 && bh > 0)) {
+    return { left: 0, top: 0, width: 0, height: 0 };
+  }
+  if (!layout) {
+    return { left: 0, top: 0, width: bw, height: bh };
+  }
+  const l = Number(layout.left) || 0;
+  const t = Number(layout.top) || 0;
+  const w = Number(layout.width) || 0;
+  const h = Number(layout.height) || 0;
+  const left = Math.max(0, l);
+  const top = Math.max(0, t);
+  const right = Math.min(bw, l + w);
+  const bottom = Math.min(bh, t + h);
+  return {
+    left,
+    top,
+    width: Math.max(0, right - left),
+    height: Math.max(0, bottom - top),
+  };
+}
+
+function artworkRectFillsBox(vis, boxW, boxH) {
+  return (
+    vis.left <= 0.5
+    && vis.top <= 0.5
+    && vis.width >= (Number(boxW) || 0) - 1
+    && vis.height >= (Number(boxH) || 0) - 1
+  );
+}
+
+function integerArtworkRect(vis, boxW, boxH) {
+  const bw = Number(boxW) || 0;
+  const bh = Number(boxH) || 0;
+  const left = Math.max(0, Math.floor(Number(vis?.left) || 0));
+  const top = Math.max(0, Math.floor(Number(vis?.top) || 0));
+  const right = Math.min(bw, Math.ceil((Number(vis?.left) || 0) + (Number(vis?.width) || 0)));
+  const bottom = Math.min(bh, Math.ceil((Number(vis?.top) || 0) + (Number(vis?.height) || 0)));
+  return {
+    left,
+    top,
+    width: Math.max(1, right - left),
+    height: Math.max(1, bottom - top),
+  };
+}
+
 function printBoxObjectPosition(productName, orientation, offsetX, offsetY) {
   if (locksImageOffsetsInLandscape(productName, orientation)) {
     return { x: 50, y: 50 };
   }
-  return {
-    x: Math.max(0, Math.min(100, 50 + (Number(offsetX) || 0) / 2)),
-    y: Math.max(0, Math.min(100, 50 + (Number(offsetY) || 0) / 2)),
-  };
+  const x = Math.max(0, Math.min(100, 50 + (Number(offsetX) || 0) / 2));
+  const yBase = orientation === 'landscape' ? 50 : PORTRAIT_COVER_Y;
+  const y = Math.max(0, Math.min(100, yBase + (Number(offsetY) || 0) / 2));
+  return { x, y };
 }
 
 /**
@@ -174,8 +273,10 @@ const APPAREL_PRINT_OVERRIDES = {
     left: 52.2,
   },
   "T-Shirt": {
-    widthFrac: 0.56,
-    heightFrac: 0.501,
+    // Same 12:16 cover as Men's Tank Top so a portrait screenshot fills
+    // without zoom. Width/placement stay on this mockup's chest box.
+    widthFrac: 0.541,
+    heightFrac: 0.549,
     top: 42.5,
     left: 50.2,
   },
@@ -253,6 +354,63 @@ function isPrintBoxPixel(r, g, b) {
   const isMint = r > 170 && r < 230 && g > r + 10 && g >= b - 5 && g > 200;
   const isPink = r > 190 && (r - g) > 50 && g < 140 && g > 60;
   return isMint || isPink;
+}
+
+const shirtFillCache = new Map();
+
+/** Shirt fabric around the mint/pink guide, so zoom-out gaps are garment, not the painted box. */
+function sampleShirtFillFromMockup(img, productName) {
+  if (!img || !img.naturalWidth || !img.naturalHeight) return '';
+  const src = img.currentSrc || img.src || '';
+  const cacheKey = `${src}|${String(productName || '')}`;
+  if (cacheKey && shirtFillCache.has(cacheKey)) return shirtFillCache.get(cacheKey);
+  try {
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const box = getApparelPrintOverride(productName) || {
+      widthFrac: 0.5,
+      heightFrac: 0.5,
+      top: 44,
+      left: 50,
+    };
+    const cx = (Number(box.left) || 50) / 100;
+    const cy = (Number(box.top) || 44) / 100;
+    const hw = (Number(box.widthFrac) || 0.5) / 2 + 0.06;
+    const hh = (Number(box.heightFrac) || 0.5) / 2 + 0.06;
+    const samples = [];
+    for (let t = 0; t < 24; t++) {
+      const a = (t / 24) * Math.PI * 2;
+      const xf = cx + Math.cos(a) * hw;
+      const yf = cy + Math.sin(a) * hh;
+      if (xf < 0.1 || xf > 0.9 || yf < 0.1 || yf > 0.9) continue;
+      const x = Math.max(0, Math.min(w - 1, Math.round(xf * w)));
+      const y = Math.max(0, Math.min(h - 1, Math.round(yf * h)));
+      const i = (y * w + x) * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const alpha = data[i + 3];
+      if (alpha < 80) continue;
+      if (isPrintBoxPixel(r, g, b)) continue;
+      const l = 0.299 * r + 0.587 * g + 0.114 * b;
+      if (l > 210) continue;
+      samples.push([r, g, b, l]);
+    }
+    if (!samples.length) return '';
+    samples.sort((a, b) => a[3] - b[3]);
+    const mid = samples[Math.floor(samples.length / 2)];
+    const color = `rgb(${Math.round(mid[0])}, ${Math.round(mid[1])}, ${Math.round(mid[2])})`;
+    shirtFillCache.set(cacheKey, color);
+    return color;
+  } catch {
+    return '';
+  }
 }
 
 function percentileSorted(sorted, p) {
@@ -495,14 +653,12 @@ function applyArtworkOrientation(product, _screenshotUrl, userSetRef, setImageOr
   setImageOrientation(ori);
 }
 
-/** Fill the current print box. Portrait = full print area; Landscape = wide print inside it. */
-function overlayFitForPreview(printBox) {
-  return {
-    width: printBox.width,
-    height: printBox.height,
-    objectFit: 'cover',
-    cover: true
-  };
+/** Fill the print box. Portrait stays the shirt-sized box and crops from the feet. */
+function overlayBoxForArtwork(printBox) {
+  const width = Number(printBox?.width) || 0;
+  const height = Number(printBox?.height) || 0;
+  const rightShift = printBox?.rightShift || 0;
+  return { width, height, rightShift, objectFit: 'cover', cover: true };
 }
 
 /** Keep the overlay frame horizontally centered and inside the print box. */
@@ -546,6 +702,76 @@ function overlayDoubleFrameLayout(previewFrame, outerRadiusPx) {
   const { innerFrameWidth, innerOuter } = doubleFrameSpacing(previewFrame);
   const innerRadius = Math.max(0, (Number(outerRadiusPx) || 0) - innerOuter);
   return { innerFrameWidth, innerOuter, innerRadius };
+}
+
+function artworkOverlayMetrics({
+  boxW,
+  boxH,
+  layout,
+  cornerRadius = 0,
+  featherEdge = 0,
+  frameEnabled = false,
+  frameWidth = 10,
+  sourceWidth = 0,
+  sourceHeight = 0,
+}) {
+  const vis = visibleArtworkRect(boxW, boxH, layout);
+  const clipRadius = overlayCornerRadiusPx(cornerRadius, vis.width, vis.height);
+  const boxRadius = artworkRectFillsBox(vis, boxW, boxH) ? clipRadius : 0;
+  const featherMask = overlayFeatherMaskStyle(featherEdge, vis.width, vis.height, clipRadius);
+  const previewFrame = frameEnabled
+    ? overlayFramePx(frameWidth, boxW, boxH, sourceWidth, sourceHeight)
+    : 0;
+  const { innerFrameWidth, innerOuter, innerRadius } = overlayDoubleFrameLayout(
+    previewFrame,
+    clipRadius
+  );
+  return {
+    vis,
+    clipRadius,
+    boxRadius,
+    featherMask,
+    previewFrame,
+    innerFrameWidth,
+    innerOuter,
+    innerRadius,
+  };
+}
+
+function artworkImageOffsetStyle(layout, vis) {
+  if (!layout || !(Number(vis?.width) > 0) || !(Number(vis?.height) > 0)) return null;
+  const vw = Number(vis.width);
+  const vh = Number(vis.height);
+  return {
+    position: 'absolute',
+    width: `${((Number(layout.width) || 0) / vw) * 100}%`,
+    height: `${((Number(layout.height) || 0) / vh) * 100}%`,
+    left: `${(((Number(layout.left) || 0) - (Number(vis.left) || 0)) / vw) * 100}%`,
+    top: `${(((Number(layout.top) || 0) - (Number(vis.top) || 0)) / vh) * 100}%`,
+    maxWidth: 'none',
+    maxHeight: 'none',
+  };
+}
+
+function overlayVisBoxStyle(vis, boxW, boxH) {
+  const bw = Number(boxW) || 0;
+  const bh = Number(boxH) || 0;
+  if (bw > 0 && bh > 0) {
+    return {
+      position: 'absolute',
+      left: `${((Number(vis?.left) || 0) / bw) * 100}%`,
+      top: `${((Number(vis?.top) || 0) / bh) * 100}%`,
+      width: `${((Number(vis?.width) || 0) / bw) * 100}%`,
+      height: `${((Number(vis?.height) || 0) / bh) * 100}%`,
+    };
+  }
+  return {
+    position: 'absolute',
+    left: vis.left,
+    top: vis.top,
+    width: vis.width,
+    height: vis.height,
+  };
 }
 
 /** CSS border (not inset box-shadow) so corner thickness matches the straight edges. */
@@ -679,6 +905,147 @@ function flattenCanvasFeatherToColor(ctx, canvas, fadeColor) {
   ctx.putImageData(imageData, 0, 0);
 }
 
+function roundedRectPath(ctx, x, y, width, height, radius) {
+  const r = Math.max(0, Math.min(Number(radius) || 0, width / 2, height / 2));
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
+/**
+ * Radius, feather, and optional fade on a canvas the size of the visible artwork.
+ * Letterbox / print-box pixels stay on the caller.
+ */
+function applyRadiusFeatherFade(sourceCanvas, {
+  cornerRadius = 0,
+  featherEdge = 0,
+  featherFadeEnabled = false,
+  featherFadeColor = 'white',
+} = {}) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { alpha: true });
+  canvas.width = sourceCanvas.width;
+  canvas.height = sourceCanvas.height;
+  ctx.drawImage(sourceCanvas, 0, 0);
+
+  const maxCornerRadius = Math.min(canvas.width, canvas.height) / 2;
+  const isCircle = cornerRadius >= 100;
+  const effectiveCornerRadius = isCircle
+    ? maxCornerRadius
+    : Math.round((Number(cornerRadius) || 0) / 100 * maxCornerRadius);
+
+  if (effectiveCornerRadius > 0) {
+    const roundedMaskCanvas = document.createElement('canvas');
+    const roundedMaskCtx = roundedMaskCanvas.getContext('2d', { alpha: true });
+    roundedMaskCanvas.width = canvas.width;
+    roundedMaskCanvas.height = canvas.height;
+    roundedMaskCtx.clearRect(0, 0, roundedMaskCanvas.width, roundedMaskCanvas.height);
+    roundedMaskCtx.fillStyle = 'white';
+    if (isCircle) {
+      roundedMaskCtx.beginPath();
+      roundedMaskCtx.arc(
+        roundedMaskCanvas.width / 2,
+        roundedMaskCanvas.height / 2,
+        maxCornerRadius,
+        0,
+        Math.PI * 2
+      );
+      roundedMaskCtx.fill();
+    } else {
+      roundedMaskCtx.beginPath();
+      roundedRectPath(roundedMaskCtx, 0, 0, roundedMaskCanvas.width, roundedMaskCanvas.height, effectiveCornerRadius);
+      roundedMaskCtx.fill();
+    }
+
+    const finalCanvas = document.createElement('canvas');
+    const finalCtx = finalCanvas.getContext('2d', { alpha: true });
+    finalCanvas.width = canvas.width;
+    finalCanvas.height = canvas.height;
+    finalCtx.drawImage(canvas, 0, 0);
+    finalCtx.globalCompositeOperation = 'destination-in';
+    finalCtx.drawImage(roundedMaskCanvas, 0, 0);
+    finalCtx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(finalCanvas, 0, 0);
+  }
+
+  if (featherEdge > 0) {
+    const featherX = (featherEdge / 100) * (canvas.width * 0.5);
+    const featherY = (featherEdge / 100) * (canvas.height * 0.5);
+    const maskCanvas = document.createElement('canvas');
+    const maskCtx = maskCanvas.getContext('2d', { alpha: true });
+    maskCanvas.width = canvas.width;
+    maskCanvas.height = canvas.height;
+    maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+    maskCtx.fillStyle = 'white';
+    if (isCircle) {
+      maskCtx.beginPath();
+      maskCtx.arc(canvas.width / 2, canvas.height / 2, maxCornerRadius, 0, Math.PI * 2);
+      maskCtx.fill();
+    } else if (effectiveCornerRadius > 0) {
+      maskCtx.beginPath();
+      roundedRectPath(maskCtx, 0, 0, canvas.width, canvas.height, effectiveCornerRadius);
+      maskCtx.fill();
+    } else {
+      maskCtx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    if (isCircle) {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const innerRadius = Math.max(0, maxCornerRadius - ((featherEdge / 100) * maxCornerRadius));
+      const outerRadius = maxCornerRadius;
+      const radialGradient = maskCtx.createRadialGradient(
+        centerX, centerY, innerRadius,
+        centerX, centerY, outerRadius
+      );
+      radialGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      radialGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+      maskCtx.globalCompositeOperation = 'destination-out';
+      maskCtx.fillStyle = radialGradient;
+      maskCtx.beginPath();
+      maskCtx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+      maskCtx.fill();
+    } else {
+      const imageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+      const data = imageData.data;
+      const fadeX = Math.max(1, featherX);
+      const fadeY = Math.max(1, featherY);
+      const cornerR = Math.max(0, effectiveCornerRadius);
+      for (let y = 0; y < maskCanvas.height; y++) {
+        for (let x = 0; x < maskCanvas.width; x++) {
+          const edgeFade = roundedRectFeatherFactor(
+            x,
+            y,
+            maskCanvas.width,
+            maskCanvas.height,
+            fadeX,
+            fadeY,
+            cornerR
+          );
+          const index = (y * maskCanvas.width + x) * 4;
+          data[index + 3] = Math.floor(Math.max(0, Math.min(1, edgeFade)) * 255);
+        }
+      }
+      maskCtx.putImageData(imageData, 0, 0);
+    }
+
+    maskCtx.globalCompositeOperation = 'source-over';
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(maskCanvas, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  if (featherFadeEnabled && featherEdge > 0) {
+    flattenCanvasFeatherToColor(ctx, canvas, featherFadeColor);
+  }
+
+  return canvas;
+}
+
 /**
  * Scale canvas frameWidth (source pixels) onto the visible print box.
  */
@@ -691,7 +1058,7 @@ function overlayFramePx(frameWidth, overlayW, overlayH, sourceW, sourceH) {
 }
 
 /** Region of the image that object-fit:cover shows in a print box of this aspect. */
-function coverVisibleRect(imgW, imgH, boxAspect) {
+function coverVisibleRect(imgW, imgH, boxAspect, alignY = 'center') {
   const w = Number(imgW) || 0;
   const h = Number(imgH) || 0;
   const aspect = Number(boxAspect) || 0;
@@ -704,7 +1071,16 @@ function coverVisibleRect(imgW, imgH, boxAspect) {
     return { x: (w - visW) / 2, y: 0, w: visW, h };
   }
   const visH = w / aspect;
-  return { x: 0, y: (h - visH) / 2, w, h: visH };
+  const maxY = Math.max(0, h - visH);
+  let y;
+  if (typeof alignY === 'number') {
+    y = (Math.max(0, Math.min(100, alignY)) / 100) * maxY;
+  } else if (alignY === 'top') {
+    y = 0;
+  } else {
+    y = maxY / 2;
+  }
+  return { x: 0, y, w, h: visH };
 }
 
 function paintFrameRings(ctx, vis, {
@@ -850,6 +1226,7 @@ const EDITOR_SLOT_DEFAULTS = {
   textDirection: 'horizontal',
   imageOffsetX: 0,
   imageOffsetY: 0,
+  screenshotScale: 100,
 };
 
 function normalizeTextDirection(value) {
@@ -1086,10 +1463,9 @@ function printTargetPixels(productName, productSize, orientation, printAreaFit, 
     wIn = sized.width;
     hIn = sized.height;
   }
-  const scale = (Number(screenshotScale) || 100) / 100;
   return {
-    width: Math.round(wIn * 300 * scale),
-    height: Math.round(hIn * 300 * scale),
+    width: Math.round(wIn * 300),
+    height: Math.round(hIn * 300),
   };
 }
 
@@ -1187,6 +1563,7 @@ const ProductPreviewWithDrag = ({
   featherFadeEnabled = false,
   featherFadeColor = 'white',
   onOverlayBoxChange,
+  onShirtFillChange,
 }) => {
   const containerRef = useRef(null);
   const productImageRef = useRef(null);
@@ -1200,6 +1577,7 @@ const ProductPreviewWithDrag = ({
   const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 0, height: 0 });
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
   const [detectedPrintBox, setDetectedPrintBox] = useState(null);
+  const [shirtFillColor, setShirtFillColor] = useState('');
   const overlayFitKeyRef = useRef('');
 
   const clampFrameOffset = (x, y) => {
@@ -1506,8 +1884,9 @@ const ProductPreviewWithDrag = ({
       imageOrientation,
       selectedProductName || productName
     );
-    if (printBox.width > 0 && printBox.height > 0) {
-      onOverlayBoxChange({ width: printBox.width, height: printBox.height });
+    const oriented = overlayBoxForArtwork(printBox);
+    if (oriented.width > 0 && oriented.height > 0) {
+      onOverlayBoxChange({ width: oriented.width, height: oriented.height });
     }
   }, [
     onOverlayBoxChange,
@@ -1562,6 +1941,28 @@ const ProductPreviewWithDrag = ({
     measureProductImage();
     const img = productImageRef.current;
     const name = (printAreaFit === 'product' && selectedProductName) ? selectedProductName : productName;
+    const src = img ? (img.currentSrc || img.src) : '';
+    if (src) {
+      const fillKey = `${src}|${name}`;
+      if (shirtFillCache.has(fillKey)) {
+        const cached = shirtFillCache.get(fillKey);
+        if (cached) {
+          setShirtFillColor((prev) => (prev === cached ? prev : cached));
+          if (onShirtFillChange) onShirtFillChange(cached);
+        }
+      } else {
+        const fillProbe = new Image();
+        fillProbe.crossOrigin = 'anonymous';
+        fillProbe.onload = () => {
+          const fill = sampleShirtFillFromMockup(fillProbe, name);
+          if (fill) {
+            setShirtFillColor((prev) => (prev === fill ? prev : fill));
+            if (onShirtFillChange) onShirtFillChange(fill);
+          }
+        };
+        fillProbe.src = src;
+      }
+    }
     if (img && isApparelChestPrintProduct(name) && !getApparelPrintOverride(name)) {
       const src = img.currentSrc || img.src;
       if (paintedPrintBoxCache.has(src)) {
@@ -1787,40 +2188,77 @@ const ProductPreviewWithDrag = ({
         >
           {(() => {
             const scaleFactor = 1;
-            const oriented = overlayFitForPreview(printBox);
+            const oriented = overlayBoxForArtwork(printBox);
             const scaledWidth = oriented.width * scaleFactor;
             const scaledHeight = oriented.height * scaleFactor;
             const objectPos = printBoxObjectPosition(placeName, imageOrientation, imageOffsetX, imageOffsetY);
             const posX = objectPos.x;
             const posY = objectPos.y;
-            const overlayFitClass = imageOrientation === 'landscape' ? ' product-preview-overlay-landscape' : '';
-            const clipRadius = overlayCornerRadiusPx(cornerRadius, scaledWidth, scaledHeight);
-            const featherMask = overlayFeatherMaskStyle(featherEdge, scaledWidth, scaledHeight, clipRadius);
+            const artworkLayout = artworkLayoutInBox(
+              scaledWidth,
+              scaledHeight,
+              sourceWidth,
+              sourceHeight,
+              screenshotScale,
+              posX,
+              posY
+            );
+            const overlayFitClass = artworkLayout
+              ? ' product-preview-overlay-zoom'
+              : (oriented.cover
+                ? ' product-preview-overlay-landscape'
+                : ' product-preview-overlay-portrait');
+            const {
+              vis,
+              clipRadius,
+              boxRadius,
+              featherMask,
+              previewFrame,
+              innerFrameWidth,
+              innerOuter,
+              innerRadius,
+            } = artworkOverlayMetrics({
+              boxW: scaledWidth,
+              boxH: scaledHeight,
+              layout: artworkLayout,
+              cornerRadius,
+              featherEdge,
+              frameEnabled,
+              frameWidth,
+              sourceWidth,
+              sourceHeight,
+            });
             const clipBox = {
               width: `${scaledWidth}px`,
               height: `${scaledHeight}px`,
             };
-            const previewFrame = frameEnabled
-              ? overlayFramePx(frameWidth, scaledWidth, scaledHeight, sourceWidth, sourceHeight)
-              : 0;
-            const { innerFrameWidth, innerOuter, innerRadius } = overlayDoubleFrameLayout(
-              previewFrame,
-              clipRadius
-            );
+            const fadeBg = overlayFeatherFadeBackground(featherFadeEnabled, featherFadeColor);
+            const visStyle = overlayVisBoxStyle(vis, scaledWidth, scaledHeight);
+            const zoomImgStyle = artworkImageOffsetStyle(artworkLayout, vis);
             return (
               <div
                 style={{
                   ...clipBox,
                   position: 'relative',
                   overflow: 'hidden',
-                  borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
-                  background: overlayFeatherFadeBackground(featherFadeEnabled, featherFadeColor),
+                  borderRadius: boxRadius > 0 ? `${boxRadius}px` : 0,
+                  background: shirtFillColor || 'transparent',
                 }}
               >
                 <div
+                  style={{
+                    ...visStyle,
+                    overflow: 'hidden',
+                    borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+                    background: fadeBg === 'transparent' ? 'transparent' : fadeBg,
+                  }}
+                >
+                <div
                   className="product-preview-overlay-clip"
                   style={{
-                    ...clipBox,
+                    width: '100%',
+                    height: '100%',
+                    position: 'relative',
                     overflow: 'hidden',
                     borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
                     background: 'transparent',
@@ -1833,32 +2271,33 @@ const ProductPreviewWithDrag = ({
                       src={screenshot}
                       alt="Screenshot overlay"
                       style={{
-                        ...clipBox,
-                        objectFit: oriented.objectFit,
-                        objectPosition: `${posX}% ${posY}%`,
+                        ...(zoomImgStyle || {
+                          ...clipBox,
+                          objectFit: oriented.objectFit,
+                          objectPosition: `${posX}% ${posY}%`,
+                        }),
                         display: 'block',
                         pointerEvents: 'none',
                         userSelect: 'none',
                         WebkitUserSelect: 'none',
                         WebkitTouchCallout: 'none',
                         touchAction: 'none',
-                        borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
                         filter: blackAndWhite ? 'grayscale(1)' : undefined
                       }}
                       draggable={false}
                     />
                 </div>
+                </div>
                 {previewFrame > 0 && (
                   <div
                     aria-hidden="true"
-                    style={overlayFrameRingStyle(0, previewFrame, clipRadius, frameColor)}
-                  />
-                )}
-                {previewFrame > 0 && doubleFrame && (
-                  <div
-                    aria-hidden="true"
-                    style={overlayFrameRingStyle(innerOuter, innerFrameWidth, innerRadius, frameColor)}
-                  />
+                    style={{ ...visStyle, pointerEvents: 'none' }}
+                  >
+                    <div style={overlayFrameRingStyle(0, previewFrame, clipRadius, frameColor)} />
+                    {doubleFrame && (
+                      <div style={overlayFrameRingStyle(innerOuter, innerFrameWidth, innerRadius, frameColor)} />
+                    )}
+                  </div>
                 )}
                 <ToolsLiveText
                   enabled={textEnabled}
@@ -1905,6 +2344,8 @@ function ScreenshotPreviewPane({
   boxWidth = 176,
   overlayBoxWidth = 0,
   overlayBoxHeight = 0,
+  screenshotScale = 100,
+  printBoxFillColor = '',
   textEnabled = false,
   textContent = '',
   textFont = 'Arial',
@@ -1936,15 +2377,38 @@ function ScreenshotPreviewPane({
   const objectPos = printBoxObjectPosition(productName, imageOrientation, imageOffsetX, imageOffsetY);
   const posX = objectPos.x;
   const posY = objectPos.y;
-  const clipRadius = overlayCornerRadiusPx(cornerRadius, boxW, boxH);
-  const featherMask = overlayFeatherMaskStyle(featherEdge, boxW, boxH, clipRadius);
-  const previewFrame = frameEnabled
-    ? overlayFramePx(frameWidth, boxW, boxH, sourceWidth, sourceHeight)
-    : 0;
-  const { innerFrameWidth, innerOuter, innerRadius } = overlayDoubleFrameLayout(
-    previewFrame,
-    clipRadius
+  const artworkLayout = artworkLayoutInBox(
+    boxW,
+    boxH,
+    sourceWidth,
+    sourceHeight,
+    screenshotScale,
+    posX,
+    posY
   );
+  const {
+    vis,
+    clipRadius,
+    boxRadius,
+    featherMask,
+    previewFrame,
+    innerFrameWidth,
+    innerOuter,
+    innerRadius,
+  } = artworkOverlayMetrics({
+    boxW,
+    boxH,
+    layout: artworkLayout,
+    cornerRadius,
+    featherEdge,
+    frameEnabled,
+    frameWidth,
+    sourceWidth,
+    sourceHeight,
+  });
+  const fadeBg = overlayFeatherFadeBackground(featherFadeEnabled, featherFadeColor);
+  const visStyle = overlayVisBoxStyle(vis, boxW, boxH);
+  const zoomImgStyle = artworkImageOffsetStyle(artworkLayout, vis);
   const fill = { position: 'absolute', inset: 0 };
   return (
     <div
@@ -1958,13 +2422,23 @@ function ScreenshotPreviewPane({
         style={{
           ...fill,
           overflow: 'hidden',
-          borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
-          background: overlayFeatherFadeBackground(featherFadeEnabled, featherFadeColor),
+          borderRadius: boxRadius > 0 ? `${boxRadius}px` : 0,
+          background: printBoxFillColor || 'transparent',
         }}
       >
         <div
           style={{
-            ...fill,
+            ...visStyle,
+            overflow: 'hidden',
+            borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+            background: fadeBg === 'transparent' ? 'transparent' : fadeBg,
+          }}
+        >
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            position: 'relative',
             overflow: 'hidden',
             borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
             ...(featherMask || {})
@@ -1973,29 +2447,31 @@ function ScreenshotPreviewPane({
             <img
               src={src}
               alt="Screenshot Preview"
+              className={artworkLayout ? 'is-artwork-zoom' : undefined}
               style={{
-                ...fill,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: `${posX}% ${posY}%`,
+                ...(zoomImgStyle ? { ...zoomImgStyle, objectFit: 'fill' } : {
+                  ...fill,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  objectPosition: `${posX}% ${posY}%`,
+                }),
                 display: 'block',
-                borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
                 filter: blackAndWhite ? 'grayscale(1)' : undefined
               }}
             />
         </div>
+        </div>
         {previewFrame > 0 && (
           <div
             aria-hidden="true"
-            style={overlayFrameRingStyle(0, previewFrame, clipRadius, frameColor)}
-          />
-        )}
-        {previewFrame > 0 && doubleFrame && (
-          <div
-            aria-hidden="true"
-            style={overlayFrameRingStyle(innerOuter, innerFrameWidth, innerRadius, frameColor)}
-          />
+            style={{ ...visStyle, pointerEvents: 'none' }}
+          >
+            <div style={overlayFrameRingStyle(0, previewFrame, clipRadius, frameColor)} />
+            {doubleFrame && (
+              <div style={overlayFrameRingStyle(innerOuter, innerFrameWidth, innerRadius, frameColor)} />
+            )}
+          </div>
         )}
         <ToolsLiveText
           enabled={textEnabled}
@@ -2201,6 +2677,11 @@ const ToolsPage = () => {
       if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) return prev;
       return { width, height };
     });
+  }, []);
+  const [printBoxFillColor, setPrintBoxFillColor] = useState('');
+  const handleShirtFillChange = useCallback((color) => {
+    const next = String(color || '');
+    setPrintBoxFillColor((prev) => (prev === next ? prev : next));
   }, []);
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [upgradeFailed, setUpgradeFailed] = useState(false);
@@ -2483,6 +2964,7 @@ const ToolsPage = () => {
     setTextDirection(normalizeTextDirection(saved.textDirection));
     if (typeof saved.imageOffsetX === 'number') setImageOffsetX(saved.imageOffsetX);
     if (typeof saved.imageOffsetY === 'number') setImageOffsetY(saved.imageOffsetY);
+    if (typeof saved.screenshotScale === 'number') setScreenshotScale(clampArtworkZoom(saved.screenshotScale));
   };
 
   const persistEditorSlotsNow = (opts = {}) => {
@@ -3842,55 +4324,14 @@ const ToolsPage = () => {
       tempCanvas.width = img.width;
       tempCanvas.height = img.height;
 
-      // Bake the visible print box (portrait / landscape / fit type) so Apply
+      // Bake the visible print box (portrait / landscape / zoom) so Apply
       // Edits, checkout, and Generate 300 DPI match Screenshot Preview.
       let sourceWidth = img.width;
       let sourceHeight = img.height;
       let sourceX = 0;
       let sourceY = 0;
-
-      const cropToAspect = (targetAspect) => {
-        const imgW = img.width;
-        const imgH = img.height;
-        if (!(targetAspect > 0) || !(imgW > 0 && imgH > 0)) return;
-        const imgAspect = imgW / imgH;
-        let cropW;
-        let cropH;
-        if (imgAspect > targetAspect) {
-          cropH = imgH;
-          cropW = cropH * targetAspect;
-        } else {
-          cropW = imgW;
-          cropH = cropW / targetAspect;
-        }
-        // Keep cover size on open (no extra zoom). If the shopper uses the
-        // slider on the locked axis, zoom just enough for that pan.
-        const yNeed = Math.abs(imageOffsetY) / 100;
-        const xNeed = Math.abs(imageOffsetX) / 100;
-        if (imgH - cropH < 2 && yNeed > 0) {
-          cropH = imgH * (1 - Math.min(0.28, yNeed * 0.28));
-          cropW = cropH * targetAspect;
-        } else if (imgW - cropW < 2 && xNeed > 0) {
-          cropW = imgW * (1 - Math.min(0.28, xNeed * 0.28));
-          cropH = cropW / targetAspect;
-        }
-        if (cropW > imgW) {
-          cropW = imgW;
-          cropH = cropW / targetAspect;
-        }
-        if (cropH > imgH) {
-          cropH = imgH;
-          cropW = cropH * targetAspect;
-        }
-        const maxOffsetX = Math.max(0, imgW - cropW);
-        const maxOffsetY = Math.max(0, imgH - cropH);
-        sourceWidth = cropW;
-        sourceHeight = cropH;
-        sourceX = maxOffsetX / 2 + (imageOffsetX / 100) * (maxOffsetX / 2);
-        sourceX = Math.max(0, Math.min(sourceX, maxOffsetX));
-        sourceY = maxOffsetY / 2 - (imageOffsetY / 100) * (maxOffsetY / 2);
-        sourceY = Math.max(0, Math.min(sourceY, maxOffsetY));
-      };
+      let artworkLayout = null;
+      const zoomPct = clampArtworkZoom(screenshotScale);
 
       const previewProduct = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
       const previewName = selectedProductName || previewProduct?.name || '';
@@ -3903,8 +4344,31 @@ const ToolsPage = () => {
         overlayBoxSize.width,
         overlayBoxSize.height
       );
-      if (targetAspect > 0) {
-        cropToAspect(targetAspect);
+      const objectPos = printBoxObjectPosition(
+        previewName,
+        imageOrientation,
+        imageOffsetX,
+        imageOffsetY
+      );
+      if (targetAspect > 0 && img.width > 0 && img.height > 0) {
+        const imgW = img.width;
+        const imgH = img.height;
+        if (imgW / imgH > targetAspect) {
+          sourceHeight = imgH;
+          sourceWidth = imgH * targetAspect;
+        } else {
+          sourceWidth = imgW;
+          sourceHeight = imgW / targetAspect;
+        }
+        artworkLayout = artworkLayoutInBox(
+          sourceWidth,
+          sourceHeight,
+          imgW,
+          imgH,
+          zoomPct,
+          objectPos.x,
+          objectPos.y
+        );
       }
       if (!cancelled) {
         setBakedImageSize({
@@ -3921,7 +4385,7 @@ const ToolsPage = () => {
         blackAndWhite ||
         (textEnabled && textContent && String(textContent).trim())
       );
-      if (!didCrop && !hasPixelEdits) {
+      if (!didCrop && !hasPixelEdits && zoomPct === 100) {
         setEditedImageUrl('');
         return;
       }
@@ -3936,177 +4400,90 @@ const ToolsPage = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
       
-      // Draw cropped image to temp canvas
+      // Draw artwork into the print box (cover at 100%, letterbox when zoomed out).
+      if (printBoxFillColor) {
+        tempCtx.filter = 'none';
+        tempCtx.fillStyle = printBoxFillColor;
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      }
       tempCtx.filter = blackAndWhite ? 'grayscale(1)' : 'none';
-      tempCtx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+      if (artworkLayout) {
+        tempCtx.drawImage(
+          img,
+          0,
+          0,
+          img.width,
+          img.height,
+          artworkLayout.left,
+          artworkLayout.top,
+          artworkLayout.width,
+          artworkLayout.height
+        );
+      } else {
+        tempCtx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+      }
       tempCtx.filter = 'none';
 
-      // Calculate max corner radius for circle (half of smallest dimension)
-      const maxCornerRadius = Math.min(canvas.width, canvas.height) / 2;
-      const isCircle = cornerRadius >= 100; // When maxed out, create perfect circle
-      // Convert percentage (0-100) to pixels
-      const effectiveCornerRadius = isCircle ? maxCornerRadius : Math.round((cornerRadius / 100) * maxCornerRadius);
+      const artVis = visibleArtworkRect(canvas.width, canvas.height, artworkLayout);
+      const visFills = artworkRectFillsBox(artVis, canvas.width, canvas.height);
+      const visPx = integerArtworkRect(artVis, canvas.width, canvas.height);
+      let effectSource = tempCanvas;
+      if (!visFills) {
+        const crop = document.createElement('canvas');
+        const cropCtx = crop.getContext('2d', { alpha: true });
+        crop.width = visPx.width;
+        crop.height = visPx.height;
+        cropCtx.drawImage(
+          tempCanvas,
+          visPx.left,
+          visPx.top,
+          visPx.width,
+          visPx.height,
+          0,
+          0,
+          visPx.width,
+          visPx.height
+        );
+        effectSource = crop;
+      }
 
-      // Apply corner radius clipping (or circle if maxed out)
-      // Create a new transparent canvas for the final result to ensure no black background
-      if (effectiveCornerRadius > 0) {
-        // Create a mask canvas for the rounded corners
-        const roundedMaskCanvas = document.createElement('canvas');
-        const roundedMaskCtx = roundedMaskCanvas.getContext('2d', { alpha: true });
-        roundedMaskCanvas.width = canvas.width;
-        roundedMaskCanvas.height = canvas.height;
-        
-        // Clear mask canvas to transparent
-        roundedMaskCtx.clearRect(0, 0, roundedMaskCanvas.width, roundedMaskCanvas.height);
-        
-        // Draw white shape (will be used as mask)
-        roundedMaskCtx.fillStyle = 'white';
-        if (isCircle) {
-          roundedMaskCtx.beginPath();
-          roundedMaskCtx.arc(
-            roundedMaskCanvas.width / 2,
-            roundedMaskCanvas.height / 2,
-            maxCornerRadius,
-            0,
-            Math.PI * 2
-          );
-          roundedMaskCtx.fill();
-        } else {
-          drawRoundedRect(roundedMaskCtx, 0, 0, roundedMaskCanvas.width, roundedMaskCanvas.height, effectiveCornerRadius);
-          roundedMaskCtx.fill();
-        }
-        
-        // Create a new transparent canvas for the final result
-        const finalCanvas = document.createElement('canvas');
-        const finalCtx = finalCanvas.getContext('2d', { alpha: true });
-        finalCanvas.width = canvas.width;
-        finalCanvas.height = canvas.height;
-        
-        // Draw image to final canvas first
-        finalCtx.drawImage(tempCanvas, 0, 0);
-        
-        // Use destination-in to clip the image to the rounded shape (removes black background)
-        // This operation keeps only the pixels where the mask is opaque, making everything else transparent
-        finalCtx.globalCompositeOperation = 'destination-in';
-        finalCtx.drawImage(roundedMaskCanvas, 0, 0);
-        finalCtx.globalCompositeOperation = 'source-over';
-        
-        // Replace the original canvas with the final transparent canvas
-        canvas.width = finalCanvas.width;
-        canvas.height = finalCanvas.height;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(finalCanvas, 0, 0);
+      const processed = applyRadiusFeatherFade(effectSource, {
+        cornerRadius,
+        featherEdge,
+        featherFadeEnabled,
+        featherFadeColor,
+      });
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (visFills) {
+        ctx.drawImage(processed, 0, 0);
       } else {
-        // No rounded corners, just draw the image
         ctx.drawImage(tempCanvas, 0, 0);
-      }
-
-      // Apply feather edge (soft edge effect) - works with both rectangles and circles
-      if (featherEdge > 0) {
-        const featherX = (featherEdge / 100) * (canvas.width * 0.5);
-        const featherY = (featherEdge / 100) * (canvas.height * 0.5);
-        
-        // Create a mask canvas for feather effect
-        const maskCanvas = document.createElement('canvas');
-        const maskCtx = maskCanvas.getContext('2d', { alpha: true });
-        maskCanvas.width = canvas.width;
-        maskCanvas.height = canvas.height;
-        
-        // Clear mask canvas to transparent
-        maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-        
-        // Start with a fully opaque white shape (circle or rectangle with same corner radius as image)
-        maskCtx.fillStyle = 'white';
-        if (isCircle) {
-          // For circle, create a white circle
-          maskCtx.beginPath();
-          maskCtx.arc(
-            canvas.width / 2,
-            canvas.height / 2,
-            maxCornerRadius,
-            0,
-            Math.PI * 2
-          );
-          maskCtx.fill();
-        } else if (effectiveCornerRadius > 0) {
-          // For rectangle with rounded corners, create a white rounded rectangle matching the image shape
-          drawRoundedRect(maskCtx, 0, 0, canvas.width, canvas.height, effectiveCornerRadius);
-          maskCtx.fill();
-        } else {
-          // For rectangle without rounded corners, create a white rectangle
-          maskCtx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(visPx.left, visPx.top, visPx.width, visPx.height);
+        if (printBoxFillColor) {
+          ctx.fillStyle = printBoxFillColor;
+          ctx.fillRect(visPx.left, visPx.top, visPx.width, visPx.height);
         }
-        
-        // Create soft edges using distance-based approach for smooth corners
-        if (isCircle) {
-          // For circular images, use radial gradient to create soft edge
-          const centerX = canvas.width / 2;
-          const centerY = canvas.height / 2;
-          const innerRadius = Math.max(0, maxCornerRadius - ((featherEdge / 100) * maxCornerRadius));
-          const outerRadius = maxCornerRadius;
-          
-          const radialGradient = maskCtx.createRadialGradient(
-            centerX, centerY, innerRadius,
-            centerX, centerY, outerRadius
+        ctx.drawImage(processed, visPx.left, visPx.top);
+      }
+
+      // Paint the frame on the visible artwork (print box when zoomed in / 100%).
+      if (frameEnabled) {
+        let ringVis;
+        if (!visFills && artworkLayout) {
+          ringVis = { x: visPx.left, y: visPx.top, w: visPx.width, h: visPx.height };
+        } else if (overlayBoxSize.width > 0 && overlayBoxSize.height > 0) {
+          const overlayAspect = overlayBoxSize.width / overlayBoxSize.height;
+          ringVis = coverVisibleRect(
+            canvas.width,
+            canvas.height,
+            overlayAspect,
+            imageOrientation === 'landscape' ? 'center' : PORTRAIT_COVER_Y
           );
-          radialGradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // No erase in center
-          radialGradient.addColorStop(1, 'rgba(0, 0, 0, 1)'); // Fully erase at edge
-          
-          maskCtx.globalCompositeOperation = 'destination-out';
-          maskCtx.fillStyle = radialGradient;
-          maskCtx.beginPath();
-          maskCtx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
-          maskCtx.fill();
         } else {
-          // Fade each side by a share of that side's length so portrait and
-          // landscape screenshots soften top, bottom, left, and right equally.
-          // Inner corners follow the rounded frame instead of meeting at 90°.
-          const imageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
-          const data = imageData.data;
-          const fadeX = Math.max(1, featherX);
-          const fadeY = Math.max(1, featherY);
-          const cornerR = Math.max(0, effectiveCornerRadius);
-          
-          for (let y = 0; y < maskCanvas.height; y++) {
-            for (let x = 0; x < maskCanvas.width; x++) {
-              const edgeFade = roundedRectFeatherFactor(
-                x,
-                y,
-                maskCanvas.width,
-                maskCanvas.height,
-                fadeX,
-                fadeY,
-                cornerR
-              );
-              const index = (y * maskCanvas.width + x) * 4;
-              data[index + 3] = Math.floor(Math.max(0, Math.min(1, edgeFade)) * 255);
-            }
-          }
-          
-          maskCtx.putImageData(imageData, 0, 0);
+          ringVis = { x: 0, y: 0, w: canvas.width, h: canvas.height };
         }
-        
-        maskCtx.globalCompositeOperation = 'source-over';
-        
-        // Apply mask to soften edges (image already drawn, just apply feather mask)
-        ctx.globalCompositeOperation = 'destination-in';
-        ctx.drawImage(maskCanvas, 0, 0);
-        ctx.globalCompositeOperation = 'source-over';
-      }
-
-      if (featherFadeEnabled && featherEdge > 0) {
-        flattenCanvasFeatherToColor(ctx, canvas, featherFadeColor);
-      }
-
-      // Paint the frame on the cover-visible print box so thickness and the
-      // double-frame gap stay even after object-fit:cover (the canvas aspect
-      // can differ from the mockup overlay).
-      if (frameEnabled && overlayBoxSize.width > 0 && overlayBoxSize.height > 0) {
-        const overlayAspect = overlayBoxSize.width > 0 && overlayBoxSize.height > 0
-          ? overlayBoxSize.width / overlayBoxSize.height
-          : (canvas.width / canvas.height);
-        const vis = coverVisibleRect(canvas.width, canvas.height, overlayAspect);
-        paintFrameRings(ctx, vis, {
+        paintFrameRings(ctx, ringVis, {
           frameWidth,
           frameColor,
           doubleFrame,
@@ -4164,7 +4541,7 @@ const ToolsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height]);
 
   const rotateScreenshotClockwise = () => {
     const src = (imageUrl || '').trim();
@@ -4341,9 +4718,8 @@ const ToolsPage = () => {
         try {
           const dims = getPrintAreaDimensions(selectedProductName, fitProductSize, 'front');
           if (dims && dims.width && dims.height) {
-            const scale = screenshotScale / 100;
-            payload.print_area_width = dims.width * scale;
-            payload.print_area_height = dims.height * scale;
+            payload.print_area_width = dims.width;
+            payload.print_area_height = dims.height;
           }
         } catch (_) {}
       }
@@ -4890,6 +5266,8 @@ const ToolsPage = () => {
                                   sourceHeight={currentImageDimensions.height}
                                   overlayBoxWidth={overlayBoxSize.width}
                                   overlayBoxHeight={overlayBoxSize.height}
+                                  screenshotScale={screenshotScale}
+                                  printBoxFillColor={printBoxFillColor}
                                   boxWidth={240}
                                   textEnabled={textEnabled}
                                   textContent={textContent}
@@ -4959,6 +5337,7 @@ const ToolsPage = () => {
                               featherFadeEnabled={featherFadeEnabled}
                               featherFadeColor={featherFadeColor}
                               onOverlayBoxChange={handleOverlayBoxChange}
+                              onShirtFillChange={handleShirtFillChange}
                             />
                           );
                         } else {
@@ -5035,6 +5414,7 @@ const ToolsPage = () => {
                             featherFadeEnabled={featherFadeEnabled}
                             featherFadeColor={featherFadeColor}
                             onOverlayBoxChange={handleOverlayBoxChange}
+                            onShirtFillChange={handleShirtFillChange}
                           />
                         );
                       }
@@ -5182,6 +5562,28 @@ const ToolsPage = () => {
                 <option value="square">Square (1:1 - for mugs, square items)</option>
                 <option value="vertical">Vertical (Tall - for tank tops, vertical shirts)</option>
               </select>
+            </div>
+
+            <div className="slider-control" style={{ marginTop: '1rem' }}>
+              <label>Zoom:</label>
+              <input
+                type="range"
+                min={ARTWORK_ZOOM_MIN}
+                max={ARTWORK_ZOOM_MAX}
+                value={clampArtworkZoom(screenshotScale)}
+                onChange={(e) => {
+                  setScreenshotScale(clampArtworkZoom(parseInt(e.target.value, 10)));
+                  setScreenshotSizeInteracted(true);
+                }}
+                className="slider"
+              />
+              <span className="slider-value">
+                {clampArtworkZoom(screenshotScale) === 100
+                  ? 'Fill'
+                  : clampArtworkZoom(screenshotScale) < 100
+                    ? `Out ${100 - clampArtworkZoom(screenshotScale)}%`
+                    : `In ${clampArtworkZoom(screenshotScale) - 100}%`}
+              </span>
             </div>
             
             {printAreaFit !== 'none' && !locksImageOffsetsInLandscape(
@@ -5551,6 +5953,8 @@ const ToolsPage = () => {
                             sourceHeight={currentImageDimensions.height}
                             overlayBoxWidth={overlayBoxSize.width}
                             overlayBoxHeight={overlayBoxSize.height}
+                            screenshotScale={screenshotScale}
+                            printBoxFillColor={printBoxFillColor}
                             textEnabled={textEnabled}
                             textContent={textContent}
                             textFont={textFont}

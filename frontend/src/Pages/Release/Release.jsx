@@ -6,55 +6,106 @@ const Release = () => {
   return (
     <div className="release-page">
       <article className="release-article">
-        <h1 className="release-title">The Creator Revolution Has a Storefront:<br />ScreenMerch Officially Launches</h1>
+        <h1 className="release-title">Welcome to ScreenMerch</h1>
+        <p className="release-lede">Your Content. Your Storefront. Your Earnings.</p>
 
-        <p>ScreenMerch is a creator-focused platform designed to transform video moments and photos into merchandise — giving YouTube creators a storefront they own for their content, with room to grow by inviting collaborators onto it.</p>
+        <p>
+          ScreenMerch is a creator-focused merchandising platform that transforms memorable moments
+          from clips and photos into products fans can make their own.
+        </p>
 
-        <p>ScreenMerch was built on a simple but powerful idea:</p>
+        <p>
+          It was built around a simple idea: creators should have more ways to earn from the content they
+          already create — without depending entirely on advertising, sponsorships, or unpredictable
+          algorithms.
+        </p>
+
+        <p>
+          With ScreenMerch, approved creators receive their own branded storefront where fans can
+          discover images from their content, choose the moments they love, place them on merchandise,
+          and purchase — all within the creator&apos;s ScreenMerch store.
+        </p>
+
+        <h2>A Storefront That Belongs to Your Brand</h2>
+        <p>
+          Instead of sending your audience to a generic marketplace, ScreenMerch gives you a destination
+          built around your identity.
+        </p>
+        <p>Your storefront can include your own:</p>
         <ul>
-          <li>Creators should not rely solely on ads, sponsorships, or unpredictable algorithms to earn income.</li>
-          <li>They should be able to turn the moments their audiences love into something tangible.</li>
+          <li>Personalized ScreenMerch subdomain</li>
+          <li>Logo and header branding</li>
+          <li>Page colors</li>
+          <li>Favicon</li>
+          <li>Storefront images and content</li>
+          <li>Clips and photos</li>
         </ul>
+        <p>
+          Behind the storefront, your creator dashboard gives you the tools to manage your content,
+          monitor activity and analytics, and track earnings and payouts.
+        </p>
+        <p>
+          Your fans stay connected to your content and your brand throughout the shopping experience.
+        </p>
 
-        <p>With ScreenMerch, creators upload their videos or photos.<br />Fans choose a favorite frame or image.<br />Place it on products.<br />And check out — all inside the creator&apos;s own branded store.</p>
+        <h2>Turn Content Into Something Fans Can Keep</h2>
+        <p>
+          A great moment in a clip can last only a few seconds. ScreenMerch gives that moment another
+          life.
+        </p>
+        <p>
+          Creators can add photos and capture memorable images from their clips. Fans can then
+          browse those images, choose their favorites, and personalize merchandise with the content that
+          means something to them.
+        </p>
+        <p>There&apos;s no inventory for creators to purchase and no boxes to pack.</p>
+        <p>
+          ScreenMerch coordinates payment processing, production, fulfillment, and delivery through its
+          platform and fulfillment partners, allowing creators to concentrate on what they do best —
+          creating content and building their audience.
+        </p>
 
-        <p><strong>No inventory.<br />No fulfillment headaches.<br />No shipping logistics.</strong></p>
-        <p>Just content becoming commerce — instantly.</p>
+        <h2>Built to Grow Beyond One Creator</h2>
+        <p>ScreenMerch can also become a shared home for a creator network.</p>
+        <p>
+          Through <strong>Umbrella Creators</strong>, storefront owners can invite trusted collaborators,
+          co-hosts, staff members, or other creators to establish their own presence within the owner&apos;s
+          storefront.
+        </p>
+        <p>
+          Each collaborator can contribute their own content while sales, analytics, and earnings remain
+          attributable to the appropriate creator.
+        </p>
+        <p>
+          For a YouTube channel, podcast, production team, business, or other group with multiple people
+          creating content, this makes it possible to build around one branded storefront instead of
+          sending audiences in different directions.
+        </p>
 
-        <h2>A Store That Belongs to the Creator</h2>
-        <p>Every approved creator receives:</p>
-        <ul>
-          <li>A personalized subdomain (yourname.screenmerch.com)</li>
-          <li>Full branding control — logo, colors, favicon, and metadata</li>
-          <li>A dashboard to manage videos, analytics, and payouts</li>
-          <li>$6 per sale on every product</li>
-          <li>Secure payment processing and global fulfillment handled behind the scenes</li>
-        </ul>
-        <p>Fans don&apos;t leave the creator&apos;s world.<br />They stay inside the creator&apos;s brand.</p>
+        <h2>One Platform for Content and Commerce</h2>
+        <p>ScreenMerch brings together the pieces creators would otherwise have to manage separately:</p>
+        <p className="release-pipeline">
+          Clips and photos → memorable images → merchandise → storefront → checkout → fulfillment →
+          creator earnings
+        </p>
+        <p>
+          It&apos;s a simpler connection between the content creators make and the moments their audiences
+          want to remember.
+        </p>
+        <p>
+          <strong>
+            No inventory.
+            <br />
+            No fulfillment headaches.
+            <br />
+            No shipping logistics for creators.
+          </strong>
+        </p>
+        <p>Just a new way to turn content into commerce.</p>
 
-        <h2>Grow Your Storefront with Umbrella Creators</h2>
-        <p>ScreenMerch goes beyond solo storefronts. Approved storefront owners can invite <strong>umbrella creators</strong> into their network.</p>
-        <p>Each umbrella creator receives their own branded page inside the owner&apos;s subdomain. Fans browse and shop across the full umbrella without leaving the storefront. Sales are attributed to the right creator, with analytics and earnings tracked per page.</p>
-        <p>Storefront owners manage invites, attributed sales, and collaborator payouts from one dashboard. Umbrella creators focus on their content and audience — while the owner keeps the branded home base, fulfillment, and checkout experience unified.</p>
-        <p>It&apos;s built for trusted collaborators, co-hosts, and creative partners, and any creator team that wants one storefront with room for more than one voice.</p>
-
-        <h2>Built for the Creator Economy — Not Around It</h2>
-        <p>The creator economy has grown rapidly, but monetization tools remain fragmented. ScreenMerch was designed to unify:</p>
-        <p>Video<br />Merchandise<br />Storefront<br />Umbrella collaboration<br />Fulfillment<br />Payout</p>
-        <p>Into one streamlined ecosystem.</p>
-        <p>Each image is processed for professional 300 DPI print quality.<br />Production and shipping are managed through trusted fulfillment partners.<br />Creators focus on creating.</p>
-
-        <h2>A Movement, Not Just a Platform</h2>
-        <p>ScreenMerch is more than a tool.</p>
-        <p>It is an invitation.</p>
-        <p>An invitation for YouTube creators to own their own storefronts.<br />An invitation for umbrella creators to grow inside a shared branded home.<br />An invitation for fans to participate in the moments they love.<br />An invitation to build revenue around creativity — not dependency.</p>
-        <p><strong>The storefront revolution is here.</strong></p>
-
-        <p>For more information or to apply as a creator, visit:<br /><a href="https://screenmerch.com" className="release-link">https://screenmerch.com</a></p>
-
-        <p className="release-contact"><strong>Media Contact:</strong><br />ScreenMerch<br />support@screenmerch.com</p>
-
-        <p className="release-tagline"><strong>Your brand. Your content. Your earnings.</strong></p>
+        <p className="release-tagline">
+          <strong>Your brand. Your content. Your earnings.</strong>
+        </p>
       </article>
       <Link to="/" className="release-back">Back to Home</Link>
     </div>

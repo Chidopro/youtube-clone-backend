@@ -36,14 +36,6 @@
   filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.55));
 }
 
-@media (max-width: 768px) {
-  .play-start-overlay,
-  .play-icon-overlay {
-    display: none !important;
-    pointer-events: none !important;
-  }
-}
-
 /* Ensure video controls are visible and clickable on desktop native controls */
 .play-video video {
   pointer-events: auto !important;

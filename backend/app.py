@@ -7601,6 +7601,13 @@ def _write_header_opacity(user_id, opacity):
     new_path = f"{folder}/{new_name}"
     try:
         existing = supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).list(folder) or []
+        already = [
+            item
+            for item in existing
+            if isinstance(item, dict) and item.get("name") == new_name
+        ]
+        if already:
+            return True
         stale = [
             f"{folder}/{item['name']}"
             for item in existing
@@ -7649,6 +7656,106 @@ def _read_header_opacity(user_id):
     except Exception as read_err:
         logger.warning("read header_opacity failed for %s: %s", user_id, read_err)
     return 100
+
+
+PLATFORM_BRAND_FOLDER = "_platform"
+_HEX6_RE = re.compile(r"^[0-9a-fA-F]{6}$")
+
+
+def _normalize_hex6(value):
+    raw = str(value or "").strip().lstrip("#")
+    if not _HEX6_RE.match(raw):
+        return None
+    return raw.lower()
+
+
+def _parse_platform_brand_name(name):
+    """hb-{primary}-{secondary}-{opacity}.png → dict or None."""
+    n = str(name or "")
+    if not n.startswith("hb-") or not n.endswith(".png"):
+        return None
+    parts = n[3:-4].split("-")
+    if len(parts) != 3:
+        return None
+    primary = _normalize_hex6(parts[0])
+    secondary = _normalize_hex6(parts[1])
+    if not primary or not secondary:
+        return None
+    return {
+        "primary_color": f"#{primary}",
+        "secondary_color": f"#{secondary}",
+        "header_opacity": _clamp_header_opacity(parts[2]),
+    }
+
+
+def _read_platform_branding():
+    if not supabase_admin:
+        return None
+    try:
+        existing = supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).list(PLATFORM_BRAND_FOLDER) or []
+        for item in existing:
+            parsed = _parse_platform_brand_name((item or {}).get("name"))
+            if parsed:
+                return parsed
+    except Exception as read_err:
+        logger.warning("read platform branding failed: %s", read_err)
+    return None
+
+
+def _write_platform_branding(primary_color, secondary_color, header_opacity):
+    if not supabase_admin:
+        return None
+    primary = _normalize_hex6(primary_color)
+    secondary = _normalize_hex6(secondary_color)
+    if not primary or not secondary:
+        return None
+    opacity = _clamp_header_opacity(header_opacity)
+    new_name = f"hb-{primary}-{secondary}-{opacity}.png"
+    new_path = f"{PLATFORM_BRAND_FOLDER}/{new_name}"
+    settings = {
+        "primary_color": f"#{primary}",
+        "secondary_color": f"#{secondary}",
+        "header_opacity": opacity,
+    }
+    try:
+        existing = supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).list(PLATFORM_BRAND_FOLDER) or []
+        already = [
+            item for item in existing
+            if isinstance(item, dict) and item.get("name") == new_name
+        ]
+        if already:
+            return settings
+        stale = [
+            f"{PLATFORM_BRAND_FOLDER}/{item['name']}"
+            for item in existing
+            if isinstance(item, dict) and str(item.get("name", "")).startswith("hb-") and item.get("name") != new_name
+        ]
+        if stale:
+            try:
+                supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).remove(stale)
+            except Exception:
+                pass
+        supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).upload(
+            path=new_path,
+            file=_minimal_png_bytes(),
+            file_options={"content-type": "image/png", "upsert": "true"},
+        )
+        return settings
+    except Exception as upload_err:
+        try:
+            supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).remove([new_path])
+        except Exception:
+            pass
+        try:
+            supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).upload(
+                path=new_path,
+                file=_minimal_png_bytes(),
+                file_options={"content-type": "image/png", "upsert": "true"},
+            )
+            return settings
+        except Exception as retry_err:
+            logger.warning("write platform branding failed: %s / %s", upload_err, retry_err)
+            return None
 
 
 @app.route("/api/upload-creator-logo", methods=["POST", "OPTIONS"])
@@ -12733,7 +12840,10 @@ def update_creator_settings():
                 logger.warning("update_creator_settings: no row updated for user_id=%s", user_id)
         if header_opacity is not None:
             if not _write_header_opacity(user_id, header_opacity):
-                return jsonify({"success": False, "error": "Failed to save header opacity"}), 500
+                logger.warning(
+                    "update_creator_settings: header_opacity persist failed for user_id=%s; other fields saved",
+                    user_id,
+                )
         logger.info(
             "Updated creator settings for user_id=%s keys=%s opacity=%s",
             user_id,
@@ -12743,6 +12853,36 @@ def update_creator_settings():
         return jsonify({"success": True}), 200
     except Exception as e:
         logger.exception("update_creator_settings: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/platform-branding", methods=["GET", "POST", "OPTIONS"])
+def platform_branding():
+    """Homepage header colors for screenmerch.com (not a creator storefront)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    if request.method == "GET":
+        try:
+            settings = _read_platform_branding()
+            return jsonify({"success": True, "settings": settings}), 200
+        except Exception as e:
+            logger.exception("platform_branding GET: %s", e)
+            return jsonify({"success": False, "error": str(e)}), 500
+    err, code = _require_master_admin()
+    if err is not None:
+        return err, code
+    try:
+        data = request.get_json() or {}
+        settings = _write_platform_branding(
+            data.get("primary_color"),
+            data.get("secondary_color"),
+            data.get("header_opacity"),
+        )
+        if not settings:
+            return jsonify({"success": False, "error": "Invalid colors or save failed"}), 400
+        return jsonify({"success": True, "settings": settings}), 200
+    except Exception as e:
+        logger.exception("platform_branding POST: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

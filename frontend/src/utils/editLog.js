@@ -158,7 +158,7 @@ export function formatEditLogLines(log) {
   }
   const scale = asNumber(log.screenshotScale, 100);
   if (scale && scale !== 100) {
-    lines.push({ label: 'Screenshot size', value: `${scale}%` });
+    lines.push({ label: 'Zoom', value: `${scale}%` });
   }
   const ox = asNumber(log.imageOffsetX);
   const oy = asNumber(log.imageOffsetY);

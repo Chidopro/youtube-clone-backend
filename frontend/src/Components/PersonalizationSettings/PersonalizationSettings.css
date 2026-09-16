@@ -389,3 +389,13 @@
     width: 100%;
   }
 }
+
+.homepage-brand-card {
+  margin: 0 0 36px;
+  padding: 0 0 28px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.homepage-brand-card h2 {
+  margin-bottom: 8px;
+}

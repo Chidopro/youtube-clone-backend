@@ -9,7 +9,7 @@ import {
 } from '../../utils/shipToCountry';
 import './ShipToPicker.css';
 
-function CountryFlag({ code }) {
+export function CountryFlag({ code }) {
   const c = String(code || '').toUpperCase();
   return (
     <svg className="ship-to-flag-svg" viewBox="0 0 20 14" aria-hidden="true" focusable="false">

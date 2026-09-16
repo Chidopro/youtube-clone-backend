@@ -1,190 +1,142 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiJoin } from '../../config/apiConfig';
 import './HowItWorks.css';
-
-const INTRO_TITLE = 'ScreenMerch Introduction Video';
-const INTRO_CACHE_KEY = 'sm_how_it_works_intro_video';
-
-const isIntroVideo = (v) => {
-  const title = (v?.title || '').trim().toLowerCase();
-  return title === INTRO_TITLE.toLowerCase() || /screenmerch\s*introduction/i.test(v?.title || '');
-};
-
-const normalizeIntro = (raw) => {
-  if (!raw) return null;
-  const video_url = (raw.video_url || '').trim() || null;
-  const thumbnail = (raw.thumbnail || raw.thumbnail_url || '').trim() || null;
-  if (!video_url && !thumbnail) return null;
-  return {
-    id: raw.id || null,
-    title: raw.title || INTRO_TITLE,
-    video_url,
-    thumbnail,
-    channelTitle: raw.channelTitle || 'ScreenMerch',
-  };
-};
-
-const readCachedIntro = () => {
-  try {
-    const raw = localStorage.getItem(INTRO_CACHE_KEY);
-    if (!raw) return null;
-    return normalizeIntro(JSON.parse(raw));
-  } catch (_) {
-    return null;
-  }
-};
-
-const writeCachedIntro = (video) => {
-  try {
-    if (!video) {
-      localStorage.removeItem(INTRO_CACHE_KEY);
-      return;
-    }
-    localStorage.setItem(INTRO_CACHE_KEY, JSON.stringify(video));
-  } catch (_) {
-    /* ignore */
-  }
-};
 
 const HowItWorks = () => {
   const navigate = useNavigate();
-  const cached = typeof window !== 'undefined' ? readCachedIntro() : null;
-  const [video, setVideo] = useState(cached);
-  const [loading, setLoading] = useState(!cached?.video_url);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      if (!cached?.video_url) setLoading(true);
-      try {
-        // Fast path: dedicated intro endpoint
-        let match = null;
-        try {
-          const res = await fetch(apiJoin('/api/public/intro-video'));
-          if (res.ok) {
-            const data = await res.json().catch(() => ({}));
-            if (data?.success && data.video) match = normalizeIntro(data.video);
-          }
-        } catch (_) {
-          /* fall through */
-        }
-
-        // Fallback: scan videos list (older backends / deploy lag)
-        if (!match) {
-          const res = await fetch(apiJoin('/api/videos?limit=200'));
-          if (!res.ok) throw new Error('Could not load videos');
-          const data = await res.json();
-          const list = Array.isArray(data) ? data : [];
-          match = normalizeIntro(list.find(isIntroVideo) || null);
-        }
-
-        if (!cancelled) {
-          setVideo(match);
-          writeCachedIntro(match);
-        }
-      } catch (_) {
-        if (!cancelled && !cached?.video_url) setVideo(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount; cache seeds first paint
-  }, []);
-
-  const poster = video?.thumbnail || undefined;
-  const showPlayer = Boolean(video?.video_url);
-  const showEmpty = !loading && !showPlayer && !poster;
 
   return (
     <div className="how-it-works-page">
       <div className="how-it-works-inner">
-        <p className="how-it-works-eyebrow">ScreenMerch Limited Access</p>
-
-        <div className="how-it-works-player-wrap">
-          {poster && !showPlayer ? (
-            <img className="how-it-works-poster" src={poster} alt="" />
-          ) : null}
-          {loading && !poster && !showPlayer ? (
-            <div className="how-it-works-player-placeholder">Loading video…</div>
-          ) : null}
-          {showPlayer ? (
-            <video
-              className="how-it-works-player"
-              controls
-              playsInline
-              preload="auto"
-              poster={poster}
-              src={video.video_url}
-            >
-              Your browser does not support the video tag.
-            </video>
-          ) : null}
-          {showEmpty ? (
-            <div className="how-it-works-player-placeholder">
-              Introduction video is being prepared. Check back soon, or reserve your free storefront below.
-            </div>
-          ) : null}
-        </div>
-
         <section className="how-it-works-section how-it-works-narrative">
           <h1 className="how-it-works-title">How ScreenMerch Works</h1>
 
           <p>
-            ScreenMerch is a creator-focused platform designed to transform video moments and photos
-            into merchandise — giving YouTube creators a storefront they own for their content, with
-            room to grow by inviting collaborators onto it.
+            ScreenMerch gives creators the tools to turn moments from their clips and photos into
+            merchandise — without purchasing inventory or managing production and shipping.
           </p>
 
+          <p>From setting up a storefront to delivering a finished product to a fan, here&apos;s how it works.</p>
+
+          <h2>1. Create Your ScreenMerch Storefront</h2>
           <p>
-            Every approved creator receives a fully branded online storefront with a personalized
-            subdomain, page color editor, favicon, and a header area for their own logo. Instead of
-            directing fans to a generic marketplace, each creator has their own destination where their
-            community can browse and purchase merchandise inspired by their videos and photos.
+            Once approved, a creator receives a customizable ScreenMerch storefront with a personalized
+            subdomain such as:
+          </p>
+          <p className="how-it-works-subdomain">yourname.screenmerch.com</p>
+          <p>
+            Creators can personalize their storefront with their own logo, page colors, favicon, images,
+            and other branding elements.
+          </p>
+          <p>
+            The result is a merchandise destination that feels connected to the creator&apos;s brand rather
+            than a generic marketplace.
           </p>
 
+          <h2>2. Add Clips and Photos</h2>
           <p>
-            To make capturing those memorable moments effortless, ScreenMerch provides creators with{' '}
-            <strong>FrameSnag</strong>, a free Google Chrome extension developed exclusively for the
-            ScreenMerch platform. FrameSnag allows creators to browse their YouTube videos, capture
-            high-quality frames and thumbnail images with a single click, and instantly save them to their
-            ScreenMerch page. Creators can also upload photos directly. Those images become the
-            artwork available for merchandise, so there&apos;s no need to download, edit, or upload
-            captures manually when using FrameSnag.
+            Creators build their storefront&apos;s content by adding clips and photos that contain moments
+            their audience may want to turn into merchandise.
+          </p>
+          <p>
+            Photos can be uploaded directly, while clips can be used to give fans access to memorable
+            frames and images from the creator&apos;s content.
+          </p>
+          <p>Creators manage their content from their ScreenMerch dashboard.</p>
+
+          <h2>3. Capture Clip Moments with FrameSnag</h2>
+          <p>
+            ScreenMerch creators also have access to <strong>FrameSnag</strong>, a free Google Chrome
+            extension developed specifically for the ScreenMerch platform.
+          </p>
+          <p>
+            FrameSnag makes it easy to capture images from YouTube content without the usual
+            download-and-upload process.
+          </p>
+          <p>
+            Creators can browse their YouTube videos, capture frames and thumbnail images, and save them
+            directly to ScreenMerch for use on their storefront.
+          </p>
+          <p>This gives creators a fast way to build a collection from content they have already created.</p>
+
+          <h2>4. Fans Choose the Content They Love</h2>
+          <p>
+            Fans visit the creator&apos;s branded storefront and browse the available clips, photos, and
+            images.
+          </p>
+          <p>When they find a moment they like, they can select it and choose from available merchandise.</p>
+          <p>
+            Instead of the creator deciding that one image belongs on one predetermined product,
+            ScreenMerch gives the fan the ability to choose the content and product combination they want.
           </p>
 
+          <h2>5. Fans Create Their Merchandise</h2>
           <p>
-            Once images and video shorts are on the storefront, fans visit the creator&apos;s store,
-            browse the collection, choose a favorite frame or image, and place it on a wide variety of
-            premium print-on-demand products. Every product image is professionally printed at 300 DPI
-            for exceptional quality, then produced and shipped through trusted global fulfillment
-            partners.
+            After choosing an image and product, fans can preview their selection and use ScreenMerch&apos;s
+            available design tools to customize how the image appears on the merchandise.
+          </p>
+          <p>
+            When they&apos;re satisfied with the result, they add the product to their cart and proceed through
+            checkout.
+          </p>
+          <p>
+            This turns the fan from someone simply viewing the creator&apos;s content into someone actively
+            participating in creating a piece of merchandise from it.
           </p>
 
+          <h2>6. ScreenMerch Handles the Order</h2>
           <p>
-            Creators never have to purchase inventory, package orders, or manage shipping logistics.
-            ScreenMerch handles secure payment processing, manufacturing, fulfillment, and customer
-            delivery, allowing creators to focus entirely on creating content while earning revenue from
-            every qualifying sale.
+            Creators don&apos;t need to purchase inventory, print products, package orders, or arrange
+            shipping.
+          </p>
+          <p>
+            After checkout, ScreenMerch coordinates the order with its fulfillment partners for
+            professional printing, production, and delivery.
+          </p>
+          <p>
+            Secure payment processing and order fulfillment happen behind the scenes while the creator
+            continues focusing on content and their audience.
           </p>
 
+          <h2>7. Creators Track Their Store</h2>
           <p>
-            ScreenMerch also supports collaborative growth through its Umbrella Creator system.
-            Storefront owners can invite trusted collaborators, co-hosts, or team members to create their
-            own branded pages within the same storefront, giving audiences a seamless shopping experience
-            across an entire creator network. Each umbrella creator manages their own videos, photos, and
-            page images, with separate analytics and earnings, so tracking sales, popular images, and
-            payouts stays simple.
+            The creator dashboard provides a central place to manage the storefront and monitor its
+            activity.
+          </p>
+          <p>
+            Creators can manage content, review analytics, track qualifying sales and earnings, manage
+            payout information, and update storefront personalization.
+          </p>
+          <p>This keeps the creative side of the store and the business side of the store together in one place.</p>
+
+          <h2>8. Grow with Umbrella Creators</h2>
+          <p>A ScreenMerch storefront doesn&apos;t have to represent only one creator.</p>
+          <p>
+            Storefront owners can invite trusted collaborators, co-hosts, staff members, or other creators
+            to join through the <strong>Umbrella Creator</strong> system.
+          </p>
+          <p>
+            Umbrella Creators can have their own branded presence within the owner&apos;s storefront and
+            manage their own content. Sales and activity can be attributed to the appropriate creator,
+            with separate analytics and earnings tracking.
+          </p>
+          <p>
+            The audience can move throughout the creator network while remaining inside one unified
+            ScreenMerch storefront.
           </p>
 
+          <h2>From Content to Commerce</h2>
+          <p>The complete ScreenMerch experience brings the process together:</p>
+          <p className="how-it-works-pipeline">
+            Create content → Capture or upload images → Fans discover a moment → Choose a product →
+            Customize → Checkout → Production &amp; fulfillment → Creator earnings
+          </p>
           <p>
-            By bringing together videos, photos, image capture, merchandise, storefront management,
-            fulfillment, and creator collaboration into one integrated platform, ScreenMerch provides a
-            complete merchandising ecosystem designed for the creator economy.
+            For creators, there&apos;s no inventory to purchase and no shipping operation to manage.
+          </p>
+          <p>For fans, it&apos;s a way to turn a favorite moment into something tangible.</p>
+          <p>
+            For creator teams, it&apos;s a storefront that can grow along with the people behind the content.
           </p>
         </section>
 

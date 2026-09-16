@@ -1490,8 +1490,8 @@ const PlayVideo = ({
                         </div>
                     )}
                     
-                    {/* Play button is desktop-only; no full-frame tint over the video. */}
-                    {!isMobile && !videoHasPlayed && !videoError && video && !isCropMode && (
+                    {/* Pulsating ▶ in the player center — no full-frame tint. */}
+                    {!videoHasPlayed && !videoError && video && !isCropMode && (
                         <div 
                             className="play-start-overlay"
                             onClick={async () => {
@@ -1516,9 +1516,9 @@ const PlayVideo = ({
                                 top: 0,
                                 left: 0,
                                 right: 0,
-                                bottom: 0,
+                                bottom: isMobile ? 36 : 0,
                                 width: '100%',
-                                height: '100%',
+                                height: isMobile ? 'auto' : '100%',
                                 zIndex: 50,
                                 cursor: 'pointer',
                                 display: 'flex',

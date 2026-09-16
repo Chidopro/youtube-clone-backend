@@ -1597,11 +1597,9 @@ const ProductPage = ({ sidebar }) => {
           <div className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}`}>
             {!creatorMode && (
               <div className="product-choose-header">
-                <h1 className="product-choose-title">Choose a Product</h1>
+                <h1 className="product-choose-title">Choose a Screenshot</h1>
                 <p className="product-choose-subtitle">
-                  {getVisibleScreenshots().length > 0 && getSelectImageCount() > 1
-                    ? 'Pick a screenshot to customize your selected product.'
-                    : 'Select a product to customize with your image.'}
+                  To customize your selected product below.
                 </p>
               </div>
             )}

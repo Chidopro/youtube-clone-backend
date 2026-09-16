@@ -15,7 +15,7 @@ import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.js
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
-import { DEMO_DASHBOARD_PATH, DEMO_STOREFRONT_SUBDOMAIN, isDemoPreviewSession, isDemoStorefront, isDemoStorefrontVisitor } from '../../utils/demoStorefront';
+import { DEMO_DASHBOARD_PATH, DEMO_STOREFRONT_SUBDOMAIN, isDemoStorefront, isDemoStorefrontVisitor, isRealStorefrontUser, readStoredUser, endDemoPreviewSession } from '../../utils/demoStorefront';
 import { collaboratorPayoutHeading } from '../../utils/favoriteListLabels';
 import '../DemoDashboard/DemoDashboard.css';
 // Force Netlify rebuild
@@ -661,8 +661,8 @@ function favoritePageNameTaken(pages, name, { ignoreListId } = {}) {
 }
 
 const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
-    const demoPreview = demoPreviewFromRoute || isDemoPreviewSession();
     const [user, setUser] = useState(null);
+    const demoPreview = demoPreviewFromRoute && !isRealStorefrontUser(user || readStoredUser());
     const [userProfile, setUserProfile] = useState(null);
     const [subscription, setSubscription] = useState(null);
     const [videos, setVideos] = useState([]);
@@ -860,6 +860,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         if (demoPreview) return undefined;
         const fetchUserData = async () => {
             try {
+                if (isRealStorefrontUser(readStoredUser())) {
+                    endDemoPreviewSession();
+                }
                 // Check for authenticated user (email login or OAuth)
                 const isAuthenticated = localStorage.getItem('isAuthenticated');
                 const userData = localStorage.getItem('user');
