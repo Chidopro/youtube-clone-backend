@@ -5,7 +5,7 @@ import moment from 'moment'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
-import { isOptimizedPlaybackUrl, needsVideoOptimize, requestVideoOptimize, screenshotSourceUrl } from '../../utils/videoOptimize'
+import { isOptimizedPlaybackUrl, needsVideoOptimize, playbackUrlForVideo, candidateWebPlaybackUrls, requestVideoOptimize, screenshotSourceUrl } from '../../utils/videoOptimize'
 import { useCreator } from '../../contexts/CreatorContext'
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession'
 
@@ -291,6 +291,8 @@ const PlayVideo = ({
     const videoRef = propVideoRef || useRef(null);
     const pendingSeekRef = useRef(null);
     const playbackUrlRef = useRef('');
+    const optimizePendingRef = useRef(false);
+    const playbackFallbackRef = useRef([]);
     const playStartedAtRef = useRef(0);
     const pausedCanvasRef = useRef(null);
     
@@ -463,16 +465,24 @@ const PlayVideo = ({
                     return;
                 }
 
-                setVideo(data);
-                playbackUrlRef.current = String(data.video_url || '');
-                if (needsVideoOptimize(data)) {
-                    requestVideoOptimize({ videoId: data.id, videoUrl: data.video_url }).then((result) => {
+                optimizePendingRef.current = needsVideoOptimize(data);
+                const originalPlayback = String(data.video_url || '');
+                const playback = playbackUrlForVideo(data) || originalPlayback;
+                playbackFallbackRef.current = [...new Set([
+                    ...candidateWebPlaybackUrls(data.source_video_url || originalPlayback),
+                    originalPlayback,
+                ])].filter((u) => u && u !== playback);
+                if (optimizePendingRef.current) {
+                    requestVideoOptimize({ videoId: data.id, videoUrl: originalPlayback }).then((result) => {
                         if (result?.video_url && isOptimizedPlaybackUrl(result.video_url)) {
                             playbackUrlRef.current = result.video_url;
+                            optimizePendingRef.current = false;
                             setVideo((prev) => prev ? { ...prev, video_url: result.video_url, source_video_url: result.source_video_url || prev.source_video_url } : prev);
                         }
                     });
                 }
+                playbackUrlRef.current = playback;
+                setVideo({ ...data, video_url: playback });
                 // Automatically set thumbnail if available
                 if (data.thumbnail || data.poster) {
                     const thumbnailUrl = data.thumbnail || data.poster;
@@ -497,25 +507,29 @@ const PlayVideo = ({
     }, [videoId, setThumbnail, setScreenshots]);
 
     useEffect(() => {
-        if (!videoId || !video?.video_url || !needsVideoOptimize(video)) return undefined;
+        if (!videoId) return undefined;
         let cancelled = false;
         let timeoutId = 0;
         const started = Date.now();
         const poll = async () => {
             if (cancelled || Date.now() - started > 180000) return;
+            if (!optimizePendingRef.current) return;
             const { data } = await supabase
                 .from('videos2')
                 .select('video_url, source_video_url')
                 .eq('id', videoId)
                 .single();
             if (cancelled || !data?.video_url) return;
-            if (data.video_url !== playbackUrlRef.current && isOptimizedPlaybackUrl(data.video_url)) {
-                const el = videoRef.current;
-                if (el) {
-                    pendingSeekRef.current = { time: el.currentTime || 0, play: !el.paused };
+            if (isOptimizedPlaybackUrl(data.video_url)) {
+                optimizePendingRef.current = false;
+                if (data.video_url !== playbackUrlRef.current) {
+                    const el = videoRef.current;
+                    if (el) {
+                        pendingSeekRef.current = { time: el.currentTime || 0, play: !el.paused };
+                    }
+                    playbackUrlRef.current = data.video_url;
+                    setVideo((prev) => prev ? { ...prev, video_url: data.video_url, source_video_url: data.source_video_url || prev.source_video_url } : prev);
                 }
-                playbackUrlRef.current = data.video_url;
-                setVideo((prev) => prev ? { ...prev, video_url: data.video_url, source_video_url: data.source_video_url || prev.source_video_url } : prev);
                 return;
             }
             timeoutId = window.setTimeout(poll, 4000);
@@ -525,7 +539,7 @@ const PlayVideo = ({
             cancelled = true;
             window.clearTimeout(timeoutId);
         };
-    }, [videoId, video?.video_url]);
+    }, [videoId]);
 
     // Reset video element when videoId changes
     useEffect(() => {
@@ -1340,6 +1354,12 @@ const PlayVideo = ({
                         }}
                         onError={(e) => {
                             const videoElement = e.target;
+                            const next = playbackFallbackRef.current.shift();
+                            if (next) {
+                                playbackUrlRef.current = next;
+                                setVideo((prev) => prev ? { ...prev, video_url: next } : prev);
+                                return;
+                            }
                             const errorCode = videoElement.error;
                             let errorMessage = 'Video failed to load.';
                             

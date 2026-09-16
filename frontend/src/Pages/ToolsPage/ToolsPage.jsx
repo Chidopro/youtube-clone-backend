@@ -273,10 +273,8 @@ const APPAREL_PRINT_OVERRIDES = {
     left: 52.2,
   },
   "T-Shirt": {
-    // Same 12:16 cover as Men's Tank Top so a portrait screenshot fills
-    // without zoom. Width/placement stay on this mockup's chest box.
-    widthFrac: 0.541,
-    heightFrac: 0.549,
+    widthFrac: 0.56,
+    heightFrac: 0.501,
     top: 42.5,
     left: 50.2,
   },
@@ -695,12 +693,12 @@ function doubleFrameSpacing(framePx) {
 }
 
 /**
- * Inner double-frame layout. Inset the outer radius by the same gutter as the
- * box so the inner ring stays concentric (constant distance around the corner).
+ * Inner double-frame layout. Same corner radius as the outer ring so the
+ * inner stroke stays rounded and hugs the corners (CSS clamps to the inner box).
  */
 function overlayDoubleFrameLayout(previewFrame, outerRadiusPx) {
   const { innerFrameWidth, innerOuter } = doubleFrameSpacing(previewFrame);
-  const innerRadius = Math.max(0, (Number(outerRadiusPx) || 0) - innerOuter);
+  const innerRadius = Math.max(0, Number(outerRadiusPx) || 0);
   return { innerFrameWidth, innerOuter, innerRadius };
 }
 
@@ -1110,8 +1108,10 @@ function paintFrameRings(ctx, vis, {
     const inner = inset + thickness;
     const iw = w - inner * 2;
     const ih = h - inner * 2;
-    const outerR = Math.max(0, ringOuterRadius);
-    const innerR = Math.max(0, ringOuterRadius - thickness);
+    const maxOuterR = Math.min(ow, oh) / 2;
+    const outerR = Math.min(Math.max(0, ringOuterRadius), maxOuterR);
+    const maxHoleR = Math.min(Math.max(0, iw), Math.max(0, ih)) / 2;
+    const innerR = Math.min(Math.max(0, outerR - thickness), maxHoleR);
     if (isCircle) {
       const cx = x + w / 2;
       const cy = y + h / 2;
@@ -1139,7 +1139,7 @@ function paintFrameRings(ctx, vis, {
   paintRing(0, outer, cornerR);
   if (doubleFrame) {
     const { innerFrameWidth, innerOuter } = doubleFrameSpacing(outer);
-    paintRing(innerOuter, innerFrameWidth, Math.max(0, cornerR - innerOuter));
+    paintRing(innerOuter, innerFrameWidth, cornerR);
   }
 }
 

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 MAX_HEIGHT = 720
 MAX_VIDEO_BITRATE = 2_500_000
-FFMPEG_TIMEOUT_SEC = 240
+FFMPEG_TIMEOUT_SEC = 360
 DOWNLOAD_TIMEOUT_SEC = 120
 MAX_DOWNLOAD_BYTES = 220 * 1024 * 1024
 PLAYBACK_MARK = "_w720."
@@ -71,14 +71,88 @@ def _is_youtube_url(video_url):
     return "youtube.com" in url or "youtu.be" in url
 
 
+def public_url_for_rel(sample_url, rel_path):
+    """Build a public videos2 URL from a sample URL and a storage path."""
+    if not sample_url or not rel_path:
+        return ""
+    raw = str(sample_url).split("?")[0]
+    marker = "/storage/v1/object/public/videos2/"
+    idx = raw.find(marker)
+    if idx < 0:
+        return ""
+    return raw[: idx + len(marker)] + str(rel_path).lstrip("/")
+
+
+def candidate_web_urls(video_url):
+    """Possible already-made 720p playback URLs for this object."""
+    rel = public_videos2_path(video_url)
+    if not rel:
+        return []
+    web_rel = _web_output_path(rel)
+    old_rel = web_rel.replace("_w720t.mp4", "_w720.mp4")
+    out = []
+    for candidate_rel in (old_rel, web_rel):
+        url = public_url_for_rel(video_url, candidate_rel)
+        if url and url not in out:
+            out.append(url)
+    return out
+
+
+def _url_exists(url):
+    if not url:
+        return False
+    try:
+        resp = requests.head(url, timeout=8, allow_redirects=True)
+        if resp.status_code == 200:
+            return True
+        if resp.status_code in (400, 403, 404):
+            return False
+        if resp.status_code == 405:
+            resp = requests.get(url, timeout=8, headers={"Range": "bytes=0-0"}, allow_redirects=True)
+            return resp.status_code in (200, 206)
+        return False
+    except Exception:
+        return False
+
+
+def existing_web_url(video_url):
+    """Return an already-uploaded _w720(t) URL for this file, if storage has it."""
+    if _already_web_url(video_url):
+        return str(video_url).split("?")[0]
+    for candidate in candidate_web_urls(video_url):
+        if _url_exists(candidate):
+            return candidate
+    return None
+
+
+def transcode_and_source_urls(row):
+    """
+    Caroline / DJ Panda: playback is the original's _w720 file.
+    If a dashboard re-upload replaced video_url, keep transcoding the original
+    (source_video_url) so the row can be repaired to that same pattern.
+    """
+    playback = (row.get("video_url") or "").strip()
+    stored_source = (row.get("source_video_url") or "").strip() or playback
+    original = stored_source
+    if _already_web_url(original) and playback and not _already_web_url(playback):
+        original = playback
+    if public_videos2_path(original) and not _already_web_url(original):
+        return original, original
+    if public_videos2_path(playback) and not _already_web_url(playback):
+        return playback, stored_source or playback
+    return stored_source, stored_source
+
+
 def row_needs_optimize(row):
     if not row:
         return False
     playback = (row.get("video_url") or "").strip()
     source = (row.get("source_video_url") or playback).strip()
-    if not source or _already_web_url(playback) or _is_youtube_url(source):
+    if _already_web_url(playback) or _is_youtube_url(playback) or _is_youtube_url(source):
         return False
-    return bool(public_videos2_path(source))
+    if not playback and not source:
+        return False
+    return bool(public_videos2_path(playback) or public_videos2_path(source))
 
 
 def _probe(path):
@@ -289,6 +363,13 @@ def optimize_video_url(admin_client, video_url, video_id=None, source_url=None, 
     if _already_web_url(source_url) and not force:
         return {"ok": True, "skipped": True, "playback_url": source_url, "source_url": source_url}
 
+    existing = None if force else existing_web_url(source_url)
+    if existing:
+        if video_id:
+            _update_video_row(admin_client, video_id, existing, source_url)
+        logger.info("Reusing existing playback file for %s -> %s", video_id or rel, existing)
+        return {"ok": True, "skipped": True, "playback_url": existing, "source_url": source_url}
+
     key = str(video_id or source_url)
     with _lock:
         if key in _in_flight:
@@ -374,11 +455,19 @@ def enqueue_optimize(admin_client, video_url, video_id=None, source_url=None, fo
 
 
 def enqueue_video_row(admin_client, row):
+    """Point video_url at an existing _w720 file, or queue a transcode."""
     if not row_needs_optimize(row):
         return False
-    playback = (row.get("video_url") or "").strip()
-    source = (row.get("source_video_url") or playback).strip()
-    return enqueue_optimize(admin_client, source, row.get("id"), source)
+    to_transcode, screenshot_source = transcode_and_source_urls(row)
+    existing = existing_web_url(to_transcode)
+    if existing:
+        video_id = row.get("id")
+        if admin_client and video_id:
+            _update_video_row(admin_client, video_id, existing, screenshot_source)
+        row["video_url"] = existing
+        row["source_video_url"] = screenshot_source
+        return False
+    return enqueue_optimize(admin_client, to_transcode, row.get("id"), screenshot_source)
 
 
 def start_optimize_background(admin_client, video_url, video_id=None, source_url=None, force=False):

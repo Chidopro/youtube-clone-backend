@@ -32,6 +32,7 @@ def register_videos_routes(app, supabase, screenshot_capture_module, sc_module, 
 
     # Register the Blueprint
     app.register_blueprint(videos_bp)
+    _start_pending_optimize_backfill()
 
 
 def _get_supabase_client():
@@ -57,6 +58,43 @@ def _handle_cors_preflight():
     """OPTIONS: return 204; CORS headers are added by app's after_request."""
     from flask import make_response
     return make_response("", 204)
+
+
+def _start_pending_optimize_backfill():
+    """After boot, queue every hosted video that still needs a _w720 playback file."""
+    import threading
+    import time
+
+    def _run():
+        time.sleep(8)
+        try:
+            admin = getattr(videos_bp, "supabase_admin", None)
+            if not admin:
+                return
+            offset = 0
+            page_size = 200
+            queued = 0
+            while True:
+                result = (
+                    admin.table("videos2")
+                    .select("id, video_url, source_video_url")
+                    .order("created_at", desc=True)
+                    .range(offset, offset + page_size - 1)
+                    .execute()
+                )
+                batch = result.data or []
+                if not batch:
+                    break
+                queued += _enqueue_unoptimized_videos(batch)
+                if len(batch) < page_size:
+                    break
+                offset += page_size
+            if queued:
+                logger.info("Startup queued %s video(s) for _w720 playback", queued)
+        except Exception:
+            logger.exception("Startup video optimize backfill failed")
+
+    threading.Thread(target=_run, daemon=True, name="video-optimize-backfill").start()
 
 
 def _enqueue_unoptimized_videos(rows):
@@ -681,7 +719,14 @@ def optimize_video_playback():
     if request.method == "OPTIONS":
         return _handle_cors_preflight()
     try:
-        from utils.video_optimize import start_optimize_background, public_videos2_path, _already_web_url
+        from utils.video_optimize import (
+            start_optimize_background,
+            public_videos2_path,
+            _already_web_url,
+            transcode_and_source_urls,
+            existing_web_url,
+            _update_video_row,
+        )
 
         data = request.get_json(silent=True) or {}
         video_id = (data.get("video_id") or data.get("id") or "").strip() or None
@@ -701,13 +746,10 @@ def optimize_video_playback():
             if not rec:
                 return jsonify({"success": False, "error": "Video not found"}), 404
             playback = rec.get("video_url") or ""
-            source_url = rec.get("source_video_url") or rec.get("video_url") or video_url
             if (
                 not force
-                and source_url
                 and playback
                 and _already_web_url(playback)
-                and playback != source_url
             ):
                 return jsonify({
                     "success": True,
@@ -715,7 +757,21 @@ def optimize_video_playback():
                     "video_url": playback,
                     "source_video_url": rec.get("source_video_url"),
                 }), 200
-            video_url = source_url
+            to_transcode, screenshot_source = transcode_and_source_urls(rec)
+            if not force:
+                existing = existing_web_url(to_transcode)
+                if existing:
+                    admin = getattr(videos_bp, "supabase_admin", None)
+                    if admin:
+                        _update_video_row(admin, video_id, existing, screenshot_source)
+                    return jsonify({
+                        "success": True,
+                        "status": "already_optimized",
+                        "video_url": existing,
+                        "source_video_url": screenshot_source,
+                    }), 200
+            video_url = to_transcode
+            source_url = screenshot_source
         if not video_url:
             return jsonify({"success": False, "error": "video_url is required"}), 400
         if not public_videos2_path(video_url):

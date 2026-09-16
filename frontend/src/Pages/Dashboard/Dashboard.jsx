@@ -7,7 +7,7 @@ import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl, apiJoin } from '../../config/apiConfig';
-import { requestVideoOptimize } from '../../utils/videoOptimize';
+import { requestVideoOptimize, isOptimizedPlaybackUrl } from '../../utils/videoOptimize';
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
 import { favoriteListsJson, fetchFavoritesForList, fetchPublicFavoriteLists, linkOwnerExtraPagesToStorefront } from '../../utils/favoriteListsApi';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
@@ -2019,6 +2019,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             }
             if (editVideoForm.video_url) {
                 updates.video_url = editVideoForm.video_url;
+                if (editVideoForm.video_url !== (editingVideo.video_url || '')) {
+                    updates.source_video_url = editVideoForm.video_url;
+                }
             }
 
             if (Object.keys(updates).length === 0) {
@@ -2037,7 +2040,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                             : video
                     )
                 );
-                if (updates.video_url) {
+                if (updates.video_url && !isOptimizedPlaybackUrl(updates.video_url)) {
                     requestVideoOptimize({
                         videoId: editingVideo.id,
                         videoUrl: updates.video_url,

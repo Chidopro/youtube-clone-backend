@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { requestVideoOptimize } from '../../utils/videoOptimize';
+import { waitForOptimizedPlayback, isOptimizedPlaybackUrl } from '../../utils/videoOptimize';
 import { supabase } from '../../supabaseClient';
 import '../Home/Home.css'; // For layout
 import './Upload.css'; // Import new styles
@@ -286,6 +286,7 @@ const Upload = () => {
                 title: title.trim(),
                 description: description.trim(),
                 video_url: videoUrlData.publicUrl,
+                source_video_url: videoUrlData.publicUrl,
                 thumbnail: thumbUrlData.publicUrl,
                 channelTitle: userProfile?.display_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Unknown Creator',
                 user_id: user.id,
@@ -308,21 +309,26 @@ const Upload = () => {
             setUploadProgress(100);
             console.log('Video uploaded and saved successfully:', dbData);
             const saved = Array.isArray(dbData) ? dbData[0] : dbData;
-            requestVideoOptimize({
+            setMessage('Optimizing playback to a small _w720 file…');
+            const optimized = await waitForOptimizedPlayback({
                 videoId: saved?.id,
                 videoUrl: videoUrlData.publicUrl,
+                timeoutMs: 45000,
             });
+            if (optimized?.video_url && isOptimizedPlaybackUrl(optimized.video_url)) {
+                setMessage('✅ Video uploaded. Playback is ready.');
+            } else {
+                setMessage('✅ Video uploaded. Playback will finish optimizing in the background.');
+            }
 
-            setMessage('✅ Video uploaded successfully! Optimizing playback in the background…');
             setTitle('');
             setDescription('');
             setFile(null);
             setThumbnail(null);
 
-            // Redirect to home page after 2 seconds
             setTimeout(() => {
                 navigate('/');
-            }, 2000);
+            }, 1500);
 
         } catch (err) {
             console.error('Upload error:', err);

@@ -1431,7 +1431,8 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                     inner_y = frame_width + inner_offset
                     inner_w = target_width - (frame_width + inner_offset) * 2
                     inner_h = target_height - (frame_width + inner_offset) * 2
-                    inner_outer_radius = max(0, int(effective_corner_radius - inner_x))
+                    max_inner_r = min(inner_w, inner_h) / 2
+                    inner_outer_radius = max(0, int(min(effective_corner_radius, max_inner_r)))
                     
                     # Draw outer rounded rectangle for inner frame
                     _draw_rounded_rect_filled(inner_frame_mask, inner_x, inner_y,

@@ -136,10 +136,10 @@ export const PRINT_AREA_CONFIG = {
   "T-Shirt": {
     front: {
       sizes: {
-        "XS-M": { width: 12, height: 16 },
+        "XS-M": { width: 11.5, height: 13.8 },
         "L-3XL": { width: 15, height: 18 }
       },
-      default: { width: 12, height: 16 }
+      default: { width: 11.5, height: 13.8 }
     },
     back: {
       default: { width: 12, height: 16 }

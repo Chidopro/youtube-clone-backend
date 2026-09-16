@@ -683,6 +683,9 @@ export class AdminService {
       if (updates.video_url !== undefined) {
         updateData.video_url = updates.video_url;
       }
+      if (updates.source_video_url !== undefined) {
+        updateData.source_video_url = updates.source_video_url;
+      }
 
       const { data, error } = await supabase
         .from('videos2')
