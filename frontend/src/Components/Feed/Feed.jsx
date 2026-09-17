@@ -103,41 +103,60 @@ export function shuffleHubThumbs(pools, tick, stagnant) {
 }
 
 export function HubThumb({ src, emptyLabel }) {
-  const [current, setCurrent] = useState(src || '');
+  const [shown, setShown] = useState(src || '');
 
   useEffect(() => {
-    setCurrent(src || '');
-  }, [src]);
+    if (!src) {
+      setShown('');
+      return undefined;
+    }
+    if (src === shown) return undefined;
+    let cancelled = false;
+    const img = new Image();
+    const apply = (url) => {
+      if (!cancelled) setShown(url);
+    };
+    img.onload = () => apply(src);
+    img.onerror = () => {
+      try {
+        const u = new URL(src);
+        if (u.pathname.includes('/storage/v1/render/image/public/')) {
+          u.pathname = u.pathname.replace(
+            '/storage/v1/render/image/public/',
+            '/storage/v1/object/public/'
+          );
+          u.search = '';
+          const fallback = u.toString();
+          const retry = new Image();
+          retry.onload = () => apply(fallback);
+          retry.onerror = () => {
+            if (!cancelled && !shown) setShown('');
+          };
+          retry.src = fallback;
+          return;
+        }
+      } catch (_) { /* ignore */ }
+      if (!cancelled && !shown) setShown('');
+    };
+    img.src = src;
+    return () => {
+      cancelled = true;
+    };
+  }, [src, shown]);
 
-  if (current) {
+  if (shown) {
     return (
       <img
-        src={current}
+        src={shown}
         alt=""
         loading="eager"
-        fetchPriority="high"
         decoding="async"
-        onError={() => {
-          try {
-            const u = new URL(current);
-            if (u.pathname.includes('/storage/v1/render/image/public/')) {
-              u.pathname = u.pathname.replace(
-                '/storage/v1/render/image/public/',
-                '/storage/v1/object/public/'
-              );
-              u.search = '';
-              setCurrent(u.toString());
-              return;
-            }
-          } catch (_) {}
-          setCurrent('');
-        }}
       />
     );
   }
   return (
-    <div className="hub-card-empty" aria-hidden="true">
-      <span>{emptyLabel}</span>
+    <div className={`hub-card-empty${emptyLabel ? '' : ' hub-card-empty--pulse'}`} aria-hidden="true">
+      {emptyLabel ? <span>{emptyLabel}</span> : null}
     </div>
   );
 }
@@ -161,15 +180,15 @@ const Feed = ({
   }, [showHubs]);
 
   const favoriteUrls = useMemo(
-    () => uniqueUrls((Array.isArray(favoritesPreview) ? favoritesPreview : []).map((u) => publicStorageCardUrl(u, 1400))),
+    () => uniqueUrls((Array.isArray(favoritesPreview) ? favoritesPreview : []).map((u) => publicStorageCardUrl(u, 800))),
     [favoritesPreview]
   );
   const friendUrls = useMemo(
-    () => uniqueUrls((Array.isArray(friendPagePreview) ? friendPagePreview : []).map((u) => publicStorageCardUrl(u, 1400))),
+    () => uniqueUrls((Array.isArray(friendPagePreview) ? friendPagePreview : []).map((u) => publicStorageCardUrl(u, 800))),
     [friendPagePreview]
   );
   const shopUrls = useMemo(() => {
-    const pageUrls = (Array.isArray(shopPreview) ? shopPreview : []).map((u) => publicStorageCardUrl(u, 1400));
+    const pageUrls = (Array.isArray(shopPreview) ? shopPreview : []).map((u) => publicStorageCardUrl(u, 800));
     const videoUrls = (videos || []).map((v) => v.thumbnail || v.thumbnail_url).filter(Boolean);
     return uniqueUrls([...pageUrls, ...favoriteUrls, ...friendUrls, ...videoUrls]);
   }, [shopPreview, videos, favoriteUrls, friendUrls]);
@@ -229,11 +248,7 @@ const Feed = ({
               aria-label="More from Featured"
               onClick={() => navigate('/favorites')}
             >
-              <HubThumb
-                key={shuffleThumbs.favorites || 'page-shuffle'}
-                src={shuffleThumbs.favorites}
-                emptyLabel=""
-              />
+              <HubThumb src={shuffleThumbs.favorites} emptyLabel="" />
             </button>
             <button
               type="button"
@@ -245,11 +260,7 @@ const Feed = ({
               }}
               onClick={() => navigate('/friend-pages')}
             >
-              <HubThumb
-                key={shuffleThumbs.friend || 'friends-shuffle'}
-                src={shuffleThumbs.friend}
-                emptyLabel=""
-              />
+              <HubThumb src={shuffleThumbs.friend} emptyLabel="" />
             </button>
             <button
               type="button"
@@ -257,11 +268,7 @@ const Feed = ({
               aria-label="More from Shop"
               onClick={() => navigate('/shop')}
             >
-              <HubThumb
-                key={shuffleThumbs.shop || 'shop-shuffle'}
-                src={shuffleThumbs.shop}
-                emptyLabel=""
-              />
+              <HubThumb src={shuffleThumbs.shop} emptyLabel="" />
             </button>
           </div>
         </>

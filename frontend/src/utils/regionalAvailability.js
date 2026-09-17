@@ -38,6 +38,13 @@ function isPrintfulCatalogProduct(product) {
   return !!(product?.printful_catalog_product_id || product?.printful_variant_map);
 }
 
+/** Catalog cards waiting for Printful regional stock — not the same as out of stock. */
+export function catalogStockPending(product) {
+  if (!product) return false;
+  if (product._catalogPreview) return true;
+  return isPrintfulCatalogProduct(product) && !product.regional_size_color_availability;
+}
+
 export function sizeColorAvailabilityForCountry(product, country) {
   const code = shipToCode(country);
   const regional = product?.regional_size_color_availability;

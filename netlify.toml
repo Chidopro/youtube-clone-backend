@@ -26,6 +26,14 @@
   # Do not set X-Forwarded-Host to apex — it hides the real host (e.g. filialsons.screenmerch.com)
   # from upstream logic. The browser still sends Origin; backend uses Origin for cookies / redirects.
 
+# Product mockups live on Fly. Without this, *.screenmerch.com/static/images/* hits the SPA
+# and the browser downloads index.html as an image (blank cards + slow retries).
+[[redirects]]
+  from = "/static/images/*"
+  to = "https://screenmerch.fly.dev/static/images/:splat"
+  status = 200
+  force = true
+
 # SPA routing so /product/:id works (incl. mobile)
 [[redirects]]
   from = "/*"
@@ -56,6 +64,8 @@
       font-src 'self' data: https://fonts.gstatic.com;
       media-src 'self' https: data: blob:;
       connect-src 'self'
+        data:
+        blob:
         https://api.stripe.com
         https://js.stripe.com
         https://checkout.stripe.com
@@ -67,6 +77,7 @@
         https://accounts.google.com
         https://oauth2.googleapis.com;
       frame-src 'self' https://js.stripe.com https://checkout.stripe.com;
+      worker-src 'self' blob:;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
@@ -77,6 +88,12 @@
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Product mockups proxied from Fly — keep them at the CDN
+[[headers]]
+  for = "/static/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, immutable"
 
 # Best-practice hardening
 [[headers]]

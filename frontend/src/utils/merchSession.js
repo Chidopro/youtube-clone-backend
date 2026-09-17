@@ -624,11 +624,39 @@ export function clearMerchIntent() {
   if (had) emitMerchIntentUpdated();
 }
 
+function sameShot(a, b) {
+  return Boolean(a) && a === b;
+}
+
+/** Don't persist the same huge screenshot three times on one cart item. */
+function compactCartItemForPersist(item) {
+  if (!item || typeof item !== 'object') return item;
+  const next = { ...item };
+  const shot = next.screenshot || '';
+  if (sameShot(next.selected_screenshot, shot)) delete next.selected_screenshot;
+  if (sameShot(next.originalScreenshot, shot) || sameShot(next.originalScreenshot, next.selected_screenshot)) {
+    delete next.originalScreenshot;
+  }
+  return next;
+}
+
+function expandCartItem(item) {
+  if (!item || typeof item !== 'object') return item;
+  const shot = item.screenshot || item.selected_screenshot || item.originalScreenshot || '';
+  if (!shot) return item;
+  return {
+    ...item,
+    screenshot: item.screenshot || shot,
+    selected_screenshot: item.selected_screenshot || shot,
+    originalScreenshot: item.originalScreenshot || shot,
+  };
+}
+
 function parseCartArray(raw) {
   if (raw == null || raw === '') return null;
   try {
     const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : null;
+    return Array.isArray(data) ? data.map(expandCartItem) : null;
   } catch {
     return null;
   }
@@ -727,6 +755,65 @@ export function emitCartUpdated() {
   }
 }
 
+let cartPersistTimer = 0;
+let cartPersistPrevLen = 0;
+let cartPersistOptions = {};
+let cartPersistPaused = false;
+
+export function setCartPersistPaused(paused) {
+  cartPersistPaused = Boolean(paused);
+  if (!cartPersistPaused) scheduleCartPersist();
+}
+
+function persistCartMemoryNow(force = false) {
+  if (!Array.isArray(cartItemsMemory)) return;
+  if (!force && cartPersistPaused && cartItemsMemory.length > 0) return;
+  if (cartPersistTimer) {
+    window.clearTimeout(cartPersistTimer);
+    cartPersistTimer = 0;
+  }
+  const next = Array.isArray(cartItemsMemory) ? cartItemsMemory : [];
+  const isEmpty = next.length === 0;
+  const compacted = isEmpty ? next : next.map(compactCartItemForPersist);
+  let json = '[]';
+  try {
+    json = JSON.stringify(compacted);
+  } catch {
+    return;
+  }
+  persistCartStore(sessionStorage, json, isEmpty);
+  if (isTabScopedCart()) {
+    dropLocalCart();
+  } else {
+    const localOk = persistCartStore(localStorage, json, isEmpty);
+    if (!isEmpty && !localOk) {
+      dropLocalCart();
+    }
+  }
+  if (cartPersistPrevLen > 0 && isEmpty && !cartPersistOptions.keepWorkingScreenshot) {
+    clearWorkingScreenshot();
+  }
+  if (!isEmpty) markMerchIntentStarted();
+  else if (cartPersistOptions.clearMerchIntent) clearMerchIntent();
+  cartPersistOptions = {};
+}
+
+function scheduleCartPersist() {
+  if (typeof window === 'undefined') {
+    persistCartMemoryNow();
+    return;
+  }
+  if (cartPersistTimer) window.clearTimeout(cartPersistTimer);
+  cartPersistTimer = window.setTimeout(() => {
+    cartPersistTimer = 0;
+    persistCartMemoryNow();
+  }, 450);
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => persistCartMemoryNow(true));
+}
+
 export function writeCartItems(items, options = {}) {
   const next = Array.isArray(items) ? items : [];
   const prevLen = Array.isArray(cartItemsMemory)
@@ -734,22 +821,33 @@ export function writeCartItems(items, options = {}) {
     : readCartItems().length;
   cartItemsMemory = next;
   if (next.length > prevLen) setToolsPreviewNewest(true);
-  const isEmpty = cartItemsMemory.length === 0;
-  const json = JSON.stringify(cartItemsMemory);
-  persistCartStore(sessionStorage, json, isEmpty);
-  if (isTabScopedCart()) {
-    dropLocalCart();
-  } else {
-    const localOk = persistCartStore(localStorage, json, isEmpty);
-    // Quota failed on localStorage: drop a stale [] so read() can use session.
-    if (!isEmpty && !localOk) {
-      dropLocalCart();
-    }
-  }
-  if (prevLen > 0 && isEmpty && !options.keepWorkingScreenshot) {
-    clearWorkingScreenshot();
-  }
-  if (!isEmpty) markMerchIntentStarted();
-  else if (options.clearMerchIntent) clearMerchIntent();
+  cartPersistPrevLen = prevLen;
+  cartPersistOptions = options || {};
+  if (options.immediate || next.length === 0) persistCartMemoryNow();
+  else scheduleCartPersist();
   emitCartUpdated();
+}
+
+const BROWSE_TOOL_SETTINGS_KEY = 'sm_browse_tool_settings';
+
+export function readBrowseToolSettings() {
+  try {
+    const raw = sessionStorage.getItem(BROWSE_TOOL_SETTINGS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeBrowseToolSettings(settings) {
+  try {
+    if (!settings) {
+      sessionStorage.removeItem(BROWSE_TOOL_SETTINGS_KEY);
+      return;
+    }
+    sessionStorage.setItem(BROWSE_TOOL_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    /* quota / private mode */
+  }
 }

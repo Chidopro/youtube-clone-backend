@@ -30,7 +30,7 @@ function umbrellaFriendPages(lists, ownerId) {
 
 function previewUrlsFromList(list) {
   return uniqueUrls(
-    listPreviewImages(list).map((u) => publicStorageCardUrl(u, 1400))
+    listPreviewImages(list).map((u) => publicStorageCardUrl(u, 800))
   );
 }
 
@@ -44,7 +44,7 @@ async function videoPreviewUrls(userId) {
     const data = await res.json();
     return uniqueUrls(
       (Array.isArray(data) ? data : [])
-        .map((v) => publicStorageCardUrl(v.thumbnail || v.thumbnail_url, 1400))
+        .map((v) => publicStorageCardUrl(v.thumbnail || v.thumbnail_url, 800))
         .filter(Boolean)
     );
   } catch (_) {
@@ -53,34 +53,34 @@ async function videoPreviewUrls(userId) {
 }
 
 async function attachPreviewUrls(lists, sub) {
-  const out = [];
-  for (const raw of lists) {
-    const L = await withMemberPublicIdentity(raw);
-    let previewUrls = previewUrlsFromList(L);
-    if (!previewUrls.length) {
-      const slug = (L.slug || '').trim();
-      if (slug) {
-        const { ok, data } = await fetchPublicFavoritesByList(sub, slug);
-        if (ok && data?.success) {
-          previewUrls = uniqueUrls(
-            (data.favorites || [])
-              .map((f) => publicStorageCardUrl(favoriteImageUrl(f), 1400))
-              .filter(Boolean)
-          );
+  return Promise.all(
+    lists.map(async (raw) => {
+      const L = await withMemberPublicIdentity(raw);
+      let previewUrls = previewUrlsFromList(L);
+      if (!previewUrls.length) {
+        const slug = (L.slug || '').trim();
+        if (slug) {
+          const { ok, data } = await fetchPublicFavoritesByList(sub, slug);
+          if (ok && data?.success) {
+            previewUrls = uniqueUrls(
+              (data.favorites || [])
+                .map((f) => publicStorageCardUrl(favoriteImageUrl(f), 800))
+                .filter(Boolean)
+            );
+          }
         }
       }
-    }
-    if (!previewUrls.length) {
-      previewUrls = uniqueUrls(
-        (await memberFavoritePreviewUrls(L.owner_user_id)).map((u) => publicStorageCardUrl(u, 1400))
-      );
-    }
-    if (!previewUrls.length) {
-      previewUrls = await videoPreviewUrls(L.owner_user_id);
-    }
-    out.push({ ...L, previewUrls });
-  }
-  return out;
+      if (!previewUrls.length) {
+        previewUrls = uniqueUrls(
+          (await memberFavoritePreviewUrls(L.owner_user_id)).map((u) => publicStorageCardUrl(u, 800))
+        );
+      }
+      if (!previewUrls.length) {
+        previewUrls = await videoPreviewUrls(L.owner_user_id);
+      }
+      return { ...L, previewUrls };
+    })
+  );
 }
 
 const FriendPages = ({ sidebar }) => {
@@ -143,7 +143,7 @@ const FriendPages = ({ sidebar }) => {
       }
       setError('');
       try {
-        const { ok, data } = await fetchPublicFavoriteLists(sub);
+        const { ok, data } = await fetchPublicFavoriteLists(sub, { lite: true });
         if (!ok || !data?.success) {
           if (!cached) {
             setError(data?.error || 'Could not load creators list');
@@ -151,6 +151,12 @@ const FriendPages = ({ sidebar }) => {
           }
         } else {
           const lists = umbrellaFriendPages(data.lists, currentCreator?.id);
+          const immediate = lists.map((L) => ({
+            ...L,
+            previewUrls: previewUrlsFromList(L),
+          }));
+          setPages(immediate);
+          setLoading(false);
           setPages(await attachPreviewUrls(lists, sub));
         }
       } catch (e) {

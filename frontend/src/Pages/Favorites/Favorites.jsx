@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
-import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, favoriteGalleryUrl, withMemberPublicIdentity, fetchMemberFavorites } from '../../utils/favoriteListsApi';
+import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, publicStorageCardUrl, withMemberPublicIdentity, fetchMemberFavorites } from '../../utils/favoriteListsApi';
 import { favoriteListPageHeading, friendPageLabel } from '../../utils/favoriteListLabels';
 import { apiJoin } from '../../config/apiConfig';
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
@@ -96,6 +96,34 @@ function FavoritesShelfTrack({
   );
 }
 
+function FavoriteThumb({ src, fallback = '', eager = false }) {
+  const [loaded, setLoaded] = useState(false);
+  const [current, setCurrent] = useState(src || fallback || '');
+
+  useEffect(() => {
+    setLoaded(false);
+    setCurrent(src || fallback || '');
+  }, [src, fallback]);
+
+  if (!current) return null;
+  return (
+    <img
+      src={current}
+      alt=""
+      loading={eager ? 'eager' : 'lazy'}
+      decoding="async"
+      className={loaded ? 'is-loaded' : ''}
+      onLoad={() => setLoaded(true)}
+      onError={(e) => {
+        if (fallback && e.currentTarget.src !== fallback) {
+          setLoaded(false);
+          setCurrent(fallback);
+        }
+      }}
+    />
+  );
+}
+
 function FavoriteImageCard({ item, onMakeMerch }) {
   const handleActivate = () => onMakeMerch(item.raw);
   return (
@@ -106,18 +134,7 @@ function FavoriteImageCard({ item, onMakeMerch }) {
         onClick={handleActivate}
         aria-label={`Make merch from ${item.title}`}
       >
-        <img
-          src={item.gallery || item.full || item.thumb || 'https://via.placeholder.com/640x480?text=No+Image'}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          onError={(e) => {
-            const fallback = item.full || favoriteImageUrl(item.raw);
-            if (fallback && e.currentTarget.src !== fallback) {
-              e.currentTarget.src = fallback;
-            }
-          }}
-        />
+        <FavoriteThumb src={item.gallery || item.thumb} fallback={item.full} eager />
       </button>
       <div className="favorites-card-content">
         <h3>{item.title}</h3>
@@ -139,8 +156,8 @@ const mapFavoriteImages = (favorites) =>
       kind: 'image',
       id: `image-${f.id}`,
       title: f.title || 'Untitled',
-      thumb: favoriteCardThumbUrl(f),
-      gallery: favoriteGalleryUrl(f),
+      thumb: publicStorageCardUrl(favoriteImageUrl(f), 800) || favoriteCardThumbUrl(f),
+      gallery: publicStorageCardUrl(favoriteImageUrl(f), 800),
       full: favoriteImageUrl(f),
       created_at: f.created_at || '',
       description: f.description || '',
@@ -311,27 +328,6 @@ function FavoritesMediaSection({
   );
 }
 
-const preloadThumbUrls = (urls, timeoutMs = 1200) =>
-  Promise.all(
-    (urls || []).filter(Boolean).slice(0, 8).map(
-      (src) =>
-        new Promise((resolve) => {
-          const img = new Image();
-          const done = () => resolve();
-          const timer = window.setTimeout(done, timeoutMs);
-          img.onload = () => {
-            window.clearTimeout(timer);
-            resolve();
-          };
-          img.onerror = () => {
-            window.clearTimeout(timer);
-            resolve();
-          };
-          img.src = src;
-        })
-    )
-  );
-
 const EMPTY_PAGE_MEDIA = { images: [], videos: [] };
 
 const Favorites = ({ sidebar }) => {
@@ -435,6 +431,9 @@ const Favorites = ({ sidebar }) => {
           (isOwnerPage ? currentCreator.id : null) ||
           currentCreator.id;
 
+        setPageMedia({ images: favs, videos: [] });
+        if (favs.length) setLoading(false);
+
         const videosPromise = pageUserId
           ? fetch(`${apiJoin('/api/videos')}?user_id=${encodeURIComponent(pageUserId)}&limit=100`)
               .then((vRes) => (vRes.ok ? vRes.json().catch(() => []) : []))
@@ -449,11 +448,6 @@ const Favorites = ({ sidebar }) => {
           : Promise.resolve([]);
 
         const listVideos = await videosPromise;
-        if (cancelled) return;
-        await preloadThumbUrls([
-          ...listVideos.map((v) => v.thumbnail || v.thumbnail_url),
-          ...mapFavoriteImages(favs).map((item) => item.gallery || item.thumb),
-        ]);
         if (cancelled) return;
         setPageMedia({ images: favs, videos: listVideos });
         setLoading(false);
@@ -502,7 +496,7 @@ const Favorites = ({ sidebar }) => {
           kind: 'video',
           id: `video-${v.id}`,
           title: v.title || 'Untitled video',
-          thumb: v.thumbnail || v.thumbnail_url || '',
+          thumb: publicStorageCardUrl(v.thumbnail || v.thumbnail_url || '', 720),
           created_at: v.created_at || '',
           raw: v,
         }))
@@ -582,16 +576,35 @@ const Favorites = ({ sidebar }) => {
       <div className="favorites-page favorites-page--in-container">
         {error ? <p className="favorites-error">{error}</p> : null}
 
-        {loading ? <div className="favorites-loading">Loading page...</div> : null}
+        {loading || creatorLoading ? (
+          <div className="favorites-shelves" aria-busy="true">
+            <section className="favorites-shelf favorites-shelf--videos" aria-label="Loading clips">
+              <FavoritesSectionHeader title="View Clip" showArrows={false} />
+              <div className="favorites-shelf-scroller">
+                <div className="favorites-shelf-track favorites-shelf-track--trio">
+                  {[0, 1, 2].map((n) => (
+                    <div className="favorites-card favorites-card--skeleton" key={`skel-${n}`}>
+                      <div className="favorites-card-image" />
+                      <div className="favorites-card-content">
+                        <div className="favorites-skel-line" />
+                        <div className="favorites-skel-btn" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </div>
+        ) : null}
 
-        {!loading && !hasVisibleItems && extraPageItems.length === 0 && !error ? (
+        {!loading && !creatorLoading && !hasVisibleItems && extraPageItems.length === 0 && !error ? (
           <div className="favorites-empty">
             <h2>Nothing here yet</h2>
             <p>This page has no videos or images yet. Check back later!</p>
           </div>
         ) : null}
 
-        {!loading && (hasVisibleItems || extraPageItems.length > 0) ? (
+        {!loading && !creatorLoading && (hasVisibleItems || extraPageItems.length > 0) ? (
           <div className="favorites-shelves">
             {videoItems.length > 0 ? (
               <FavoritesMediaSection
@@ -611,12 +624,7 @@ const Favorites = ({ sidebar }) => {
                       onClick={() => openVideo(item.raw)}
                       aria-label={`Watch ${item.title}`}
                     >
-                      <img
-                        src={item.thumb || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
-                        alt=""
-                        loading="eager"
-                        decoding="async"
-                      />
+                      <FavoriteThumb src={item.thumb} eager />
                     </button>
                     <div className="favorites-card-content">
                       <h3>{item.title}</h3>

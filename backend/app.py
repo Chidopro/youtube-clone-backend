@@ -974,7 +974,23 @@ def add_security_headers(response):
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
             response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email, X-Session-Token, X-User-Id"
             response.headers["Vary"] = "Origin"
-            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            cacheable_public_get = (
+                request.method == "GET"
+                and not request.args.get("stockRetry")
+                and (
+                    request.path.startswith("/api/product/browse")
+                    or request.path.startswith("/api/public/")
+                    or request.path.startswith("/api/subdomain/")
+                    or request.path == "/api/videos"
+                )
+            )
+            existing_cache = (response.headers.get("Cache-Control") or "").lower()
+            if cacheable_public_get:
+                if "no-store" not in existing_cache:
+                    if not existing_cache.strip():
+                        response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
+            else:
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
             response.headers["X-ScreenMerch-CORS"] = "1"
         except Exception:
             response.headers["Access-Control-Allow-Origin"] = "https://screenmerch.com"
@@ -1218,7 +1234,17 @@ def get_browse_api():
             logger.info(f"📱 Sending response to mobile - {len(filtered_products)} products")
             logger.info(f"📱 Response success: {response_data['success']}")
         
-        return jsonify(response_data)
+        resp = jsonify(response_data)
+        needs_stock = any(
+            (p.get("printful_catalog_product_id") or p.get("printful_variant_map"))
+            and not p.get("regional_size_color_availability")
+            for p in filtered_products
+        )
+        if needs_stock or request.args.get("stockRetry"):
+            resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        else:
+            resp.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
+        return resp
         
     except Exception as e:
         logger.error(f"❌ Browse API error: {str(e)}")
@@ -10306,6 +10332,32 @@ def _dedupe_storefront_collaborator_slugs(storefront_owner_id, lists):
     return out
 
 
+def _fl_preview_map_for_lists(lists, limit_each=4):
+    """One query for card previews instead of a round-trip per page."""
+    ids = [L.get("id") for L in (lists or []) if L and L.get("id")]
+    out = {lid: [] for lid in ids}
+    if not ids or not supabase_admin:
+        return out
+    try:
+        fr = (
+            supabase_admin.table("creator_favorites")
+            .select("list_id, image_url, thumbnail_url")
+            .in_("list_id", ids)
+            .order("created_at", desc=True)
+            .limit(max(32, int(limit_each) * len(ids)))
+            .execute()
+        )
+        for fav in fr.data or []:
+            lid = fav.get("list_id")
+            bucket = out.get(lid)
+            if bucket is None or len(bucket) >= limit_each:
+                continue
+            _fl_append_preview_url(bucket, fav.get("image_url") or fav.get("thumbnail_url"))
+    except Exception as err:
+        logger.warning("_fl_preview_map_for_lists: %s", err)
+    return out
+
+
 def _fl_append_preview_url(images, url):
     img = (url or "").strip()
     if img and img not in images:
@@ -10438,7 +10490,7 @@ def _fl_ensure_primary_list(owner_id):
     return pid
 
 
-def _fl_lists_for_storefront(owner_id):
+def _fl_lists_for_storefront(owner_id, repair=True):
     """Pages on this storefront, including owner extras missing storefront_owner_id."""
     by_id = {}
     if not supabase_admin or not owner_id:
@@ -10468,7 +10520,7 @@ def _fl_lists_for_storefront(owner_id):
             if not lid:
                 continue
             by_id.setdefault(lid, row)
-            if not row.get("storefront_owner_id"):
+            if repair and not row.get("storefront_owner_id"):
                 try:
                     supabase_admin.table("creator_favorite_lists").update(
                         {"storefront_owner_id": owner_id}
@@ -10481,13 +10533,14 @@ def _fl_lists_for_storefront(owner_id):
     except Exception as err:
         logger.warning("_fl_lists_for_storefront owner query: %s", err)
     lists = list(by_id.values())
-    lists = [
-        _fl_sync_stale_collaborator_slug(L)
-        if _is_collaborator_favorite_list(L, owner_id)
-        else L
-        for L in lists
-    ]
-    lists = _dedupe_storefront_collaborator_slugs(owner_id, lists)
+    if repair:
+        lists = [
+            _fl_sync_stale_collaborator_slug(L)
+            if _is_collaborator_favorite_list(L, owner_id)
+            else L
+            for L in lists
+        ]
+        lists = _dedupe_storefront_collaborator_slugs(owner_id, lists)
     lists.sort(
         key=lambda L: (
             0 if L.get("is_primary") else 1,
@@ -10827,11 +10880,14 @@ def public_favorite_lists():
         if not cr.data:
             return jsonify({"success": True, "lists": []}), 200
         owner_id = cr.data[0]["id"]
-        _fl_ensure_primary_list(owner_id)
-        lists = _fl_lists_for_storefront(owner_id)
+        lite = (request.args.get("lite") or "").strip().lower() in ("1", "true", "yes")
+        lists = _fl_lists_for_storefront(owner_id, repair=not lite)
+        if not lists:
+            _fl_ensure_primary_list(owner_id)
+            lists = _fl_lists_for_storefront(owner_id, repair=True)
         approved_ids = _approved_umbrella_friend_ids(owner_id)
         paused_ids = _paused_umbrella_friend_ids(owner_id)
-        lite = (request.args.get("lite") or "").strip().lower() in ("1", "true", "yes")
+        preview_map = _fl_preview_map_for_lists(lists, 4 if lite else 8)
         safe_lists = []
         for L in lists:
             # Collaborator pages only while membership is approved (removed/paused stay hidden)
@@ -10875,8 +10931,10 @@ def public_favorite_lists():
                         _umbrella_collaborator_label(owner_u),
                     )
                 dn = nick + (" Favorites" if nick and "Favorites" not in nick else "")
-            preview_images = []
-            if not lite:
+            preview_images = list(preview_map.get(L.get("id"), []) or [])
+            if not preview_images and is_collab:
+                preview_images = _fl_video_preview_images(L.get("owner_user_id"), 4 if lite else 8)
+            elif not preview_images and not lite:
                 preview_images = _fl_collect_preview_images(L, is_collab=is_collab)
             payload = {
                 **L,

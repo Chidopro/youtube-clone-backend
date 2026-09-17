@@ -77,8 +77,8 @@ html.creator-storefront .product-page .user-flow-section {
   }
 
   .main-content-area--video {
-    padding: 12px 0;
-    background: #fff;
+    padding: 24px;
+    background: #F6F7F9;
     overflow: hidden;
   }
 
@@ -97,7 +97,11 @@ html.creator-storefront .product-page .user-flow-section {
 @media (max-width: 768px) {
   .main-content-area,
   .main-content-area--video {
-    padding: 8px 12px 16px 12px;
+    padding: 8px 16px 16px 16px;
+  }
+
+  .main-content-area--video {
+    background: #F6F7F9;
   }
 }
 

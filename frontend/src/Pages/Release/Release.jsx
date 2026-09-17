@@ -83,25 +83,9 @@ const Release = () => {
         </p>
 
         <h2>One Platform for Content and Commerce</h2>
-        <p>ScreenMerch brings together the pieces creators would otherwise have to manage separately:</p>
-        <p className="release-pipeline">
-          Clips and photos → memorable images → merchandise → storefront → checkout → fulfillment →
-          creator earnings
-        </p>
         <p>
-          It&apos;s a simpler connection between the content creators make and the moments their audiences
-          want to remember.
+          Your storefront, checkout, and payouts stay under your name. Fans shop the moments they already love.
         </p>
-        <p>
-          <strong>
-            No inventory.
-            <br />
-            No fulfillment headaches.
-            <br />
-            No shipping logistics for creators.
-          </strong>
-        </p>
-        <p>Just a new way to turn content into commerce.</p>
 
         <p className="release-tagline">
           <strong>Your brand. Your content. Your earnings.</strong>

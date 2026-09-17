@@ -355,6 +355,34 @@ function isPrintBoxPixel(r, g, b) {
 }
 
 const shirtFillCache = new Map();
+const PIXEL_PROBE_MAX = 280;
+const DEBUG_OVERLAY_SIZE = false;
+const FEATHER_WORK_MAX = 640;
+const BAKE_EXPORT_MAX = 720;
+const BAKE_DEBOUNCE_MS = 200;
+
+function readImagePixelsScaled(img, maxDim = PIXEL_PROBE_MAX) {
+  const nw = img?.naturalWidth || 0;
+  const nh = img?.naturalHeight || 0;
+  if (!nw || !nh) return null;
+  const scale = Math.min(1, maxDim / Math.max(nw, nh));
+  const w = Math.max(1, Math.round(nw * scale));
+  const h = Math.max(1, Math.round(nh * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, w, h);
+  return { data: ctx.getImageData(0, 0, w, h).data, w, h };
+}
+
+function scheduleIdleWork(fn) {
+  if (typeof requestIdleCallback === 'function') {
+    return requestIdleCallback(() => fn(), { timeout: 300 });
+  }
+  return window.setTimeout(fn, 0);
+}
 
 /** Shirt fabric around the mint/pink guide, so zoom-out gaps are garment, not the painted box. */
 function sampleShirtFillFromMockup(img, productName) {
@@ -363,14 +391,9 @@ function sampleShirtFillFromMockup(img, productName) {
   const cacheKey = `${src}|${String(productName || '')}`;
   if (cacheKey && shirtFillCache.has(cacheKey)) return shirtFillCache.get(cacheKey);
   try {
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(img, 0, 0);
-    const data = ctx.getImageData(0, 0, w, h).data;
+    const probed = readImagePixelsScaled(img);
+    if (!probed) return '';
+    const { data, w, h } = probed;
     const box = getApparelPrintOverride(productName) || {
       widthFrac: 0.5,
       heightFrac: 0.5,
@@ -425,14 +448,9 @@ function detectPaintedPrintBox(img) {
   const src = img.currentSrc || img.src || '';
   if (src && paintedPrintBoxCache.has(src)) return paintedPrintBoxCache.get(src);
   try {
-    const canvas = document.createElement('canvas');
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(img, 0, 0);
-    const data = ctx.getImageData(0, 0, w, h).data;
+    const probed = readImagePixelsScaled(img);
+    if (!probed) return null;
+    const { data, w, h } = probed;
     const xs = [];
     const ys = [];
     for (let y = 0; y < h; y++) {
@@ -444,7 +462,8 @@ function detectPaintedPrintBox(img) {
         }
       }
     }
-    if (xs.length < 200) {
+    const minHits = Math.max(24, Math.round(w * h * 0.0008));
+    if (xs.length < minHits) {
       if (src) paintedPrintBoxCache.set(src, null);
       return null;
     }
@@ -693,12 +712,13 @@ function doubleFrameSpacing(framePx) {
 }
 
 /**
- * Inner double-frame layout. Same corner radius as the outer ring so the
- * inner stroke stays rounded and hugs the corners (CSS clamps to the inner box).
+ * Inner ring is inset by innerOuter. Its outer corner radius must be
+ * outerRadius − inset so the gap stays even through the corners
+ * (same-radius inset boxes flare at the corners).
  */
 function overlayDoubleFrameLayout(previewFrame, outerRadiusPx) {
   const { innerFrameWidth, innerOuter } = doubleFrameSpacing(previewFrame);
-  const innerRadius = Math.max(0, Number(outerRadiusPx) || 0);
+  const innerRadius = Math.max(0, (Number(outerRadiusPx) || 0) - innerOuter);
   return { innerFrameWidth, innerOuter, innerRadius };
 }
 
@@ -923,11 +943,14 @@ function applyRadiusFeatherFade(sourceCanvas, {
   featherFadeEnabled = false,
   featherFadeColor = 'white',
 } = {}) {
+  const srcW = sourceCanvas.width;
+  const srcH = sourceCanvas.height;
+  const workScale = Math.min(1, FEATHER_WORK_MAX / Math.max(srcW, srcH, 1));
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { alpha: true });
-  canvas.width = sourceCanvas.width;
-  canvas.height = sourceCanvas.height;
-  ctx.drawImage(sourceCanvas, 0, 0);
+  canvas.width = Math.max(1, Math.round(srcW * workScale));
+  canvas.height = Math.max(1, Math.round(srcH * workScale));
+  ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
 
   const maxCornerRadius = Math.min(canvas.width, canvas.height) / 2;
   const isCircle = cornerRadius >= 100;
@@ -1041,7 +1064,39 @@ function applyRadiusFeatherFade(sourceCanvas, {
     flattenCanvasFeatherToColor(ctx, canvas, featherFadeColor);
   }
 
+  if (workScale < 1) {
+    const restored = document.createElement('canvas');
+    const restoredCtx = restored.getContext('2d', { alpha: true });
+    restored.width = srcW;
+    restored.height = srcH;
+    restoredCtx.drawImage(canvas, 0, 0, srcW, srcH);
+    return restored;
+  }
+
   return canvas;
+}
+
+function exportPreviewDataUrl(sourceCanvas) {
+  if (!sourceCanvas || !(sourceCanvas.width > 0) || !(sourceCanvas.height > 0)) return '';
+  const scale = Math.min(1, BAKE_EXPORT_MAX / Math.max(sourceCanvas.width, sourceCanvas.height, 1));
+  let out = sourceCanvas;
+  if (scale < 1) {
+    out = document.createElement('canvas');
+    out.width = Math.max(1, Math.round(sourceCanvas.width * scale));
+    out.height = Math.max(1, Math.round(sourceCanvas.height * scale));
+    const octx = out.getContext('2d');
+    if (!octx) return '';
+    octx.drawImage(sourceCanvas, 0, 0, out.width, out.height);
+  }
+  try {
+    return out.toDataURL('image/jpeg', 0.82);
+  } catch {
+    try {
+      return out.toDataURL('image/png');
+    } catch {
+      return '';
+    }
+  }
 }
 
 /**
@@ -1139,7 +1194,7 @@ function paintFrameRings(ctx, vis, {
   paintRing(0, outer, cornerR);
   if (doubleFrame) {
     const { innerFrameWidth, innerOuter } = doubleFrameSpacing(outer);
-    paintRing(innerOuter, innerFrameWidth, cornerR);
+    paintRing(innerOuter, innerFrameWidth, Math.max(0, cornerR - innerOuter));
   }
 }
 
@@ -1564,6 +1619,7 @@ const ProductPreviewWithDrag = ({
   featherFadeColor = 'white',
   onOverlayBoxChange,
   onShirtFillChange,
+  litePreview = false,
 }) => {
   const containerRef = useRef(null);
   const productImageRef = useRef(null);
@@ -1665,7 +1721,9 @@ const ProductPreviewWithDrag = ({
         // Get print area dimensions for this product
         const printDimensions = getPrintAreaDimensions(effectiveProductName, productSize || null, 'front');
         
+        if (DEBUG_OVERLAY_SIZE) {
         console.log(`🔍 [SIZE_CALC] Product: "${effectiveProductName}" (from ${printAreaFit === 'product' && selectedProductName ? 'dropdown' : 'cart'}), Size: "${productSize || 'default'}", Print Area:`, printDimensions);
+        }
         
         // Wait for the painted mockup. A 400×400 fallback sizes the overlay
         // as if the photo were huge, which sticks on phones when layout is late.
@@ -1745,7 +1803,7 @@ const ProductPreviewWithDrag = ({
             
             commitOverlaySize(finalWidth, finalHeight);
             
-            console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}px (${(finalWidth/displayedProductWidth*100).toFixed(1)}% x ${(finalHeight/displayedProductHeight*100).toFixed(1)}% of product)`);
+            if (DEBUG_OVERLAY_SIZE) console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}px (${(finalWidth/displayedProductWidth*100).toFixed(1)}% x ${(finalHeight/displayedProductHeight*100).toFixed(1)}% of product)`);
             return; // Exit early for hats
           }
 
@@ -1761,7 +1819,7 @@ const ProductPreviewWithDrag = ({
             );
             commitOverlaySize(sized.width, sized.height);
 
-            console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${sized.width.toFixed(0)}x${sized.height.toFixed(0)}px (${(sized.width/displayedProductWidth*100).toFixed(1)}% x ${(sized.height/displayedProductHeight*100).toFixed(1)}% of product) [apparel chest]`);
+            if (DEBUG_OVERLAY_SIZE) console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${sized.width.toFixed(0)}x${sized.height.toFixed(0)}px (${(sized.width/displayedProductWidth*100).toFixed(1)}% x ${(sized.height/displayedProductHeight*100).toFixed(1)}% of product) [apparel chest]`);
             return;
           }
           
@@ -1851,7 +1909,7 @@ const ProductPreviewWithDrag = ({
           
           commitOverlaySize(finalWidth, finalHeight);
           
-          console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}px (${(finalWidth/displayedProductWidth*100).toFixed(1)}% x ${(finalHeight/displayedProductHeight*100).toFixed(1)}% of product)`);
+          if (DEBUG_OVERLAY_SIZE) console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}px (${(finalWidth/displayedProductWidth*100).toFixed(1)}% x ${(finalHeight/displayedProductHeight*100).toFixed(1)}% of product)`);
         } else if (displayedProductWidth > 0) {
           // Fallback: use a percentage of the painted mockup, not a 400px guess
           const fallbackPercent = effectiveProductName.toLowerCase().includes('cropped') ? 0.25 : 0.30;
@@ -1942,7 +2000,7 @@ const ProductPreviewWithDrag = ({
     const img = productImageRef.current;
     const name = (printAreaFit === 'product' && selectedProductName) ? selectedProductName : productName;
     const src = img ? (img.currentSrc || img.src) : '';
-    if (src) {
+    if (!litePreview && src) {
       const fillKey = `${src}|${name}`;
       if (shirtFillCache.has(fillKey)) {
         const cached = shirtFillCache.get(fillKey);
@@ -1951,30 +2009,29 @@ const ProductPreviewWithDrag = ({
           if (onShirtFillChange) onShirtFillChange(cached);
         }
       } else {
-        const fillProbe = new Image();
-        fillProbe.crossOrigin = 'anonymous';
-        fillProbe.onload = () => {
-          const fill = sampleShirtFillFromMockup(fillProbe, name);
+        const sourceImg = img;
+        scheduleIdleWork(() => {
+          if ((productImageRef.current?.currentSrc || productImageRef.current?.src) !== src) return;
+          const fill = sampleShirtFillFromMockup(sourceImg, name);
           if (fill) {
             setShirtFillColor((prev) => (prev === fill ? prev : fill));
             if (onShirtFillChange) onShirtFillChange(fill);
           }
-        };
-        fillProbe.src = src;
+        });
       }
     }
-    if (img && isApparelChestPrintProduct(name) && !getApparelPrintOverride(name)) {
-      const src = img.currentSrc || img.src;
-      if (paintedPrintBoxCache.has(src)) {
-        setDetectedPrintBox(paintedPrintBoxCache.get(src));
+    if (!litePreview && img && isApparelChestPrintProduct(name) && !getApparelPrintOverride(name)) {
+      const detectSrc = img.currentSrc || img.src;
+      if (paintedPrintBoxCache.has(detectSrc)) {
+        setDetectedPrintBox(paintedPrintBoxCache.get(detectSrc));
       } else {
-        const probe = new Image();
-        probe.crossOrigin = 'anonymous';
-        probe.onload = () => setDetectedPrintBox(detectPaintedPrintBox(probe));
-        probe.onerror = () => setDetectedPrintBox(null);
-        probe.src = src;
+        const sourceImg = img;
+        scheduleIdleWork(() => {
+          if ((productImageRef.current?.currentSrc || productImageRef.current?.src) !== detectSrc) return;
+          setDetectedPrintBox(detectPaintedPrintBox(sourceImg));
+        });
       }
-    } else {
+    } else if (litePreview || !img || !isApparelChestPrintProduct(name) || getApparelPrintOverride(name)) {
       setDetectedPrintBox(null);
     }
     requestAnimationFrame(() => {
@@ -2002,10 +2059,11 @@ const ProductPreviewWithDrag = ({
     window.addEventListener('resize', measureProductImage);
     window.addEventListener('orientationchange', measureProductImage);
     let measureCancelled = false;
+    const maxTicks = litePreview ? 2 : 4;
     const tickMeasure = (attempt) => {
       if (measureCancelled) return;
       measureProductImage();
-      if (attempt < 8) {
+      if (attempt < maxTicks) {
         requestAnimationFrame(() => tickMeasure(attempt + 1));
       }
     };
@@ -2016,9 +2074,10 @@ const ProductPreviewWithDrag = ({
       window.removeEventListener('resize', measureProductImage);
       window.removeEventListener('orientationchange', measureProductImage);
     };
-  }, [productImage, productName]);
+  }, [productImage, productName, litePreview]);
 
   const handleMouseDown = (e) => {
+    if (litePreview) return;
     if (imageOrientation === 'landscape') return;
     if (!screenshot || !(screenshotDisplaySize.width >= 8) || !(screenshotDisplaySize.height >= 8)) return;
     e.preventDefault();
@@ -2034,6 +2093,7 @@ const ProductPreviewWithDrag = ({
   };
 
   const handleTouchStart = (e) => {
+    if (litePreview) return;
     if (imageOrientation === 'landscape') return;
     if (!screenshot || !(screenshotDisplaySize.width >= 8) || !(screenshotDisplaySize.height >= 8)) return;
     e.preventDefault();
@@ -2126,14 +2186,14 @@ const ProductPreviewWithDrag = ({
         position: 'relative',
         width: '100%',
         margin: '0 auto',
-        cursor: imageOrientation === 'landscape' ? 'default' : (isDragging ? 'grabbing' : 'grab'),
+        cursor: litePreview || imageOrientation === 'landscape' ? 'default' : (isDragging ? 'grabbing' : 'grab'),
         userSelect: 'none',
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
-        touchAction: imageOrientation === 'landscape' ? 'auto' : 'none'
+        touchAction: litePreview || imageOrientation === 'landscape' ? 'auto' : 'none'
       }}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
+      onMouseDown={litePreview ? undefined : handleMouseDown}
+      onTouchStart={litePreview ? undefined : handleTouchStart}
     >
       {/* Product Image */}
       <img 
@@ -2142,6 +2202,7 @@ const ProductPreviewWithDrag = ({
         key={productImage || 'mockup'}
         src={productImage} 
         alt={productName}
+        decoding="async"
         onLoad={handleProductImageLoad}
         onDragStart={(e) => e.preventDefault()}
         style={{
@@ -2176,12 +2237,12 @@ const ProductPreviewWithDrag = ({
             top: topPct,
             left: `${apparelOverlayPlacement(placeName, detectedPrintBox).left}%`,
             transform: `translate(calc(-50% + ${clampedOffset.x + (printBox.rightShift || 0)}px), calc(-50% + ${clampedOffset.y}px))`,
-            cursor: imageOrientation === 'landscape' ? 'default' : (isDragging ? 'grabbing' : 'grab'),
+            cursor: litePreview || imageOrientation === 'landscape' ? 'default' : (isDragging ? 'grabbing' : 'grab'),
             userSelect: 'none',
             WebkitUserSelect: 'none',
             WebkitTouchCallout: 'none',
-            touchAction: 'none',
-            pointerEvents: 'auto',
+            touchAction: litePreview ? 'auto' : 'none',
+            pointerEvents: litePreview ? 'none' : 'auto',
             zIndex: 2,
             overflow: 'hidden'
           }}
@@ -2222,7 +2283,7 @@ const ProductPreviewWithDrag = ({
               boxH: scaledHeight,
               layout: artworkLayout,
               cornerRadius,
-              featherEdge,
+              featherEdge: litePreview ? 0 : featherEdge,
               frameEnabled,
               frameWidth,
               sourceWidth,
@@ -2270,6 +2331,7 @@ const ProductPreviewWithDrag = ({
                       key={screenshot || 'overlay'}
                       src={screenshot}
                       alt="Screenshot overlay"
+                      decoding="async"
                       style={{
                         ...(zoomImgStyle || {
                           ...clipBox,
@@ -4266,6 +4328,8 @@ const ToolsPage = () => {
     if (awaitingAutoProductFit) return;
     if (printAreaFit === 'product' && !selectedProductName) return;
     let cancelled = false;
+    const timer = window.setTimeout(() => {
+    if (cancelled) return;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = async () => {
@@ -4518,18 +4582,9 @@ const ToolsPage = () => {
         });
       }
 
-      // Convert to data URL
-      let dataUrl;
-      try {
-        dataUrl = canvas.toDataURL('image/png');
-      } catch (_) {
-        try {
-          dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        } catch (err) {
-          console.error('Failed to export edited image', err);
-          return;
-        }
-      }
+      // Convert to data URL (capped jpeg so Apply Edits does not freeze checkout)
+      const dataUrl = exportPreviewDataUrl(canvas);
+      if (!dataUrl) return;
       if (cancelled) return;
       setEditedImageUrl(dataUrl);
     };
@@ -4538,8 +4593,10 @@ const ToolsPage = () => {
       console.error('Failed to load image');
     };
     img.src = imageUrl;
+    }, BAKE_DEBOUNCE_MS);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height]);
 
@@ -6151,5 +6208,6 @@ const ToolsPage = () => {
   );
 };
 
+export { ProductPreviewWithDrag };
 export default ToolsPage;
 

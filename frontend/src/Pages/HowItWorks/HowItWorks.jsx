@@ -126,11 +126,7 @@ const HowItWorks = () => {
           </p>
 
           <h2>From Content to Commerce</h2>
-          <p>The complete ScreenMerch experience brings the process together:</p>
-          <p className="how-it-works-pipeline">
-            Create content → Capture or upload images → Fans discover a moment → Choose a product →
-            Customize → Checkout → Production &amp; fulfillment → Creator earnings
-          </p>
+          <p>A favorite moment becomes merch. We handle production, shipping, and creator payouts.</p>
           <p>
             For creators, there&apos;s no inventory to purchase and no shipping operation to manage.
           </p>

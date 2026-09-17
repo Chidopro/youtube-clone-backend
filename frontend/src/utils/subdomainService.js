@@ -3,9 +3,7 @@
  * Handles subdomain detection and creator identification for personalization
  */
 
-const BACKEND_URL = 
-  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
-  "https://screenmerch.fly.dev";
+import { apiJoin } from '../config/apiConfig';
 
 /**
  * Get current subdomain from window location
@@ -104,7 +102,7 @@ export const getCreatorFromSubdomain = async (subdomain) => {
     console.log('🔍 Looking up creator for subdomain via API:', normalizedSubdomain);
     
     // Use backend API endpoint which bypasses RLS
-    const response = await fetch(`${BACKEND_URL}/api/subdomain/${normalizedSubdomain}`, {
+    const response = await fetch(apiJoin(`/api/subdomain/${normalizedSubdomain}`), {
       method: 'GET',
       headers: {
         'Accept': 'application/json'

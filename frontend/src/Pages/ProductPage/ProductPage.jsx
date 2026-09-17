@@ -8,7 +8,7 @@ import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
-import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest, isVideoScreenshotMerch } from '../../utils/merchSession';
+import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest, isVideoScreenshotMerch, readBrowseToolSettings, writeBrowseToolSettings } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
@@ -16,6 +16,7 @@ import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { readShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
 import {
+  catalogStockPending,
   comboAvailableForCountry,
   getAvailableColorsForCountry,
   getAvailableSizesForCountry,
@@ -25,10 +26,85 @@ import {
   shipToCountryName,
   unitPriceForCountry,
 } from '../../utils/regionalAvailability';
+import { peekDisplaySrc, prepareDisplaySrc } from '../../utils/displaySrc';
 import './ProductPage.css';
 
-const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
+const BROWSE_EDIT_ORIGINAL = {
+  blackAndWhite: false,
+  cornerRadius: 0,
+  featherEdge: 0,
+  frameEnabled: false,
+  doubleFrame: false,
+};
+
+const BROWSE_EDIT_PRESETS = [
+  {
+    id: 'bw',
+    label: 'Black and White',
+    settings: { ...BROWSE_EDIT_ORIGINAL, blackAndWhite: true },
+  },
+  {
+    id: 'radius',
+    label: 'Corner radius',
+    settings: { ...BROWSE_EDIT_ORIGINAL, cornerRadius: 32 },
+  },
+  {
+    id: 'feather',
+    label: 'Feathered edge',
+    settings: { ...BROWSE_EDIT_ORIGINAL, featherEdge: 82 },
+  },
+  {
+    id: 'frame',
+    label: 'Frame',
+    settings: { ...BROWSE_EDIT_ORIGINAL, frameEnabled: true, frameColor: '#111111', frameWidth: 12 },
+  },
+];
+
+function useBrowseDisplaySrc(url) {
+  const raw = String(url || '').trim();
+  const [src, setSrc] = useState(() => {
+    if (!raw) return '';
+    if (!(raw.startsWith('data:') || raw.startsWith('blob:'))) return raw;
+    return peekDisplaySrc(raw)?.src || '';
+  });
+  useEffect(() => {
+    if (!raw) {
+      setSrc('');
+      return undefined;
+    }
+    if (!(raw.startsWith('data:') || raw.startsWith('blob:'))) {
+      setSrc(raw);
+      return undefined;
+    }
+    const hit = peekDisplaySrc(raw);
+    if (hit?.src) {
+      setSrc(hit.src);
+      return undefined;
+    }
+    let cancelled = false;
+    prepareDisplaySrc(raw, 360, { urgent: true })
+      .then((next) => {
+        if (!cancelled) setSrc(next?.src || '');
+      })
+      .catch(() => {
+        if (!cancelled) setSrc('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [raw]);
+  return src;
+}
+
+function isScreenmerchHost() {
+  if (typeof window === 'undefined') return false;
+  const host = (window.location.hostname || '').toLowerCase();
+  return host === 'screenmerch.com' || host === 'www.screenmerch.com' || host.endsWith('.screenmerch.com');
+}
+
 const getImgBase = () => {
+  // Same-origin /static/images is proxied to Fly and cached by Netlify.
+  if (isScreenmerchHost()) return '/static/images';
   const base = getBackendUrl();
   if (!base || typeof base !== 'string') return IMG_BASE_FALLBACK;
   return `${base.replace(/\/$/, '')}/static/images`;
@@ -40,19 +116,24 @@ const ensureHttps = (url) => {
   return url.replace(/^http:\/\//i, 'https://');
 };
 
+function productImageSrc(url) {
+  if (!url || typeof url !== 'string') return `${getImgBase()}/placeholder.png`;
+  const raw = ensureHttps(url.trim());
+  const match = raw.match(/\/static\/images\/([^/?#]+)/i);
+  if (match) return `${getImgBase()}/${match[1]}`;
+  if (raw.startsWith('http')) return raw;
+  return `${getImgBase()}/${raw.replace(/^\/+/, '')}`;
+}
+
 // Prefer full URL from API (main_image_url / preview_image_url) when present
 const getProductImageUrl = (product, preferPreview = true) => {
   if (!product) return `${getImgBase()}/placeholder.png`;
   // Use normalized URL from setProductData so images persist across category switches
-  if (product._displayImageUrl) return product._displayImageUrl;
+  if (product._displayImageUrl) return productImageSrc(product._displayImageUrl);
   const url = preferPreview
     ? (product.preview_image_url || product.preview_image)
     : (product.main_image_url || product.main_image);
-  if (!url) return `${getImgBase()}/placeholder.png`;
-  if (url.startsWith('http')) return ensureHttps(url);
-  // Backend may return relative path (e.g. /static/images/x.png) when image_base is empty
-  if (url.startsWith('/')) return `${getBackendUrl().replace(/\/$/, '')}${url}`;
-  return `${getImgBase()}/${url}`;
+  return productImageSrc(url);
 };
 
 // Cart screenshots still need a unique query when the same URL is reused.
@@ -80,7 +161,7 @@ function readBrowseCache(category) {
 function browseNeedsLiveStock(data) {
   const products = data?.products;
   if (!Array.isArray(products) || !products.length) return false;
-  return products.some((p) => p?.printful_catalog_product_id && !p?.regional_size_color_availability);
+  return products.some((p) => catalogStockPending(p));
 }
 
 function writeBrowseCache(category, data) {
@@ -229,6 +310,7 @@ function getStaticProductsForCategory(category) {
         price: productMeta.price,
         main_image: `${getImgBase()}/${productMeta.filename}`,
         preview_image: `${getImgBase()}/${productMeta.preview}`,
+        _catalogPreview: true,
         options: {
           color: ['Black', 'White', 'Hazy Pink', 'Pale Pink', 'Orchid', 'Ecru', 'White', 'Bubblegum', 'Bone', 'Mineral', 'Natural'],
           size: ['XS', 'S', 'M', 'L', 'XL'],
@@ -242,13 +324,11 @@ function getStaticProductsForCategory(category) {
 }
 
 function decorateBrowseData(data, isShopCatalog) {
-  const base = getBackendUrl().replace(/\/$/, '');
-  const imgBase = `${base}/static/images`;
   const productsWithUrls = (data.products || []).map((p) => {
     if (!p) return p;
-    const previewUrl = p.preview_image_url || (p.preview_image ? (p.preview_image.startsWith('/') ? base + p.preview_image : (p.preview_image.startsWith('http') ? ensureHttps(p.preview_image) : `${imgBase}/${p.preview_image}`)) : '');
-    const mainUrl = p.main_image_url || (p.main_image ? (p.main_image.startsWith('/') ? base + p.main_image : (p.main_image.startsWith('http') ? ensureHttps(p.main_image) : `${imgBase}/${p.main_image}`)) : '');
-    return { ...p, _displayImageUrl: previewUrl || mainUrl || `${imgBase}/placeholder.png` };
+    const previewUrl = p.preview_image_url || p.preview_image || '';
+    const mainUrl = p.main_image_url || p.main_image || '';
+    return { ...p, _displayImageUrl: productImageSrc(previewUrl || mainUrl) };
   });
   const next = { ...data, products: productsWithUrls };
   if (!isShopCatalog) return next;
@@ -287,6 +367,14 @@ function buildInitialProductData() {
 
 const PRODUCT_IMAGE_RETRY_DELAYS_MS = [400, 1200, 2800];
 
+function browseImageLoadHints(index) {
+  const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+  return {
+    loading: index < (mobile ? 3 : 8) ? 'eager' : 'lazy',
+    fetchPriority: index < (mobile ? 1 : 4) ? 'high' : 'auto',
+  };
+}
+
 /** Fly static files can 502 on a cold start; retry before locking in the gray placeholder. */
 const handleProductImageError = (event, product) => {
   const img = event.currentTarget;
@@ -303,6 +391,8 @@ const handleProductImageError = (event, product) => {
     const delay = PRODUCT_IMAGE_RETRY_DELAYS_MS[attempt];
     window.setTimeout(() => {
       if (!img.isConnected) return;
+      const current = (img.getAttribute('src') || '').split('?')[0];
+      if (current !== primary) return;
       img.src = `${primary}${primary.includes('?') ? '&' : '?'}retry=${attempt + 1}`;
     }, delay);
     return;
@@ -328,6 +418,7 @@ const ProductPage = ({ sidebar }) => {
   const [selectedScreenshot, setSelectedScreenshot] = useState(null);
   /** Actual URL/data of the selected screenshot (set on click). Used for add-to-cart so the exact chosen image is sent, not a fallback. */
   const [selectedScreenshotUrl, setSelectedScreenshotUrl] = useState(null);
+  const [selectedEditPreset, setSelectedEditPreset] = useState('original');
   const [selectedColors, setSelectedColors] = useState({});
   const [selectedSizes, setSelectedSizes] = useState({});
   const [variantAvailability, setVariantAvailability] = useState({});
@@ -345,6 +436,17 @@ const ProductPage = ({ sidebar }) => {
   const [showAddedToCartModal, setShowAddedToCartModal] = useState(false);
   const [cartModalMode, setCartModalMode] = useState('add');
   const [fallbackImages, setFallbackImages] = useState({ screenshots: [], thumbnail: '' });
+  const browseSourceUrl = selectedScreenshotUrl
+    || productData?.product?.thumbnail_url
+    || (Array.isArray(productData?.product?.screenshots) && productData.product.screenshots[0])
+    || fallbackImages.thumbnail
+    || (Array.isArray(fallbackImages.screenshots) && fallbackImages.screenshots[0])
+    || '';
+  const browsePreviewSrc = useBrowseDisplaySrc(browseSourceUrl);
+  useEffect(() => {
+    setSelectedEditPreset('original');
+    writeBrowseToolSettings(BROWSE_EDIT_ORIGINAL);
+  }, [browseSourceUrl]);
   const [isCreator, setIsCreator] = useState(false);
   const [savingFavorite, setSavingFavorite] = useState(false);
   const [selectedScreenshotForFavorite, setSelectedScreenshotForFavorite] = useState(null);
@@ -400,7 +502,26 @@ const ProductPage = ({ sidebar }) => {
     setSelectedScreenshot(key);
     setSelectedScreenshotUrl(url);
     applySelectedScreenshot(url);
+    setSelectedEditPreset('original');
+    writeBrowseToolSettings(BROWSE_EDIT_ORIGINAL);
     if (creatorMode) setSelectedScreenshotForFavorite(key);
+  };
+
+  const applyBrowseEditPreset = (presetId, settings) => {
+    setSelectedEditPreset(presetId);
+    writeBrowseToolSettings(settings || BROWSE_EDIT_ORIGINAL);
+  };
+
+  const mergeBrowseToolSettings = (item) => {
+    const browseTools = readBrowseToolSettings();
+    if (!browseTools || !item) return item;
+    return {
+      ...item,
+      toolSettings: {
+        ...(item.toolSettings || {}),
+        ...browseTools,
+      },
+    };
   };
   const openCartIfSignedIn = () => {
     if (isDemoStorefront() || isShopperSignedIn()) {
@@ -646,6 +767,7 @@ const ProductPage = ({ sidebar }) => {
   };
 
   const variantSelectable = (product, index) => {
+    if (catalogStockPending(product)) return false;
     if (!productShipsToCountry(product, shipToCountry)) return false;
     const { color, size, sizesForColor } = resolvedColorSize(product, index);
     if (product?.options?.size?.length && sizesForColor.length === 0) return false;
@@ -732,6 +854,7 @@ const ProductPage = ({ sidebar }) => {
 
   const handleAddToCart = async (product, index, options = {}) => {
     const showModal = options.showModal !== false;
+    if (catalogStockPending(product)) return null;
     const { color: chosenColor, size: chosenSize } = resolvedColorSize(product, index);
     if (!variantSelectable(product, index)) {
       const oos = comboAvailableForCountry(product, chosenColor, chosenSize, shipToCountry) === false
@@ -868,7 +991,7 @@ const ProductPage = ({ sidebar }) => {
       screenshot: screenshotUrl || editingCartItem?.screenshot,
       selected_screenshot: screenshotUrl || editingCartItem?.selected_screenshot,
       qty: isEditingCart && editingCartItem?.qty ? editingCartItem.qty : 1,
-      category: category || '', // womens, mens, kids = shirts (need portrait/landscape); others skip design modal
+      category: category || '', // womens, mens, kids, hats confirm design; mugs/bags/pets/misc skip
       printful_catalog_product_id: product?.printful_catalog_product_id ?? null,
       printful_variant_id: printful_variant_id != null ? printful_variant_id : undefined,
       regional_base_prices: product?.regional_base_prices || undefined,
@@ -883,6 +1006,7 @@ const ProductPage = ({ sidebar }) => {
         imageOrientation: pendingOrientation
       };
     }
+    Object.assign(item, mergeBrowseToolSettings(item));
     if (!item.favorite_list_id) {
       try {
         const flid = localStorage.getItem('sm_favorite_list_id');
@@ -988,14 +1112,15 @@ const ProductPage = ({ sidebar }) => {
         }
         const focused = items[focusIndex];
         const currentShot = focused?.screenshot || focused?.selected_screenshot || '';
-        if (urlToSave && !currentShot && focused) {
-          const nextItems = items.map((item, i) => (
-            i === focusIndex
-              ? { ...item, screenshot: urlToSave, selected_screenshot: urlToSave }
-              : item
-          ));
-          persistCart(nextItems);
-          if (openedNewSelection) setToolsPreviewNewest(true);
+        if (focused) {
+          const withShot = (urlToSave && !currentShot)
+            ? { ...focused, screenshot: urlToSave, selected_screenshot: urlToSave }
+            : focused;
+          const withPreset = mergeBrowseToolSettings(withShot);
+          if (withPreset !== focused) {
+            persistCart(items.map((item, i) => (i === focusIndex ? withPreset : item)));
+            if (openedNewSelection) setToolsPreviewNewest(true);
+          }
         }
       }
     } catch (e) {
@@ -1160,6 +1285,7 @@ const ProductPage = ({ sidebar }) => {
     };
 
     const cached = readBrowseCache(wantedCategory);
+    const cachedStockReady = cached && !browseNeedsLiveStock(cached);
     if (cached) {
       paintProducts(cached);
       setLoading(false);
@@ -1181,8 +1307,9 @@ const ProductPage = ({ sidebar }) => {
         ? `${apiBase}/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}`
         : `${apiBase}/api/product/${actualProductId}?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}`;
 
-      const retryDelaysMs = [0, 1200, 2800];
+      const retryDelaysMs = cachedStockReady ? [0] : [0, 800, 1500, 2500, 4000, 6000, 8000];
       let lastError = null;
+      let paintedLiveCatalog = false;
 
       for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
         if (cancelled || controller.signal.aborted) return;
@@ -1196,9 +1323,10 @@ const ProductPage = ({ sidebar }) => {
         controller.signal.addEventListener('abort', abortAttempt);
         const timeoutId = window.setTimeout(abortAttempt, 25000);
         try {
-          const response = await fetch(url, {
+          const stockUrl = attempt > 0 ? `${url}&stockRetry=${attempt}` : url;
+          const response = await fetch(stockUrl, {
             method: 'GET',
-            cache: 'default',
+            cache: attempt > 0 ? 'no-store' : 'default',
             signal: attemptController.signal,
           });
           if (response.status === 502 || response.status === 503 || response.status === 504) {
@@ -1213,16 +1341,19 @@ const ProductPage = ({ sidebar }) => {
             throw new Error(`Failed to fetch product data: ${response.status} - ${errorText}`);
           }
           const data = await response.json();
+          if (data.category && data.category !== wantedCategory) return;
+          if (browseNeedsLiveStock(data)) {
+            if (!cachedStockReady) paintProducts(data);
+            paintedLiveCatalog = true;
+            lastError = new Error('catalog stock still warming');
+            continue;
+          }
+          paintProducts(data);
+          paintedLiveCatalog = true;
           try {
             localStorage.setItem('cached_products', JSON.stringify(data.products));
           } catch {
             /* ignore */
-          }
-          if (data.category && data.category !== wantedCategory) return;
-          paintProducts(data);
-          if (browseNeedsLiveStock(data) && attempt < retryDelaysMs.length - 1) {
-            lastError = new Error('catalog stock still warming');
-            continue;
           }
           writeBrowseCache(wantedCategory, data);
           return;
@@ -1241,6 +1372,7 @@ const ProductPage = ({ sidebar }) => {
       }
 
       if (cancelled || controller.signal.aborted) return;
+      if (paintedLiveCatalog) return;
       if (paintFallbackCatalog()) return;
       setError(lastError?.message || 'Failed to load products. Please try again.');
     };
@@ -1420,6 +1552,8 @@ const ProductPage = ({ sidebar }) => {
   }
 
   const showVideoThumbLabel = isVideoScreenshotMerch();
+  const showAutoEditPresets = !creatorMode && !isShopCatalog && !showVideoThumbLabel && getSelectImageCount() <= 1 && Boolean(browsePreviewSrc || browseSourceUrl);
+  const presetImageSrc = browsePreviewSrc || browseSourceUrl;
 
   return (
     <div className={`container product-page${isShopCatalog ? ' product-page--shop-catalog' : ''}${!creatorMode && !isShopCatalog ? ' product-page--choose' : ''}${sidebar ? '' : ' large-container'}`}>
@@ -1594,44 +1728,75 @@ const ProductPage = ({ sidebar }) => {
         <>
           {/* Screenshot Selection Section — hidden in My Shop catalog (blank products only) */}
           {!isShopCatalog && (
-          <div className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}`}>
+          <div className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}${showAutoEditPresets ? ' screenshots-section--with-edits' : ''}`}>
             {!creatorMode && (
               <div className="product-choose-header">
-                <h1 className="product-choose-title">Choose a Screenshot</h1>
-                <p className="product-choose-subtitle">
-                  To customize your selected product below.
-                </p>
+                <h1 className="product-choose-title">
+                  {showVideoThumbLabel ? 'Choose a Screenshot' : 'Selected Image'}
+                </h1>
+                {showVideoThumbLabel ? (
+                  <p className="product-choose-subtitle">
+                    Choose a frame for your custom merchandise.
+                  </p>
+                ) : null}
               </div>
             )}
-            <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : (getSelectImageCount() <= 1 ? 'Selected Image' : 'Select Image')}</h2>
-            <div className="selected-image-row">
+            <h2 className="screenshots-title">
+              {creatorMode
+                ? 'Select Screenshot to Add to Pages'
+                : showVideoThumbLabel
+                  ? 'Choose a Screenshot'
+                  : 'Selected Image'}
+            </h2>
+            <div className={`selected-image-row${showAutoEditPresets ? ' selected-image-row--presets' : ''}`}>
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail (video capture only) */}
                 {(() => {
                   const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
                   return thumbnailUrl ? (
-                  <div 
-                    className={`screenshot-item${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''} ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
-                    aria-current={selectedScreenshot === 'thumbnail' ? 'true' : undefined}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => selectScreenshot('thumbnail', thumbnailUrl)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        selectScreenshot('thumbnail', thumbnailUrl);
-                      }
-                    }}
+                  <div
+                    className={`screenshot-item${showAutoEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}`}
                   >
-                    <div>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={showVideoThumbLabel ? 'Thumbnail' : 'Selected image'}
+                      aria-current={selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? 'true' : undefined}
+                      onClick={() => {
+                        selectScreenshot('thumbnail', thumbnailUrl);
+                        applyBrowseEditPreset('original', BROWSE_EDIT_ORIGINAL);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          selectScreenshot('thumbnail', thumbnailUrl);
+                          applyBrowseEditPreset('original', BROWSE_EDIT_ORIGINAL);
+                        }
+                      }}
+                    >
                       <img 
-                        src={thumbnailUrl} 
+                        src={presetImageSrc || thumbnailUrl} 
                         alt={showVideoThumbLabel ? 'Thumbnail' : 'Selected image'} 
                         className="screenshot-image"
                       />
                       {showVideoThumbLabel ? <div className="screenshot-label">Thumbnail</div> : null}
                     </div>
+                    {showAutoEditPresets && !creatorMode ? (
+                      <>
+                        <span className="screenshot-preset-label screenshot-preset-label--selected">Selected</span>
+                        <button
+                          type="button"
+                          className="change-image-link"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleChangeImage();
+                          }}
+                        >
+                          Change Image
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                   ) : null;
                 })()}
@@ -1646,38 +1811,79 @@ const ProductPage = ({ sidebar }) => {
                       ? (isFirstImage ? 'Thumbnail' : `Screenshot ${index + 1}`)
                       : '';
                     return (
-                      <div 
+                      <div
                         key={`shot-${index}`}
-                        className={`screenshot-item${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''} ${selectedScreenshot === index ? 'selected' : ''}`}
-                        aria-current={selectedScreenshot === index ? 'true' : undefined}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => selectScreenshot(index, screenshot)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            selectScreenshot(index, screenshot);
-                          }
-                        }}
+                        className={`screenshot-item${showAutoEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--original' : ''}${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === index && selectedEditPreset === 'original' ? ' selected' : ''}`}
                       >
-                        <div>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          aria-label={label || 'Selected image'}
+                          aria-current={selectedScreenshot === index && selectedEditPreset === 'original' ? 'true' : undefined}
+                          onClick={() => {
+                            selectScreenshot(index, screenshot);
+                            applyBrowseEditPreset('original', BROWSE_EDIT_ORIGINAL);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              selectScreenshot(index, screenshot);
+                              applyBrowseEditPreset('original', BROWSE_EDIT_ORIGINAL);
+                            }
+                          }}
+                        >
                           <img 
-                            src={screenshot} 
+                            src={(!showVideoThumbLabel && presetImageSrc) ? presetImageSrc : screenshot} 
                             alt={label || `Image ${index + 1}`} 
                             className="screenshot-image"
                           />
                           {label ? <div className="screenshot-label">{label}</div> : null}
                         </div>
+                        {showAutoEditPresets && !creatorMode && !thumbnailUrl && index === 0 ? (
+                          <>
+                            <span className="screenshot-preset-label screenshot-preset-label--selected">Selected</span>
+                            <button
+                              type="button"
+                              className="change-image-link"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleChangeImage();
+                              }}
+                            >
+                              Change Image
+                            </button>
+                          </>
+                        ) : null}
                       </div>
                     );
                   }) : null;
                 })()}
+                {showAutoEditPresets && presetImageSrc ? BROWSE_EDIT_PRESETS.map((preset) => (
+                  <button
+                    type="button"
+                    key={preset.id}
+                    className={`screenshot-item screenshot-item--preset screenshot-item--preset-${preset.id}${selectedEditPreset === preset.id ? ' selected' : ''}`}
+                    aria-pressed={selectedEditPreset === preset.id}
+                    aria-label={`Try ${preset.label}`}
+                    onClick={() => applyBrowseEditPreset(preset.id, preset.settings)}
+                  >
+                    <div>
+                      <img
+                        src={presetImageSrc}
+                        alt={preset.label}
+                        className="screenshot-image"
+                      />
+                      {preset.id === 'frame' ? (
+                        <span className="screenshot-preset-frame-mat" aria-hidden="true" />
+                      ) : null}
+                    </div>
+                    <span className="screenshot-preset-label">{preset.label}</span>
+                  </button>
+                )) : null}
               </div>
             </div>
-            {!creatorMode && (
+            {!creatorMode && !showAutoEditPresets && (
               <div className="selected-image-meta">
-                <p className="selected-image-label">Selected Image</p>
-                <p className="selected-image-ready">Ready for your custom merchandise</p>
                 <button type="button" className="change-image-link" onClick={handleChangeImage}>
                   Change Image
                 </button>
@@ -1813,8 +2019,11 @@ const ProductPage = ({ sidebar }) => {
 
             <div className="products-grid">
               {productData.products && productData.products.map((product, index) => {
-                const cardUnavailable = variantAvailability[index]?.available === false
-                  || !variantSelectable(product, index);
+                const stockPending = catalogStockPending(product);
+                const cardUnavailable = !stockPending && (
+                  variantAvailability[index]?.available === false
+                  || !variantSelectable(product, index)
+                );
                 const isAddingThis = addingProductIndex === index;
                 return (
                 <div
@@ -1833,15 +2042,18 @@ const ProductPage = ({ sidebar }) => {
                     const isApparelCategory = category === 'womens' || category === 'mens' || category === 'kids';
                     const imgUrl = getProductImageUrl(product, true);
                     const safeUrl = (imgUrl && typeof imgUrl === 'string') ? imgUrl : `${getImgBase()}/placeholder.png`;
+                    const loadHints = browseImageLoadHints(index);
                     return (
                       <div className="product-image">
                         <div className="product-image-wrapper">
                           <img
+                            key={safeUrl}
                             className={isApparelCategory ? "product-image-clear" : "product-image-normal"}
                             src={safeUrl}
                             alt={product.name}
-                            loading={index < 8 ? 'eager' : 'lazy'}
-                            fetchPriority={index < 4 ? 'high' : 'auto'}
+                            loading={loadHints.loading}
+                            fetchPriority={loadHints.fetchPriority}
+                            sizes="(max-width: 768px) 46vw, 240px"
                             decoding="async"
                             referrerPolicy="no-referrer"
                             onError={(e) => handleProductImageError(e, product)}
@@ -1866,7 +2078,7 @@ const ProductPage = ({ sidebar }) => {
                     {/* Color Options - reserved: use product.options.color / selectedColors only */}
                     {product.options && product.options.color && product.options.color.length > 0 && (() => {
                       const { color: displayColor } = resolvedColorSize(product, index);
-                      const availableColors = getColorsForCountry(product, shipToCountry);
+                      const availableColors = stockPending ? [] : getColorsForCountry(product, shipToCountry);
                       return (
                       <div className="option-group">
                         <label>Color:</label>
@@ -1897,7 +2109,7 @@ const ProductPage = ({ sidebar }) => {
                               {color}
                             </option>
                           )) : (
-                            <option value="">Not available</option>
+                            <option value="">{stockPending ? 'Loading…' : 'Not available'}</option>
                           )}
                         </select>
                       </div>
@@ -1932,7 +2144,7 @@ const ProductPage = ({ sidebar }) => {
                     {product.options && product.options.size && product.options.size.length > 0 && (() => {
                       // Bags "All Over Print Tote Pocket" has handle_color but no color - use optional chaining
                       const selectedColor = selectedColors[index] || product.options?.color?.[0] || product.options?.handle_color?.[0];
-                      const availableSizes = getAvailableSizes(product, selectedColor);
+                      const availableSizes = stockPending ? [] : getAvailableSizes(product, selectedColor);
                       const currentSize = selectedSizes[index];
                       
                       // Determine the size to display - use current if available, otherwise first available
@@ -1970,7 +2182,7 @@ const ProductPage = ({ sidebar }) => {
                                 {size}
                               </option>
                             )) : (
-                              <option value="">Not available</option>
+                              <option value="">{stockPending ? 'Loading…' : 'Not available'}</option>
                             )}
                           </select>
                         </div>
@@ -1981,7 +2193,7 @@ const ProductPage = ({ sidebar }) => {
                   {variantAvailability[index]?.message && !variantAvailability[index]?.available && (
                     <div className="variant-unavailable-note">{variantAvailability[index].message}</div>
                   )}
-                  {!productShipsToCountry(product, shipToCountry) && shipToCountry !== 'US' && (
+                  {!stockPending && !productShipsToCountry(product, shipToCountry) && shipToCountry !== 'US' && (
                     <div className="variant-unavailable-note">
                       This item is not available to ship to {shipToCountryName(shipToCountry)}. Switch the flag in the header, or pick another product.
                     </div>

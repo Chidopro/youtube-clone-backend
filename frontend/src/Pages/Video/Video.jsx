@@ -302,9 +302,9 @@ const Video = ({ sidebar }) => {
        </div>
 
        {/* Main Layout */}
-       <div className="main-container">
+       <div className="main-container capture-studio">
          {/* Left Column - Video Viewer */}
-         <div className="video-viewer">
+         <div className="video-viewer capture-studio-viewer">
            {videoId ? (
              <PlayVideo 
                videoId={videoId} 
@@ -326,7 +326,10 @@ const Video = ({ sidebar }) => {
          </div>
 
         {/* Middle Column - Screenshots */}
-        <div className="screenshots-section" id="screenshotsSection">
+        <div className="screenshots-section capture-studio-palette" id="screenshotsSection">
+          <div className="selected-images-header">
+            <h2>Selected Images ({screenshots.filter(Boolean).length})</h2>
+          </div>
           <ScreenmerchImages 
             thumbnail={thumbnail} 
             screenshots={screenshots} 

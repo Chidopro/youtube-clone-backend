@@ -1619,7 +1619,7 @@ const PlayVideo = ({
                         >
                             <path d="M6 2v4h4M18 2v4h-4M6 22v-4h4M18 22v-4h-4M2 6h4v4M22 6h-4v4M2 18h4v-4M22 18h-4v-4"/>
                         </svg>
-                        <span className="playvideo-crop-toggle-label">Crop Tool</span>
+                        <span className="playvideo-crop-toggle-label">Crop</span>
                     </button>
 
                      {/* Inline Crop Overlay */}
@@ -1755,26 +1755,11 @@ const PlayVideo = ({
             )}
             
         {isMobile && (
-        <div className="screenmerch-actions" style={{
-            display: 'flex',
-            gap: '8px',
-            marginBottom: '0px',
-            marginTop: '8px',
-            flexWrap: 'nowrap'
-        }}>
+        <div className="screenmerch-actions">
                 <button 
                     className={`screenmerch-btn screenshot-btn${videoHasPlayed && screenshots.length < 6 && !isCapturingScreenshot ? ' screenshot-btn-pulse' : ''}`} 
                     onClick={handleGrabScreenshot}
                     disabled={isCapturingScreenshot || screenshots.length >= 6}
-                    style={{
-                        backgroundColor: (isCapturingScreenshot || screenshots.length >= 6) ? '#6c757d' : '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 0,
-                        cursor: (isCapturingScreenshot || screenshots.length >= 6) ? 'not-allowed' : 'pointer',
-                        fontWeight: 'bold',
-                        opacity: (isCapturingScreenshot || screenshots.length >= 6) ? 0.7 : 1
-                    }}
                 >
                     {isCapturingScreenshot ? 'Capturing...' : screenshots.length >= 6 ? 'Max Screenshots' : 'Select Screenshot'}
                 </button>
@@ -1789,15 +1774,6 @@ const PlayVideo = ({
                          } else {
                              handleMakeMerch();
                          }
-                     }}
-                     style={{
-                         backgroundColor: '#28a745',
-                         color: 'white',
-                         border: 'none',
-                         borderRadius: 0,
-                         cursor: 'pointer',
-                         fontWeight: 'bold',
-                         touchAction: 'manipulation'
                      }}
                  >
                      Make Merch
@@ -1845,9 +1821,7 @@ export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }
                             />
                             <div className="screenmerch-buttons">
                                 <button type="button" className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot" aria-label="Delete screenshot">
-                                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-                                        <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                                    </svg>
+                                    <span aria-hidden="true">×</span>
                                 </button>
                             </div>
                         </div>

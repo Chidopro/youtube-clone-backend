@@ -1,4 +1,14 @@
-const SHOP_IMG_BASE = 'https://screenmerch.fly.dev/static/images';
+const SHOP_IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
+
+function shopImgBase() {
+  if (typeof window !== 'undefined') {
+    const host = (window.location.hostname || '').toLowerCase();
+    if (host === 'screenmerch.com' || host === 'www.screenmerch.com' || host.endsWith('.screenmerch.com')) {
+      return '/static/images';
+    }
+  }
+  return SHOP_IMG_BASE_FALLBACK;
+}
 
 /** Storefront shop hubs: the 8 product categories (no Product Info / Image Tools). */
 export const SHOP_CATEGORIES = [
@@ -15,7 +25,7 @@ export const SHOP_CATEGORIES = [
 export function shopCategoryThumbUrl(previewFile) {
   const file = String(previewFile || '').trim();
   if (!file) return '';
-  return `${SHOP_IMG_BASE}/${file}`;
+  return `${shopImgBase()}/${file}`;
 }
 
 const SHOP_ADD_INTENT_KEY = 'sm_shop_add_intent';

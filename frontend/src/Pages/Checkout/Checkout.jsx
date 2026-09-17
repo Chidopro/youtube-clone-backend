@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
-import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot, resolveItemImageOrientation, withItemImageOrientation } from '../../utils/merchSession';
+import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot, resolveItemImageOrientation, withItemImageOrientation, setCartPersistPaused } from '../../utils/merchSession';
+import { ProductPreviewWithDrag } from '../ToolsPage/ToolsPage';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
@@ -16,7 +17,99 @@ import {
 } from './shippingRegions';
 import { readShipToCountry, writeShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
 import { repriceCartItems } from '../../utils/regionalAvailability';
+import { peekDisplaySrc, prepareDisplaySrc } from '../../utils/displaySrc';
 import './Checkout.css';
+
+const noopPreviewOffset = () => {};
+
+function itemShotUrl(item) {
+  return String(
+    item?.originalScreenshot
+    || item?.screenshot
+    || item?.selected_screenshot
+    || item?.thumbnail
+    || ''
+  ).trim();
+}
+
+function useDisplaySrc(url, maxEdge, enabled = true, urgent = false) {
+  const raw = String(url || '').trim();
+  const cached = enabled && raw ? peekDisplaySrc(raw) : null;
+  const [result, setResult] = useState(() => cached || { src: '', width: 0, height: 0, forUrl: '' });
+  useEffect(() => {
+    if (!enabled || !raw) {
+      setResult({ src: '', width: 0, height: 0, forUrl: '' });
+      return undefined;
+    }
+    const hit = peekDisplaySrc(raw);
+    if (hit?.src) {
+      setResult({ ...hit, forUrl: raw });
+      return undefined;
+    }
+    let cancelled = false;
+    prepareDisplaySrc(raw, maxEdge, { urgent })
+      .then((next) => {
+        if (!cancelled) setResult({ ...next, forUrl: raw });
+      })
+      .catch(() => {
+        if (!cancelled) setResult({ src: '', width: 0, height: 0, forUrl: raw });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url, maxEdge, enabled, urgent]);
+  if (!enabled || !raw) return { src: '', width: 0, height: 0 };
+  if (result.forUrl === raw && result.src) return result;
+  if (cached?.src) return cached;
+  return { src: '', width: 0, height: 0 };
+}
+
+function OrderItemShot({ url, orientation, offsetX, offsetY, enabled = true }) {
+  const shot = useDisplaySrc(url, 180, enabled);
+  if (!shot.src) {
+    return <div className={`item-screenshot item-screenshot--${orientation}`} aria-hidden="true" />;
+  }
+  const shotX = Math.max(0, Math.min(100, 50 + (Number(offsetX) || 0) / 2));
+  const shotY = Math.max(
+    0,
+    Math.min(100, (orientation === 'landscape' ? 50 : 26) + (Number(offsetY) || 0) / 2)
+  );
+  return (
+    <img
+      src={shot.src}
+      alt="Your design"
+      className={`item-screenshot item-screenshot--${orientation}`}
+      decoding="async"
+      style={{ objectPosition: `${shotX}% ${shotY}%` }}
+    />
+  );
+}
+
+/** Portrait/landscape confirm is useful on shirts, hoodies, and hats. */
+const DESIGN_CONFIRM_CATEGORIES = new Set(['womens', 'mens', 'kids', 'hats']);
+const DESIGN_SKIP_CATEGORIES = new Set(['mugs', 'bags', 'pets', 'misc']);
+const DESIGN_SKIP_NAME_RE = /\b(mug|tote|bag|sleeve|bowl|bandana|notebook|puzzle|poster|magnet|sticker|phone case|pet)\b/i;
+const DESIGN_CONFIRM_NAME_RE = /\b(t-?shirt|shirt|hoodie|tee|tank|sweatshirt|crewneck|jersey|pullover|hat|cap|beanie)\b/i;
+
+function itemNeedsDesignConfirm(item) {
+  const cat = String(item?.category || '').trim().toLowerCase();
+  if (DESIGN_SKIP_CATEGORIES.has(cat)) return false;
+  if (DESIGN_CONFIRM_CATEGORIES.has(cat)) return true;
+  const name = String(item?.name || item?.product || '');
+  if (DESIGN_SKIP_NAME_RE.test(name)) return false;
+  if (DESIGN_CONFIRM_NAME_RE.test(name)) return true;
+  return false;
+}
+
+function cartConfirmIndexes(itemList) {
+  return (itemList || [])
+    .map((it, i) => (itemNeedsDesignConfirm(it) ? i : -1))
+    .filter((i) => i >= 0);
+}
+
+function cartNeedsDesignModal(itemList) {
+  return cartConfirmIndexes(itemList).length > 0;
+}
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -34,6 +127,8 @@ const Checkout = () => {
   /** One entry per cart item: { orientation: ''|'portrait'|'landscape' } */
   const [designPreferences, setDesignPreferences] = useState([]);
   const designPreferencesRef = useRef([]);
+  const [designPreviewIndex, setDesignPreviewIndex] = useState(0);
+  const [previewMockups, setPreviewMockups] = useState({});
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   /** Set true when user completes design modal with "Continue to Checkout". Required before Place Order. */
   const [designConfirmed, setDesignConfirmed] = useState(false);
@@ -51,10 +146,6 @@ const Checkout = () => {
       }, 80);
     });
   }, []);
-
-  // Portrait/landscape confirmation only for shirts (Womens, Mens, Kids). Other categories go straight to checkout.
-  const SHIRT_CATEGORIES = ['womens', 'mens', 'kids'];
-  const cartNeedsDesignModal = (itemList) => (itemList || items).some(it => SHIRT_CATEGORIES.includes(it.category));
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -74,6 +165,7 @@ const Checkout = () => {
     if (!signedIn) return;
     try {
       const parsed = readCartItems();
+      if (cartNeedsDesignModal(parsed)) setCartPersistPaused(true);
       const next = repriceCartItems(parsed, address.country_code);
       setItems(next);
       setSubtotal(next.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
@@ -86,7 +178,7 @@ const Checkout = () => {
     }
   }, [signedIn]);
 
-  // Show design modal only when cart has shirt items (Womens, Mens, Kids). Other categories go straight to checkout.
+  // Confirm Your Design for shirts, hoodies, and hats. Mugs, bags, pets, and accessories skip it.
   useEffect(() => {
     if (!signedIn || items.length === 0 || designModalShownOnLoadRef.current) return;
     designModalShownOnLoadRef.current = true;
@@ -97,12 +189,60 @@ const Checkout = () => {
     }
   }, [signedIn, items.length]);
 
-  // When design modal opens, the shopper must pick Portrait or Landscape here.
+  // When design modal opens, show Product Preview with the item's saved or default orientation.
   useEffect(() => {
-    if (showDesignModal && items.length > 0) {
-      setDesignPreferences(items.map(() => ({ orientation: '' })));
+    setCartPersistPaused(showDesignModal);
+    return () => setCartPersistPaused(false);
+  }, [showDesignModal]);
+
+  // When design modal opens, show Product Preview with the item's saved or default orientation.
+  useEffect(() => {
+    if (!showDesignModal) return;
+    setDesignPreviewIndex(0);
+    setDesignPreferences((prev) => {
+      if (!items.length) return prev;
+      return items.map((it, i) => prev[i] || {
+        orientation: resolveItemImageOrientation(it) || 'portrait',
+      });
+    });
+  }, [showDesignModal]);
+
+  useEffect(() => {
+    if (!showDesignModal || !items.length) return undefined;
+    let cancelled = false;
+    const missing = items
+      .map((it, i) => ({ i, name: it.name || it.product, image: it.image || it.img }))
+      .filter((row) => row.name && !String(row.image || '').trim());
+    if (!missing.length) {
+      return undefined;
     }
-  }, [showDesignModal, items.length]);
+    Promise.all(
+      missing.map((row) =>
+        fetch(apiJoin(`/api/product-preview-url?name=${encodeURIComponent(row.name)}`))
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => [row.i, (data && data.url) || ''])
+          .catch(() => [row.i, ''])
+      )
+    ).then((pairs) => {
+      if (cancelled) return;
+      const next = {};
+      pairs.forEach(([i, url]) => {
+        if (url) next[i] = url;
+      });
+      setPreviewMockups(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showDesignModal, items]);
+
+  const confirmIndexesForPreview = cartConfirmIndexes(items);
+  const previewCartIndexForShot = confirmIndexesForPreview.length
+    ? confirmIndexesForPreview[Math.min(Math.max(0, designPreviewIndex), confirmIndexesForPreview.length - 1)]
+    : -1;
+  const previewItemForShot = previewCartIndexForShot >= 0 ? items[previewCartIndexForShot] : null;
+  const confirmShotUrl = showDesignModal ? itemShotUrl(previewItemForShot) : '';
+  const confirmDisplayShot = useDisplaySrc(confirmShotUrl, 360, showDesignModal, true);
 
   // If destination changes, discard a prior quote so totals stay honest.
   useEffect(() => {
@@ -607,6 +747,15 @@ const Checkout = () => {
     setShipping((s) => ({ ...s, calculated: false, cost: 0, tax: 0, taxLabel: '', error: '' }));
     if (updated.length === 0) {
       setShowDesignModal(false);
+      return;
+    }
+    if (!showDesignModal) return;
+    const remainingConfirm = cartConfirmIndexes(updated);
+    if (remainingConfirm.length === 0) {
+      setShowDesignModal(false);
+      setDesignConfirmed(true);
+    } else {
+      setDesignPreviewIndex((prev) => Math.min(prev, remainingConfirm.length - 1));
     }
   };
 
@@ -742,9 +891,10 @@ const Checkout = () => {
                     <div key={i} className="item-card">
                       <div className="item-image-wrapper">
                         {productImage && (
-                          <img 
-                            src={productImage.includes('?') ? `${productImage}&v=${Date.now()}` : `${productImage}?v=${Date.now()}`} 
+                          <img
+                            src={productImage}
                             alt={ci.name || ci.product}
+                            decoding="async"
                           />
                         )}
                         <div className="item-variants">
@@ -755,13 +905,15 @@ const Checkout = () => {
                         <h3 className="item-name">{ci.name || ci.product}</h3>
                         <div className="item-price">${(ci.price || 0).toFixed(2)}</div>
                       </div>
-                      {screenshot && (
-                        <img 
-                          src={screenshot} 
-                          alt="Screenshot" 
-                          className="item-screenshot"
+                      {screenshot ? (
+                        <OrderItemShot
+                          url={screenshot}
+                          orientation={resolveItemImageOrientation(ci) || 'portrait'}
+                          offsetX={ci.toolSettings?.imageOffsetX}
+                          offsetY={ci.toolSettings?.imageOffsetY}
+                          enabled={!showDesignModal}
                         />
-                      )}
+                      ) : null}
                       <div className="item-card-actions">
                         <button
                           type="button"
@@ -890,41 +1042,6 @@ const Checkout = () => {
                         || !address.zip.trim()
                         || (needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code))
                       }
-                      style={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        color: 'white',
-                        fontWeight: '700',
-                        border: 'none',
-                        fontSize: '1rem',
-                        padding: '16px 20px',
-                        borderRadius: '12px',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
-                        cursor: (shipping.loading || !!stockError || !address.zip || !address.zip.trim()
-                          || (needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code)))
-                          ? 'not-allowed' : 'pointer',
-                        opacity: (shipping.loading || !!stockError || !address.zip || !address.zip.trim()
-                          || (needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code)))
-                          ? 0.6 : 1
-                      }}
-                      onMouseEnter={(e) => {
-                        const cc = address.country_code || 'US';
-                        const canCalc = address.zip && address.zip.trim()
-                          && (!needsStateForShipping(cc) || hasStateSelected(address.state_code));
-                        if (!shipping.loading && canCalc) {
-                          e.target.style.transform = 'translateY(-3px)';
-                          e.target.style.boxShadow = '0 12px 48px rgba(102, 126, 234, 0.4)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        const cc = address.country_code || 'US';
-                        const canCalc = address.zip && address.zip.trim()
-                          && (!needsStateForShipping(cc) || hasStateSelected(address.state_code));
-                        if (!shipping.loading && canCalc) {
-                          e.target.style.transform = 'translateY(0)';
-                          e.target.style.boxShadow = '0 8px 32px rgba(102, 126, 234, 0.3)';
-                        }
-                      }}
                     >
                       {shipping.loading ? (
                         <>
@@ -1080,7 +1197,7 @@ const Checkout = () => {
                   ? 'Calculate shipping before checkout'
                   : 'Ready to checkout'}
                 onClick={() => {
-                // Require design preferences only for shirts (Womens, Mens, Kids). Other categories skip modal.
+                // Require design preferences for shirts, hoodies, and hats. Other categories skip modal.
                 if (!designConfirmed) {
                   if (cartNeedsDesignModal(items)) {
                     setShowDesignModal(true);
@@ -1124,97 +1241,155 @@ const Checkout = () => {
         </div>
 
       {/* Design preferences – portaled to body so navbar cannot cover it */}
-      {showDesignModal && items.length > 0 && createPortal(
+      {showDesignModal && cartConfirmIndexes(items).length > 0 && createPortal(
         <div className="design-modal-overlay" onClick={() => setShowDesignModal(false)}>
-          <div className="design-modal design-modal--multi" onClick={e => e.stopPropagation()}>
+          <div className="design-modal design-modal--multi design-modal--preview" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              className="design-modal-close"
+              aria-label="Close design preview"
+              onClick={() => setShowDesignModal(false)}
+            >
+              ×
+            </button>
             <h2>Confirm Your Design</h2>
 
-            <div className="design-modal-items">
-              {items.map((item, i) => {
-                const itemName = item.name || item.product || `Item ${i + 1}`;
-                const itemSize = (item.size || '').trim();
-                const itemShot = item.screenshot || item.selected_screenshot || item.thumbnail;
-                return (
-                  <div key={i} className="design-modal-item-block">
-                    <h3 className="design-modal-item-title">{itemName}</h3>
-                    {itemSize ? <p className="design-modal-item-size">Size: {itemSize}</p> : null}
-                    <div className="design-modal-image-row">
-                      {itemShot ? (
-                        <div className="design-modal-item-shot-wrap">
-                          <img
-                            src={itemShot}
-                            alt=""
-                            className="design-modal-item-shot"
-                          />
+            {(() => {
+              const confirmIndexes = cartConfirmIndexes(items);
+              const previewIndex = Math.min(Math.max(0, designPreviewIndex), confirmIndexes.length - 1);
+              const previewCartIndex = confirmIndexes[previewIndex];
+              const item = items[previewCartIndex];
+              const itemName = item?.name || item?.product || `Item ${previewCartIndex + 1}`;
+              const itemSize = (item?.size || '').trim();
+              const mockupUrl = item?.image || item?.img || previewMockups[previewCartIndex] || '';
+              const ts = item?.toolSettings && typeof item.toolSettings === 'object' ? item.toolSettings : {};
+              const previewOrientation = (designPreferences[previewCartIndex]?.orientation === 'landscape')
+                ? 'landscape'
+                : 'portrait';
+              return (
+                <div className="design-modal-preview-card">
+                  <h3 className="design-modal-preview-title">
+                    Product Preview ({previewIndex + 1} of {confirmIndexes.length})
+                  </h3>
+                  <div className="design-modal-preview-name-row">
+                    <div className="design-modal-preview-name">
+                      <div>{itemName}</div>
+                      {itemSize || item?.color ? (
+                        <div className="design-modal-item-size">
+                          {[item?.color, itemSize].filter(Boolean).join(' · ')}
                         </div>
-                      ) : (
-                        <div className="design-modal-item-shot-wrap design-modal-item-shot-wrap--empty" aria-hidden="true" />
-                      )}
-                      <div className="design-modal-image-meta">
-                        <p className="design-modal-image-label">Your Image</p>
-                        {SHIRT_CATEGORIES.includes(item.category) ? (
-                          <div className="design-modal-orient-row" role="group" aria-label="Image orientation">
-                            <label className="design-modal-orient-check">
-                              <input
-                                type="checkbox"
-                                checked={(designPreferences[i]?.orientation || '') === 'portrait'}
-                                onChange={() => {
-                                  setDesignPreferences((prev) => {
-                                    const next = prev.slice();
-                                    while (next.length <= i) next.push({ orientation: '' });
-                                    next[i] = { ...(next[i] || {}), orientation: 'portrait' };
-                                    return next;
-                                  });
-                                }}
-                              />
-                              Portrait
-                            </label>
-                            <label className="design-modal-orient-check">
-                              <input
-                                type="checkbox"
-                                checked={(designPreferences[i]?.orientation || '') === 'landscape'}
-                                onChange={() => {
-                                  setDesignPreferences((prev) => {
-                                    const next = prev.slice();
-                                    while (next.length <= i) next.push({ orientation: '' });
-                                    next[i] = { ...(next[i] || {}), orientation: 'landscape' };
-                                    return next;
-                                  });
-                                }}
-                              />
-                              Landscape
-                            </label>
-                          </div>
-                        ) : null}
-                        <div className="design-modal-text-actions">
-                          <button
-                            type="button"
-                            className="design-modal-text-action"
-                            onClick={() => removeCartItem(i)}
-                          >
-                            Remove Item
-                          </button>
-                        </div>
-                      </div>
+                      ) : null}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  <div className={`design-modal-preview-visual${confirmShotUrl && !confirmDisplayShot.src ? ' is-loading-shot' : ''}`}>
+                    {mockupUrl ? (
+                      <ProductPreviewWithDrag
+                        productImage={mockupUrl}
+                        screenshot={confirmDisplayShot.src}
+                        productName={itemName}
+                        productSize={item?.size}
+                        offsetX={ts.offsetX || 0}
+                        offsetY={ts.offsetY || 0}
+                        onOffsetChange={noopPreviewOffset}
+                        featherEdge={ts.featherEdge || 0}
+                        cornerRadius={ts.cornerRadius || 0}
+                        frameEnabled={Boolean(ts.frameEnabled)}
+                        frameColor={ts.frameColor || '#FF0000'}
+                        frameWidth={ts.frameWidth ?? 10}
+                        doubleFrame={Boolean(ts.doubleFrame)}
+                        printAreaFit={ts.printAreaFit || 'product'}
+                        selectedProductName={itemName}
+                        screenshotScale={ts.screenshotScale ?? 100}
+                        imageOffsetX={ts.imageOffsetX || 0}
+                        imageOffsetY={ts.imageOffsetY || 0}
+                        imageOrientation={previewOrientation}
+                        blackAndWhite={Boolean(ts.blackAndWhite)}
+                        featherFadeEnabled={Boolean(ts.featherFadeEnabled)}
+                        featherFadeColor={ts.featherFadeColor || 'white'}
+                        litePreview
+                        sourceWidth={confirmDisplayShot.width}
+                        sourceHeight={confirmDisplayShot.height}
+                      />
+                    ) : (
+                      <p className="design-modal-preview-empty">No preview available</p>
+                    )}
+                  </div>
+                  <div className="design-modal-orient-row" role="group" aria-label="Image orientation">
+                      <label className="design-modal-orient-check">
+                        <input
+                          type="checkbox"
+                          checked={previewOrientation === 'portrait'}
+                          onChange={() => {
+                            setDesignPreferences((prev) => {
+                              const next = prev.slice();
+                              while (next.length <= previewCartIndex) next.push({ orientation: 'portrait' });
+                              next[previewCartIndex] = { ...(next[previewCartIndex] || {}), orientation: 'portrait' };
+                              return next;
+                            });
+                          }}
+                        />
+                        Portrait
+                      </label>
+                      <label className="design-modal-orient-check">
+                        <input
+                          type="checkbox"
+                          checked={previewOrientation === 'landscape'}
+                          onChange={() => {
+                            setDesignPreferences((prev) => {
+                              const next = prev.slice();
+                              while (next.length <= previewCartIndex) next.push({ orientation: 'portrait' });
+                              next[previewCartIndex] = { ...(next[previewCartIndex] || {}), orientation: 'landscape' };
+                              return next;
+                            });
+                          }}
+                        />
+                        Landscape
+                      </label>
+                    </div>
+                  <div className="design-modal-preview-nav">
+                    <button
+                      type="button"
+                      className="design-modal-nav-btn"
+                      disabled={previewIndex <= 0}
+                      onClick={() => setDesignPreviewIndex((prev) => Math.max(0, prev - 1))}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      className="design-modal-text-action"
+                      onClick={() => removeCartItem(previewCartIndex)}
+                    >
+                      Remove Item
+                    </button>
+                    <button
+                      type="button"
+                      className="design-modal-nav-btn"
+                      disabled={previewIndex >= confirmIndexes.length - 1}
+                      onClick={() => setDesignPreviewIndex((prev) => Math.min(confirmIndexes.length - 1, prev + 1))}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {(() => {
+                const confirmIndexes = cartConfirmIndexes(items);
                 const applyOrientationToCart = () => {
                 const currentPrefs = designPreferencesRef.current;
-                for (let idx = 0; idx < items.length; idx += 1) {
-                  if (!SHIRT_CATEGORIES.includes(items[idx].category)) continue;
+                for (let i = 0; i < confirmIndexes.length; i += 1) {
+                  const idx = confirmIndexes[i];
                   const chosen = (currentPrefs[idx] ?? {}).orientation;
                   if (chosen !== 'landscape' && chosen !== 'portrait') {
                     alert('Please choose Portrait or Landscape for your design.');
+                    setDesignPreviewIndex(i);
                     return false;
                   }
                 }
                 const updated = items.map((it, idx) => {
-                  if (!SHIRT_CATEGORIES.includes(it.category)) return it;
+                  if (!itemNeedsDesignConfirm(it)) return it;
                   const chosen = ((currentPrefs[idx] ?? {}).orientation);
                   return withItemImageOrientation(it, chosen);
                 });
@@ -1222,7 +1397,12 @@ const Checkout = () => {
                 writeCartItems(updated);
                 return updated;
               };
-              const handleContinue = () => {
+              const handleConfirm = () => {
+                const previewIndex = Math.min(Math.max(0, designPreviewIndex), confirmIndexes.length - 1);
+                if (previewIndex < confirmIndexes.length - 1) {
+                  setDesignPreviewIndex((prev) => Math.min(prev + 1, confirmIndexes.length - 1));
+                  return;
+                }
                 if (!applyOrientationToCart()) return;
                 setDesignConfirmed(true);
                 setShowDesignModal(false);
@@ -1233,16 +1413,19 @@ const Checkout = () => {
                 setShowDesignModal(false);
                 try {
                   const cart = readCartItems();
+                  const previewIndex = Math.min(Math.max(0, designPreviewIndex), confirmIndexes.length - 1);
+                  const previewCartIndex = confirmIndexes[previewIndex];
                   if (Array.isArray(cart) && cart.length > 0) {
-                    setToolsFocusCartIndex(cart.length - 1);
+                    setToolsFocusCartIndex(Math.min(previewCartIndex ?? 0, cart.length - 1));
                   }
                 } catch (_) { /* ignore */ }
                 navigate('/tools');
               };
+              const isLast = designPreviewIndex >= confirmIndexes.length - 1;
               return (
                 <>
-                  <button type="button" className="design-modal-tools-btn" onClick={handleContinue}>
-                    Continue to Checkout
+                  <button type="button" className="design-modal-tools-btn" onClick={handleConfirm}>
+                    {isLast ? 'Confirm' : 'Confirm and next'}
                   </button>
                   <div className="design-modal-actions">
                     <button type="button" className="btn-outline" onClick={() => setShowDesignModal(false)}>

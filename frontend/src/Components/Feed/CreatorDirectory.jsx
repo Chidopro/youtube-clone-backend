@@ -23,7 +23,7 @@ function collectSlotShuffleUrls(lists) {
     ?.storefront_owner_id;
   const { ownerImages, friendImages, extraImages } = storefrontHubPreviews(lists, ownerId);
   return uniqueUrls(
-    [...ownerImages, ...friendImages, ...extraImages].map((u) => publicStorageCardUrl(u, 900))
+    [...ownerImages, ...friendImages, ...extraImages].map((u) => publicStorageCardUrl(u, 720))
   ).slice(0, 16);
 }
 
@@ -152,9 +152,18 @@ const CreatorDirectory = () => {
           const sub = (slot.subdomain || '').trim().toLowerCase();
           if (!sub || bySub[sub]) return;
           try {
-            const { ok, data } = await fetchPublicFavoriteLists(sub);
+            const { ok, data } = await fetchPublicFavoriteLists(sub, { lite: true });
             if (!ok || !data?.success) return;
-            bySub[sub] = collectSlotShuffleUrls(data.lists || []);
+            let lists = data.lists || [];
+            let urls = collectSlotShuffleUrls(lists);
+            if (!urls.length) {
+              const full = await fetchPublicFavoriteLists(sub);
+              if (full.ok && full.data?.success) {
+                lists = full.data.lists || [];
+                urls = collectSlotShuffleUrls(lists);
+              }
+            }
+            if (urls.length) bySub[sub] = urls;
           } catch (_) {
             /* leave this window on the gradient fallback */
           }

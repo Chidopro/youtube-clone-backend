@@ -107,9 +107,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f2f5;
+  background: #ececef;
+  color: #8a8a90;
   border-radius: 5px 5px 0 0;
-  color: #6b7280;
   font-size: 15px;
   font-weight: 600;
   text-align: center;

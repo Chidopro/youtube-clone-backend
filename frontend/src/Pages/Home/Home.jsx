@@ -22,7 +22,6 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [favoritesPreview, setFavoritesPreview] = useState([]);
   const [friendPagePreview, setFriendPagePreview] = useState([]);
   const [shopPreview, setShopPreview] = useState([]);
-  const [hubsLoading, setHubsLoading] = useState(() => isCreatorStorefrontHostname());
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showDemoWelcome, setShowDemoWelcome] = useState(false);
@@ -107,7 +106,6 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   // Hub previews: fetch in parallel with videos, reuse cache, then show all three hubs together
   useEffect(() => {
     if (isMainSite) {
-      setHubsLoading(false);
       return;
     }
 
@@ -119,7 +117,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
       setFriendPagePreview(friendImages);
       setShopPreview([...ownerImages, ...friendImages, ...extraImages]);
       [...ownerImages.slice(0, 1), ...friendImages.slice(0, 1)].forEach((url) => {
-        const src = publicStorageCardUrl(url, 1400);
+        const src = publicStorageCardUrl(url, 800);
         if (!src) return;
         const img = new Image();
         img.src = src;
@@ -133,20 +131,16 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         setFavoritesPreview([]);
         setFriendPagePreview([]);
         setShopPreview([]);
-        setHubsLoading(false);
         return;
       }
 
       const peeked = peekPublicFavoriteLists(sub);
       if (peeked) {
-        const applied = applyLists(peeked, currentCreator?.id);
-        if (applied.ownerImages.length || applied.friendImages.length) {
-          setHubsLoading(false);
-        }
+        applyLists(peeked, currentCreator?.id);
       }
 
       try {
-        const { ok, data } = await fetchPublicFavoriteLists(sub);
+        const { ok, data } = await fetchPublicFavoriteLists(sub, { lite: true });
         if (cancelled) return;
         if (!ok || !data?.success) {
           if (!peeked) {
@@ -246,8 +240,6 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           setFriendPagePreview([]);
           setShopPreview([]);
         }
-      } finally {
-        if (!cancelled) setHubsLoading(false);
       }
     };
     fetchHubPreviews();
@@ -430,12 +422,9 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
 
 
         {/* Main site: creator directory. Subdomains: Featured / Creators / Shop only. */}
-        {!isMainSite && hubsLoading && (
-          <div style={{padding: 24}}>Loading...</div>
-        )}
         {error && <div style={{padding: 24, color: 'red'}}>{error}</div>}
         {isMainSite && <CreatorDirectory />}
-        {!hubsLoading && !error && !isMainSite && (
+        {!error && !isMainSite && (
           <Feed
             videos={videos}
             favoritesPreview={favoritesPreview}
