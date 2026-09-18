@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName, getProductPrintFilter } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
-import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest, peekToolsPreviewNewest, rememberArtworkOrientation } from '../../utils/merchSession';
+import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest, peekToolsPreviewNewest, rememberArtworkOrientation } from '../../utils/merchSession';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlainText, cornerRadiusPx, featherPx } from '../../utils/editLog';
@@ -1988,7 +1988,8 @@ const ProductPreviewWithDrag = ({
     }
     if (width < 2 || height < 2) return;
     setProductImageSize((prev) => {
-      if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) {
+      const slop = litePreview ? 2 : 0.5;
+      if (Math.abs(prev.width - width) < slop && Math.abs(prev.height - height) < slop) {
         return prev;
       }
       return { width, height };
@@ -2049,17 +2050,8 @@ const ProductPreviewWithDrag = ({
     if (img?.complete) {
       handleProductImageLoad();
     }
-    const observer = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(() => measureProductImage())
-      : null;
-    if (observer) {
-      if (img) observer.observe(img);
-      if (stage) observer.observe(stage);
-    }
-    window.addEventListener('resize', measureProductImage);
-    window.addEventListener('orientationchange', measureProductImage);
     let measureCancelled = false;
-    const maxTicks = litePreview ? 2 : 4;
+    const maxTicks = 4;
     const tickMeasure = (attempt) => {
       if (measureCancelled) return;
       measureProductImage();
@@ -2068,6 +2060,18 @@ const ProductPreviewWithDrag = ({
       }
     };
     requestAnimationFrame(() => tickMeasure(0));
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+        if (measureCancelled) return;
+        measureProductImage();
+      })
+      : null;
+    if (observer) {
+      if (img) observer.observe(img);
+      if (stage) observer.observe(stage);
+    }
+    window.addEventListener('resize', measureProductImage);
+    window.addEventListener('orientationchange', measureProductImage);
     return () => {
       measureCancelled = true;
       observer?.disconnect();
@@ -2283,7 +2287,7 @@ const ProductPreviewWithDrag = ({
               boxH: scaledHeight,
               layout: artworkLayout,
               cornerRadius,
-              featherEdge: litePreview ? 0 : featherEdge,
+              featherEdge,
               frameEnabled,
               frameWidth,
               sourceWidth,
@@ -2728,6 +2732,7 @@ const ToolsPage = () => {
   const [imageOffsetX, setImageOffsetX] = useState(() => initialEditorSlot.imageOffsetX ?? 0);
   const [imageOffsetY, setImageOffsetY] = useState(() => initialEditorSlot.imageOffsetY ?? 0);
   const [editedImageUrl, setEditedImageUrl] = useState('');
+  const editedImageUrlRef = useRef('');
   const [selectedProductName, setSelectedProductName] = useState(() => getInitialCartPrintFit().name);
   const [currentImageDimensions, setCurrentImageDimensions] = useState({ width: 0, height: 0 });
   const [bakedImageSize, setBakedImageSize] = useState({ width: 0, height: 0 });
@@ -3067,7 +3072,7 @@ const ToolsPage = () => {
       editLog: slot.editLog || null,
     };
     try {
-      const cartItems = readCartItems({ ignoreMemory: true });
+    const cartItems = readCartItems();
       if (!Array.isArray(cartItems) || !cartItems[orig]) return;
       const prev = cartItems[orig].toolSettings || null;
       const nextIsDefault = !nextSettings.frameEnabled
@@ -4314,8 +4319,19 @@ const ToolsPage = () => {
 
   // Apply edits to image
   useEffect(() => {
+    editedImageUrlRef.current = editedImageUrl;
+  }, [editedImageUrl]);
+
+  useEffect(() => {
     if (!imageUrl) return;
     if (switchingSlotRef.current) return;
+    const hasLivePixelEdits = Boolean(
+      featherEdge ||
+      cornerRadius ||
+      frameEnabled ||
+      blackAndWhite ||
+      (textEnabled && String(textContent || '').trim())
+    );
     // Don't rasterize Original/uncropped while Product Specific is still pending.
     const idx = selectedCartProductIndex;
     const awaitingAutoProductFit =
@@ -4325,13 +4341,16 @@ const ToolsPage = () => {
       imageOrientation !== 'landscape' &&
       !fitUserSetRef.current[idx] &&
       matchPrintAreaProductName(cartProducts[idx].name);
-    if (awaitingAutoProductFit) return;
-    if (printAreaFit === 'product' && !selectedProductName) return;
+    if (awaitingAutoProductFit && !hasLivePixelEdits) return;
+    if (printAreaFit === 'product' && !selectedProductName && !hasLivePixelEdits) return;
     let cancelled = false;
     const timer = window.setTimeout(() => {
     if (cancelled) return;
+    const startBakeImage = (useCors) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    if (useCors && /^https?:/i.test(imageUrl)) {
+      img.crossOrigin = 'anonymous';
+    }
     img.onload = async () => {
       if (cancelled) return;
       // Store current image dimensions
@@ -4586,13 +4605,20 @@ const ToolsPage = () => {
       const dataUrl = exportPreviewDataUrl(canvas);
       if (!dataUrl) return;
       if (cancelled) return;
+      editedImageUrlRef.current = dataUrl;
       setEditedImageUrl(dataUrl);
     };
     img.onerror = () => {
       if (cancelled) return;
+      if (useCors && /^https?:/i.test(imageUrl)) {
+        startBakeImage(false);
+        return;
+      }
       console.error('Failed to load image');
     };
     img.src = imageUrl;
+    };
+    startBakeImage(true);
     }, BAKE_DEBOUNCE_MS);
     return () => {
       cancelled = true;
@@ -4876,11 +4902,11 @@ const ToolsPage = () => {
   };
 
   const saveAppliedEditsToCart = () => {
-    if (!editedImageUrl) return false;
+    const bakedShot = editedImageUrlRef.current || editedImageUrl || '';
 
     try {
       const data = { ...readPendingMerchData() };
-      data.edited_screenshot = editedImageUrl;
+      if (bakedShot) data.edited_screenshot = bakedShot;
       data.imageOrientation = imageOrientation === 'landscape' ? 'landscape' : 'portrait';
       data.tools_used = {
         featherEdge,
@@ -4922,46 +4948,51 @@ const ToolsPage = () => {
         Number.isInteger(cartIndex) &&
         cartItems[cartIndex];
 
+      const nextToolSettings = {
+        screenshotScale,
+        offsetX: (productImageOffsets[cartIndex] || {}).x || 0,
+        offsetY: (productImageOffsets[cartIndex] || {}).y || 0,
+        featherEdge,
+        cornerRadius,
+        frameEnabled,
+        frameColor,
+        frameWidth,
+        doubleFrame,
+        blackAndWhite,
+        featherFadeEnabled,
+        featherFadeColor,
+        textEnabled,
+        textContent,
+        textFont,
+        textColor,
+        textSize,
+        textOffsetX,
+        textOffsetY,
+        textDirection,
+        printAreaFit,
+        imageOrientation,
+        imageOffsetX,
+        imageOffsetY,
+        editLog: buildLiveEditLog(selectedProduct)
+      };
+
       if (canUpdateCartItem) {
-        const offsets = productImageOffsets[cartIndex] || { x: 0, y: 0 };
         updatedCart = cartItems.map((item, index) => {
-          if (index === cartIndex) {
-            return {
-              ...item,
-              originalScreenshot: item.originalScreenshot || item.screenshot,
-              screenshot: editedImageUrl,
-              selected_screenshot: editedImageUrl,
-              edited: true,
-              tools_acknowledged: true,
-              imageOrientation,
-              toolSettings: {
-                screenshotScale,
-                offsetX: offsets.x,
-                offsetY: offsets.y,
-                featherEdge,
-                cornerRadius,
-                frameEnabled,
-                frameColor,
-                frameWidth,
-                doubleFrame,
-                blackAndWhite,
-                featherFadeEnabled,
-                featherFadeColor,
-                textEnabled,
-                textContent,
-                textFont,
-                textColor,
-                textSize,
-                textOffsetX,
-                textOffsetY,
-                textDirection,
-                printAreaFit,
-                imageOrientation,
-                editLog: buildLiveEditLog(selectedProduct)
-              }
-            };
+          if (index !== cartIndex) return item;
+          const next = {
+            ...item,
+            originalScreenshot: item.originalScreenshot || item.screenshot,
+            edited: true,
+            tools_acknowledged: true,
+            imageOrientation,
+            toolSettings: nextToolSettings,
+          };
+          if (bakedShot) {
+            next.screenshot = bakedShot;
+            next.selected_screenshot = bakedShot;
+            next.displayScreenshot = bakedShot;
           }
-          return item;
+          return next;
         });
         console.log(`💾 Updated screenshot for selected cart product: ${selectedProduct.name} (cart index: ${cartIndex})`);
       } else if (selectedProduct) {
@@ -4976,31 +5007,39 @@ const ToolsPage = () => {
             color: selectedProduct.color && selectedProduct.color !== 'N/A' ? selectedProduct.color : 'Default',
             size: selectedProduct.size && selectedProduct.size !== 'N/A' ? selectedProduct.size : 'One Size',
             originalScreenshot: selectedProduct.originalScreenshot || selectedProduct.screenshot || imageUrl,
-            screenshot: editedImageUrl,
-            selected_screenshot: editedImageUrl,
+            screenshot: bakedShot || selectedProduct.screenshot || imageUrl,
+            selected_screenshot: bakedShot || selectedProduct.screenshot || imageUrl,
+            displayScreenshot: bakedShot || selectedProduct.displayScreenshot || '',
             qty: 1,
             category,
             edited: true,
             tools_acknowledged: true,
+            toolSettings: nextToolSettings,
           }
         ];
         console.log(`💾 Added tools product to cart: ${selectedProduct.name}`);
-      } else {
+      } else if (cartItems.length) {
         updatedCart = cartItems.map(item => ({
           ...item,
           originalScreenshot: item.originalScreenshot || item.screenshot,
-          screenshot: editedImageUrl,
+          ...(bakedShot ? { screenshot: bakedShot, selected_screenshot: bakedShot, displayScreenshot: bakedShot } : {}),
           edited: true,
-          tools_acknowledged: true
+          tools_acknowledged: true,
+          toolSettings: {
+            ...(item.toolSettings || {}),
+            ...nextToolSettings,
+          },
         }));
         console.log('💾 Updated screenshot for all cart items');
+      } else {
+        return false;
       }
       
       writeCartItems(updatedCart);
       if (selectedCartProductIndex !== null) {
         slotStateRef.current[selectedCartProductIndex] = captureLiveEditorSlot(selectedCartProductIndex, {
           ...EDITOR_SLOT_DEFAULTS,
-          sourceScreenshot: slotSourceKey(editedImageUrl),
+          sourceScreenshot: slotSourceKey(bakedShot || imageUrl),
           imageOrientation,
           blackAndWhite,
           featherFadeEnabled,
@@ -5009,7 +5048,7 @@ const ToolsPage = () => {
           printAreaFit,
           screenshotScale,
         });
-        persistEditorSlotsNow();
+        persistEditorSlotsNow({ force: true });
       }
       return true;
     } catch (e) {
@@ -5025,15 +5064,12 @@ const ToolsPage = () => {
     blackAndWhite ||
     (textEnabled && String(textContent || '').trim())
   );
-  const checkoutWaitingOnBake = Boolean(imageUrl && toolsHavePixelEdits && !editedImageUrl);
 
   const persistToolsBeforeLeave = () => {
-    if (editedImageUrl) {
-      saveAppliedEditsToCart();
-    } else if (selectedCartProductIndex !== null && cartProducts[selectedCartProductIndex]) {
+    if (selectedCartProductIndex !== null && cartProducts[selectedCartProductIndex]) {
       slotStateRef.current[selectedCartProductIndex] = captureLiveEditorSlot(selectedCartProductIndex);
-      persistEditorSlotsNow();
     }
+    saveAppliedEditsToCart();
   };
 
   const handleContinueShopping = () => {
@@ -5041,12 +5077,23 @@ const ToolsPage = () => {
     navigate(browseCategoryPath());
   };
 
-  const handleCheckoutFromTools = () => {
-    if (checkoutWaitingOnBake) {
-      alert('Please wait for the image to process, or select a screenshot first.');
-      return;
+  const handleCheckoutFromTools = async () => {
+    if (imageUrl && toolsHavePixelEdits && !editedImageUrlRef.current) {
+      const deadline = Date.now() + 2500;
+      while (Date.now() < deadline && !editedImageUrlRef.current) {
+        await new Promise((resolve) => window.setTimeout(resolve, 80));
+      }
     }
     persistToolsBeforeLeave();
+    const selectedProduct =
+      selectedCartProductIndex !== null && cartProducts.length > 0
+        ? cartProducts[selectedCartProductIndex]
+        : null;
+    const cartIndex = selectedProduct?.originalCartIndex;
+    if (Number.isInteger(cartIndex) && cartIndex >= 0) {
+      setToolsFocusCartIndex(cartIndex);
+      setToolsPreviewNewest(false);
+    }
     navigate('/checkout');
   };
 
@@ -6189,7 +6236,6 @@ const ToolsPage = () => {
                     type="button"
                     className="tools-checkout-btn"
                     onClick={handleCheckoutFromTools}
-                    disabled={checkoutWaitingOnBake}
                   >
                     Checkout
                   </button>

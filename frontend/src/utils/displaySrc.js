@@ -23,7 +23,8 @@ function needsDownscale(url) {
   const s = String(url || '');
   if (!s) return false;
   if (s.startsWith('blob:')) return true;
-  if (s.startsWith('data:')) return s.length > 40_000;
+  // Display-sized jpegs from add-to-cart are already small enough for <img>.
+  if (s.startsWith('data:')) return s.length > 100_000;
   if (/^https?:/i.test(s)) return true;
   return false;
 }
@@ -260,12 +261,32 @@ function downscaleDataUrlInWorker(dataUrl, maxEdge) {
   if (!w) return null;
   const id = ++workerJobId;
   return new Promise((resolve, reject) => {
-    workerWaiters.set(id, { resolve, reject });
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      workerWaiters.delete(id);
+      reject(new Error('worker timeout'));
+    }, 4000);
+    workerWaiters.set(id, {
+      resolve: (value) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      reject: (err) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        reject(err);
+      },
+    });
     (async () => {
       try {
         w.postMessage({ id, kind: 'dataUrlStart', maxEdge });
         for (let i = 0; i < dataUrl.length; i += DATA_URL_CHUNK) {
-          if (i > 0) await nextIdle(8);
+          await nextIdle(16);
           if (!workerWaiters.has(id)) return;
           w.postMessage({ id, kind: 'dataUrlChunk', chunk: dataUrl.slice(i, i + DATA_URL_CHUNK) });
         }
@@ -273,7 +294,11 @@ function downscaleDataUrlInWorker(dataUrl, maxEdge) {
         w.postMessage({ id, kind: 'dataUrlEnd' });
       } catch (err) {
         workerWaiters.delete(id);
-        reject(err);
+        if (!settled) {
+          settled = true;
+          window.clearTimeout(timer);
+          reject(err);
+        }
       }
     })();
   });

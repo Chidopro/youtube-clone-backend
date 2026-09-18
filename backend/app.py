@@ -1536,15 +1536,16 @@ PRODUCTS = [
         "filename": "unisexoversizedtshirt.png",
         "main_image": "unisexoversizedtshirt.png",
         "preview_image": "mensunisexoversizedtshirtpreview.png",
-        "description": "This oversized 100% cotton tee is made for streetwear drops and everyday fits. The heavyweight fabric gives it structure and a premium feel, while the relaxed, roomy cut makes it perfect for layering or wearing on its own. Add bold prints or clean embroidery—this tee is ready to carry your brand's style. 100% ring-spun cotton. Fabric weight: 6.5 oz./yd.² (220.4 g/m²). 18 singles yarn. Oversized fit. Tear-away label. Washed-color options for a trendy vintage look. Streetwear-inspired style. Blank product sourced from Nicaragua. This product is made on demand. No minimums.",
-        "options": {"color": ["Washed Black", "Washed Maroon", "Washed Charcoal", "Khaki", "Light Washed Denim", "Vintage White"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
+        "description": "Upgrade your everyday wardrobe with this heavyweight oversized tee. The relaxed, boxy fit and dropped shoulders create a laid-back look, while the premium cotton fabric delivers comfort you'll reach for again and again. Easy to wear on its own or layered, it's a versatile staple for any style. 100% Airlume combed and ring-spun cotton. Athletic Heather is 90% Airlume combed and ring-spun cotton, 10% polyester. Fabric weight: 6 oz./yd.² (170 g/m²). Relaxed oversized fit. Dropped shoulders. Side-seamed construction. Durable double-needle topstitching. Tear-away label. 20 singles. Blank product sourced from Nicaragua. This product is made on demand. No minimums.",
+        "options": {"color": ["Black", "White", "Navy", "Dark Grey", "Natural", "Forest", "Athletic Heather", "Toast", "Soft Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # No extra charge  
+            "XS": 0,      # No extra charge
+            "S": 0,       # No extra charge
             "M": 0,       # No extra charge
             "L": 0,       # No extra charge
             "XL": 0,      # No extra charge
-            "XXL": 1.65,  # +$1.65 = $25.67
-            "XXXL": 3.30  # +$3.30 = $27.32
+            "XXL": 1.65,  # +$1.65
+            "XXXL": 3.30  # +$3.30
         }
     },
     {

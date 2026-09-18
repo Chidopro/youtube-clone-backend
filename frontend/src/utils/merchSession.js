@@ -762,7 +762,13 @@ let cartPersistPaused = false;
 
 export function setCartPersistPaused(paused) {
   cartPersistPaused = Boolean(paused);
-  if (!cartPersistPaused) scheduleCartPersist();
+  if (!cartPersistPaused) {
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(() => persistCartMemoryNow(), { timeout: 400 });
+    } else {
+      scheduleCartPersist();
+    }
+  }
 }
 
 function persistCartMemoryNow(force = false) {

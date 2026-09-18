@@ -1730,29 +1730,32 @@ const PlayVideo = ({
                              </div>
                          </div>
                      )}
+                     {isCropMode && (
+                         <div
+                             className="inline-crop-controls"
+                             onMouseDown={(e) => e.stopPropagation()}
+                             onTouchStart={(e) => e.stopPropagation()}
+                         >
+                             <button
+                                 type="button"
+                                 className="inline-crop-btn inline-crop-btn--cancel"
+                                 onClick={handleCancelCrop}
+                                 disabled={isApplyingCrop}
+                             >
+                                 Cancel
+                             </button>
+                             <button
+                                 type="button"
+                                 className="inline-crop-btn inline-crop-btn--apply"
+                                 onClick={handleApplyCrop}
+                                 disabled={isApplyingCrop}
+                             >
+                                 {isApplyingCrop ? 'Applying...' : 'Apply Crop'}
+                             </button>
+                         </div>
+                     )}
                 </div>
             </div>
-
-            {isCropMode && (
-                <div className="inline-crop-controls">
-                    <button
-                        type="button"
-                        className="inline-crop-btn inline-crop-btn--cancel"
-                        onClick={handleCancelCrop}
-                        disabled={isApplyingCrop}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        className="inline-crop-btn inline-crop-btn--apply"
-                        onClick={handleApplyCrop}
-                        disabled={isApplyingCrop}
-                    >
-                        {isApplyingCrop ? 'Applying...' : 'Apply Crop'}
-                    </button>
-                </div>
-            )}
             
         {isMobile && (
         <div className="screenmerch-actions">

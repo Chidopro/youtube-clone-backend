@@ -836,10 +836,15 @@
   }
 
   .video-page-container .play-video .inline-crop-controls {
+    position: absolute;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    margin: 0;
+    width: auto;
     flex: 0 0 auto;
-    order: 1;
-    margin: 8px 0 0;
-    background: transparent;
+    order: 0;
+    z-index: 80;
   }
 
   .video-page-container .play-video.crop-mode-active {
@@ -985,9 +990,14 @@
   }
 
   .video-page-container .play-video .inline-crop-controls {
-    width: 100%;
-    margin: 4px 0 0;
-    gap: 6px;
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    width: auto;
+    margin: 0;
+    gap: 8px;
+    z-index: 80;
   }
 
   .video-viewer .screenmerch-actions .screenmerch-btn,

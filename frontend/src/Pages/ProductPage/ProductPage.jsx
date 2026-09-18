@@ -9,6 +9,7 @@ import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest, isVideoScreenshotMerch, readBrowseToolSettings, writeBrowseToolSettings } from '../../utils/merchSession';
+import { applyBrowsePresetToCartItem } from '../../utils/bakeBrowsePreset';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
@@ -419,6 +420,9 @@ const ProductPage = ({ sidebar }) => {
   /** Actual URL/data of the selected screenshot (set on click). Used for add-to-cart so the exact chosen image is sent, not a fallback. */
   const [selectedScreenshotUrl, setSelectedScreenshotUrl] = useState(null);
   const [selectedEditPreset, setSelectedEditPreset] = useState('original');
+  const [isDesktopLayout, setIsDesktopLayout] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  ));
   const [selectedColors, setSelectedColors] = useState({});
   const [selectedSizes, setSelectedSizes] = useState({});
   const [variantAvailability, setVariantAvailability] = useState({});
@@ -536,6 +540,18 @@ const ProductPage = ({ sidebar }) => {
   const editingCartIndex = Number.parseInt(editCartParam, 10);
   const isEditingCart = Number.isInteger(editingCartIndex) && editingCartIndex >= 0 && editingCartIndex < cartItems.length;
   const editingCartItem = isEditingCart ? cartItems[editingCartIndex] : null;
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const sync = () => setIsDesktopLayout(mq.matches);
+    sync();
+    if (mq.addEventListener) mq.addEventListener('change', sync);
+    else mq.addListener(sync);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', sync);
+      else mq.removeListener(sync);
+    };
+  }, []);
 
   useEffect(() => {
     const sync = () => setShipToCountry(readShipToCountry());
@@ -795,6 +811,10 @@ const ProductPage = ({ sidebar }) => {
       alert(`One or more cart items are out of stock for shipping to ${shipToCountryName(shipToCountry)}. Choose a different size or color.`);
       return;
     }
+    if (lastTouchedCartIndexRef.current != null) {
+      setToolsFocusCartIndex(lastTouchedCartIndexRef.current);
+      setToolsPreviewNewest(false);
+    }
     navigate('/checkout');
   };
 
@@ -1007,6 +1027,8 @@ const ProductPage = ({ sidebar }) => {
       };
     }
     Object.assign(item, mergeBrowseToolSettings(item));
+    const bakedItem = await applyBrowsePresetToCartItem(item, item.toolSettings);
+    Object.assign(item, bakedItem);
     if (!item.favorite_list_id) {
       try {
         const flid = localStorage.getItem('sm_favorite_list_id');
@@ -1117,8 +1139,9 @@ const ProductPage = ({ sidebar }) => {
             ? { ...focused, screenshot: urlToSave, selected_screenshot: urlToSave }
             : focused;
           const withPreset = mergeBrowseToolSettings(withShot);
-          if (withPreset !== focused) {
-            persistCart(items.map((item, i) => (i === focusIndex ? withPreset : item)));
+          const baked = await applyBrowsePresetToCartItem(withPreset, withPreset.toolSettings);
+          if (baked !== focused) {
+            persistCart(items.map((item, i) => (i === focusIndex ? baked : item)));
             if (openedNewSelection) setToolsPreviewNewest(true);
           }
         }
@@ -1553,6 +1576,7 @@ const ProductPage = ({ sidebar }) => {
 
   const showVideoThumbLabel = isVideoScreenshotMerch();
   const showAutoEditPresets = !creatorMode && !isShopCatalog && !showVideoThumbLabel && getSelectImageCount() <= 1 && Boolean(browsePreviewSrc || browseSourceUrl);
+  const showDesktopEditPresets = showAutoEditPresets && isDesktopLayout;
   const presetImageSrc = browsePreviewSrc || browseSourceUrl;
 
   return (
@@ -1728,7 +1752,7 @@ const ProductPage = ({ sidebar }) => {
         <>
           {/* Screenshot Selection Section — hidden in My Shop catalog (blank products only) */}
           {!isShopCatalog && (
-          <div className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}${showAutoEditPresets ? ' screenshots-section--with-edits' : ''}`}>
+          <div className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}${showDesktopEditPresets ? ' screenshots-section--with-edits' : ''}`}>
             {!creatorMode && (
               <div className="product-choose-header">
                 <h1 className="product-choose-title">
@@ -1748,7 +1772,7 @@ const ProductPage = ({ sidebar }) => {
                   ? 'Choose a Screenshot'
                   : 'Selected Image'}
             </h2>
-            <div className={`selected-image-row${showAutoEditPresets ? ' selected-image-row--presets' : ''}`}>
+            <div className={`selected-image-row${showDesktopEditPresets ? ' selected-image-row--presets' : ''}`}>
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail (video capture only) */}
@@ -1756,7 +1780,7 @@ const ProductPage = ({ sidebar }) => {
                   const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
                   return thumbnailUrl ? (
                   <div
-                    className={`screenshot-item${showAutoEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}`}
+                    className={`screenshot-item${showDesktopEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}`}
                   >
                     <div
                       role="button"
@@ -1782,7 +1806,7 @@ const ProductPage = ({ sidebar }) => {
                       />
                       {showVideoThumbLabel ? <div className="screenshot-label">Thumbnail</div> : null}
                     </div>
-                    {showAutoEditPresets && !creatorMode ? (
+                    {showDesktopEditPresets && !creatorMode ? (
                       <>
                         <span className="screenshot-preset-label screenshot-preset-label--selected">Selected</span>
                         <button
@@ -1813,7 +1837,7 @@ const ProductPage = ({ sidebar }) => {
                     return (
                       <div
                         key={`shot-${index}`}
-                        className={`screenshot-item${showAutoEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--original' : ''}${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === index && selectedEditPreset === 'original' ? ' selected' : ''}`}
+                        className={`screenshot-item${showDesktopEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--original' : ''}${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === index && selectedEditPreset === 'original' ? ' selected' : ''}`}
                       >
                         <div
                           role="button"
@@ -1839,7 +1863,7 @@ const ProductPage = ({ sidebar }) => {
                           />
                           {label ? <div className="screenshot-label">{label}</div> : null}
                         </div>
-                        {showAutoEditPresets && !creatorMode && !thumbnailUrl && index === 0 ? (
+                        {showDesktopEditPresets && !creatorMode && !thumbnailUrl && index === 0 ? (
                           <>
                             <span className="screenshot-preset-label screenshot-preset-label--selected">Selected</span>
                             <button
@@ -1858,7 +1882,7 @@ const ProductPage = ({ sidebar }) => {
                     );
                   }) : null;
                 })()}
-                {showAutoEditPresets && presetImageSrc ? BROWSE_EDIT_PRESETS.map((preset) => (
+                {showDesktopEditPresets && presetImageSrc ? BROWSE_EDIT_PRESETS.map((preset) => (
                   <button
                     type="button"
                     key={preset.id}
@@ -1882,8 +1906,8 @@ const ProductPage = ({ sidebar }) => {
                 )) : null}
               </div>
             </div>
-            {!creatorMode && !showAutoEditPresets && (
-              <div className="selected-image-meta">
+            {!creatorMode && !showVideoThumbLabel && (
+              <div className={`selected-image-meta${showDesktopEditPresets ? ' selected-image-meta--mobile-only' : ''}`}>
                 <button type="button" className="change-image-link" onClick={handleChangeImage}>
                   Change Image
                 </button>
@@ -2317,7 +2341,7 @@ const ProductPage = ({ sidebar }) => {
                   className="checkout-btn-modal"
                   onClick={() => {
                     setShowAddedToCartModal(false);
-                    navigate('/checkout');
+                    goToCheckout();
                   }}
                 >
                   Checkout

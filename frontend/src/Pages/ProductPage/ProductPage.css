@@ -80,11 +80,6 @@
   padding: 20px 20px 12px;
 }
 
-.screenshots-section--single.screenshots-section--with-edits {
-  width: 100%;
-  max-width: 100%;
-}
-
 .screenshots-section--single .screenshot-grid {
   width: auto;
 }
@@ -161,11 +156,6 @@
     width: min(100%, 400px);
     max-width: min(100%, 400px);
     padding: 20px 24px 16px;
-  }
-
-  .screenshots-section--single.screenshots-section--with-edits {
-    width: 100%;
-    max-width: 100%;
   }
 
   .screenshots-section-actions {
@@ -392,6 +382,10 @@
     justify-content: flex-start;
     gap: 0;
     min-width: 0;
+  }
+
+  .product-page--choose .selected-image-meta--mobile-only {
+    display: none;
   }
 
   .product-page--choose .screenshots-section--single .selected-image-meta {
@@ -739,146 +733,29 @@
 }
 
 @media (max-width: 1023px) {
-  .screenshots-section--with-edits .screenshot-grid {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    gap: 12px;
-    width: 100%;
-    overflow-x: auto;
-    padding-bottom: 6px;
-    -webkit-overflow-scrolling: touch;
+  .screenshot-item--preset {
+    display: none !important;
   }
 
-  .screenshots-section--with-edits .screenshot-item,
-  .screenshots-section--with-edits .screenshot-item--preset {
-    flex: 0 0 186px;
-    width: 186px;
-    max-width: 186px;
-    height: auto;
-    aspect-ratio: auto;
-    overflow: visible;
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    appearance: none;
-    font: inherit;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
+  .screenshot-item--original .screenshot-preset-label,
+  .screenshot-item--original .change-image-link {
+    display: none;
   }
 
-  .screenshots-section--with-edits .screenshot-item--original {
-    flex-basis: 210px;
-    width: 210px;
-    max-width: 210px;
+  .screenshots-section--single.screenshots-section--with-edits {
+    width: fit-content;
+    max-width: min(100%, 280px);
   }
 
-  .screenshots-section--with-edits .screenshot-item > div {
-    position: relative;
-    aspect-ratio: 3 / 4;
-    border: 2px solid #e8e8e8;
-    border-radius: 8px;
-    overflow: hidden;
-    background: #f7f7f8;
-  }
-
-  .screenshots-section--with-edits .screenshot-item--original > div {
-    border-width: 3px;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.35);
-  }
-
-  .screenshots-section--with-edits .screenshot-item--preset > div {
-    opacity: 0.72;
-  }
-
-  .screenshots-section--with-edits .screenshot-item--preset:hover > div,
-  .screenshots-section--with-edits .screenshot-item--preset.selected > div {
+  .screenshots-section--with-edits .screenshot-grid:has(.screenshot-item.selected) .screenshot-item:not(.selected) {
     opacity: 1;
   }
+}
 
-  .screenshots-section--with-edits .screenshot-item--preset.selected > div {
-    border-color: #667eea;
-    box-shadow: none;
-  }
-
-  .screenshot-preset-label {
-    display: block;
-    color: #5b5b5b;
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 1.3;
-  }
-
-  .screenshot-preset-label--selected {
-    color: #1a1a1a;
-    font-size: 14px;
-    font-weight: 700;
-  }
-
-  .screenshot-item--preset-bw img {
-    filter: grayscale(1);
-  }
-
-  .screenshots-section--with-edits .screenshot-item--preset-radius > div {
-    background: #e8e8ea;
-  }
-
-  .screenshots-section--with-edits .screenshot-item--preset-radius img {
-    width: calc(100% - 14px);
-    height: calc(100% - 14px);
-    margin: 7px;
-    border-radius: 16px;
-    object-fit: cover;
-  }
-
-  .screenshots-section--with-edits .screenshot-item--preset-feather img {
-    -webkit-mask-image: radial-gradient(ellipse at center, #000 16%, #000 32%, transparent 68%);
-    mask-image: radial-gradient(ellipse at center, #000 16%, #000 32%, transparent 68%);
-  }
-
-  .screenshots-section--with-edits .screenshot-item--preset-frame > div {
-    overflow: visible;
-    padding: 0;
-    background: #f7f7f8;
-  }
-
-  .screenshots-section--with-edits .screenshot-item--preset-frame > div::after {
-    content: none;
-  }
-
-  .screenshots-section--with-edits .screenshot-item--preset-frame img {
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
-    margin: 0;
-    border: 0;
-    outline: none;
-    object-fit: cover;
-    display: block;
-    position: relative;
-    z-index: 0;
-  }
-
-  .screenshots-section--with-edits .screenshot-preset-frame-mat {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    pointer-events: none;
-    border: 0;
-    border-radius: 0;
-    background:
-      linear-gradient(#111, #111) top / 100% 12px no-repeat,
-      linear-gradient(#111, #111) bottom / 100% 12px no-repeat,
-      linear-gradient(#111, #111) left / 12px 100% no-repeat,
-      linear-gradient(#111, #111) right / 12px 100% no-repeat;
+@media (max-width: 1023px) and (min-width: 769px) {
+  .screenshots-section--single.screenshots-section--with-edits {
+    width: min(100%, 400px);
+    max-width: min(100%, 400px);
   }
 }
 

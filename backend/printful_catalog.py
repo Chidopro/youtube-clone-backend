@@ -35,9 +35,10 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Mens Fitted T-Shirt": 108,
     # Printful: Men's Fitted Long Sleeve Shirt | Next Level 3601 — ScreenMerch: "Men's Fitted Long Sleeve".
     "Men's Fitted Long Sleeve": 116,
-    # Printful: Unisex Oversized Garment-Dyed T-Shirt | Bella + Canvas 4810 — ScreenMerch: "Oversized T-Shirt".
-    "Oversized T-Shirt": 880,
-    "Unisex Oversized T-Shirt": 880,  # legacy alias
+    # Printful retired catalog 880 (Bella + Canvas 4810). Live blank is
+    # Unisex Oversized Boxy Tee | Bella+Canvas 3010 — ScreenMerch: "Oversized T-Shirt".
+    "Oversized T-Shirt": 1592,
+    "Unisex Oversized T-Shirt": 1592,  # legacy alias
     # Printful: Unisex Long Sleeve Shirt | Gildan 2400 — ScreenMerch: "Men's Long Sleeve Shirt".
     "Men's Long Sleeve Shirt": 57,
     # Printful: Men's Staple Tank Top | Bella + Canvas 3480 — ScreenMerch: "Men's Tank Top".
@@ -131,7 +132,7 @@ PRINTFUL_DASHBOARD_URLS_BY_CATALOG_ID: Dict[int, str] = {
     71: "https://www.printful.com/dashboard/custom/mens/t-shirts/unisex-staple-t-shirt-bella-canvas-3001",
     108: "https://www.printful.com/dashboard/custom/mens/t-shirts/mens-fitted-t-shirt-next-level-3600",
     116: "https://www.printful.com/dashboard/custom/mens/long-sleeve-shirts/mens-fitted-long-sleeve-shirt-next-level-3601",
-    880: "https://www.printful.com/dashboard/custom/womens/t-shirts/unisex-oversized-garment-dyed-t-shirt-bella-canvas-4810",
+    1592: "https://www.printful.com/dashboard/custom/womens/shirts/unisex-oversized-boxy-tee-bella-canvas-3010",
     57: "https://www.printful.com/dashboard/custom/mens/long-sleeve-shirts/mens-long-sleeve-shirt-gildan-2400",
     248: "https://www.printful.com/dashboard/custom/mens/tank-tops/unisex-staple-tank-top-bella-canvas-3480",
     307: "https://www.printful.com/dashboard/custom/kids-teen/shirts/youth-staple-tee-bella-canvas-3001y",
@@ -179,7 +180,7 @@ PRINTFUL_CATALOG_TITLES_BY_ID: Dict[int, str] = {
     71: "Unisex Staple T-Shirt | Bella + Canvas 3001",
     108: "Men's Fitted T-Shirt | Next Level 3600",
     116: "Men's Fitted Long Sleeve Shirt | Next Level 3601",
-    880: "Unisex Oversized Garment-Dyed T-Shirt | Bella + Canvas 4810",
+    1592: "Unisex Oversized Boxy Tee | Bella+Canvas 3010",
     57: "Unisex Long Sleeve Shirt | Gildan 2400",
     248: "Men's Staple Tank Top | Bella + Canvas 3480",
     307: "Youth Staple Tee | Bella + Canvas 3001Y",
@@ -225,6 +226,14 @@ PRINTFUL_CATALOG_TITLES_BY_ID: Dict[int, str] = {
 # When storefront ``color`` labels differ from Printful catalog variant ``color`` strings.
 # Key: catalog product id. Inner key: storefront color (matched case-insensitively).
 CATALOG_COLOR_ALIASES: Dict[int, Dict[str, str]] = {
+    # Retired Bella 4810 washed labels → Bella 3010 catalog colors.
+    1592: {
+        "Washed Black": "Black",
+        "Washed Charcoal": "Dark Grey",
+        "Vintage White": "White",
+        "Khaki": "Toast",
+        "Light Washed Denim": "Navy",
+    },
     # API uses "White (glossy)"; storefront uses "White".
     906: {"White": "White (glossy)"},
     # White Glossy Mug (catalog 19): storefront "White" → Printful color label.

@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
-import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot, resolveItemImageOrientation, withItemImageOrientation, setCartPersistPaused } from '../../utils/merchSession';
+import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot, resolveItemImageOrientation, withItemImageOrientation, setCartPersistPaused, consumeToolsFocusCartIndex, CART_UPDATED_EVENT } from '../../utils/merchSession';
 import { ProductPreviewWithDrag } from '../ToolsPage/ToolsPage';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
@@ -22,14 +22,41 @@ import './Checkout.css';
 
 const noopPreviewOffset = () => {};
 
+function itemHasLiveOverlayEdits(item) {
+  const ts = item?.toolSettings;
+  if (!ts || typeof ts !== 'object') return false;
+  return Boolean(
+    ts.frameEnabled
+    || ts.blackAndWhite
+    || Number(ts.featherEdge) > 0
+    || Number(ts.cornerRadius) > 0
+    || (ts.textEnabled && String(ts.textContent || '').trim())
+  );
+}
+
 function itemShotUrl(item) {
   return String(
-    item?.originalScreenshot
+    item?.displayScreenshot
     || item?.screenshot
     || item?.selected_screenshot
+    || item?.originalScreenshot
     || item?.thumbnail
     || ''
   ).trim();
+}
+
+function itemConfirmShotUrl(item) {
+  if (itemHasLiveOverlayEdits(item)) {
+    return String(
+      item?.originalScreenshot
+      || item?.screenshot
+      || item?.selected_screenshot
+      || item?.displayScreenshot
+      || item?.thumbnail
+      || ''
+    ).trim();
+  }
+  return itemShotUrl(item);
 }
 
 function useDisplaySrc(url, maxEdge, enabled = true, urgent = false) {
@@ -111,6 +138,22 @@ function cartNeedsDesignModal(itemList) {
   return cartConfirmIndexes(itemList).length > 0;
 }
 
+/** Confirm should open on the item just edited or added, not always cart slot 0. */
+function initialConfirmPreviewIndex(itemList) {
+  const confirmIndexes = cartConfirmIndexes(itemList);
+  if (!confirmIndexes.length) return 0;
+  const focus = consumeToolsFocusCartIndex();
+  if (focus != null) {
+    const focusedPos = confirmIndexes.indexOf(focus);
+    if (focusedPos >= 0) return focusedPos;
+  }
+  for (let i = confirmIndexes.length - 1; i >= 0; i -= 1) {
+    const item = itemList[confirmIndexes[i]];
+    if (itemHasLiveOverlayEdits(item) || item?.edited) return i;
+  }
+  return confirmIndexes.length - 1;
+}
+
 const Checkout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -134,6 +177,9 @@ const Checkout = () => {
   const [designConfirmed, setDesignConfirmed] = useState(false);
   const designModalShownOnLoadRef = useRef(false);
   const shippingSectionRef = useRef(null);
+  const confirmClickLockRef = useRef(false);
+  const [, startConfirmTransition] = useTransition();
+  const [confirmPreviewReady, setConfirmPreviewReady] = useState(false);
 
   const scrollToShippingSection = useCallback(() => {
     // Wait for the design modal to unmount so layout height is correct.
@@ -161,11 +207,10 @@ const Checkout = () => {
     }
   }, []);
 
-  useEffect(() => {
+  const loadCart = useCallback(() => {
     if (!signedIn) return;
     try {
       const parsed = readCartItems();
-      if (cartNeedsDesignModal(parsed)) setCartPersistPaused(true);
       const next = repriceCartItems(parsed, address.country_code);
       setItems(next);
       setSubtotal(next.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
@@ -176,7 +221,16 @@ const Checkout = () => {
       setItems([]);
       setSubtotal(0);
     }
-  }, [signedIn]);
+  }, [signedIn, address.country_code]);
+
+  useEffect(() => {
+    loadCart();
+  }, [loadCart]);
+
+  useEffect(() => {
+    window.addEventListener(CART_UPDATED_EVENT, loadCart);
+    return () => window.removeEventListener(CART_UPDATED_EVENT, loadCart);
+  }, [loadCart]);
 
   // Confirm Your Design for shirts, hoodies, and hats. Mugs, bags, pets, and accessories skip it.
   useEffect(() => {
@@ -195,13 +249,54 @@ const Checkout = () => {
     return () => setCartPersistPaused(false);
   }, [showDesignModal]);
 
+  useEffect(() => {
+    if (!showDesignModal) {
+      setConfirmPreviewReady(false);
+      confirmClickLockRef.current = false;
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (!cancelled) setConfirmPreviewReady(true);
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [showDesignModal]);
+
+  useEffect(() => {
+    if (!showDesignModal) return undefined;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, [showDesignModal]);
+
   // When design modal opens, show Product Preview with the item's saved or default orientation.
   useEffect(() => {
     if (!showDesignModal) return;
-    setDesignPreviewIndex(0);
+    let latest = items;
+    try {
+      const parsed = readCartItems();
+      if (Array.isArray(parsed) && parsed.length) {
+        latest = repriceCartItems(parsed, address.country_code);
+        setItems(latest);
+        setSubtotal(latest.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
+      }
+    } catch {
+      /* keep current items */
+    }
+    setDesignPreviewIndex(initialConfirmPreviewIndex(latest));
     setDesignPreferences((prev) => {
-      if (!items.length) return prev;
-      return items.map((it, i) => prev[i] || {
+      if (!latest.length) return prev;
+      return latest.map((it, i) => prev[i] || {
         orientation: resolveItemImageOrientation(it) || 'portrait',
       });
     });
@@ -241,8 +336,17 @@ const Checkout = () => {
     ? confirmIndexesForPreview[Math.min(Math.max(0, designPreviewIndex), confirmIndexesForPreview.length - 1)]
     : -1;
   const previewItemForShot = previewCartIndexForShot >= 0 ? items[previewCartIndexForShot] : null;
-  const confirmShotUrl = showDesignModal ? itemShotUrl(previewItemForShot) : '';
-  const confirmDisplayShot = useDisplaySrc(confirmShotUrl, 360, showDesignModal, true);
+  const confirmShotUrl = showDesignModal && confirmPreviewReady ? itemConfirmShotUrl(previewItemForShot) : '';
+  const confirmDisplayShot = useDisplaySrc(confirmShotUrl, 360, showDesignModal && confirmPreviewReady, true);
+
+  useEffect(() => {
+    if (!showDesignModal || !confirmPreviewReady) return undefined;
+    cartConfirmIndexes(items).forEach((idx, i) => {
+      const url = itemConfirmShotUrl(items[idx]);
+      if (url) prepareDisplaySrc(url, 360, { urgent: i === designPreviewIndex });
+    });
+    return undefined;
+  }, [showDesignModal, confirmPreviewReady, items, designPreviewIndex]);
 
   // If destination changes, discard a prior quote so totals stay honest.
   useEffect(() => {
@@ -885,7 +989,7 @@ const Checkout = () => {
                 {items.map((ci, i) => {
                   // Get product image and screenshot separately (matching cart display)
                   const productImage = ci.image || ci.img;
-                  const screenshot = ci.screenshot || ci.selected_screenshot || ci.thumbnail;
+                  const screenshot = itemShotUrl(ci);
                   
                   return (
                     <div key={i} className="item-card">
@@ -1283,7 +1387,9 @@ const Checkout = () => {
                   </div>
                   <div className={`design-modal-preview-visual${confirmShotUrl && !confirmDisplayShot.src ? ' is-loading-shot' : ''}`}>
                     {mockupUrl ? (
+                      confirmPreviewReady ? (
                       <ProductPreviewWithDrag
+                        key={previewCartIndex}
                         productImage={mockupUrl}
                         screenshot={confirmDisplayShot.src}
                         productName={itemName}
@@ -1306,10 +1412,26 @@ const Checkout = () => {
                         blackAndWhite={Boolean(ts.blackAndWhite)}
                         featherFadeEnabled={Boolean(ts.featherFadeEnabled)}
                         featherFadeColor={ts.featherFadeColor || 'white'}
+                        textEnabled={Boolean(ts.textEnabled)}
+                        textContent={ts.textContent || ''}
+                        textFont={ts.textFont}
+                        textColor={ts.textColor}
+                        textSize={ts.textSize}
+                        textOffsetX={ts.textOffsetX}
+                        textOffsetY={ts.textOffsetY}
+                        textDirection={ts.textDirection}
                         litePreview
                         sourceWidth={confirmDisplayShot.width}
                         sourceHeight={confirmDisplayShot.height}
                       />
+                      ) : (
+                        <img
+                          className="design-modal-preview-fallback-shot"
+                          src={mockupUrl}
+                          alt={itemName}
+                          decoding="async"
+                        />
+                      )
                     ) : (
                       <p className="design-modal-preview-empty">No preview available</p>
                     )}
@@ -1398,12 +1520,23 @@ const Checkout = () => {
                 return updated;
               };
               const handleConfirm = () => {
+                if (confirmClickLockRef.current) return;
                 const previewIndex = Math.min(Math.max(0, designPreviewIndex), confirmIndexes.length - 1);
                 if (previewIndex < confirmIndexes.length - 1) {
-                  setDesignPreviewIndex((prev) => Math.min(prev + 1, confirmIndexes.length - 1));
+                  confirmClickLockRef.current = true;
+                  startConfirmTransition(() => {
+                    setDesignPreviewIndex((prev) => Math.min(prev + 1, confirmIndexes.length - 1));
+                  });
+                  window.setTimeout(() => {
+                    confirmClickLockRef.current = false;
+                  }, 280);
                   return;
                 }
-                if (!applyOrientationToCart()) return;
+                confirmClickLockRef.current = true;
+                if (!applyOrientationToCart()) {
+                  confirmClickLockRef.current = false;
+                  return;
+                }
                 setDesignConfirmed(true);
                 setShowDesignModal(false);
                 scrollToShippingSection();
@@ -1423,7 +1556,7 @@ const Checkout = () => {
               };
               const isLast = designPreviewIndex >= confirmIndexes.length - 1;
               return (
-                <>
+                <div className="design-modal-footer">
                   <button type="button" className="design-modal-tools-btn" onClick={handleConfirm}>
                     {isLast ? 'Confirm' : 'Confirm and next'}
                   </button>
@@ -1435,7 +1568,7 @@ const Checkout = () => {
                       Customize Design
                     </button>
                   </div>
-                </>
+                </div>
               );
             })()}
           </div>
