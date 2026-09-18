@@ -67,13 +67,14 @@
   border-radius: 10px;
   font-size: 1rem;
   font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.35);
+  color: #1a1a1a;
+  background: linear-gradient(135deg, #d4c48a 0%, #c4b070 100%);
+  box-shadow: 0 6px 16px rgba(160, 130, 50, 0.28);
 }
 
 .how-it-works-cta-primary:hover {
   transform: translateY(-1px);
+  background: linear-gradient(135deg, #cbb978 0%, #b89c58 100%);
 }
 
 .how-it-works-cta-secondary {
@@ -83,14 +84,14 @@
   border-radius: 10px;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #4338ca;
+  color: #1a1a1a;
   text-decoration: none;
-  border: 1.5px solid rgba(102, 126, 234, 0.45);
+  border: 1.5px solid #c4b070;
   background: #fff;
 }
 
 .how-it-works-cta-secondary:hover {
-  background: #f8f9ff;
+  background: #faf6ea;
 }
 
 .how-it-works-back {
@@ -101,7 +102,7 @@
 }
 
 .how-it-works-back:hover {
-  color: #4338ca;
+  color: #8b7355;
 }
 
 @media (max-width: 768px) {

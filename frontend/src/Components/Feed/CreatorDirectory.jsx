@@ -68,7 +68,7 @@ function pinSoftLaunchSlots(rawSlots, total) {
 }
 
 /**
- * Apex homepage: How it works card + numbered reserve storefront slots.
+ * Apex homepage: Welcome card + numbered reserve storefront slots.
  * Reserve → creator signup.
  */
 const CreatorDirectory = () => {
@@ -198,8 +198,8 @@ const CreatorDirectory = () => {
     });
   }, [imagesBySpot, tick]);
 
-  const openHowItWorks = () => {
-    navigate('/how-it-works');
+  const openWelcome = () => {
+    navigate('/release');
   };
 
   /** Open the creator signup window (skip the earnings calculator). */
@@ -222,11 +222,11 @@ const CreatorDirectory = () => {
         <div
           className="card intro-directory-card"
           style={{ cursor: 'pointer' }}
-          onClick={openHowItWorks}
-          onKeyDown={(e) => e.key === 'Enter' && openHowItWorks()}
+          onClick={openWelcome}
+          onKeyDown={(e) => e.key === 'Enter' && openWelcome()}
           role="button"
           tabIndex={0}
-          aria-label="How ScreenMerch Works"
+          aria-label="Welcome to ScreenMerch"
         >
           <div className={`intro-directory-preview${introThumb ? ' intro-directory-preview--thumb' : ''}`}>
             {introThumb ? (
@@ -238,11 +238,11 @@ const CreatorDirectory = () => {
             ) : (
               <>
                 <span className="intro-directory-preview-kicker">Guide</span>
-                <p className="intro-directory-preview-title">How ScreenMerch Works</p>
+                <p className="intro-directory-preview-title">Welcome to ScreenMerch</p>
               </>
             )}
           </div>
-          <h2>How ScreenMerch Works</h2>
+          <h2>Welcome to ScreenMerch</h2>
           <h3>See how moments become merchandise.</h3>
         </div>
 

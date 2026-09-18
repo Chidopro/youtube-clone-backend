@@ -1227,8 +1227,17 @@
     height: auto !important;
     max-height: none !important;
     min-height: 0 !important;
-    aspect-ratio: auto 16 / 9;
+    aspect-ratio: 16 / 9;
     object-fit: contain !important;
+  }
+
+  /* Portrait clips (Samurai Dog) stay in the same 16:9 window; contain letterboxes. */
+  .video-page-container .capture-studio .play-video--portrait video {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16 / 9 !important;
+    object-fit: contain !important;
+    object-position: center center;
   }
 
   .video-page-container .capture-studio .play-video .video-container,
@@ -1373,9 +1382,17 @@
   .video-page-container .capture-studio .play-video video {
     width: 100% !important;
     height: auto !important;
-    aspect-ratio: auto 16 / 9;
+    aspect-ratio: 16 / 9;
     object-fit: contain !important;
     background: #000 !important;
+  }
+
+  .video-page-container .capture-studio .play-video--portrait video {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16 / 9 !important;
+    object-fit: contain !important;
+    object-position: center center;
   }
 
   .video-page-container .capture-studio-palette {

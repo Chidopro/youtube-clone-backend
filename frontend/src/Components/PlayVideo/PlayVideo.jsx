@@ -287,6 +287,7 @@ const PlayVideo = ({
     const [loading, setLoading] = useState(true);
     const [isBuffering, setIsBuffering] = useState(false);
     const [error, setError] = useState('');
+    const [isPortraitVideo, setIsPortraitVideo] = useState(false);
     const [videoError, setVideoError] = useState(null);
     const videoRef = propVideoRef || useRef(null);
     const pendingSeekRef = useRef(null);
@@ -441,6 +442,7 @@ const PlayVideo = ({
         const fetchVideo = async () => {
             setLoading(true);
             setError('');
+            setIsPortraitVideo(false);
             let { data, error } = await supabase
                 .from('videos2')
                 .select('*')
@@ -1227,7 +1229,7 @@ const PlayVideo = ({
     );
 
     return (
-        <div className={`play-video ${isCropMode ? 'crop-mode-active' : ''} ${isMobile ? 'play-video--mobile' : ''}${hideMediaChrome ? ' play-video--chrome-hidden' : ''}`}>
+        <div className={`play-video ${isCropMode ? 'crop-mode-active' : ''} ${isMobile ? 'play-video--mobile' : ''}${hideMediaChrome ? ' play-video--chrome-hidden' : ''}${isPortraitVideo ? ' play-video--portrait' : ''}`}>
             <div 
                 className="video-container" 
                 ref={videoContainerRef}
@@ -1279,6 +1281,11 @@ const PlayVideo = ({
                         onLoadedMetadata={() => {
                             const el = videoRef.current;
                             if (!el) return;
+                            const portrait = el.videoWidth > 0 && el.videoHeight > el.videoWidth;
+                            setIsPortraitVideo(portrait);
+                            if (portrait) {
+                                el.removeAttribute('poster');
+                            }
                             if (el.duration && Number.isFinite(el.duration)) {
                                 setPlayerDuration(el.duration);
                             }

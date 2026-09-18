@@ -3280,9 +3280,10 @@
 }
 
 .favorite-modal-content {
+    --favorite-modal-radius: 16px;
     background: white;
-    border-radius: 16px;
-    padding: 0;
+    border-radius: var(--favorite-modal-radius);
+    padding: 0 0 var(--favorite-modal-radius);
     max-width: 520px;
     width: 100%;
     max-height: calc(100vh - 96px);
@@ -3524,10 +3525,10 @@
     }
 
     .favorite-modal-content {
+        --favorite-modal-radius: 12px;
         max-width: 95%;
         max-height: calc(100vh - 80px);
         max-height: calc(100dvh - 80px);
-        border-radius: 12px;
     }
 
     .favorite-modal-content h2 {

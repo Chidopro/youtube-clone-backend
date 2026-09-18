@@ -13,7 +13,7 @@ import { applyBrowsePresetToCartItem } from '../../utils/bakeBrowsePreset';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
-import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
+import { saveShopAddIntent, SHOP_CATEGORIES, storefrontMockupUrl } from '../../utils/shopCategories';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { readShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
 import {
@@ -129,6 +129,8 @@ function productImageSrc(url) {
 // Prefer full URL from API (main_image_url / preview_image_url) when present
 const getProductImageUrl = (product, preferPreview = true) => {
   if (!product) return `${getImgBase()}/placeholder.png`;
+  const forced = storefrontMockupUrl(product.name || product.product, '');
+  if (forced) return productImageSrc(forced);
   // Use normalized URL from setProductData so images persist across category switches
   if (product._displayImageUrl) return productImageSrc(product._displayImageUrl);
   const url = preferPreview
@@ -254,7 +256,7 @@ const STATIC_PRODUCT_IMAGE_MAP = {
   "Men's Fitted Long Sleeve": { filename: 'mensfittedlongsleeve.png', preview: 'mensfittedlongsleevepreview.png', price: 31.33 },
   'T-Shirt': { filename: 'guidontee.png', preview: 'guidonteepreview.png', price: 23.69 },
   'Oversized T-Shirt': { filename: 'unisexoversizedtshirt.png', preview: 'unisexoversizedtshirtpreview.png', price: 28.49 },
-  "Men's Long Sleeve Shirt": { filename: 'menslongsleeve.png', preview: 'menslongsleevepreview.png', price: 26.79 },
+  "Men's Long Sleeve Shirt": { filename: 'menslongsleeve.png', preview: 'menslongsleevepreviewv2.png', price: 26.79 },
   'Champion Hoodie': { filename: 'hoodiechampion.png', preview: 'hoodiechampionpreview.png', price: 47.00 },
   'Cropped Hoodie': { filename: 'womenscroppedhoodiepreview.png', preview: 'womenscroppedhoodiepreview.png', price: 45.15 },
   'Racerback Tank': { filename: 'womenstankpreview.png', preview: 'womenstankpreview.png', price: 22.95 },

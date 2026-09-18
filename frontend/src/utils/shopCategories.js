@@ -28,6 +28,15 @@ export function shopCategoryThumbUrl(previewFile) {
   return `${shopImgBase()}/${file}`;
 }
 
+/** Taller print-box mockup for Men's Long Sleeve Shirt (not the fitted long sleeve). */
+export function storefrontMockupUrl(productName, fallbackUrl) {
+  const n = String(productName || '');
+  if (/men'?s long sleeve shirt/i.test(n) && !/fitted/i.test(n)) {
+    return `${shopImgBase()}/menslongsleevepreviewv2.png`;
+  }
+  return fallbackUrl;
+}
+
 const SHOP_ADD_INTENT_KEY = 'sm_shop_add_intent';
 
 export function browseShopCategoryPath(category, options = {}) {

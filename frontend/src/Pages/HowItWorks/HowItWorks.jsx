@@ -1,9 +1,8 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import './HowItWorks.css';
 
 const HowItWorks = () => {
-  const navigate = useNavigate();
 
   return (
     <div className="how-it-works-page">
@@ -35,14 +34,17 @@ const HowItWorks = () => {
 
           <h2>2. Add Clips and Photos</h2>
           <p>
-            Creators build their storefront&apos;s content by adding clips and photos that contain moments
+            Creators build their storefront&apos;s by adding clips and photos that contain moments
             their audience may want to turn into merchandise.
           </p>
           <p>
-            Photos can be uploaded directly, while clips can be used to give fans access to memorable
-            frames and images from the creator&apos;s content.
+            Photos and clips can be uploaded directly, giving fans access to memorable snapshots and
+            images from the creator&apos;s content.
           </p>
-          <p>Creators manage their content from their ScreenMerch dashboard.</p>
+          <p>
+            Creators manage their content and earnings through their personal ScreenMerch dashboard
+            analytics page.
+          </p>
 
           <h2>3. Capture Clip Moments with FrameSnag</h2>
           <p>
@@ -61,8 +63,7 @@ const HowItWorks = () => {
 
           <h2>4. Fans Choose the Content They Love</h2>
           <p>
-            Fans visit the creator&apos;s branded storefront and browse the available clips, photos, and
-            images.
+            Fans visit the creator&apos;s branded storefront, play available clips, and browse images.
           </p>
           <p>When they find a moment they like, they can select it and choose from available merchandise.</p>
           <p>
@@ -116,9 +117,9 @@ const HowItWorks = () => {
             to join through the <strong>Umbrella Creator</strong> system.
           </p>
           <p>
-            Umbrella Creators can have their own branded presence within the owner&apos;s storefront and
-            manage their own content. Sales and activity can be attributed to the appropriate creator,
-            with separate analytics and earnings tracking.
+            Umbrella Creators have their own page within the owner&apos;s storefront and manage their own
+            content. Sales activity is attributed to the appropriate creator, with separate earnings
+            analytics and content page.
           </p>
           <p>
             The audience can move throughout the creator network while remaining inside one unified
@@ -144,7 +145,7 @@ const HowItWorks = () => {
           <button
             type="button"
             className="how-it-works-cta-primary"
-            onClick={() => navigate('/subscription-tiers', { state: { intent: 'creator' } })}
+            onClick={() => window.dispatchEvent(new CustomEvent('screenmerch:open-creator-signup'))}
           >
             Unlock your free storefront
           </button>

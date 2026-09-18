@@ -17,7 +17,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #667eea;
+  color: #8b7355;
 }
 
 .faq-title {
@@ -144,8 +144,8 @@
   border-radius: 10px;
   font-size: 1rem;
   font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #1a1a1a;
+  background: linear-gradient(135deg, #d4c48a 0%, #c4b070 100%);
 }
 
 .faq-cta-secondary {
@@ -155,9 +155,9 @@
   border-radius: 10px;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #4338ca;
+  color: #1a1a1a;
   text-decoration: none;
-  border: 1.5px solid rgba(102, 126, 234, 0.45);
+  border: 1.5px solid #c4b070;
   background: #fff;
 }
 
@@ -168,7 +168,7 @@
 }
 
 .faq-contact a {
-  color: #5568d3;
+  color: #8b7355;
   font-weight: 600;
   text-decoration: none;
 }
@@ -183,7 +183,7 @@
 .faq-back:hover,
 .faq-cta-secondary:hover,
 .faq-contact a:hover {
-  color: #4338ca;
+  color: #6b5a2e;
 }
 
 @media (max-width: 768px) {

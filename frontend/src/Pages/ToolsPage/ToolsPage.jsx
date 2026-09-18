@@ -4,6 +4,7 @@ import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, ge
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
 import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest, peekToolsPreviewNewest, rememberArtworkOrientation } from '../../utils/merchSession';
 import { isDemoStorefront } from '../../utils/demoStorefront';
+import { storefrontMockupUrl } from '../../utils/shopCategories';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlainText, cornerRadiusPx, featherPx } from '../../utils/editLog';
 import './ToolsPage.css';
@@ -225,10 +226,10 @@ const APPAREL_PRINT_OVERRIDES = {
     left: 50.4,
   },
   "Men's Long Sleeve Shirt": {
-    widthFrac: 0.291,
-    heightFrac: 0.539,
-    top: 43.5,
-    left: 48.1,
+    widthFrac: 0.317,
+    heightFrac: 0.761,
+    top: 52.3,
+    left: 48.5,
   },
   "Oversized T-Shirt": {
     widthFrac: 0.404,
@@ -1635,6 +1636,7 @@ const ProductPreviewWithDrag = ({
   const [detectedPrintBox, setDetectedPrintBox] = useState(null);
   const [shirtFillColor, setShirtFillColor] = useState('');
   const overlayFitKeyRef = useRef('');
+  const liteSizeLockedRef = useRef(false);
 
   const clampFrameOffset = (x, y) => {
     const placeName = selectedProductName || productName;
@@ -1710,6 +1712,9 @@ const ProductPreviewWithDrag = ({
       const commitOverlaySize = (width, height) => {
         overlayFitKeyRef.current = `${effectiveProductName}|${productSize || ''}`;
         setScreenshotDisplaySize((prev) => {
+          if (litePreview && prev.width >= 8 && prev.height >= 8) {
+            return prev;
+          }
           if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) {
             return prev;
           }
@@ -1929,9 +1934,10 @@ const ProductPreviewWithDrag = ({
     };
 
     calculateSize();
+    if (litePreview) return undefined;
     const raf = requestAnimationFrame(calculateSize);
     return () => cancelAnimationFrame(raf);
-  }, [productName, productSize, productImageSize, selectedProductName, printAreaFit, productImage, detectedPrintBox]);
+  }, [productName, productSize, productImageSize, selectedProductName, printAreaFit, productImage, detectedPrintBox, litePreview]);
 
   useLayoutEffect(() => {
     if (!onOverlayBoxChange) return;
@@ -1958,6 +1964,7 @@ const ProductPreviewWithDrag = ({
   // Measure the painted mockup only. naturalWidth is the file size and
   // makes the overlay huge on phones (then too tall once width is matched).
   const measureProductImage = () => {
+    if (litePreview && liteSizeLockedRef.current) return;
     const img = productImageRef.current;
     const stage = containerRef.current;
     if (!img && !stage) return;
@@ -1987,8 +1994,9 @@ const ProductPreviewWithDrag = ({
       if (aspect > 0) height = width * aspect;
     }
     if (width < 2 || height < 2) return;
+    if (litePreview) liteSizeLockedRef.current = true;
     setProductImageSize((prev) => {
-      const slop = litePreview ? 2 : 0.5;
+      const slop = litePreview ? 24 : 0.5;
       if (Math.abs(prev.width - width) < slop && Math.abs(prev.height - height) < slop) {
         return prev;
       }
@@ -2032,9 +2040,10 @@ const ProductPreviewWithDrag = ({
           setDetectedPrintBox(detectPaintedPrintBox(sourceImg));
         });
       }
-    } else if (litePreview || !img || !isApparelChestPrintProduct(name) || getApparelPrintOverride(name)) {
-      setDetectedPrintBox(null);
+    } else if (!litePreview && (!img || !isApparelChestPrintProduct(name) || getApparelPrintOverride(name))) {
+      setDetectedPrintBox((prev) => (prev == null ? prev : null));
     }
+    if (litePreview) return;
     requestAnimationFrame(() => {
       measureProductImage();
       requestAnimationFrame(measureProductImage);
@@ -2042,7 +2051,8 @@ const ProductPreviewWithDrag = ({
   };
 
   useLayoutEffect(() => {
-    setDetectedPrintBox(null);
+    liteSizeLockedRef.current = false;
+    if (!litePreview) setDetectedPrintBox(null);
     measureProductImage();
     const img = productImageRef.current;
     const stage = containerRef.current;
@@ -2050,6 +2060,7 @@ const ProductPreviewWithDrag = ({
     if (img?.complete) {
       handleProductImageLoad();
     }
+    if (litePreview) return undefined;
     let measureCancelled = false;
     const maxTicks = 4;
     const tickMeasure = (attempt) => {
@@ -2168,7 +2179,7 @@ const ProductPreviewWithDrag = ({
   }, [isDragging, onOffsetChange, onTextPositionChange, textDragMode, screenshotDisplaySize, productImageSize, imageOrientation, selectedProductName, productName]);
 
   useLayoutEffect(() => {
-    if (isDragging || !onOffsetChange) return;
+    if (litePreview || isDragging || !onOffsetChange) return;
     if (!(screenshotDisplaySize.width > 8) || !(screenshotDisplaySize.height > 8)) return;
     if (imageOrientation === 'landscape') {
       if (Math.abs(offsetX) > 0.5 || Math.abs(offsetY) > 0.5) {
@@ -2180,7 +2191,7 @@ const ProductPreviewWithDrag = ({
     if (Math.abs(next.x - offsetX) > 0.5 || Math.abs(next.y - offsetY) > 0.5) {
       onOffsetChange(next.x, next.y);
     }
-  }, [isDragging, offsetX, offsetY, screenshotDisplaySize, imageOrientation, selectedProductName, productName, onOffsetChange]);
+  }, [litePreview, isDragging, offsetX, offsetY, screenshotDisplaySize, imageOrientation, selectedProductName, productName, onOffsetChange]);
 
   return (
     <div 
@@ -2190,6 +2201,8 @@ const ProductPreviewWithDrag = ({
         position: 'relative',
         width: '100%',
         margin: '0 auto',
+        overflow: litePreview ? 'hidden' : undefined,
+        contain: litePreview ? 'layout paint' : undefined,
         cursor: litePreview || imageOrientation === 'landscape' ? 'default' : (isDragging ? 'grabbing' : 'grab'),
         userSelect: 'none',
         WebkitUserSelect: 'none',
@@ -3261,7 +3274,7 @@ const ToolsPage = () => {
                 category: p.category || '',
                 screenshot: hasOriginal ? p.original_screenshot : (p.screenshot || ''),
                 originalScreenshot: hasOriginal ? p.original_screenshot : '',
-                productImage: (p.preview_image_url && p.preview_image_url.trim()) || '',
+                productImage: storefrontMockupUrl(p.product, (p.preview_image_url && p.preview_image_url.trim()) || ''),
                 imageOrientation: ori,
                 toolSettings: hasOriginal
                   ? ts
@@ -3281,7 +3294,7 @@ const ToolsPage = () => {
               missing.map((item) =>
                 fetch(apiJoin(`/api/product-preview-url?name=${encodeURIComponent(item.name)}`))
                   .then((r) => r.ok ? r.json() : null)
-                  .then((data) => (data && data.url ? { ...item, productImage: data.url } : item))
+                  .then((data) => (data && data.url ? { ...item, productImage: storefrontMockupUrl(item.name, data.url) } : item))
                   .catch(() => item)
               )
             ).then((filled) => {
@@ -3349,7 +3362,7 @@ const ToolsPage = () => {
               category: item.category || '',
               screenshot: item.originalScreenshot || item.screenshot || '',
               originalScreenshot: item.originalScreenshot || '',
-              productImage: item.image || '', // Store product image from cart
+              productImage: storefrontMockupUrl(item.name || item.product, item.image || ''),
               imageOrientation: item.imageOrientation || item.toolSettings?.imageOrientation || '',
               toolSettings: item.toolSettings || null // Store tool settings if they exist
             }))

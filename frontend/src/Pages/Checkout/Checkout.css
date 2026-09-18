@@ -1,8 +1,8 @@
 /* Modern Checkout Styling — graphite / stone, not brand purple */
 .checkout-container {
   --ck-ink: #18181b;
-  --ck-fill: #18181b;
-  --ck-fill-hover: #27272a;
+  --ck-fill: #3f3f46;
+  --ck-fill-hover: #52525b;
   --ck-muted: #71717a;
   --ck-line: #e4e4e7;
   --ck-wash: #f4f4f5;
@@ -703,15 +703,15 @@
 }
 
 .btn-primary {
-  background: #18181b;
+  background: #3f3f46;
   color: white;
-  box-shadow: 0 8px 32px rgba(24, 24, 27, 0.18);
+  box-shadow: 0 8px 32px rgba(63, 63, 70, 0.18);
 }
 
 .btn-primary:hover {
-  background: #27272a;
+  background: #52525b;
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(24, 24, 27, 0.22);
+  box-shadow: 0 8px 24px rgba(63, 63, 70, 0.22);
 }
 
 .btn-primary:active {
@@ -733,7 +733,7 @@
 
 /* Calculate Shipping button - matches Place Order button style */
 #calc-shipping-btn {
-  background: #18181b !important;
+  background: #3f3f46 !important;
   color: white !important;
   font-weight: 700 !important;
   border: none !important;
@@ -741,13 +741,13 @@
   padding: 16px 20px !important;
   border-radius: 12px !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow: 0 8px 32px rgba(24, 24, 27, 0.18) !important;
+  box-shadow: 0 8px 32px rgba(63, 63, 70, 0.18) !important;
 }
 
 #calc-shipping-btn:hover:not(:disabled) {
-  background: #27272a !important;
+  background: #52525b !important;
   transform: translateY(-2px) !important;
-  box-shadow: 0 8px 24px rgba(24, 24, 27, 0.22) !important;
+  box-shadow: 0 8px 24px rgba(63, 63, 70, 0.22) !important;
 }
 
 #calc-shipping-btn:disabled {
@@ -764,10 +764,10 @@
 }
 
 .btn-outline:hover {
-  background: #18181b;
+  background: #3f3f46;
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(24, 24, 27, 0.18);
+  box-shadow: 0 8px 24px rgba(63, 63, 70, 0.18);
 }
 
 .btn-large {
@@ -793,7 +793,7 @@
 
 .btn-primary:disabled:hover {
   transform: none;
-  box-shadow: 0 8px 32px rgba(24, 24, 27, 0.18);
+  box-shadow: 0 8px 32px rgba(63, 63, 70, 0.18);
 }
 
 .loading-spinner {
@@ -903,7 +903,8 @@
   max-width: 360px;
   padding: 14px 16px 12px;
   max-height: calc(100dvh - 24px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
@@ -934,7 +935,7 @@
 
 .design-modal-preview-card {
   margin: 0 0 8px;
-  overflow: visible;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -969,6 +970,8 @@
   justify-content: center;
   flex-shrink: 0;
   position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .design-modal-preview-visual.is-loading-shot::after {
@@ -982,7 +985,17 @@
 
 .design-modal--preview .product-preview-stage {
   max-width: 200px;
-  width: 100%;
+  width: 200px;
+  overflow: hidden;
+  contain: layout paint;
+  isolation: isolate;
+}
+
+.design-modal-footer {
+  position: relative;
+  z-index: 8;
+  flex-shrink: 0;
+  pointer-events: auto;
 }
 
 @media (max-width: 640px) {
@@ -1005,6 +1018,7 @@
 
   .design-modal--preview .product-preview-stage {
     max-width: 140px;
+    width: 140px;
   }
 
   .design-modal-preview-visual {
@@ -1055,6 +1069,9 @@
   gap: 8px;
   margin-top: 4px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 7;
+  pointer-events: auto;
 }
 
 .design-modal-nav-btn {

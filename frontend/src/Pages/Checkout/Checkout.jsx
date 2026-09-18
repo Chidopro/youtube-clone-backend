@@ -7,6 +7,7 @@ import { ProductPreviewWithDrag } from '../ToolsPage/ToolsPage';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
+import { storefrontMockupUrl } from '../../utils/shopCategories';
 import {
   CHECKOUT_COUNTRY_OPTIONS,
   US_STATE_OPTIONS,
@@ -115,7 +116,7 @@ function OrderItemShot({ url, orientation, offsetX, offsetY, enabled = true }) {
 /** Portrait/landscape confirm is useful on shirts, hoodies, and hats. */
 const DESIGN_CONFIRM_CATEGORIES = new Set(['womens', 'mens', 'kids', 'hats']);
 const DESIGN_SKIP_CATEGORIES = new Set(['mugs', 'bags', 'pets', 'misc']);
-const DESIGN_SKIP_NAME_RE = /\b(mug|tote|bag|sleeve|bowl|bandana|notebook|puzzle|poster|magnet|sticker|phone case|pet)\b/i;
+const DESIGN_SKIP_NAME_RE = /\b(mug|tote|bag|laptop\s*sleeve|bowl|bandana|notebook|puzzle|poster|magnet|sticker|phone case|pet)\b/i;
 const DESIGN_CONFIRM_NAME_RE = /\b(t-?shirt|shirt|hoodie|tee|tank|sweatshirt|crewneck|jersey|pullover|hat|cap|beanie)\b/i;
 
 function itemNeedsDesignConfirm(item) {
@@ -136,6 +137,20 @@ function cartConfirmIndexes(itemList) {
 
 function cartNeedsDesignModal(itemList) {
   return cartConfirmIndexes(itemList).length > 0;
+}
+
+/** Next confirm slot after `afterPos`, skipping cart indexes already confirmed. */
+function nextUnconfirmedConfirmPos(confirmIndexes, afterPos, confirmedCartIndexes) {
+  const confirmed = confirmedCartIndexes instanceof Set
+    ? confirmedCartIndexes
+    : new Set(confirmedCartIndexes);
+  const len = confirmIndexes.length;
+  if (len <= 0) return -1;
+  for (let step = 1; step <= len; step += 1) {
+    const pos = (afterPos + step) % len;
+    if (!confirmed.has(confirmIndexes[pos])) return pos;
+  }
+  return -1;
 }
 
 /** Confirm should open on the item just edited or added, not always cart slot 0. */
@@ -171,6 +186,7 @@ const Checkout = () => {
   const [designPreferences, setDesignPreferences] = useState([]);
   const designPreferencesRef = useRef([]);
   const [designPreviewIndex, setDesignPreviewIndex] = useState(0);
+  const [confirmedCartIndexes, setConfirmedCartIndexes] = useState([]);
   const [previewMockups, setPreviewMockups] = useState({});
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   /** Set true when user completes design modal with "Continue to Checkout". Required before Place Order. */
@@ -255,13 +271,23 @@ const Checkout = () => {
       confirmClickLockRef.current = false;
       return undefined;
     }
+    setConfirmedCartIndexes([]);
     let cancelled = false;
-    const timer = window.setTimeout(() => {
+    let idleId = 0;
+    const startPreview = () => {
       if (!cancelled) setConfirmPreviewReady(true);
-    }, 0);
+    };
+    if (typeof requestIdleCallback === 'function') {
+      idleId = requestIdleCallback(startPreview, { timeout: 80 });
+    } else {
+      idleId = window.setTimeout(startPreview, 32);
+    }
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      if (typeof cancelIdleCallback === 'function') {
+        try { cancelIdleCallback(idleId); } catch { /* ignore */ }
+      }
+      window.clearTimeout(idleId);
     };
   }, [showDesignModal]);
 
@@ -341,12 +367,17 @@ const Checkout = () => {
 
   useEffect(() => {
     if (!showDesignModal || !confirmPreviewReady) return undefined;
-    cartConfirmIndexes(items).forEach((idx, i) => {
-      const url = itemConfirmShotUrl(items[idx]);
-      if (url) prepareDisplaySrc(url, 360, { urgent: i === designPreviewIndex });
-    });
+    const indexes = cartConfirmIndexes(items);
+    const currentIdx = indexes[designPreviewIndex];
+    const nextIdx = indexes[designPreviewIndex + 1];
+    const currentUrl = currentIdx != null ? itemConfirmShotUrl(items[currentIdx]) : '';
+    if (currentUrl) prepareDisplaySrc(currentUrl, 360, { urgent: true });
+    if (nextIdx != null) {
+      const nextUrl = itemConfirmShotUrl(items[nextIdx]);
+      if (nextUrl) prepareDisplaySrc(nextUrl, 360, { urgent: false });
+    }
     return undefined;
-  }, [showDesignModal, confirmPreviewReady, items, designPreviewIndex]);
+  }, [showDesignModal, confirmPreviewReady, confirmShotUrl, designPreviewIndex]);
 
   // If destination changes, discard a prior quote so totals stay honest.
   useEffect(() => {
@@ -848,6 +879,9 @@ const Checkout = () => {
     setSubtotal(updated.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
     setDesignPreferences((prev) => prev.filter((_, i) => i !== index));
     writeCartItems(updated);
+    setConfirmedCartIndexes((prev) => prev
+      .filter((i) => i !== index)
+      .map((i) => (i > index ? i - 1 : i)));
     setShipping((s) => ({ ...s, calculated: false, cost: 0, tax: 0, taxLabel: '', error: '' }));
     if (updated.length === 0) {
       setShowDesignModal(false);
@@ -988,7 +1022,7 @@ const Checkout = () => {
               <div className="items-list">
                 {items.map((ci, i) => {
                   // Get product image and screenshot separately (matching cart display)
-                  const productImage = ci.image || ci.img;
+                  const productImage = storefrontMockupUrl(ci.name || ci.product, ci.image || ci.img);
                   const screenshot = itemShotUrl(ci);
                   
                   return (
@@ -1365,7 +1399,10 @@ const Checkout = () => {
               const item = items[previewCartIndex];
               const itemName = item?.name || item?.product || `Item ${previewCartIndex + 1}`;
               const itemSize = (item?.size || '').trim();
-              const mockupUrl = item?.image || item?.img || previewMockups[previewCartIndex] || '';
+              const mockupUrl = storefrontMockupUrl(
+                itemName,
+                item?.image || item?.img || previewMockups[previewCartIndex] || ''
+              );
               const ts = item?.toolSettings && typeof item.toolSettings === 'object' ? item.toolSettings : {};
               const previewOrientation = (designPreferences[previewCartIndex]?.orientation === 'landscape')
                 ? 'landscape'
@@ -1387,7 +1424,7 @@ const Checkout = () => {
                   </div>
                   <div className={`design-modal-preview-visual${confirmShotUrl && !confirmDisplayShot.src ? ' is-loading-shot' : ''}`}>
                     {mockupUrl ? (
-                      confirmPreviewReady ? (
+                      confirmPreviewReady && (!confirmShotUrl || confirmDisplayShot.src) ? (
                       <ProductPreviewWithDrag
                         key={previewCartIndex}
                         productImage={mockupUrl}
@@ -1522,10 +1559,20 @@ const Checkout = () => {
               const handleConfirm = () => {
                 if (confirmClickLockRef.current) return;
                 const previewIndex = Math.min(Math.max(0, designPreviewIndex), confirmIndexes.length - 1);
-                if (previewIndex < confirmIndexes.length - 1) {
+                const cartIdx = confirmIndexes[previewIndex];
+                const nextConfirmed = confirmedCartIndexes.includes(cartIdx)
+                  ? confirmedCartIndexes
+                  : [...confirmedCartIndexes, cartIdx];
+                const nextPos = nextUnconfirmedConfirmPos(
+                  confirmIndexes,
+                  previewIndex,
+                  nextConfirmed
+                );
+                if (nextPos >= 0) {
                   confirmClickLockRef.current = true;
+                  setConfirmedCartIndexes(nextConfirmed);
                   startConfirmTransition(() => {
-                    setDesignPreviewIndex((prev) => Math.min(prev + 1, confirmIndexes.length - 1));
+                    setDesignPreviewIndex(nextPos);
                   });
                   window.setTimeout(() => {
                     confirmClickLockRef.current = false;
@@ -1554,7 +1601,12 @@ const Checkout = () => {
                 } catch (_) { /* ignore */ }
                 navigate('/tools');
               };
-              const isLast = designPreviewIndex >= confirmIndexes.length - 1;
+              const previewIndex = Math.min(Math.max(0, designPreviewIndex), Math.max(0, confirmIndexes.length - 1));
+              const confirmedSet = new Set(confirmedCartIndexes);
+              const othersUnconfirmed = confirmIndexes.some((idx, i) => (
+                i !== previewIndex && !confirmedSet.has(idx)
+              ));
+              const isLast = !othersUnconfirmed;
               return (
                 <div className="design-modal-footer">
                   <button type="button" className="design-modal-tools-btn" onClick={handleConfirm}>

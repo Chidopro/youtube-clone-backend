@@ -7,7 +7,6 @@ const Release = () => {
     <div className="release-page">
       <article className="release-article">
         <h1 className="release-title">Welcome to ScreenMerch</h1>
-        <p className="release-lede">Your Content. Your Storefront. Your Earnings.</p>
 
         <p>
           ScreenMerch is a creator-focused merchandising platform that transforms memorable moments
@@ -21,9 +20,10 @@ const Release = () => {
         </p>
 
         <p>
-          With ScreenMerch, approved creators receive their own branded storefront where fans can
-          discover images from their content, choose the moments they love, place them on merchandise,
-          and purchase — all within the creator&apos;s ScreenMerch store.
+          With ScreenMerch, approved creators receive their own subdomain and branded storefront.
+          Where fans can browse images and capture moments from clips they love. Then choose from a
+          variety of categories to print on merchandise to purchase. All within the creator&apos;s
+          ScreenMerch store.
         </p>
 
         <h2>A Storefront That Belongs to Your Brand</h2>
@@ -54,11 +54,14 @@ const Release = () => {
           life.
         </p>
         <p>
-          Creators can add photos and capture memorable images from their clips. Fans can then
-          browse those images, choose their favorites, and personalize merchandise with the content that
-          means something to them.
+          Creators add the images and clips. Fans can capture memorable screenshots from those clips,
+          browse images, choose their favorites, and personalize merchandise with the content that
+          means something to them. That lets fans take part in choosing what they want.
         </p>
-        <p>There&apos;s no inventory for creators to purchase and no boxes to pack.</p>
+        <p>
+          There&apos;s no inventory for creators to purchase, no boxes to pack, and no monthly membership
+          fee.
+        </p>
         <p>
           ScreenMerch coordinates payment processing, production, fulfillment, and delivery through its
           platform and fulfillment partners, allowing creators to concentrate on what they do best —
@@ -73,8 +76,8 @@ const Release = () => {
           storefront.
         </p>
         <p>
-          Each collaborator can contribute their own content while sales, analytics, and earnings remain
-          attributable to the appropriate creator.
+          Each collaborator has a page of their own to add content and view sales analytics, product sales
+          and current earnings history.
         </p>
         <p>
           For a YouTube channel, podcast, production team, business, or other group with multiple people
@@ -83,15 +86,16 @@ const Release = () => {
         </p>
 
         <h2>One Platform for Content and Commerce</h2>
-        <p>
-          Your storefront, checkout, and payouts stay under your name. Fans shop the moments they already love.
-        </p>
-
         <p className="release-tagline">
           <strong>Your brand. Your content. Your earnings.</strong>
         </p>
       </article>
-      <Link to="/" className="release-back">Back to Home</Link>
+      <div className="release-cta-row">
+        <Link to="/how-it-works" className="release-cta-primary">
+          How it Works
+        </Link>
+        <Link to="/" className="release-back">Back to Home</Link>
+      </div>
     </div>
   );
 };

@@ -101,13 +101,14 @@ export function loggedInUserId() {
 }
 
 /**
- * True when this visitor is looking at the sample storefront and is not its owner.
- * If the owner id is not loaded yet, do not treat a real login as a visitor
- * (that was kicking maxfreedom11 into /demo/dashboard).
+ * Sample-store tour only: logged-out shoppers or the demo-preview persona.
+ * Real signed-in accounts (owners, umbrella collaborators, shoppers) must stay
+ * on /dashboard — sending them to /demo/dashboard loops and never loads.
  */
 export function isDemoStorefrontVisitor(creatorId) {
   if (!isDemoStorefront()) return false;
   const stored = readStoredUser();
+  if (isRealStorefrontUser(stored)) return false;
   if (isDemoPreviewUser(stored)) return true;
   const uid = String(stored?.id || '').trim();
   const oid = String(creatorId || '').trim();

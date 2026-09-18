@@ -661,8 +661,10 @@ function favoritePageNameTaken(pages, name, { ignoreListId } = {}) {
 }
 
 const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
-    const [user, setUser] = useState(null);
-    const demoPreview = demoPreviewFromRoute && !isRealStorefrontUser(user || readStoredUser());
+    const [user, setUser] = useState(() => {
+        const stored = readStoredUser();
+        return isRealStorefrontUser(stored) ? stored : null;
+    });
     const [userProfile, setUserProfile] = useState(null);
     const [subscription, setSubscription] = useState(null);
     const [videos, setVideos] = useState([]);
@@ -670,9 +672,28 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(demoPreviewFromRoute ? 'analytics' : 'favorites');
     const [umbrellaOnly, setUmbrellaOnly] = useState(false);
+    const [umbrellaChannelOwnerId, setUmbrellaChannelOwnerId] = useState('');
+    const [umbrellaStorefrontSub, setUmbrellaStorefrontSub] = useState('');
     const [umbrellaStatusReady, setUmbrellaStatusReady] = useState(false);
     const [analyticsError, setAnalyticsError] = useState('');
     const { currentCreator, loading: creatorLoading } = useCreator();
+    const storedSessionUser = readStoredUser();
+    const realSession = isRealStorefrontUser(storedSessionUser);
+    const sessionUserId = String((realSession ? storedSessionUser : user)?.id || '').trim();
+    const storefrontOwnerId = String(currentCreator?.id || '').trim();
+    const isDemoStoreOwner = isDemoStorefront() && Boolean(sessionUserId && storefrontOwnerId && sessionUserId === storefrontOwnerId);
+    const isThisStorefrontCollab = Boolean(
+        umbrellaOnly
+        && storefrontOwnerId
+        && String(umbrellaChannelOwnerId || '').trim() === storefrontOwnerId
+    );
+    const awaitingStorefrontIdentity = Boolean(
+        !demoPreviewFromRoute
+        && isDemoStorefront()
+        && realSession
+        && (creatorLoading || !umbrellaStatusReady)
+    );
+    const demoPreview = Boolean(demoPreviewFromRoute) && !realSession;
 
     // Open tab when URL has ?tab= (e.g. from navbar logo edit or FrameSnag "Add to Favorites")
     useEffect(() => {
@@ -695,19 +716,26 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     }, [searchParams]);
 
     useEffect(() => {
-        if (demoPreview || !user?.id || userProfile?.role !== 'creator') {
+        if (!user?.id) {
             setUmbrellaOnly(false);
-            setUmbrellaStatusReady(true);
+            setUmbrellaChannelOwnerId('');
+            setUmbrellaStorefrontSub('');
+            setUmbrellaStatusReady(!isRealStorefrontUser(readStoredUser()));
             return;
         }
         setUmbrellaStatusReady(false);
         let cancelled = false;
+        const readyTimer = setTimeout(() => {
+            if (!cancelled) setUmbrellaStatusReady(true);
+        }, 8000);
         (async () => {
             try {
                 const { ok, data } = await channelFriendsJson('/api/channel-friends/my-umbrella-status', { method: 'GET' });
                 if (cancelled) return;
-                if (ok && data?.is_umbrella_only) {
+                if (ok && (data?.is_umbrella_only || data?.is_umbrella_member)) {
                     setUmbrellaOnly(true);
+                    setUmbrellaChannelOwnerId(String(data.channel_owner_id || '').trim());
+                    setUmbrellaStorefrontSub(String(data.storefront_subdomain || '').trim().toLowerCase());
                     const tabParam = new URLSearchParams(window.location.search).get('tab');
                     if (tabParam === 'analytics' || tabParam === 'favorites') {
                         setActiveTab(tabParam);
@@ -716,15 +744,40 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                     }
                 } else {
                     setUmbrellaOnly(false);
+                    setUmbrellaChannelOwnerId('');
+                    setUmbrellaStorefrontSub('');
                 }
             } catch (_) {
-                if (!cancelled) setUmbrellaOnly(false);
+                if (!cancelled) {
+                    setUmbrellaOnly(false);
+                    setUmbrellaChannelOwnerId('');
+                    setUmbrellaStorefrontSub('');
+                }
             } finally {
                 if (!cancelled) setUmbrellaStatusReady(true);
             }
         })();
-        return () => { cancelled = true; };
-    }, [user?.id, userProfile?.role]);
+        return () => {
+            cancelled = true;
+            clearTimeout(readyTimer);
+        };
+    }, [user?.id]);
+
+    useEffect(() => {
+        if (demoPreviewFromRoute || !isDemoStorefront() || creatorLoading || !umbrellaStatusReady) return;
+        if (isThisStorefrontCollab || isDemoStoreOwner) return;
+        const sub = String(umbrellaStorefrontSub || '').trim().toLowerCase();
+        if (!umbrellaOnly || !/^[a-z0-9-]{1,63}$/.test(sub) || sub === DEMO_STOREFRONT_SUBDOMAIN) return;
+        window.location.assign(`https://${sub}.screenmerch.com/dashboard`);
+    }, [
+        demoPreviewFromRoute,
+        creatorLoading,
+        umbrellaStatusReady,
+        isThisStorefrontCollab,
+        isDemoStoreOwner,
+        umbrellaOnly,
+        umbrellaStorefrontSub,
+    ]);
 
     useEffect(() => {
         if (activeTab === 'videos') {
@@ -2439,16 +2492,20 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
 
 
 
-    if (!demoPreview && isDemoStorefront() && creatorLoading) {
+    if (demoPreviewFromRoute && realSession) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
+    if (awaitingStorefrontIdentity) {
         return <div className="dashboard-loading">Loading your dashboard...</div>;
     }
 
-    if (!demoPreview && isDemoStorefrontVisitor(currentCreator?.id)) {
+    if (!demoPreviewFromRoute && isDemoStorefrontVisitor(currentCreator?.id)) {
         return <Navigate to={DEMO_DASHBOARD_PATH} replace />;
     }
 
     // Check if user has proper role or needs to be created/updated
-    if (!demoPreview && currentUser && (!currentUser.role || currentUser.role !== 'creator')) {
+    if (!demoPreview && !umbrellaOnly && currentUser && (!currentUser.role || currentUser.role !== 'creator')) {
         console.log('User role issue:', currentUser.role, 'User:', currentUser);
         return <div className="dashboard-error">
             Access denied. Only creators can view this page.
@@ -2639,9 +2696,11 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                 </div>
                             </div>
                         )}
-                        {userProfile?.role === 'creator' && !umbrellaOnly && favoritePages.length > 0 && (
+                        {(userProfile?.role === 'creator' || user?.role === 'creator') && !umbrellaOnly && (
                             <div className="favorite-pages-toolbar">
                                 <div className="favorite-pages-row favorite-pages-row--main">
+                                    {favoritePages.length > 0 && (
+                                    <>
                                     <label className="favorite-pages-gutter" htmlFor="dashboard-fav-list-select">Choose Page</label>
                                     <select
                                         id="dashboard-fav-list-select"
@@ -2668,6 +2727,8 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                             </optgroup>
                                         )}
                                     </select>
+                                    </>
+                                    )}
                                     <input
                                         type="text"
                                         placeholder="New page name"

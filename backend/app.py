@@ -1936,7 +1936,7 @@ PRODUCTS = [
         "price": 22.79,
         "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
-        "preview_image": "menslongsleevepreview.png",
+        "preview_image": "menslongsleevepreviewv2.png",
         "description": "With its classic and regular fit, this Men's Long Sleeve Shirt is a true wardrobe essential. It'll look great on its own or layered under a jacket and will be perfect for a relaxed and casual setting. 100% cotton. Sport Grey is 90% cotton, 10% polyester. Fabric weight: 6.0 oz./yd.² (203.43 g/m²). Classic fit with long sleeves and rib cuffs. Pre-shrunk jersey knit. Seamless double-needle ⅞ ″ (2.2 cm) collar. Double-needle bottom hem. Taped neck and shoulders. Quarter-turned to avoid crease down the middle. Blank product sourced from Honduras, Haiti, or Nicaragua. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
