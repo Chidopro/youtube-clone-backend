@@ -86,12 +86,22 @@
 
 .screenshots-section--single .screenshot-item {
   flex: 0 0 auto;
-  width: 186px;
-  max-width: 186px;
+  width: 140px;
+  max-width: 140px;
   height: auto;
-  aspect-ratio: auto;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  position: relative;
   /* Title is "Selected Image" — the only image must look selected even before state catches up. */
   border-color: #18181B;
+}
+
+.screenshots-section--single .screenshot-item > div {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .screenshots-section--single .screenshot-item .screenshot-label {
@@ -153,7 +163,7 @@
     width: 268px;
     max-width: 268px;
     height: auto;
-    aspect-ratio: auto;
+    aspect-ratio: 3 / 4;
   }
 
   .screenshots-section--single {
@@ -480,12 +490,25 @@
   .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section--with-edits .screenshot-item > div {
     position: relative;
     inset: auto;
+    width: 100%;
     height: auto;
     aspect-ratio: 3 / 4;
     border: 2px solid #e8e8e8;
     border-radius: 8px;
     background: #f7f7f8;
     overflow: hidden;
+  }
+
+  .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section--with-edits .screenshot-item > div .screenshot-image,
+  .product-page--choose .screenshots-section--with-edits .screenshot-item > div > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    object-fit: cover;
+    object-position: center center;
   }
 
   .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section--landscape:not(.screenshots-section--with-edits) .screenshot-item,
@@ -501,12 +524,9 @@
     aspect-ratio: 3 / 4;
   }
 
-  .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section--landscape.screenshots-section--with-edits .screenshot-item > div {
-    aspect-ratio: var(--screenshot-frame-aspect, 16 / 9);
-  }
-
+  .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section--landscape.screenshots-section--with-edits .screenshot-item > div,
   .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section--with-edits .screenshot-item.screenshot-item--landscape > div {
-    aspect-ratio: var(--screenshot-tile-aspect, var(--screenshot-frame-aspect, 16 / 9));
+    aspect-ratio: 3 / 4;
   }
 
   .product-page--choose .screenshots-section--landscape .screenshot-image,
@@ -957,9 +977,9 @@
 .screenshots-section--single .screenshot-image {
   aspect-ratio: auto;
   width: 100%;
-  height: auto;
-  max-height: min(56vh, 420px);
-  object-fit: contain;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
   object-position: center center;
 }
 
@@ -1307,6 +1327,35 @@
     width: 100%;
   }
 
+  /* Compact portrait thumbs — 50% × 3:4 was filling the phone. */
+  .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section:not(.screenshots-section--single):not(.screenshots-section--with-edits) .screenshot-item,
+  .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section:not(.screenshots-section--single):not(.screenshots-section--with-edits) .screenshot-item.screenshot-item--landscape {
+    width: calc((100% - 20px) / 3);
+    flex: 0 0 calc((100% - 20px) / 3);
+    max-width: 124px;
+    aspect-ratio: 3 / 4;
+    height: auto;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section:not(.screenshots-section--single):not(.screenshots-section--with-edits) .screenshot-item > div {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section:not(.screenshots-section--single):not(.screenshots-section--with-edits) .screenshot-image {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    max-height: none;
+    object-fit: cover;
+    object-position: center center;
+  }
+
   .screenshot-image {
     width: 100%;
     height: auto;
@@ -1317,7 +1366,10 @@
 
   .screenshots-section--single .screenshot-image {
     aspect-ratio: auto;
-    max-height: min(52vh, 360px);
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
   }
 
   .screenshot-label {
@@ -1334,8 +1386,20 @@
   }
 
   .screenshots-section--single .screenshot-item {
+    width: 140px;
+    max-width: min(140px, calc(100vw - 32px));
     height: auto;
-    aspect-ratio: auto;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .screenshots-section--single .screenshot-item > div {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   .categories-container {

@@ -2067,11 +2067,21 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
     /* MaxFreedom: keep the previous 24px mobile wordmark. Do not share Filial Sons sizing. */
     html[data-storefront="maxfreedom"] nav .navbar-logo-wrap,
     html[data-storefront="maxfreedom"] nav .navbar-logo-wrap--horizontal {
+        flex: 1 1 0;
+        min-width: 0;
         max-width: 280px;
+        overflow: hidden;
+        z-index: 2;
+    }
+    html[data-storefront="maxfreedom"] nav .navbar-logo-mark,
+    html[data-storefront="maxfreedom"] nav .navbar-logo-mark > a,
+    html[data-storefront="maxfreedom"] nav .navbar-logo-wrap > a {
+        max-width: 100%;
+        overflow: hidden;
     }
     html[data-storefront="maxfreedom"] nav .navbar-logo-wrap .logo.logo--custom.logo--horizontal {
         width: auto !important;
-        max-width: 280px !important;
+        max-width: 100% !important;
         height: 24px !important;
         max-height: 24px !important;
     }
