@@ -88,12 +88,12 @@ function todayPayoutInputDate() {
 const COLLAB_SHARE_PER_ITEM = 6;
 
 function saleSoldQuantity(sale) {
-    const explicit = Number(sale?.quantity);
+    const explicit = Number(sale?.quantity ?? sale?.qty);
     if (Number.isFinite(explicit) && explicit > 0) return Math.floor(explicit);
-    const share = Number(sale?.collaborator_share_before_fee ?? sale?.pay_owner_amount ?? 0);
+    const share = Number(sale?.collaborator_share_before_fee);
     if (share > 0) return Math.max(1, Math.round(share / COLLAB_SHARE_PER_ITEM));
-    const payout = Number(sale?.pay_collaborator_amount ?? 0);
-    if (payout > 0) return Math.max(1, Math.round(payout / COLLAB_SHARE_PER_ITEM));
+    const creatorShare = Number(sale?.creator_share);
+    if (creatorShare > 0) return Math.max(1, Math.round(creatorShare / COLLAB_SHARE_PER_ITEM));
     return 1;
 }
 

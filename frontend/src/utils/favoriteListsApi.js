@@ -55,8 +55,12 @@ export async function favoriteListsJson(path, options = {}, retried = false) {
 }
 
 const FAV_LISTS_TTL_MS = 90_000;
+export const HUB_CARD_IMAGE_PX = 480;
+export const PAGE_CARD_IMAGE_PX = 640;
 const favListsMemory = new Map();
 const favListsInflight = new Map();
+const favByListMemory = new Map();
+const favByListInflight = new Map();
 
 function readFavListsSession(sub) {
   try {
@@ -178,17 +182,22 @@ export function favoriteImageUrl(favorite) {
  * Lightweight URL for grid/cards. Keeps full image_url for Make Merch / print.
  * Uses a dedicated thumbnail when present; otherwise asks Supabase for a resized render.
  */
-export function publicStorageCardUrl(src, width = 720) {
+export function publicStorageCardUrl(src, width = HUB_CARD_IMAGE_PX) {
   const url = (src || '').trim();
   if (!url) return '';
   const w = Number(width);
-  const px = Number.isFinite(w) && w >= 32 ? Math.round(w) : 720;
+  const px = Number.isFinite(w) && w >= 32 ? Math.round(w) : HUB_CARD_IMAGE_PX;
   try {
     const u = new URL(url);
     const isSupabase = u.hostname.includes('supabase.co');
     const isObject = u.pathname.includes('/storage/v1/object/public/');
     const isRender = u.pathname.includes('/storage/v1/render/image/public/');
     if (isSupabase && (isObject || isRender)) {
+      // Already-small thumbs skip a second on-the-fly transform.
+      if (/\/thumbs\/|_thumb\.|_w\d+/i.test(u.pathname)) {
+        u.search = '';
+        return u.toString();
+      }
       if (isObject) {
         u.pathname = u.pathname.replace(
           '/storage/v1/object/public/',
@@ -196,8 +205,8 @@ export function publicStorageCardUrl(src, width = 720) {
         );
       }
       u.searchParams.set('width', String(px));
-      u.searchParams.set('resize', 'contain');
-      u.searchParams.set('quality', px >= 1000 ? '82' : '70');
+      u.searchParams.set('resize', 'cover');
+      u.searchParams.set('quality', px >= 1000 ? '80' : '62');
       return u.toString();
     }
   } catch (_) {}
@@ -283,7 +292,24 @@ export async function resolveMemberPublicNickname(userId) {
   const uid = String(userId || '').trim();
   if (!uid) return '';
   if (memberNickMemory.has(uid)) return memberNickMemory.get(uid);
-  const subs = await storefrontsToSearchForNickname();
+  const here = (typeof window !== 'undefined' && window.location.hostname
+    ? window.location.hostname.split('.')[0]
+    : ''
+  ).toLowerCase();
+  const cachedHere = here ? peekPublicFavoriteLists(here) : null;
+  if (Array.isArray(cachedHere)) {
+    for (const L of cachedHere) {
+      if (String(L.owner_user_id || '') !== uid) continue;
+      const nick = cleanFavoriteListNickname(L.member_label || L.display_name || L.slug);
+      if (nick && !/@/.test(nick) && !isGenericFriendName(nick)) {
+        memberNickMemory.set(uid, nick);
+        return nick;
+      }
+    }
+  }
+  const subs = here && here !== 'www' && here !== 'screenmerch'
+    ? [here]
+    : await storefrontsToSearchForNickname();
   for (const sub of subs) {
     try {
       const { ok, data } = await fetchPublicFavoriteLists(sub, { lite: true });
@@ -354,12 +380,23 @@ export async function fetchPublicFavoritesByList(subdomain, listSlug) {
   const sub = (subdomain || '').trim().toLowerCase();
   const slug = (listSlug || 'owner').trim().toLowerCase() || 'owner';
   if (!sub) return { ok: false, data: { success: false, error: 'subdomain is required' } };
-  const res = await fetch(
-    `${getBackendUrl()}/api/public/favorites-by-list?subdomain=${encodeURIComponent(sub)}&list_slug=${encodeURIComponent(slug)}`,
-    { credentials: 'omit' }
-  );
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
+  const key = `${sub}:${slug}`;
+  const cached = favByListMemory.get(key);
+  if (cached && Date.now() - cached.at < FAV_LISTS_TTL_MS) return cached.value;
+  const reuse = favByListInflight.get(key);
+  if (reuse) return reuse;
+  const req = (async () => {
+    const res = await fetch(
+      `${getBackendUrl()}/api/public/favorites-by-list?subdomain=${encodeURIComponent(sub)}&list_slug=${encodeURIComponent(slug)}`,
+      { credentials: 'omit' }
+    );
+    const data = await res.json().catch(() => ({}));
+    const value = { ok: res.ok, data };
+    if (res.ok && data?.success) favByListMemory.set(key, { at: Date.now(), value });
+    return value;
+  })().finally(() => favByListInflight.delete(key));
+  favByListInflight.set(key, req);
+  return req;
 }
 
 /** Extra owner-created pages for My Page. Uses public lists plus the signed-in owner's own lists. */

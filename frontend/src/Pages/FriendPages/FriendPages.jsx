@@ -10,7 +10,7 @@ import {
   favoriteImageUrl,
   publicStorageCardUrl,
   memberFavoritePreviewUrls,
-  withMemberPublicIdentity,
+  HUB_CARD_IMAGE_PX,
 } from '../../utils/favoriteListsApi';
 import { friendPageLabel, isCollaboratorFavoriteList } from '../../utils/favoriteListLabels';
 import { HubThumb, rotatingUrl, uniqueUrls, HUB_ROTATE_MS } from '../../Components/Feed/Feed';
@@ -30,7 +30,7 @@ function umbrellaFriendPages(lists, ownerId) {
 
 function previewUrlsFromList(list) {
   return uniqueUrls(
-    listPreviewImages(list).map((u) => publicStorageCardUrl(u, 800))
+    listPreviewImages(list).map((u) => publicStorageCardUrl(u, HUB_CARD_IMAGE_PX))
   );
 }
 
@@ -44,7 +44,7 @@ async function videoPreviewUrls(userId) {
     const data = await res.json();
     return uniqueUrls(
       (Array.isArray(data) ? data : [])
-        .map((v) => publicStorageCardUrl(v.thumbnail || v.thumbnail_url, 800))
+        .map((v) => publicStorageCardUrl(v.thumbnail || v.thumbnail_url, HUB_CARD_IMAGE_PX))
         .filter(Boolean)
     );
   } catch (_) {
@@ -54,25 +54,23 @@ async function videoPreviewUrls(userId) {
 
 async function attachPreviewUrls(lists, sub) {
   return Promise.all(
-    lists.map(async (raw) => {
-      const L = await withMemberPublicIdentity(raw);
+    lists.map(async (L) => {
       let previewUrls = previewUrlsFromList(L);
-      if (!previewUrls.length) {
-        const slug = (L.slug || '').trim();
-        if (slug) {
-          const { ok, data } = await fetchPublicFavoritesByList(sub, slug);
-          if (ok && data?.success) {
-            previewUrls = uniqueUrls(
-              (data.favorites || [])
-                .map((f) => publicStorageCardUrl(favoriteImageUrl(f), 800))
-                .filter(Boolean)
-            );
-          }
+      if (previewUrls.length) return { ...L, previewUrls };
+      const slug = (L.slug || '').trim();
+      if (slug) {
+        const { ok, data } = await fetchPublicFavoritesByList(sub, slug);
+        if (ok && data?.success) {
+          previewUrls = uniqueUrls(
+            (data.favorites || [])
+              .map((f) => publicStorageCardUrl(favoriteImageUrl(f), HUB_CARD_IMAGE_PX))
+              .filter(Boolean)
+          );
         }
       }
       if (!previewUrls.length) {
         previewUrls = uniqueUrls(
-          (await memberFavoritePreviewUrls(L.owner_user_id)).map((u) => publicStorageCardUrl(u, 800))
+          (await memberFavoritePreviewUrls(L.owner_user_id)).map((u) => publicStorageCardUrl(u, HUB_CARD_IMAGE_PX))
         );
       }
       if (!previewUrls.length) {

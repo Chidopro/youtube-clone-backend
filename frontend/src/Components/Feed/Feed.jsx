@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import './Feed.css'
 import { useNavigate } from 'react-router-dom'
-import { publicStorageCardUrl, fetchPublicFavoriteLists } from '../../utils/favoriteListsApi'
+import { publicStorageCardUrl, fetchPublicFavoriteLists, HUB_CARD_IMAGE_PX } from '../../utils/favoriteListsApi'
 import { getSubdomain } from '../../utils/subdomainService'
 
 export const HUB_ROTATE_MS = 12000;
@@ -102,55 +102,39 @@ export function shuffleHubThumbs(pools, tick, stagnant) {
   );
 }
 
-export function HubThumb({ src, emptyLabel }) {
+export function HubThumb({ src, emptyLabel, priority = false }) {
   const [shown, setShown] = useState(src || '');
 
   useEffect(() => {
-    if (!src) {
-      setShown('');
-      return undefined;
-    }
-    if (src === shown) return undefined;
-    let cancelled = false;
-    const img = new Image();
-    const apply = (url) => {
-      if (!cancelled) setShown(url);
-    };
-    img.onload = () => apply(src);
-    img.onerror = () => {
-      try {
-        const u = new URL(src);
-        if (u.pathname.includes('/storage/v1/render/image/public/')) {
-          u.pathname = u.pathname.replace(
-            '/storage/v1/render/image/public/',
-            '/storage/v1/object/public/'
-          );
-          u.search = '';
-          const fallback = u.toString();
-          const retry = new Image();
-          retry.onload = () => apply(fallback);
-          retry.onerror = () => {
-            if (!cancelled && !shown) setShown('');
-          };
-          retry.src = fallback;
-          return;
-        }
-      } catch (_) { /* ignore */ }
-      if (!cancelled && !shown) setShown('');
-    };
-    img.src = src;
-    return () => {
-      cancelled = true;
-    };
-  }, [src, shown]);
+    setShown(src || '');
+  }, [src]);
 
   if (shown) {
     return (
       <img
         src={shown}
         alt=""
-        loading="eager"
+        loading={priority ? 'eager' : 'lazy'}
         decoding="async"
+        fetchPriority={priority ? 'high' : 'low'}
+        onError={(e) => {
+          try {
+            const u = new URL(e.currentTarget.src);
+            if (u.pathname.includes('/storage/v1/render/image/public/')) {
+              u.pathname = u.pathname.replace(
+                '/storage/v1/render/image/public/',
+                '/storage/v1/object/public/'
+              );
+              u.search = '';
+              const fallback = u.toString();
+              if (e.currentTarget.src !== fallback) {
+                e.currentTarget.src = fallback;
+                return;
+              }
+            }
+          } catch (_) { /* ignore */ }
+          setShown('');
+        }}
       />
     );
   }
@@ -180,16 +164,16 @@ const Feed = ({
   }, [showHubs]);
 
   const favoriteUrls = useMemo(
-    () => uniqueUrls((Array.isArray(favoritesPreview) ? favoritesPreview : []).map((u) => publicStorageCardUrl(u, 800))),
+    () => uniqueUrls((Array.isArray(favoritesPreview) ? favoritesPreview : []).map((u) => publicStorageCardUrl(u, HUB_CARD_IMAGE_PX))),
     [favoritesPreview]
   );
   const friendUrls = useMemo(
-    () => uniqueUrls((Array.isArray(friendPagePreview) ? friendPagePreview : []).map((u) => publicStorageCardUrl(u, 800))),
+    () => uniqueUrls((Array.isArray(friendPagePreview) ? friendPagePreview : []).map((u) => publicStorageCardUrl(u, HUB_CARD_IMAGE_PX))),
     [friendPagePreview]
   );
   const shopUrls = useMemo(() => {
-    const pageUrls = (Array.isArray(shopPreview) ? shopPreview : []).map((u) => publicStorageCardUrl(u, 800));
-    const videoUrls = (videos || []).map((v) => v.thumbnail || v.thumbnail_url).filter(Boolean);
+    const pageUrls = (Array.isArray(shopPreview) ? shopPreview : []).map((u) => publicStorageCardUrl(u, HUB_CARD_IMAGE_PX));
+    const videoUrls = (videos || []).map((v) => publicStorageCardUrl(v.thumbnail || v.thumbnail_url, HUB_CARD_IMAGE_PX)).filter(Boolean);
     return uniqueUrls([...pageUrls, ...favoriteUrls, ...friendUrls, ...videoUrls]);
   }, [shopPreview, videos, favoriteUrls, friendUrls]);
 
@@ -221,7 +205,7 @@ const Feed = ({
         <>
           <div className="feed-hubs" aria-label="Storefront sections">
             <button type="button" className="card hub-card" onClick={() => navigate('/favorites')}>
-              <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />
+              <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" priority />
               <h2>Creator</h2>
             </button>
             <button
@@ -233,11 +217,11 @@ const Feed = ({
               }}
               onClick={() => navigate('/friend-pages')}
             >
-              <HubThumb src={hubThumbs.friend} emptyLabel="No Co-Creators Yet" />
+              <HubThumb src={hubThumbs.friend} emptyLabel="No Co-Creators Yet" priority />
               <h2>Co-Creators</h2>
             </button>
             <button type="button" className="card hub-card" onClick={() => navigate('/shop')}>
-              <HubThumb src={hubThumbs.shop} emptyLabel="Shop" />
+              <HubThumb src={hubThumbs.shop} emptyLabel="Shop" priority />
               <h2>Shop</h2>
             </button>
           </div>
