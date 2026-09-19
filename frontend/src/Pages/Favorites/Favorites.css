@@ -588,8 +588,12 @@ button.favorites-card-image--clickable {
   object-fit: cover;
   object-position: center;
   display: block;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.favorites-card-image img.is-loaded {
   opacity: 1;
-  background: #ececef;
 }
 
 .favorites-card--skeleton .favorites-card-image,

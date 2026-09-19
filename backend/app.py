@@ -988,7 +988,7 @@ def add_security_headers(response):
             if cacheable_public_get:
                 if "no-store" not in existing_cache:
                     if not existing_cache.strip():
-                        response.headers["Cache-Control"] = "public, max-age=180, stale-while-revalidate=600"
+                        response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
             else:
                 response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
             response.headers["X-ScreenMerch-CORS"] = "1"
@@ -10574,7 +10574,7 @@ def _fl_preview_map_for_lists(lists, limit_each=4):
             bucket = out.get(lid)
             if bucket is None or len(bucket) >= limit_each:
                 continue
-            _fl_append_preview_url(bucket, fav.get("thumbnail_url") or fav.get("image_url"))
+            _fl_append_preview_url(bucket, fav.get("image_url") or fav.get("thumbnail_url"))
     except Exception as err:
         logger.warning("_fl_preview_map_for_lists: %s", err)
     return out
@@ -10623,7 +10623,7 @@ def _fl_user_favorite_preview_images(user_id, limit=8):
         )
         out = []
         for fav in fr.data or []:
-            _fl_append_preview_url(out, fav.get("thumbnail_url") or fav.get("image_url"))
+            _fl_append_preview_url(out, fav.get("image_url") or fav.get("thumbnail_url"))
         return out
     except Exception as err:
         logger.warning("_fl_user_favorite_preview_images: %s", err)
@@ -10648,7 +10648,7 @@ def _fl_collect_preview_images(list_row, is_collab=False, limit=8):
                 .execute()
             )
             for fav in fr.data or []:
-                _fl_append_preview_url(images, fav.get("thumbnail_url") or fav.get("image_url"))
+                _fl_append_preview_url(images, fav.get("image_url") or fav.get("thumbnail_url"))
         except Exception as preview_err:
             logger.warning("preview images for list %s: %s", list_id, preview_err)
     if is_collab and len(images) < 2 and user_id:
@@ -11088,10 +11088,6 @@ def favorite_lists_delete():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-_PUBLIC_LISTS_CACHE = {}
-_PUBLIC_LISTS_TTL = 45.0
-
-
 @app.route("/api/public/favorite-lists", methods=["GET", "OPTIONS"])
 def public_favorite_lists():
     if request.method == "OPTIONS":
@@ -11107,10 +11103,6 @@ def public_favorite_lists():
             return jsonify({"success": True, "lists": []}), 200
         owner_id = cr.data[0]["id"]
         lite = (request.args.get("lite") or "").strip().lower() in ("1", "true", "yes")
-        cache_key = (sub, bool(lite), str(owner_id))
-        cached = _PUBLIC_LISTS_CACHE.get(cache_key)
-        if cached and (time.time() - cached[0]) < _PUBLIC_LISTS_TTL:
-            return jsonify(cached[1]), 200
         lists = _fl_lists_for_storefront(owner_id, repair=not lite)
         if not lists:
             _fl_ensure_primary_list(owner_id)
@@ -11176,9 +11168,7 @@ def public_favorite_lists():
             if member_label:
                 payload["member_label"] = member_label[:80]
             safe_lists.append(payload)
-        body = {"success": True, "lists": safe_lists}
-        _PUBLIC_LISTS_CACHE[cache_key] = (time.time(), body)
-        return jsonify(body), 200
+        return jsonify({"success": True, "lists": safe_lists}), 200
     except Exception as e:
         logger.exception("public_favorite_lists: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
@@ -12170,7 +12160,7 @@ def favorite_lists_sales_summary():
                     "owner_page_payout": round(owner_page_payout, 2),
                     "owner_fee_amount": owner_fee_total,
                     "collaborator_pay_total": round(collab_pay_total, 2),
-                    "owner_total_earnings": round(owner_page_payout + owner_fee_total, 2),
+                    "owner_total_earnings": round(owner_page_payout + owner_fee_total + collab_pay_total, 2),
                     "collaborator_item_count": collab_items_total,
                     "owner_earnings_owner_sales": owner_earnings_owner_sales,
                     "owner_earnings_collaborator_sales": all_collab_earning_sales,
@@ -12587,10 +12577,6 @@ def _sale_record_to_order(sale):
         amount = float(sale.get("amount", 0) or 0)
     except (TypeError, ValueError):
         amount = 0.0
-    try:
-        qty = max(1, int(sale.get("quantity") or 1))
-    except (TypeError, ValueError):
-        qty = 1
     return {
         "order_id": sale.get("id", "db-" + str(sale.get("id"))),
         "cart": [
@@ -12602,14 +12588,11 @@ def _sale_record_to_order(sale):
                 "video_title": sale.get("video_title", "Unknown Video"),
                 "creator_name": sale.get("creator_name", "Unknown Creator"),
                 "price": amount,
-                "qty": qty,
-                "quantity": qty,
             }
         ],
         "status": "completed",
         "created_at": sale_created_at,
         "total_value": amount,
-        "quantity": qty,
         "user_id": sale.get("user_id"),
         "channel_id": sale.get("channel_id"),
         "creator_name": sale.get("creator_name", "Unknown Creator"),
@@ -12663,7 +12646,7 @@ def _analytics_payout_fields_from_sales(sales_rows, storefront_owner_id=None):
         "collaborator_pay_total": collab_pay,
         "owner_page_payout": round(owner_page, 2),
         "owner_fee_amount": round(owner_fee_amount, 2),
-        "owner_total_earnings": round(owner_page + owner_fee_amount, 2),
+        "owner_total_earnings": round(owner_page + owner_fee_amount + collab_pay, 2),
     }
 
 
@@ -12676,12 +12659,6 @@ def _sale_line_creator_share(product_name, amount, quantity=1):
 
 def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Video"):
     from datetime import datetime, timedelta
-
-    def _item_qty(item):
-        try:
-            return max(1, int((item or {}).get("qty") or (item or {}).get("quantity") or 1))
-        except (TypeError, ValueError):
-            return 1
 
     total_sales = len(all_orders)
     total_revenue = 0.0
@@ -12720,16 +12697,14 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
             if not isinstance(item, dict):
                 continue
             product_name = item.get("product", "Unknown")
-            qty = _item_qty(item)
-            item_price = float(item.get("price") or 0)
-            products_sold[product_name] = products_sold.get(product_name, 0) + qty
+            products_sold[product_name] = products_sold.get(product_name, 0) + 1
             video_name = item.get("video_title", "Unknown Video")
             creator_name = item.get("creator_name", "Unknown Creator")
             video_key = f"{creator_name} - {video_name}"
             if video_key not in videos_with_sales:
                 videos_with_sales[video_key] = {"sales_count": 0, "revenue": 0}
-            videos_with_sales[video_key]["sales_count"] += qty
-            videos_with_sales[video_key]["revenue"] += item_price if item_price > 0 else float(order.get("total_value") or 0)
+            videos_with_sales[video_key]["sales_count"] += 1
+            videos_with_sales[video_key]["revenue"] += order.get("total_value", 0)
 
     sales_data = [0] * 30
     for order in all_orders:
@@ -12759,8 +12734,7 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
                         for item in order.get("cart") or []:
                             if not isinstance(item, dict):
                                 continue
-                            qty = _item_qty(item)
-                            day_sales_count += qty
+                            day_sales_count += 1
                             price = float(item.get("price") or 0)
                             if price <= 0 and order.get("total_value"):
                                 price = float(order.get("total_value", 0)) / max(
@@ -12768,7 +12742,7 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
                                 )
                             day_revenue += price
                             day_payout_net += _sale_line_creator_share(
-                                item.get("product"), price, qty
+                                item.get("product"), price, 1
                             )
             except Exception:
                 pass
@@ -12823,11 +12797,7 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
             price = float(item.get("price") or 0)
             if price <= 0 and order.get("total_value"):
                 price = float(order.get("total_value", 0)) / max(len(order.get("cart") or []), 1)
-            sale_lines.append({
-                "product_name": item.get("product"),
-                "amount": price,
-                "quantity": _item_qty(item),
-            })
+            sale_lines.append({"product_name": item.get("product"), "amount": price})
     from utils.payout import aggregate_sales_payout_totals
 
     page_totals = aggregate_sales_payout_totals(sale_lines)
@@ -12843,7 +12813,7 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
         "total_sales": total_sales,
         "total_revenue": round(float(total_revenue or 0), 2),
         "avg_order_value": round(float(avg_order_value or 0), 2),
-        "products_sold_count": sum(int(p.get("quantity") or 0) for p in products_sold_list),
+        "products_sold_count": len(products_sold),
         "videos_with_sales_count": len(videos_with_sales),
         "week_sales_count": week_sales_count,
         "sales_data": sales_data,
@@ -12876,11 +12846,10 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
                             order.get("total_value", 0)
                             / max(len(order.get("cart") or []), 1)
                         ),
-                        _item_qty(item),
+                        1,
                     ),
                     2,
                 ),
-                "quantity": _item_qty(item),
                 "created_at": order.get("created_at", "N/A"),
                 "order_id": order.get("order_id"),
             }

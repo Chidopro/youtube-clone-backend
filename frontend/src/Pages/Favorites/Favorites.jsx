@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
-import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, publicStorageCardUrl, withMemberPublicIdentity, fetchMemberFavorites, PAGE_CARD_IMAGE_PX, HUB_CARD_IMAGE_PX } from '../../utils/favoriteListsApi';
+import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, publicStorageCardUrl, withMemberPublicIdentity, fetchMemberFavorites } from '../../utils/favoriteListsApi';
 import { favoriteListPageHeading, friendPageLabel } from '../../utils/favoriteListLabels';
 import { apiJoin } from '../../config/apiConfig';
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
@@ -98,7 +98,7 @@ function FavoritesShelfTrack({
 }
 
 function FavoriteThumb({ src, fallback = '', eager = false }) {
-  const [loaded, setLoaded] = useState(eager);
+  const [loaded, setLoaded] = useState(false);
   const [current, setCurrent] = useState(src || fallback || '');
 
   useEffect(() => {
@@ -157,8 +157,8 @@ const mapFavoriteImages = (favorites) =>
       kind: 'image',
       id: `image-${f.id}`,
       title: f.title || 'Untitled',
-      thumb: favoriteCardThumbUrl(f) || publicStorageCardUrl(favoriteImageUrl(f), HUB_CARD_IMAGE_PX),
-      gallery: publicStorageCardUrl(favoriteImageUrl(f), PAGE_CARD_IMAGE_PX),
+      thumb: publicStorageCardUrl(favoriteImageUrl(f), 800) || favoriteCardThumbUrl(f),
+      gallery: publicStorageCardUrl(favoriteImageUrl(f), 800),
       full: favoriteImageUrl(f),
       created_at: f.created_at || '',
       description: f.description || '',
@@ -497,7 +497,7 @@ const Favorites = ({ sidebar }) => {
         kind: 'video',
         id: `video-${v.id}`,
         title: v.title || 'Untitled video',
-          thumb: publicStorageCardUrl(v.thumbnail || v.thumbnail_url || '', HUB_CARD_IMAGE_PX),
+        thumb: publicStorageCardUrl(v.thumbnail || v.thumbnail_url || '', 720),
         created_at: v.created_at || '',
         raw: v,
       })),

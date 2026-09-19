@@ -9,7 +9,6 @@ import {
   fetchPublicFavoriteLists,
   publicStorageCardUrl,
   storefrontHubPreviews,
-  HUB_CARD_IMAGE_PX,
 } from '../../utils/favoriteListsApi';
 import { HubThumb, rotatingUrl, uniqueUrls, HUB_ROTATE_MS } from './Feed';
 import {
@@ -24,7 +23,7 @@ function collectSlotShuffleUrls(lists) {
     ?.storefront_owner_id;
   const { ownerImages, friendImages, extraImages } = storefrontHubPreviews(lists, ownerId);
   return uniqueUrls(
-    [...ownerImages, ...friendImages, ...extraImages].map((u) => publicStorageCardUrl(u, HUB_CARD_IMAGE_PX))
+    [...ownerImages, ...friendImages, ...extraImages].map((u) => publicStorageCardUrl(u, 720))
   ).slice(0, 16);
 }
 
