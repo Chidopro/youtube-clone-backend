@@ -53,12 +53,23 @@ function roundedRectSdf(x, y, cx, cy, halfW, halfH, radius) {
   return Math.min(Math.max(qx, qy), 0) + Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - r;
 }
 
+function rectangularEdgeFeatherFactor(x, y, width, height, fadeX, fadeY) {
+  const maxX = Math.max(width - 1, 1);
+  const maxY = Math.max(height - 1, 1);
+  const fx = fadeX <= 0 ? 1 : (x < fadeX ? x / fadeX : (x > maxX - fadeX ? (maxX - x) / fadeX : 1));
+  const fy = fadeY <= 0 ? 1 : (y < fadeY ? y / fadeY : (y > maxY - fadeY ? (maxY - y) / fadeY : 1));
+  return Math.max(0, Math.min(1, Math.min(fx, fy)));
+}
+
 function roundedRectFeatherFactor(x, y, width, height, fadeX, fadeY, cornerR) {
   const cx = (width - 1) * 0.5;
   const cy = (height - 1) * 0.5;
   const halfW = (width - 1) * 0.5;
   const halfH = (height - 1) * 0.5;
   const rOuter = Math.min(Math.max(0, cornerR), halfW, halfH);
+  if (rOuter <= 0) {
+    return rectangularEdgeFeatherFactor(x, y, width, height, fadeX, fadeY);
+  }
   const sdfOuter = roundedRectSdf(x, y, cx, cy, halfW, halfH, rOuter);
   const halfWIn = Math.max(0.5, halfW - fadeX);
   const halfHIn = Math.max(0.5, halfH - fadeY);
@@ -70,6 +81,58 @@ function roundedRectFeatherFactor(x, y, width, height, fadeX, fadeY, cornerR) {
   if (sdfOuter >= 0) return 0;
   if (sdfInner <= 0) return 1;
   return (-sdfOuter) / Math.max(-sdfOuter + sdfInner, 1e-6);
+}
+
+const featherMaskUrlCache = new Map();
+
+/** Square (or rounded) feather mask for browse thumbnails — same SDF as Tools. */
+export function featherEdgeMaskStyle(featherEdge, width = 240, height = 320, cornerRadiusPx = 0) {
+  if (!(featherEdge > 0) || !(width > 0) || !(height > 0)) return null;
+  if (typeof document === 'undefined') return null;
+  const maxSide = 256;
+  const scale = maxSide / Math.max(width, height);
+  const mw = Math.max(1, Math.round(width * scale));
+  const mh = Math.max(1, Math.round(height * scale));
+  const rScaled = Math.max(0, cornerRadiusPx) * (mw / width);
+  const cacheKey = `${mw}x${mh}:${featherEdge}:${Math.round(rScaled * 10)}`;
+  let url = featherMaskUrlCache.get(cacheKey);
+  if (!url) {
+    const canvas = document.createElement('canvas');
+    canvas.width = mw;
+    canvas.height = mh;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return null;
+    const imageData = ctx.createImageData(mw, mh);
+    const data = imageData.data;
+    const fadeX = Math.max(1, (featherEdge / 100) * (mw * 0.5));
+    const fadeY = Math.max(1, (featherEdge / 100) * (mh * 0.5));
+    for (let y = 0; y < mh; y += 1) {
+      for (let x = 0; x < mw; x += 1) {
+        const fade = roundedRectFeatherFactor(x, y, mw, mh, fadeX, fadeY, rScaled);
+        const i = (y * mw + x) * 4;
+        const v = Math.round(Math.max(0, Math.min(1, fade)) * 255);
+        data[i] = v;
+        data[i + 1] = v;
+        data[i + 2] = v;
+        data[i + 3] = v;
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+    url = canvas.toDataURL('image/png');
+    if (featherMaskUrlCache.size > 24) {
+      featherMaskUrlCache.delete(featherMaskUrlCache.keys().next().value);
+    }
+    featherMaskUrlCache.set(cacheKey, url);
+  }
+  return {
+    maskImage: `url("${url}")`,
+    maskRepeat: 'no-repeat',
+    maskSize: '100% 100%',
+    maskMode: 'alpha',
+    WebkitMaskImage: `url("${url}")`,
+    WebkitMaskRepeat: 'no-repeat',
+    WebkitMaskSize: '100% 100%',
+  };
 }
 
 function needsAlpha(settings) {
@@ -149,18 +212,29 @@ export async function bakeBrowsePresetImage(sourceUrl, settings) {
 
   if (settings.frameEnabled) {
     const thickness = Math.max(4, Math.round(Math.min(canvas.width, canvas.height) * ((Number(settings.frameWidth) || 12) / 180)));
-    ctx.strokeStyle = settings.frameColor || '#111111';
-    ctx.lineWidth = thickness;
-    ctx.lineJoin = 'round';
-    if (isCircle) {
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, canvas.height / 2, Math.max(1, maxR - thickness / 2), 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (cornerR > 0) {
-      roundedRectPath(ctx, thickness / 2, thickness / 2, canvas.width - thickness, canvas.height - thickness, Math.max(0, cornerR - thickness / 2));
-      ctx.stroke();
-    } else {
-      ctx.strokeRect(thickness / 2, thickness / 2, canvas.width - thickness, canvas.height - thickness);
+    const paintFrameRing = (inset) => {
+      ctx.strokeStyle = settings.frameColor || '#111111';
+      ctx.lineWidth = thickness;
+      ctx.lineJoin = 'round';
+      const x = inset + thickness / 2;
+      const y = inset + thickness / 2;
+      const w = canvas.width - inset * 2 - thickness;
+      const h = canvas.height - inset * 2 - thickness;
+      if (!(w > 1 && h > 1)) return;
+      if (isCircle) {
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, Math.max(1, maxR - inset - thickness / 2), 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (cornerR > 0) {
+        roundedRectPath(ctx, x, y, w, h, Math.max(0, cornerR - inset - thickness / 2));
+        ctx.stroke();
+      } else {
+        ctx.strokeRect(x, y, w, h);
+      }
+    };
+    paintFrameRing(0);
+    if (settings.doubleFrame) {
+      paintFrameRing(thickness + Math.max(2, thickness * 0.25));
     }
   }
 

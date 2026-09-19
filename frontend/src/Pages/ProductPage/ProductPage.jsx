@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import ToolsPage from '../ToolsPage/ToolsPage';
@@ -8,8 +8,8 @@ import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
-import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest, isVideoScreenshotMerch, readBrowseToolSettings, writeBrowseToolSettings } from '../../utils/merchSession';
-import { applyBrowsePresetToCartItem } from '../../utils/bakeBrowsePreset';
+import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest, isVideoScreenshotMerch, readBrowseToolSettings, writeBrowseToolSettings, artworkFrameFromSize, rememberArtworkOrientation } from '../../utils/merchSession';
+import { applyBrowsePresetToCartItem, featherEdgeMaskStyle } from '../../utils/bakeBrowsePreset';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
@@ -47,19 +47,80 @@ const BROWSE_EDIT_PRESETS = [
   {
     id: 'radius',
     label: 'Corner radius',
-    settings: { ...BROWSE_EDIT_ORIGINAL, cornerRadius: 32 },
+    settings: { ...BROWSE_EDIT_ORIGINAL, cornerRadius: 25 },
   },
   {
     id: 'feather',
     label: 'Feathered edge',
-    settings: { ...BROWSE_EDIT_ORIGINAL, featherEdge: 82 },
+    settings: { ...BROWSE_EDIT_ORIGINAL, featherEdge: 38 },
   },
   {
     id: 'frame',
     label: 'Frame',
-    settings: { ...BROWSE_EDIT_ORIGINAL, frameEnabled: true, frameColor: '#111111', frameWidth: 12 },
+    settings: { ...BROWSE_EDIT_ORIGINAL, frameEnabled: true, frameColor: '#111111', frameWidth: 6, doubleFrame: true },
   },
 ];
+
+const BROWSE_FEATHER_EDGE = BROWSE_EDIT_PRESETS.find((p) => p.id === 'feather')?.settings?.featherEdge || 38;
+
+const PORTRAIT_FRAME = { landscape: false, aspect: '3 / 4', aspectNumber: 3 / 4 };
+
+function useUrlOrientations(urls) {
+  const [map, setMap] = useState({});
+  const urlsRef = useRef(urls);
+  urlsRef.current = urls;
+  const key = (urls || []).filter(Boolean).map((url) => (
+    `${url.length}:${url.slice(0, 24)}:${url.slice(-24)}`
+  )).join('|');
+  const noteFrame = useCallback((url, width, height) => {
+    if (!url) return;
+    const next = (width > 0 && height > 0) ? artworkFrameFromSize(width, height) : PORTRAIT_FRAME;
+    setMap((prev) => {
+      const prevHit = prev[url];
+      if (
+        prevHit
+        && prevHit.landscape === next.landscape
+        && prevHit.aspect === next.aspect
+        && prevHit.aspectNumber === next.aspectNumber
+      ) {
+        return prev;
+      }
+      return { ...prev, [url]: next };
+    });
+  }, []);
+  useEffect(() => {
+    const list = (urlsRef.current || []).filter(Boolean);
+    if (!list.length) return undefined;
+    let cancelled = false;
+    list.forEach((url) => {
+      const img = new Image();
+      img.onload = () => {
+        if (!cancelled) noteFrame(url, img.naturalWidth, img.naturalHeight);
+      };
+      img.onerror = () => {
+        if (!cancelled) noteFrame(url, 0, 0);
+      };
+      try {
+        img.src = url;
+      } catch {
+        if (!cancelled) noteFrame(url, 0, 0);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [key, noteFrame]);
+  return [map, noteFrame];
+}
+
+function screenshotTileOrientation(url, urlOrientations) {
+  const ori = (url && urlOrientations[url]) || PORTRAIT_FRAME;
+  if (!ori.landscape) return { className: '', style: undefined };
+  return {
+    className: ' screenshot-item--landscape',
+    style: { '--screenshot-tile-aspect': ori.aspect },
+  };
+}
 
 function useBrowseDisplaySrc(url) {
   const raw = String(url || '').trim();
@@ -256,7 +317,7 @@ const STATIC_PRODUCT_IMAGE_MAP = {
   "Men's Fitted Long Sleeve": { filename: 'mensfittedlongsleeve.png', preview: 'mensfittedlongsleevepreview.png', price: 31.33 },
   'T-Shirt': { filename: 'guidontee.png', preview: 'guidonteepreview.png', price: 23.69 },
   'Oversized T-Shirt': { filename: 'unisexoversizedtshirt.png', preview: 'unisexoversizedtshirtpreview.png', price: 28.49 },
-  "Men's Long Sleeve Shirt": { filename: 'menslongsleeve.png', preview: 'menslongsleevepreviewv2.png', price: 26.79 },
+  "Men's Long Sleeve Shirt": { filename: 'menslongsleeveshirt5.png', preview: 'menslongsleeveshirtpreview5.png', price: 26.79 },
   'Champion Hoodie': { filename: 'hoodiechampion.png', preview: 'hoodiechampionpreview.png', price: 47.00 },
   'Cropped Hoodie': { filename: 'womenscroppedhoodiepreview.png', preview: 'womenscroppedhoodiepreview.png', price: 45.15 },
   'Racerback Tank': { filename: 'womenstankpreview.png', preview: 'womenstankpreview.png', price: 22.95 },
@@ -430,6 +491,27 @@ const ProductPage = ({ sidebar }) => {
   const [variantAvailability, setVariantAvailability] = useState({});
   const [addingProductIndex, setAddingProductIndex] = useState(null);
   const addingLockRef = useRef(new Set());
+  const radiusObserverRef = useRef(null);
+  const [radiusPreviewPx, setRadiusPreviewPx] = useState(0);
+  const setRadiusFrameNode = useCallback((el) => {
+    if (radiusObserverRef.current) {
+      radiusObserverRef.current.disconnect();
+      radiusObserverRef.current = null;
+    }
+    if (!el) {
+      setRadiusPreviewPx(0);
+      return;
+    }
+    const sync = () => {
+      const { width, height } = el.getBoundingClientRect();
+      if (!(width > 0 && height > 0)) return;
+      setRadiusPreviewPx(Math.min(width, height) * 0.125);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    radiusObserverRef.current = ro;
+  }, []);
   const [shipToCountry, setShipToCountry] = useState(readShipToCountry);
   const [cartItems, setCartItems] = useState(() => {
     try {
@@ -442,13 +524,59 @@ const ProductPage = ({ sidebar }) => {
   const [showAddedToCartModal, setShowAddedToCartModal] = useState(false);
   const [cartModalMode, setCartModalMode] = useState('add');
   const [fallbackImages, setFallbackImages] = useState({ screenshots: [], thumbnail: '' });
+  const videoMerchBrowse = isVideoScreenshotMerch();
+  const thumbnailBrowseUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail || '';
+  const browseScreenshotList = (
+    (Array.isArray(productData?.product?.screenshots) && productData.product.screenshots.length)
+      ? productData.product.screenshots
+      : (fallbackImages.screenshots || [])
+  );
+  const firstStillUrl = (browseScreenshotList || []).find((s) => s && s !== thumbnailBrowseUrl) || '';
   const browseSourceUrl = selectedScreenshotUrl
-    || productData?.product?.thumbnail_url
-    || (Array.isArray(productData?.product?.screenshots) && productData.product.screenshots[0])
-    || fallbackImages.thumbnail
-    || (Array.isArray(fallbackImages.screenshots) && fallbackImages.screenshots[0])
+    || (videoMerchBrowse && firstStillUrl ? firstStillUrl : '')
+    || thumbnailBrowseUrl
+    || firstStillUrl
     || '';
   const browsePreviewSrc = useBrowseDisplaySrc(browseSourceUrl);
+  const pickerImageUrls = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    const thumb = productData?.product?.thumbnail_url || fallbackImages.thumbnail || '';
+    const base = (productData?.product?.screenshots && productData.product.screenshots.length)
+      ? productData.product.screenshots
+      : fallbackImages.screenshots;
+    const shots = (base || []).filter((s) => s && s !== thumb);
+    [thumb, ...shots, selectedScreenshotUrl, browseSourceUrl].forEach((url) => {
+      if (url && !seen.has(url)) {
+        seen.add(url);
+        out.push(url);
+      }
+    });
+    return out;
+  }, [productData, fallbackImages, selectedScreenshotUrl, browseSourceUrl]);
+  const [urlOrientations, noteImageFrame] = useUrlOrientations(pickerImageUrls);
+  const selectedFrame = (browseSourceUrl && urlOrientations[browseSourceUrl]) || PORTRAIT_FRAME;
+  const browseIsLandscape = selectedFrame.landscape;
+  const browseFrameAspect = selectedFrame.aspect;
+  const browseAspectNumber = selectedFrame.aspectNumber;
+  useEffect(() => {
+    if (isVideoScreenshotMerch()) {
+      rememberArtworkOrientation('portrait');
+      return;
+    }
+    const measured = browseSourceUrl && urlOrientations[browseSourceUrl];
+    if (!measured) return;
+    rememberArtworkOrientation(measured.landscape ? 'landscape' : 'portrait');
+  }, [browseSourceUrl, urlOrientations]);
+  const featherPresetMaskStyle = useMemo(
+    () => featherEdgeMaskStyle(
+      BROWSE_FEATHER_EDGE,
+      browseIsLandscape ? 320 : 240,
+      browseIsLandscape ? 180 : 320,
+      0,
+    ) || undefined,
+    [browseIsLandscape],
+  );
   useEffect(() => {
     setSelectedEditPreset('original');
     writeBrowseToolSettings(BROWSE_EDIT_ORIGINAL);
@@ -538,6 +666,16 @@ const ProductPage = ({ sidebar }) => {
   };
   const openCart = searchParams.get('openCart') === 'true';
   const creatorMode = searchParams.get('creatorMode') === 'favorites';
+  useEffect(() => {
+    if (!creatorMode) return undefined;
+    let dest = '/dashboard';
+    try {
+      const merch = readPendingMerchData() || {};
+      if (merch.videoId) dest = `/video/0/${encodeURIComponent(merch.videoId)}`;
+    } catch (_) {}
+    navigate(dest, { replace: true });
+    return undefined;
+  }, [creatorMode, navigate]);
   const editCartParam = searchParams.get('editCart');
   const editingCartIndex = Number.parseInt(editCartParam, 10);
   const isEditingCart = Number.isInteger(editingCartIndex) && editingCartIndex >= 0 && editingCartIndex < cartItems.length;
@@ -982,10 +1120,27 @@ const ProductPage = ({ sidebar }) => {
     // Get video metadata from merch session (including screenshot_timestamp for email/order)
     let videoMetadata = {};
     let pendingOrientation;
+    const videoMerch = isVideoScreenshotMerch();
+    if (isEditingCart) {
+      const existingOri = editingCartItem?.toolSettings?.imageOrientation || editingCartItem?.imageOrientation;
+      if (existingOri === 'landscape' || existingOri === 'portrait') {
+        pendingOrientation = existingOri;
+      }
+    }
+    if (!pendingOrientation) {
+      if (videoMerch) {
+        pendingOrientation = 'portrait';
+      } else {
+        const measuredShotOri = screenshotUrl && urlOrientations[screenshotUrl];
+        if (measuredShotOri) {
+          pendingOrientation = measuredShotOri.landscape ? 'landscape' : 'portrait';
+        }
+      }
+    }
     try {
       const merchData = readPendingMerchData();
       if (merchData && typeof merchData === 'object') {
-        if (merchData.imageOrientation === 'landscape' || merchData.imageOrientation === 'portrait') {
+        if (!pendingOrientation && !videoMerch && (merchData.imageOrientation === 'landscape' || merchData.imageOrientation === 'portrait')) {
           pendingOrientation = merchData.imageOrientation;
         }
         videoMetadata = {
@@ -1013,7 +1168,7 @@ const ProductPage = ({ sidebar }) => {
       screenshot: screenshotUrl || editingCartItem?.screenshot,
       selected_screenshot: screenshotUrl || editingCartItem?.selected_screenshot,
       qty: isEditingCart && editingCartItem?.qty ? editingCartItem.qty : 1,
-      category: category || '', // womens, mens, kids, hats confirm design; mugs/bags/pets/misc skip
+      category: category || '',
       printful_catalog_product_id: product?.printful_catalog_product_id ?? null,
       printful_variant_id: printful_variant_id != null ? printful_variant_id : undefined,
       regional_base_prices: product?.regional_base_prices || undefined,
@@ -1576,6 +1731,10 @@ const ProductPage = ({ sidebar }) => {
     return <ToolsPage key={`thumb-tools-${shotKey}`} />;
   }
 
+  if (creatorMode) {
+    return null;
+  }
+
   const showVideoThumbLabel = isVideoScreenshotMerch();
   const showAutoEditPresets = !creatorMode && !isShopCatalog && !showVideoThumbLabel && getSelectImageCount() <= 1 && Boolean(browsePreviewSrc || browseSourceUrl);
   const showDesktopEditPresets = showAutoEditPresets && isDesktopLayout;
@@ -1754,7 +1913,13 @@ const ProductPage = ({ sidebar }) => {
         <>
           {/* Screenshot Selection Section — hidden in My Shop catalog (blank products only) */}
           {!isShopCatalog && (
-          <div className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}${showDesktopEditPresets ? ' screenshots-section--with-edits' : ''}`}>
+          <div
+            className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}${showDesktopEditPresets ? ' screenshots-section--with-edits' : ''}${browseIsLandscape && !showVideoThumbLabel ? ' screenshots-section--landscape' : ''}`}
+            style={{
+              '--screenshot-frame-aspect': browseFrameAspect,
+              '--screenshot-aspect-number': String(browseAspectNumber),
+            }}
+          >
             {!creatorMode && (
               <div className="product-choose-header">
                 <h1 className="product-choose-title">
@@ -1780,9 +1945,13 @@ const ProductPage = ({ sidebar }) => {
                 {/* Thumbnail (video capture only) */}
                 {(() => {
                   const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
+                  const thumbOri = showVideoThumbLabel
+                    ? { className: '', style: undefined }
+                    : screenshotTileOrientation(thumbnailUrl, urlOrientations);
                   return thumbnailUrl ? (
                   <div
-                    className={`screenshot-item${showDesktopEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}`}
+                    className={`screenshot-item${showDesktopEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}${thumbOri.className}`}
+                    style={thumbOri.style}
                   >
                     <div
                       role="button"
@@ -1802,9 +1971,10 @@ const ProductPage = ({ sidebar }) => {
                       }}
                     >
                       <img 
-                        src={presetImageSrc || thumbnailUrl} 
+                        src={showVideoThumbLabel ? thumbnailUrl : (presetImageSrc || thumbnailUrl)} 
                         alt={showVideoThumbLabel ? 'Thumbnail' : 'Selected image'} 
                         className="screenshot-image"
+                        onLoad={(e) => noteImageFrame(thumbnailUrl, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
                       />
                       {showVideoThumbLabel ? <div className="screenshot-label">Thumbnail</div> : null}
                     </div>
@@ -1833,13 +2003,17 @@ const ProductPage = ({ sidebar }) => {
                   const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
                   return shots && shots.length > 0 ? shots.map((screenshot, index) => {
                     const isFirstImage = !thumbnailUrl && index === 0;
+                    const shotOri = showVideoThumbLabel
+                      ? { className: '', style: undefined }
+                      : screenshotTileOrientation(screenshot, urlOrientations);
                     const label = showVideoThumbLabel
                       ? (isFirstImage ? 'Thumbnail' : `Screenshot ${index + 1}`)
                       : '';
                     return (
                       <div
                         key={`shot-${index}`}
-                        className={`screenshot-item${showDesktopEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--original' : ''}${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === index && selectedEditPreset === 'original' ? ' selected' : ''}`}
+                        className={`screenshot-item${showDesktopEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--original' : ''}${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === index && selectedEditPreset === 'original' ? ' selected' : ''}${shotOri.className}`}
+                        style={shotOri.style}
                       >
                         <div
                           role="button"
@@ -1862,6 +2036,7 @@ const ProductPage = ({ sidebar }) => {
                             src={(!showVideoThumbLabel && presetImageSrc) ? presetImageSrc : screenshot} 
                             alt={label || `Image ${index + 1}`} 
                             className="screenshot-image"
+                            onLoad={(e) => noteImageFrame(screenshot, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
                           />
                           {label ? <div className="screenshot-label">{label}</div> : null}
                         </div>
@@ -1893,11 +2068,21 @@ const ProductPage = ({ sidebar }) => {
                     aria-label={`Try ${preset.label}`}
                     onClick={() => applyBrowseEditPreset(preset.id, preset.settings)}
                   >
-                    <div>
+                    <div
+                      ref={preset.id === 'radius' ? setRadiusFrameNode : undefined}
+                      style={preset.id === 'radius' && radiusPreviewPx > 0 ? { borderRadius: radiusPreviewPx } : undefined}
+                    >
                       <img
                         src={presetImageSrc}
                         alt={preset.label}
                         className="screenshot-image"
+                        style={
+                          preset.id === 'feather'
+                            ? featherPresetMaskStyle
+                            : (preset.id === 'radius' && radiusPreviewPx > 0
+                              ? { borderRadius: radiusPreviewPx }
+                              : undefined)
+                        }
                       />
                       {preset.id === 'frame' ? (
                         <span className="screenshot-preset-frame-mat" aria-hidden="true" />
@@ -2313,7 +2498,7 @@ const ProductPage = ({ sidebar }) => {
                 <div className="cart-actions">
                   <button className="view-cart-btn" onClick={() => setIsCartOpen(false)}>Continue Shopping</button>
                   <button className="checkout-btn" onClick={goToCheckout} disabled={cartHasUnavailableItems}>Checkout</button>
-                  <button className="edit-tools-btn" onClick={goToToolsPage}>Customize Design</button>
+                  <button className="edit-tools-btn" onClick={goToToolsPage}>Preview Design</button>
                 </div>
               </div>
             )}
@@ -2355,7 +2540,7 @@ const ProductPage = ({ sidebar }) => {
                     goToToolsPage();
                   }}
                 >
-                  Customize Design
+                  Preview Design
                 </button>
                 <button 
                   className="continue-shopping-btn"

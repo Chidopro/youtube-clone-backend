@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef, useTransition } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useTransition, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
@@ -8,6 +8,7 @@ import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAu
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { storefrontMockupUrl } from '../../utils/shopCategories';
+import { matchPrintAreaProductName } from '../../config/printAreaConfig';
 import {
   CHECKOUT_COUNTRY_OPTIONS,
   US_STATE_OPTIONS,
@@ -113,20 +114,9 @@ function OrderItemShot({ url, orientation, offsetX, offsetY, enabled = true }) {
   );
 }
 
-/** Portrait/landscape confirm is useful on shirts, hoodies, and hats. */
-const DESIGN_CONFIRM_CATEGORIES = new Set(['womens', 'mens', 'kids', 'hats']);
-const DESIGN_SKIP_CATEGORIES = new Set(['mugs', 'bags', 'pets', 'misc']);
-const DESIGN_SKIP_NAME_RE = /\b(mug|tote|bag|laptop\s*sleeve|bowl|bandana|notebook|puzzle|poster|magnet|sticker|phone case|pet)\b/i;
-const DESIGN_CONFIRM_NAME_RE = /\b(t-?shirt|shirt|hoodie|tee|tank|sweatshirt|crewneck|jersey|pullover|hat|cap|beanie)\b/i;
-
+/** Every cart item is shown in Confirm Your Design, including mugs and accessories. */
 function itemNeedsDesignConfirm(item) {
-  const cat = String(item?.category || '').trim().toLowerCase();
-  if (DESIGN_SKIP_CATEGORIES.has(cat)) return false;
-  if (DESIGN_CONFIRM_CATEGORIES.has(cat)) return true;
-  const name = String(item?.name || item?.product || '');
-  if (DESIGN_SKIP_NAME_RE.test(name)) return false;
-  if (DESIGN_CONFIRM_NAME_RE.test(name)) return true;
-  return false;
+  return Boolean(item);
 }
 
 function cartConfirmIndexes(itemList) {
@@ -196,6 +186,7 @@ const Checkout = () => {
   const confirmClickLockRef = useRef(false);
   const [, startConfirmTransition] = useTransition();
   const [confirmPreviewReady, setConfirmPreviewReady] = useState(false);
+  const [showSampleSaleStop, setShowSampleSaleStop] = useState(false);
 
   const scrollToShippingSection = useCallback(() => {
     // Wait for the design modal to unmount so layout height is correct.
@@ -224,7 +215,7 @@ const Checkout = () => {
   }, []);
 
   const loadCart = useCallback(() => {
-    if (!signedIn) return;
+    if (!isDemoStorefront() && !signedIn) return;
     try {
       const parsed = readCartItems();
       const next = repriceCartItems(parsed, address.country_code);
@@ -248,9 +239,23 @@ const Checkout = () => {
     return () => window.removeEventListener(CART_UPDATED_EVENT, loadCart);
   }, [loadCart]);
 
+  useLayoutEffect(() => {
+    if (items.length !== 0) return;
+    const toTop = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const main = document.querySelector('.main-content-area');
+      if (main) main.scrollTop = 0;
+    };
+    toTop();
+    const frame = requestAnimationFrame(toTop);
+    return () => cancelAnimationFrame(frame);
+  }, [items.length]);
+
   // Confirm Your Design for shirts, hoodies, and hats. Mugs, bags, pets, and accessories skip it.
   useEffect(() => {
-    if (!signedIn || items.length === 0 || designModalShownOnLoadRef.current) return;
+    if ((!signedIn && !isDemoStorefront()) || items.length === 0 || designModalShownOnLoadRef.current) return;
     designModalShownOnLoadRef.current = true;
     if (cartNeedsDesignModal(items)) {
       setShowDesignModal(true);
@@ -685,7 +690,10 @@ const Checkout = () => {
 
   /** Run actual checkout (build payload, POST, redirect). Call after design modal "Continue to Checkout". */
   const runCheckout = useCallback(async (cartOverride = null) => {
-    if (isDemoStorefront()) return;
+    if (isDemoStorefront()) {
+      setShowSampleSaleStop(true);
+      return;
+    }
     if (stockError) {
       alert(stockError);
       return;
@@ -919,45 +927,7 @@ const Checkout = () => {
   };
 
   return (
-    <div className={`checkout-container${signedIn && items.length === 0 ? ' checkout-container--empty' : ''}`}>
-      {isDemoStorefront() ? (
-        <div className="checkout-sample-stop" role="status">
-          <button
-            type="button"
-            className="checkout-sample-stop-back"
-            aria-label="Back to products"
-            onClick={() => {
-              const idx = window.history.state?.idx;
-              if (typeof idx === 'number' && idx > 0) {
-                navigate(-1);
-                return;
-              }
-              navigate('/merchandise');
-            }}
-          >
-            ← Back
-          </button>
-          <p className="checkout-sample-stop-kicker">Sample storefront</p>
-          <h1>These items are not for sale</h1>
-          <p>
-            Browse products and image tools page. Check out video snapshot tool, click Sign In to
-            view dashboard tools.
-          </p>
-          <div className="checkout-sample-stop-actions">
-            <button type="button" className="btn-primary" onClick={() => navigate('/')}>
-              Main
-            </button>
-            <button
-              type="button"
-              className="btn-outline"
-              onClick={() => navigate('/subscription-tiers', { state: { intent: 'creator' } })}
-            >
-              Claim a storefront
-            </button>
-          </div>
-        </div>
-      ) : (
-      <>
+    <div className={`checkout-container${(signedIn || isDemoStorefront()) && items.length === 0 ? ' checkout-container--empty' : ''}`}>
       <AuthModal
         isOpen={showAuthModal}
         returnTo="/checkout"
@@ -970,7 +940,7 @@ const Checkout = () => {
           setShowAuthModal(false);
         }}
       />
-      {!signedIn ? (
+      {!signedIn && !isDemoStorefront() ? (
         <div className="empty-cart checkout-signin-gate">
           <div className="empty-cart-icon">🛒</div>
           <h2>Sign in to check out</h2>
@@ -1399,6 +1369,7 @@ const Checkout = () => {
               const item = items[previewCartIndex];
               const itemName = item?.name || item?.product || `Item ${previewCartIndex + 1}`;
               const itemSize = (item?.size || '').trim();
+              const printProductName = matchPrintAreaProductName(itemName) || itemName;
               const mockupUrl = storefrontMockupUrl(
                 itemName,
                 item?.image || item?.img || previewMockups[previewCartIndex] || ''
@@ -1407,6 +1378,9 @@ const Checkout = () => {
               const previewOrientation = (designPreferences[previewCartIndex]?.orientation === 'landscape')
                 ? 'landscape'
                 : 'portrait';
+              const printAreaFit = (ts.printAreaFit && ts.printAreaFit !== 'none')
+                ? ts.printAreaFit
+                : 'product';
               return (
                 <div className="design-modal-preview-card">
                   <h3 className="design-modal-preview-title">
@@ -1429,7 +1403,7 @@ const Checkout = () => {
                         key={previewCartIndex}
                         productImage={mockupUrl}
                         screenshot={confirmDisplayShot.src}
-                        productName={itemName}
+                        productName={printProductName}
                         productSize={item?.size}
                         offsetX={ts.offsetX || 0}
                         offsetY={ts.offsetY || 0}
@@ -1440,8 +1414,8 @@ const Checkout = () => {
                         frameColor={ts.frameColor || '#FF0000'}
                         frameWidth={ts.frameWidth ?? 10}
                         doubleFrame={Boolean(ts.doubleFrame)}
-                        printAreaFit={ts.printAreaFit || 'product'}
-                        selectedProductName={itemName}
+                        printAreaFit={printAreaFit}
+                        selectedProductName={printProductName}
                         screenshotScale={ts.screenshotScale ?? 100}
                         imageOffsetX={ts.imageOffsetX || 0}
                         imageOffsetY={ts.imageOffsetY || 0}
@@ -1617,7 +1591,7 @@ const Checkout = () => {
                       Back
                     </button>
                     <button type="button" className="btn-primary" onClick={handleGoToTools}>
-                      Customize Design
+                      Preview Design
                     </button>
                   </div>
                 </div>
@@ -1632,8 +1606,47 @@ const Checkout = () => {
       )}
       </>
       )}
-      </>
-      )}
+      {showSampleSaleStop ? (
+        <div
+          className="checkout-sample-stop-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="checkout-sample-stop-title"
+          onClick={() => setShowSampleSaleStop(false)}
+        >
+          <div className="checkout-sample-stop" role="status" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="checkout-sample-stop-back"
+              aria-label="Back to checkout"
+              onClick={() => setShowSampleSaleStop(false)}
+            >
+              ← Back
+            </button>
+            <p className="checkout-sample-stop-kicker">Sample storefront</p>
+            <h1 id="checkout-sample-stop-title">These items are not for sale</h1>
+            <p>
+              Browse products and image tools page. Check out video snapshot tool, click Sign In to
+              view dashboard tools.
+            </p>
+            <div className="checkout-sample-stop-actions">
+              <button type="button" className="btn-primary" onClick={() => navigate('/')}>
+                Main
+              </button>
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => {
+                  setShowSampleSaleStop(false);
+                  window.dispatchEvent(new CustomEvent('screenmerch:open-creator-signup'));
+                }}
+              >
+                Claim a storefront
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

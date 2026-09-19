@@ -13,6 +13,7 @@ import {
 } from '../../utils/shopCategories';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
 import { ChevronLeft, ChevronRight } from '../../Components/Chevrons/Chevrons';
+import { sortVideosForPlay } from '../../utils/videoPlayOrder';
 import './Favorites.css';
 
 const sortNewest = (a, b) => {
@@ -339,6 +340,7 @@ const Favorites = ({ sidebar }) => {
   const [pageMedia, setPageMedia] = useState({ images: [], videos: [] });
   const [listMeta, setListMeta] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mediaSlug, setMediaSlug] = useState(null);
   const [error, setError] = useState('');
   const [extraPages, setExtraPages] = useState([]);
   const images = pageMedia.images;
@@ -368,6 +370,7 @@ const Favorites = ({ sidebar }) => {
         if (!creatorLoading) {
           setLoading(false);
           setPageMedia(EMPTY_PAGE_MEDIA);
+          setMediaSlug(effectiveSlug);
           setExtraPages([]);
           setError('');
         }
@@ -376,6 +379,7 @@ const Favorites = ({ sidebar }) => {
       if (!currentCreator?.id) {
         setLoading(false);
         setPageMedia(EMPTY_PAGE_MEDIA);
+        setMediaSlug(effectiveSlug);
         setExtraPages([]);
         setError('');
         return;
@@ -392,6 +396,7 @@ const Favorites = ({ sidebar }) => {
           setPageMedia(EMPTY_PAGE_MEDIA);
           setListMeta(null);
           setExtraPages([]);
+          setMediaSlug(effectiveSlug);
           setLoading(false);
           return;
         }
@@ -399,6 +404,22 @@ const Favorites = ({ sidebar }) => {
         const rawList = data.list || null;
         const isOwnerPage = !!(rawList?.is_primary || rawList?.slug === 'owner' || effectiveSlug === 'owner');
         setListMeta(rawList);
+        const pageUserId =
+          rawList?.owner_user_id ||
+          (isOwnerPage ? currentCreator.id : null) ||
+          currentCreator.id;
+        const videosPromise = pageUserId
+          ? fetch(`${apiJoin('/api/videos')}?user_id=${encodeURIComponent(pageUserId)}&limit=100`)
+              .then((vRes) => (vRes.ok ? vRes.json().catch(() => []) : []))
+              .then((vData) => {
+                const listVideos = (Array.isArray(vData) ? vData : []).map((v) => ({
+                  ...v,
+                  thumbnail: v.thumbnail || v.thumbnail_url || '',
+                }));
+                return listVideos;
+              })
+              .catch(() => [])
+          : Promise.resolve([]);
         let favs = data.favorites || [];
         if (
           !favs.length &&
@@ -426,30 +447,10 @@ const Favorites = ({ sidebar }) => {
           navigate(`/favorites/${encodeURIComponent(nextSlug)}`, { replace: true });
         }
 
-        const pageUserId =
-          rawList?.owner_user_id ||
-          (isOwnerPage ? currentCreator.id : null) ||
-          currentCreator.id;
-
-        setPageMedia({ images: favs, videos: [] });
-        if (favs.length) setLoading(false);
-
-        const videosPromise = pageUserId
-          ? fetch(`${apiJoin('/api/videos')}?user_id=${encodeURIComponent(pageUserId)}&limit=100`)
-              .then((vRes) => (vRes.ok ? vRes.json().catch(() => []) : []))
-              .then((vData) => {
-                const listVideos = (Array.isArray(vData) ? vData : []).map((v) => ({
-                  ...v,
-                  thumbnail: v.thumbnail || v.thumbnail_url || '',
-                }));
-                return listVideos;
-              })
-              .catch(() => [])
-          : Promise.resolve([]);
-
         const listVideos = await videosPromise;
         if (cancelled) return;
         setPageMedia({ images: favs, videos: listVideos });
+        setMediaSlug(effectiveSlug);
         setLoading(false);
 
         if (!isOwnerPage) {
@@ -477,6 +478,7 @@ const Favorites = ({ sidebar }) => {
         if (cancelled) return;
         setError(e.message || 'Network error');
         setPageMedia(EMPTY_PAGE_MEDIA);
+        setMediaSlug(effectiveSlug);
         setExtraPages([]);
         setLoading(false);
       }
@@ -491,16 +493,14 @@ const Favorites = ({ sidebar }) => {
 
   const videoItems = useMemo(
     () =>
-      videos
-        .map((v) => ({
-          kind: 'video',
-          id: `video-${v.id}`,
-          title: v.title || 'Untitled video',
-          thumb: publicStorageCardUrl(v.thumbnail || v.thumbnail_url || '', 720),
-          created_at: v.created_at || '',
-          raw: v,
-        }))
-        .sort(sortNewest),
+      sortVideosForPlay(videos).map((v) => ({
+        kind: 'video',
+        id: `video-${v.id}`,
+        title: v.title || 'Untitled video',
+        thumb: publicStorageCardUrl(v.thumbnail || v.thumbnail_url || '', 720),
+        created_at: v.created_at || '',
+        raw: v,
+      })),
     [videos]
   );
 
@@ -568,6 +568,7 @@ const Favorites = ({ sidebar }) => {
   const creatorHeading = onFriendPage
     ? friendPageLabel(listMeta, currentCreator?.id)
     : '';
+  const pageReady = !creatorLoading && !loading && mediaSlug === effectiveSlug;
 
   return (
     <div className={`container favorites-root ${sidebar ? '' : ' large-container'}`}>
@@ -576,7 +577,7 @@ const Favorites = ({ sidebar }) => {
       <div className="favorites-page favorites-page--in-container">
         {error ? <p className="favorites-error">{error}</p> : null}
 
-        {loading || creatorLoading ? (
+        {!pageReady && !error ? (
           <div className="favorites-shelves" aria-busy="true">
             <section className="favorites-shelf favorites-shelf--videos" aria-label="Loading clips">
               <FavoritesSectionHeader title="View Clip" showArrows={false} />
@@ -597,14 +598,14 @@ const Favorites = ({ sidebar }) => {
           </div>
         ) : null}
 
-        {!loading && !creatorLoading && !hasVisibleItems && extraPageItems.length === 0 && !error ? (
+        {pageReady && !hasVisibleItems && extraPageItems.length === 0 && !error ? (
           <div className="favorites-empty">
             <h2>Nothing here yet</h2>
             <p>This page has no videos or images yet. Check back later!</p>
           </div>
         ) : null}
 
-        {!loading && !creatorLoading && (hasVisibleItems || extraPageItems.length > 0) ? (
+        {pageReady && (hasVisibleItems || extraPageItems.length > 0) ? (
           <div className="favorites-shelves">
             {videoItems.length > 0 ? (
               <FavoritesMediaSection

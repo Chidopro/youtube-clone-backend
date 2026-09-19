@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, Link, Navigate } from 'react-router-dom';
 import './Dashboard.css';
 import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
+import { sortVideosForPlay, moveItem } from '../../utils/videoPlayOrder';
 import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { requestVideoOptimize, isOptimizedPlaybackUrl } from '../../utils/videoOptimize';
@@ -1022,7 +1023,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                         .order('created_at', { ascending: false });
 
                     if (userVideos) {
-                        setVideos(userVideos);
+                        setVideos(sortVideosForPlay(userVideos));
                     }
                     
                 } else {
@@ -1150,6 +1151,51 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         : (pageVideosUserId && String(pageVideosUserId) === String(user?.id)
             ? videos
             : otherPageVideos);
+    const playOrderedPageVideos = useMemo(() => sortVideosForPlay(pageVideos), [pageVideos]);
+    const videoDragFromRef = useRef(-1);
+    const videoDragMovedRef = useRef(false);
+    const [draggingVideoId, setDraggingVideoId] = useState('');
+
+    const persistPageVideoOrder = async (ordered) => {
+        if (demoPreview) return;
+        const owned = (ordered || []).filter((v) => String(v.user_id || user?.id) === String(user?.id));
+        const ids = owned.map((v) => v.id).filter(Boolean);
+        if (!ids.length) return;
+        try {
+            const auth = await getFavoriteAuthHeaders();
+            if (!auth.error && auth.headers) {
+                const res = await fetch(`${getBackendUrl()}/api/videos/play-order`, {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json', ...auth.headers },
+                    body: JSON.stringify({ video_ids: ids }),
+                });
+                if (res.ok) return;
+            }
+        } catch (err) {
+            console.warn('Play order API failed:', err);
+        }
+        await Promise.all(owned.map((v, i) => AdminService.updateVideo(v.id, { display_order: i })));
+    };
+
+    const commitVideoPlayOrder = (fromIndex, toIndex) => {
+        if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+        const ordered = moveItem(sortVideosForPlay(pageVideos), fromIndex, toIndex).map((v, i) => ({
+            ...v,
+            display_order: i,
+        }));
+        const ids = new Set(ordered.map((v) => String(v.id)));
+        const merge = (prev) => {
+            const rest = (prev || []).filter((v) => !ids.has(String(v.id)));
+            return [...ordered, ...rest];
+        };
+        if (!pageVideosUserId || String(pageVideosUserId) === String(user?.id) || umbrellaOnly) {
+            setVideos(merge);
+        } else {
+            setOtherPageVideos(merge);
+        }
+        persistPageVideoOrder(ordered);
+    };
 
     useEffect(() => {
         if (!pageVideosUserId || String(pageVideosUserId) === String(user?.id)) {
@@ -1163,7 +1209,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                     `${apiJoin('/api/videos')}?user_id=${encodeURIComponent(pageVideosUserId)}&limit=100`
                 );
                 const data = res.ok ? await res.json().catch(() => []) : [];
-                if (!cancelled) setOtherPageVideos(Array.isArray(data) ? data : []);
+                if (!cancelled) setOtherPageVideos(sortVideosForPlay(Array.isArray(data) ? data : []));
             } catch (_) {
                 if (!cancelled) setOtherPageVideos([]);
             }
@@ -1180,7 +1226,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                     `${apiJoin('/api/videos')}?user_id=${encodeURIComponent(user.id)}&limit=100`
                 );
                 const data = res.ok ? await res.json().catch(() => []) : [];
-                if (!cancelled) setVideos(Array.isArray(data) ? data : []);
+                if (!cancelled) setVideos(sortVideosForPlay(Array.isArray(data) ? data : []));
             } catch (_) {
                 if (!cancelled) setVideos([]);
             }
@@ -1526,19 +1572,8 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         return ' Image saved, but the video thumbnail could not be updated.';
     };
 
-    const openVideoForMerch = (video) => {
-        const merchData = {
-            source: 'video',
-            thumbnail: video.thumbnail || video.thumbnail_url || '',
-            screenshots: video.screenshots || [],
-            videoUrl: video.video_url || '',
-            videoTitle: video.title || 'Unknown Video',
-            creatorName: userProfile?.display_name || userProfile?.username || 'Unknown Creator',
-            videoId: video.id,
-        };
-        savePendingMerchData(merchData);
-        localStorage.setItem('creator_favorites_mode', 'true');
-        navigate('/product/browse?category=mens&creatorMode=favorites');
+    const openVideoPlayer = (video) => {
+        navigate(`/video/${video.categoryId || 0}/${video.id}`);
     };
 
     const handleEditFavorite = (favorite, event) => {
@@ -2804,18 +2839,55 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                         )}
 
                         <section className="page-media-section" aria-label="Videos on this page">
-                            <h3>Videos ({pageVideos.length})</h3>
-                            {pageVideos.length > 0 ? (
-                                <div className="page-media-scroller">
-                                    {pageVideos.map((video) => {
+                            <h3>Videos ({playOrderedPageVideos.length})</h3>
+                            {playOrderedPageVideos.length > 0 ? (
+                                <>
+                                    {!demoPreview ? (
+                                        <p className="page-media-hint">Drag to set play order. Click a video to watch it.</p>
+                                    ) : null}
+                                    <div className="page-media-scroller">
+                                    {playOrderedPageVideos.map((video, index) => {
                                         const canManage = !demoPreview && String(video.user_id || '') === String(user?.id || '');
                                         return (
                                             <div
                                                 key={video.id}
-                                                className="dashboard-video-card"
+                                                className={`dashboard-video-card${canManage ? ' dashboard-video-card--reorder' : ''}${String(draggingVideoId) === String(video.id) ? ' dashboard-video-card--dragging' : ''}`}
+                                                draggable={canManage}
+                                                onDragStart={(e) => {
+                                                    if (!canManage) return;
+                                                    videoDragFromRef.current = index;
+                                                    videoDragMovedRef.current = false;
+                                                    setDraggingVideoId(video.id);
+                                                    try {
+                                                        e.dataTransfer.effectAllowed = 'move';
+                                                        e.dataTransfer.setData('text/plain', String(video.id));
+                                                    } catch (_) {}
+                                                }}
+                                                onDragOver={(e) => {
+                                                    if (!canManage || videoDragFromRef.current < 0) return;
+                                                    e.preventDefault();
+                                                    try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+                                                }}
+                                                onDrop={(e) => {
+                                                    if (!canManage) return;
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    const fromIndex = videoDragFromRef.current;
+                                                    videoDragMovedRef.current = fromIndex !== index;
+                                                    commitVideoPlayOrder(fromIndex, index);
+                                                    videoDragFromRef.current = -1;
+                                                    setDraggingVideoId('');
+                                                }}
+                                                onDragEnd={() => {
+                                                    videoDragFromRef.current = -1;
+                                                    setDraggingVideoId('');
+                                                }}
                                                 onClick={() => {
-                                                    if (canManage) openVideoForMerch(video);
-                                                    else navigate(`/video/${video.categoryId || 0}/${video.id}`);
+                                                    if (videoDragMovedRef.current) {
+                                                        videoDragMovedRef.current = false;
+                                                        return;
+                                                    }
+                                                    openVideoPlayer(video);
                                                 }}
                                             >
                                                 <span className="page-item-badge">Video</span>
@@ -2823,6 +2895,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                     src={video.thumbnail || video.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
                                                     alt={video.title}
                                                     className="dashboard-video-thumbnail"
+                                                    draggable={false}
                                                 />
                                                 <div className="dashboard-video-info">
                                                     <h4>{video.title}</h4>
@@ -2841,7 +2914,8 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                             </div>
                                         );
                                     })}
-                                </div>
+                                    </div>
+                                </>
                             ) : (
                                 <p className="page-media-empty">
                                     No videos on this page yet.{' '}

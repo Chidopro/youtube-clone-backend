@@ -1934,9 +1934,9 @@ PRODUCTS = [
     {
         "name": "Men's Long Sleeve Shirt",
         "price": 22.79,
-        "filename": "menslongsleeve.png",
-        "main_image": "menslongsleeve.png",
-        "preview_image": "menslongsleevepreviewv2.png",
+        "filename": "menslongsleeveshirt5.png",
+        "main_image": "menslongsleeveshirt5.png",
+        "preview_image": "menslongsleeveshirtpreview5.png",
         "description": "With its classic and regular fit, this Men's Long Sleeve Shirt is a true wardrobe essential. It'll look great on its own or layered under a jacket and will be perfect for a relaxed and casual setting. 100% cotton. Sport Grey is 90% cotton, 10% polyester. Fabric weight: 6.0 oz./yd.² (203.43 g/m²). Classic fit with long sleeves and rib cuffs. Pre-shrunk jersey knit. Seamless double-needle ⅞ ″ (2.2 cm) collar. Double-needle bottom hem. Taped neck and shoulders. Quarter-turned to avoid crease down the middle. Blank product sourced from Honduras, Haiti, or Nicaragua. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
@@ -8371,6 +8371,227 @@ def _authenticate_upload_user():
         ),
         400,
     )
+
+
+def _safe_upload_ext(name, fallback):
+    ext = ""
+    if name and "." in str(name):
+        ext = str(name).rsplit(".", 1)[-1].lower()
+    if not re.fullmatch(r"[a-z0-9]{1,8}", ext or ""):
+        return fallback
+    return ext
+
+
+def _create_signed_upload_url(bucket, path):
+    """Service-role signed upload URL so Google OAuth / collaborator sessions can PUT the file."""
+    if supabase_admin:
+        try:
+            res = supabase_admin.storage.from_(bucket).create_signed_upload_url(path)
+            data = res if isinstance(res, dict) else {}
+            if isinstance(data.get("data"), dict):
+                data = data["data"]
+            signed = (
+                data.get("signedUrl")
+                or data.get("signedURL")
+                or data.get("signed_url")
+                or data.get("url")
+                or ""
+            )
+            token = data.get("token")
+            if signed and token and "token=" not in str(signed):
+                sep = "&" if "?" in str(signed) else "?"
+                signed = f"{signed}{sep}token={token}"
+            if signed:
+                if str(signed).startswith("/"):
+                    base = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+                    signed = f"{base}/storage/v1{signed}"
+                return {"signedUrl": signed, "token": token, "path": path}
+        except Exception as err:
+            logger.warning("create_signed_upload_url client failed (%s/%s): %s", bucket, path, err)
+    base = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or ""
+    if not base or not key:
+        raise RuntimeError("Storage is not configured")
+    resp = requests.post(
+        f"{base}/storage/v1/object/upload/sign/{bucket}/{path}",
+        headers={
+            "Authorization": f"Bearer {key}",
+            "apikey": key,
+            "Content-Type": "application/json",
+        },
+        json={"upsert": True},
+        timeout=20,
+    )
+    if resp.status_code >= 400:
+        raise RuntimeError(resp.text[:300] or f"Signed URL failed ({resp.status_code})")
+    payload = resp.json() if resp.content else {}
+    signed = payload.get("url") or payload.get("signedURL") or payload.get("signedUrl") or ""
+    token = payload.get("token")
+    if signed.startswith("/"):
+        signed = f"{base}/storage/v1{signed}"
+    if signed and token and "token=" not in signed:
+        sep = "&" if "?" in signed else "?"
+        signed = f"{signed}{sep}token={token}"
+    if not signed:
+        raise RuntimeError("Storage did not return an upload URL")
+    return {"signedUrl": signed, "token": token, "path": path}
+
+
+def _public_storage_url(bucket, path):
+    if supabase_admin:
+        try:
+            url = supabase_admin.storage.from_(bucket).get_public_url(path)
+            if isinstance(url, dict):
+                url = url.get("publicUrl") or url.get("publicURL") or ""
+            return str(url or "").split("?")[0]
+        except Exception:
+            pass
+    base = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+    return f"{base}/storage/v1/object/public/{bucket}/{path}"
+
+
+@app.route("/api/videos/prepare-upload", methods=["POST", "OPTIONS"])
+def prepare_video_upload():
+    """Issue signed PUT URLs so large clips upload with progress (not a single hung 10% POST)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    user_id, err = _authenticated_users_id()
+    if err is not None:
+        return err[0], err[1]
+    if not supabase_admin:
+        return jsonify({"success": False, "error": "Server upload not configured"}), 503
+    data = request.get_json(silent=True) or {}
+    try:
+        size = int(data.get("video_size") or 0)
+    except (TypeError, ValueError):
+        size = 0
+    if size > 100 * 1024 * 1024:
+        return jsonify({"success": False, "error": "Video file size must be less than 100MB"}), 400
+    video_ext = _safe_upload_ext(data.get("video_name") or data.get("video_ext"), "mp4")
+    thumb_ext = _safe_upload_ext(data.get("thumb_name") or data.get("thumb_ext"), "png")
+    stamp = int(time.time() * 1000)
+    video_path = f"{user_id}/{stamp}.{video_ext}"
+    thumb_path = f"{user_id}/{stamp}_thumb.{thumb_ext}"
+    try:
+        video_sign = _create_signed_upload_url("videos2", video_path)
+        thumb_sign = _create_signed_upload_url("thumbnails", thumb_path)
+    except Exception as e:
+        logger.exception("prepare_video_upload signed URL failed")
+        return jsonify({"success": False, "error": str(e) or "Could not start upload"}), 500
+    return jsonify({
+        "success": True,
+        "user_id": user_id,
+        "video": video_sign,
+        "thumbnail": thumb_sign,
+    }), 200
+
+
+@app.route("/api/videos/complete-upload", methods=["POST", "OPTIONS"])
+def complete_video_upload():
+    """Insert the videos2 row after the browser finished PUTting to signed URLs."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    user_id, err = _authenticated_users_id()
+    if err is not None:
+        return err[0], err[1]
+    if not supabase_admin:
+        return jsonify({"success": False, "error": "Server upload not configured"}), 503
+    data = request.get_json(silent=True) or {}
+    video_path = str(data.get("video_path") or "").lstrip("/")
+    thumb_path = str(data.get("thumb_path") or "").lstrip("/")
+    title = str(data.get("title") or "").strip()
+    description = str(data.get("description") or "").strip()
+    if not title or not video_path or not thumb_path:
+        return jsonify({"success": False, "error": "Title, video, and thumbnail are required"}), 400
+    if not video_path.startswith(f"{user_id}/") or not thumb_path.startswith(f"{user_id}/"):
+        return jsonify({"success": False, "error": "Upload path does not match your account"}), 403
+    channel_title = str(data.get("channel_title") or "").strip()
+    if not channel_title:
+        row = (
+            supabase_admin.table("users")
+            .select("display_name, username, email")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        u = (row.data or [{}])[0]
+        channel_title = (
+            (u.get("display_name") or u.get("username") or "")
+            or ((u.get("email") or "").split("@")[0])
+            or "Creator"
+        )
+    video_url = _public_storage_url("videos2", video_path)
+    thumb_url = _public_storage_url("thumbnails", thumb_path)
+    display_order = 0
+    try:
+        existing = (
+            supabase_admin.table("videos2")
+            .select("display_order")
+            .eq("user_id", user_id)
+            .order("display_order")
+            .limit(20)
+            .execute()
+        )
+        orders = [
+            int(row.get("display_order"))
+            for row in (existing.data or [])
+            if row.get("display_order") is not None
+        ]
+        if orders:
+            display_order = min(orders) - 1
+    except Exception:
+        display_order = 0
+    insert_data = {
+        "title": title[:200],
+        "description": description[:2000],
+        "video_url": video_url,
+        "source_video_url": video_url,
+        "thumbnail": thumb_url,
+        "channelTitle": channel_title[:120],
+        "user_id": user_id,
+        "verification_status": "verified_via_supabase_auth",
+        "display_order": display_order,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = supabase_admin.table("videos2").insert(insert_data).execute()
+    saved = (result.data or [None])[0]
+    if not saved:
+        return jsonify({"success": False, "error": "Could not save video"}), 500
+    return jsonify({"success": True, "video": saved, "user_id": user_id}), 200
+
+
+@app.route("/api/videos/play-order", methods=["PUT", "POST", "OPTIONS"])
+def save_video_play_order():
+    """Save dashboard drag order. Lower index plays first on the live page."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    user_id, err = _authenticated_users_id()
+    if err is not None:
+        return err[0], err[1]
+    if not supabase_admin:
+        return jsonify({"success": False, "error": "Server not configured"}), 503
+    data = request.get_json(silent=True) or {}
+    ids = data.get("video_ids") or data.get("ids") or []
+    if not isinstance(ids, list) or not ids:
+        return jsonify({"success": False, "error": "video_ids required"}), 400
+    owned = (
+        supabase_admin.table("videos2")
+        .select("id")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    owned_ids = {str(row.get("id")) for row in (owned.data or []) if row.get("id")}
+    cleaned = []
+    seen = set()
+    for vid in ids:
+        sid = str(vid or "").strip()
+        if not sid or sid in seen or sid not in owned_ids:
+            continue
+        seen.add(sid)
+        cleaned.append(sid)
+    for index, vid in enumerate(cleaned):
+        supabase_admin.table("videos2").update({"display_order": index}).eq("id", vid).eq("user_id", user_id).execute()
+    return jsonify({"success": True, "count": len(cleaned)}), 200
 
 
 _GENERIC_PAGE_NICKNAMES = frozenset({"collaborator", "friend", "member", "page", "umbrella"})

@@ -12,7 +12,7 @@ Gate sample-only behavior with `isDemoStorefront()`. Do not use hostname checks 
 Sample-only:
 
 - Tab-scoped cart (sessionStorage only; closing the tab clears it)
-- Checkout “These items are not for sale” and no real charges
+- Checkout tour through Order Items, shipping quote, and Order Summary; Place Order shows “These items are not for sale” and no real charges
 - Browse/cart without shopper sign-in
 - Apply Edits saves and stays on Tools; Continue Shopping returns to browse
 - Product Preview / Tools require a cart item; an empty cart opens the empty-cart window instead of a default product

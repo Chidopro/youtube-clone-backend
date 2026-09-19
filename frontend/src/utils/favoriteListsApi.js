@@ -83,7 +83,7 @@ function rememberFavLists(sub, lists, lite) {
   } catch (_) {}
 }
 
-/** Instant read of lists already fetched on Home / a previous Creators visit. */
+/** Instant read of lists already fetched on Home / a previous Creator visit. */
 export function peekPublicFavoriteLists(subdomain) {
   const s = (subdomain || '').trim().toLowerCase();
   if (!s) return null;

@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { waitForOptimizedPlayback, isOptimizedPlaybackUrl } from '../../utils/videoOptimize';
 import { supabase } from '../../supabaseClient';
+import { getBackendUrl } from '../../config/apiConfig';
+import { claimSessionTokenIfNeeded } from '../../utils/userService';
+import { uploadFileWithProgress, mapRangeProgress } from '../../utils/uploadWithProgress';
 import '../Home/Home.css'; // For layout
 import './Upload.css'; // Import new styles
 
@@ -213,108 +216,75 @@ const Upload = () => {
         try {
             console.log('Starting upload process...');
             console.log('User ID:', user.id);
-            
-            // Ensure user exists in database before upload
-            const ensureUserResponse = await fetch('https://screenmerch.fly.dev/api/users/ensure-exists', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: user.id,
-                    email: user.email,
-                    display_name: userProfile?.display_name || user.user_metadata?.name
-                })
-            });
-            
-            if (!ensureUserResponse.ok) {
-                throw new Error('Failed to ensure user exists in database');
-            }
-            
-            const ensureUserResult = await ensureUserResponse.json();
-            console.log('User ensured:', ensureUserResult);
-            
-            // 1. Upload video
-            setUploadProgress(10);
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-            console.log('Uploading video to:', fileName);
-            
-            const { error: storageError, data: videoData } = await supabase.storage
-                .from('videos2')
-                .upload(fileName, file, {
-                    cacheControl: '31536000',
-                    upsert: false
-                });
-                
-            if (storageError) {
-                console.error('Video upload error:', storageError);
-                throw new Error(`Video upload failed: ${storageError.message}`);
-            }
-            
-            setUploadProgress(50);
-            const { data: videoUrlData } = supabase.storage.from('videos2').getPublicUrl(fileName);
-            console.log('Video uploaded successfully:', videoUrlData.publicUrl);
 
-            // 2. Upload thumbnail
-            setUploadProgress(60);
-            const thumbExt = thumbnail.name.split('.').pop();
-            const thumbName = `${user.id}/${Date.now()}_thumb.${thumbExt}`;
-            console.log('Uploading thumbnail to:', thumbName);
-            
-            const { error: thumbError, data: thumbData } = await supabase.storage
-                .from('thumbnails')
-                .upload(thumbName, thumbnail, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
-                
-            if (thumbError) {
-                console.error('Thumbnail upload error:', thumbError);
-                throw new Error(`Thumbnail upload failed: ${thumbError.message}`);
-            }
-            
-            setUploadProgress(80);
-            const { data: thumbUrlData } = supabase.storage.from('thumbnails').getPublicUrl(thumbName);
-            console.log('Thumbnail uploaded successfully:', thumbUrlData.publicUrl);
-
-            // 3. Insert metadata into database
-            setUploadProgress(90);
-            console.log('Inserting video metadata into database...');
-            
-            const videoMetadata = {
-                title: title.trim(),
-                description: description.trim(),
-                video_url: videoUrlData.publicUrl,
-                source_video_url: videoUrlData.publicUrl,
-                thumbnail: thumbUrlData.publicUrl,
-                channelTitle: userProfile?.display_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Unknown Creator',
-                user_id: user.id,
-                verification_status: 'verified_via_supabase_auth',
-                created_at: new Date().toISOString(),
+            const sessionToken = await claimSessionTokenIfNeeded(user.id);
+            const authHeaders = {
+                'Content-Type': 'application/json',
+                'X-User-Id': user.id,
+                ...(user.email ? { 'X-User-Email': String(user.email).trim().toLowerCase() } : {}),
+                ...(sessionToken ? { 'X-Session-Token': sessionToken } : {}),
             };
-            
-            console.log('Video metadata:', videoMetadata);
-            
-            const { error: dbError, data: dbData } = await supabase
-                .from('videos2')
-                .insert([videoMetadata])
-                .select();
-                
-            if (dbError) {
-                console.error('Database insert error:', dbError);
-                throw new Error(`Database error: ${dbError.message}`);
+
+            setUploadProgress(4);
+            const prepareRes = await fetch(`${getBackendUrl()}/api/videos/prepare-upload`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: authHeaders,
+                body: JSON.stringify({
+                    video_name: file.name,
+                    thumb_name: thumbnail.name,
+                    video_size: file.size,
+                }),
+            });
+            const prepared = await prepareRes.json().catch(() => ({}));
+            if (!prepareRes.ok || !prepared?.video?.signedUrl || !prepared?.thumbnail?.signedUrl) {
+                throw new Error(prepared?.error || 'Could not start upload. Please sign in again and retry.');
             }
-            
-            setUploadProgress(100);
-            console.log('Video uploaded and saved successfully:', dbData);
-            const saved = Array.isArray(dbData) ? dbData[0] : dbData;
+
+            setUploadProgress(8);
+            await uploadFileWithProgress(prepared.video.signedUrl, file, {
+                contentType: file.type || 'video/mp4',
+                onProgress: (loaded, total) => {
+                    setUploadProgress(mapRangeProgress(loaded, total, 8, 82));
+                },
+            });
+
+            setUploadProgress(84);
+            await uploadFileWithProgress(prepared.thumbnail.signedUrl, thumbnail, {
+                contentType: thumbnail.type || 'image/png',
+                onProgress: (loaded, total) => {
+                    setUploadProgress(mapRangeProgress(loaded, total, 84, 92));
+                },
+            });
+
+            setUploadProgress(94);
+            const completeRes = await fetch(`${getBackendUrl()}/api/videos/complete-upload`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: authHeaders,
+                body: JSON.stringify({
+                    video_path: prepared.video.path,
+                    thumb_path: prepared.thumbnail.path,
+                    title: title.trim(),
+                    description: description.trim(),
+                    channel_title: userProfile?.display_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Creator',
+                }),
+            });
+            const completed = await completeRes.json().catch(() => ({}));
+            if (!completeRes.ok || !completed?.success) {
+                throw new Error(completed?.error || 'Video uploaded but could not be saved. Please try again.');
+            }
+
+            const saved = completed.video;
+            setUploadProgress(98);
             setMessage('Optimizing playback to a small _w720 file…');
+            const videoUrl = saved?.video_url || saved?.source_video_url || '';
             const optimized = await waitForOptimizedPlayback({
                 videoId: saved?.id,
-                videoUrl: videoUrlData.publicUrl,
+                videoUrl,
                 timeoutMs: 45000,
             });
+            setUploadProgress(100);
             if (optimized?.video_url && isOptimizedPlaybackUrl(optimized.video_url)) {
                 setMessage('✅ Video uploaded. Playback is ready.');
             } else {
@@ -327,27 +297,14 @@ const Upload = () => {
             setThumbnail(null);
 
             setTimeout(() => {
-                navigate('/');
+                navigate('/dashboard');
             }, 1500);
 
         } catch (err) {
             console.error('Upload error:', err);
             setMessage(`❌ Upload failed: ${err.message}`);
-            
-            // If video was uploaded but database insert failed, try to clean up
-            if (err.message.includes('Database error') && file) {
-                try {
-                    const fileExt = file.name.split('.').pop();
-                    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-                    await supabase.storage.from('videos2').remove([fileName]);
-                    console.log('Cleaned up uploaded video file');
-                } catch (cleanupError) {
-                    console.error('Failed to cleanup video file:', cleanupError);
-                }
-            }
         } finally {
             setLoading(false);
-            setUploadProgress(0);
         }
     };
 

@@ -1108,13 +1108,13 @@ const Navbar = ({ resetCategory }) => {
                             to="/favorites"
                             className={storefrontPageActive ? 'is-active' : undefined}
                         >
-                            Featured
+                            Creator
                         </Link>
                         <Link
                             to="/friend-pages"
                             className={storefrontFriendsActive ? 'is-active' : undefined}
                         >
-                            Creators
+                            Co-Creators
                         </Link>
                         <Link
                             to="/shop"
@@ -1406,13 +1406,13 @@ const Navbar = ({ resetCategory }) => {
                         to="/favorites"
                         className={storefrontPageActive ? 'is-active' : undefined}
                     >
-                        Featured
+                        Creator
                     </Link>
                     <Link
                         to="/friend-pages"
                         className={storefrontFriendsActive ? 'is-active' : undefined}
                     >
-                        Creators
+                        Co-Creators
                     </Link>
                     <Link
                         to="/shop"

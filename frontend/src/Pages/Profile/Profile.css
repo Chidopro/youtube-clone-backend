@@ -154,8 +154,8 @@
 .make-merch-btn-favorite {
   margin: 12px;
   padding: 10px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #18181B;
+  color: #FFFFFF;
   border: none;
   border-radius: 6px;
   font-size: 0.95rem;
@@ -167,7 +167,7 @@
 
 .make-merch-btn-favorite:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(24, 24, 27, 0.4);
 }
 
 .make-merch-btn-favorite:active {

@@ -111,6 +111,61 @@ def _enqueue_unoptimized_videos(rows):
     return queued
 
 
+def _sort_videos_for_play(rows):
+    """Lower display_order plays first. Unordered rows stay newest-first."""
+    if not rows:
+        return rows
+    has_order = any(row.get("display_order") is not None for row in rows)
+
+    def created_key(row):
+        return str(row.get("created_at") or "")
+
+    if not has_order:
+        return sorted(rows, key=created_key, reverse=True)
+
+    def play_key(row):
+        order = row.get("display_order")
+        missing = 1 if order is None else 0
+        try:
+            order_n = int(order) if order is not None else 0
+        except (TypeError, ValueError):
+            missing = 1
+            order_n = 0
+        return (missing, order_n, created_key(row))
+
+    return sorted(rows, key=play_key)
+
+
+_display_order_ready = False
+
+
+def _ensure_display_order_column():
+    global _display_order_ready
+    if _display_order_ready:
+        return True
+    admin = getattr(videos_bp, "supabase_admin", None)
+    if not admin:
+        return False
+    try:
+        admin.table("videos2").select("id, display_order").limit(1).execute()
+        _display_order_ready = True
+        return True
+    except Exception:
+        logger.info("videos2.display_order missing; trying to add it")
+    try:
+        admin.rpc(
+            "exec_sql",
+            {"sql": "ALTER TABLE videos2 ADD COLUMN IF NOT EXISTS display_order INTEGER;"},
+        ).execute()
+        admin.table("videos2").select("id, display_order").limit(1).execute()
+        logger.info("Added videos2.display_order")
+        _display_order_ready = True
+        return True
+    except Exception as err:
+        logger.warning("Could not add videos2.display_order: %s", err)
+        return False
+
+
 @videos_bp.route("/api/videos", methods=["GET", "OPTIONS"])
 def get_videos():
     """Get list of videos. CORS is set by app's add_security_headers (app.py)."""
@@ -128,7 +183,9 @@ def get_videos():
             limit = min(int(limit), 500) if limit.isdigit() else 100
         except ValueError:
             limit = 100
-        query = client.table("videos2").select("*").order("created_at", desc=True).limit(limit)
+        _ensure_display_order_column()
+        reader = getattr(videos_bp, "supabase_admin", None) or client
+        query = reader.table("videos2").select("*").order("created_at", desc=True).limit(limit)
         if category:
             query = query.eq("category", category)
         if user_id:
@@ -136,7 +193,7 @@ def get_videos():
         response = query.execute()
         data = response.data if response.data is not None else []
         _enqueue_unoptimized_videos(data)
-        return jsonify(data), 200
+        return jsonify(_sort_videos_for_play(data)), 200
     except Exception as e:
         import traceback
         logger.error(f"Error fetching videos: {e}")

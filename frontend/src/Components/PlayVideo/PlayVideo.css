@@ -42,9 +42,35 @@
   user-select: none;
 }
 
+/* Native Chrome/Safari timeline is a solid white bar before playback — keep it clear */
+.play-video video::-webkit-media-controls-panel,
+.play-video video::-webkit-media-controls-enclosure {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.play-video video::-webkit-media-controls-timeline {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: transparent !important;
+}
+
+.play-video video::-webkit-progress-bar,
+.play-video video::-webkit-media-controls-timeline::-webkit-progress-bar {
+  background-color: transparent !important;
+}
+
+.play-video video::-webkit-progress-value,
+.play-video video::-webkit-media-controls-timeline::-webkit-progress-value {
+  background-color: rgba(255, 255, 255, 0.28) !important;
+}
+
 @media (min-width: 769px) {
   .play-video:not(.play-video--mobile) video::-webkit-media-controls-panel {
     display: flex !important;
+    background: transparent !important;
+    background-image: none !important;
   }
 
   .play-video:not(.play-video--mobile) video::-webkit-media-controls-play-button {
@@ -156,7 +182,49 @@
   min-width: 0;
   height: 18px;
   margin: 0;
-  accent-color: #fff;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  accent-color: rgba(255, 255, 255, 0.35);
+}
+
+.play-video .mobile-video-bar-seek::-webkit-slider-runnable-track {
+  height: 3px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.play-video .mobile-video-bar-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4.5px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.play-video .mobile-video-bar-seek::-moz-range-track {
+  height: 3px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.play-video .mobile-video-bar-seek::-moz-range-progress {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.play-video .mobile-video-bar-seek::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .play-video .mobile-video-bar-speed {
@@ -209,11 +277,11 @@
 }
 
 .play-video .inline-crop-btn--cancel {
-  background: #6c757d;
+  background: #A1A1AA;
 }
 
 .play-video .inline-crop-btn--apply {
-  background: #007bff;
+  background: #18181B;
 }
 
 .play-video .inline-crop-btn:disabled {
@@ -253,7 +321,7 @@
 
 .crop-selection {
   position: absolute;
-  border: 2px solid #ff0000;
+  border: 2px solid #18181B;
   background-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
   pointer-events: none;
@@ -276,9 +344,9 @@
   gap: 10px;
   margin-bottom: 15px;
   padding: 15px;
-  background-color: #f8f9fa;
+  background-color: #F4F4F5;
   border-radius: 8px;
-  border: 1px solid #dee2e6;
+  border: 1px solid #D4D4D8;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -306,7 +374,7 @@
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  color: #6c757d;
+  color: #A1A1AA;
   margin-left: auto;
 }
 
@@ -481,7 +549,7 @@
   .play-video .crop-area .resize-handle {
     width: 20px !important;
     height: 20px !important;
-    background-color: #007bff !important;
+    background-color: #18181B !important;
     border: 2px solid white !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
     touch-action: none !important;
@@ -600,7 +668,7 @@
     margin: 15px 0;
   }
   
-  .screenshot-item {
+  .screenshots-grid .screenshot-item {
     aspect-ratio: 16/9;
     border-radius: 8px;
     cursor: pointer;
@@ -615,8 +683,8 @@
   }
   
   .screenshot-item.selected {
-    border: 3px solid #4CAF50;
-    box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+    border: 3px solid #18181B;
+    box-shadow: 0 0 10px rgba(24, 24, 27, 0.3);
   }
   
   /* Better crop tool for mobile */
@@ -657,20 +725,20 @@
     font-size: 16px;
     border-radius: 0;
     margin-top: 20px;
-    background: #28a745 !important;
-    color: white;
+    background: #18181B !important;
+    color: #FFFFFF;
     border: none;
     cursor: pointer;
     transition: all 0.3s ease;
     touch-action: manipulation;
     font-weight: 600;
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 4px 12px rgba(24, 24, 27, 0.3);
   }
   
   .make-merch-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4);
-    background: #218838 !important;
+    box-shadow: 0 6px 16px rgba(24, 24, 27, 0.4);
+    background: #18181B !important;
   }
   
   .make-merch-btn:active {
@@ -819,9 +887,9 @@
 
 /* Step 2 red pulse (after video played) – same as Video.css for correct timing */
 .step-number.step-red {
-  background: rgba(220, 53, 69, 0.95) !important;
-  border: 3px solid #dc3545 !important;
-  box-shadow: 0 0 20px rgba(220, 53, 69, 0.6), 0 4px 12px rgba(220, 53, 69, 0.4);
+  background: rgba(24, 24, 27, 0.95) !important;
+  border: 3px solid #18181B !important;
+  box-shadow: 0 0 20px rgba(24, 24, 27, 0.6), 0 4px 12px rgba(24, 24, 27, 0.4);
 }
 .step-number.step-red.pulse {
   animation: pulseRed 1.4s ease-in-out infinite;
@@ -830,19 +898,19 @@
 @keyframes pulseRed {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.8), 0 0 24px rgba(220, 53, 69, 0.5), 0 4px 12px rgba(220, 53, 69, 0.4);
+    box-shadow: 0 0 0 0 rgba(24, 24, 27, 0.8), 0 0 24px rgba(24, 24, 27, 0.5), 0 4px 12px rgba(24, 24, 27, 0.4);
   }
   50% {
     transform: scale(1.18);
-    box-shadow: 0 0 0 12px rgba(220, 53, 69, 0.2), 0 0 32px rgba(220, 53, 69, 0.7), 0 6px 20px rgba(220, 53, 69, 0.5);
+    box-shadow: 0 0 0 12px rgba(24, 24, 27, 0.2), 0 0 32px rgba(24, 24, 27, 0.7), 0 6px 20px rgba(24, 24, 27, 0.5);
   }
 }
 
-/* Step 3 green pulse (after screenshot selected) */
+/* Step 3 pulse (after screenshot selected) */
 .step-number.step-green {
-  background: rgba(40, 167, 69, 0.95) !important;
-  border: 3px solid #28a745 !important;
-  box-shadow: 0 0 20px rgba(40, 167, 69, 0.6), 0 4px 12px rgba(40, 167, 69, 0.4);
+  background: rgba(24, 24, 27, 0.95) !important;
+  border: 3px solid #18181B !important;
+  box-shadow: 0 0 20px rgba(24, 24, 27, 0.6), 0 4px 12px rgba(24, 24, 27, 0.4);
 }
 .step-number.step-green.pulse {
   animation: pulseGreen 1.4s ease-in-out infinite;
@@ -851,11 +919,11 @@
 @keyframes pulseGreen {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.8), 0 0 24px rgba(40, 167, 69, 0.5), 0 4px 12px rgba(40, 167, 69, 0.4);
+    box-shadow: 0 0 0 0 rgba(24, 24, 27, 0.8), 0 0 24px rgba(24, 24, 27, 0.5), 0 4px 12px rgba(24, 24, 27, 0.4);
   }
   50% {
     transform: scale(1.18);
-    box-shadow: 0 0 0 12px rgba(40, 167, 69, 0.2), 0 0 32px rgba(40, 167, 69, 0.7), 0 6px 20px rgba(40, 167, 69, 0.5);
+    box-shadow: 0 0 0 12px rgba(24, 24, 27, 0.2), 0 0 32px rgba(24, 24, 27, 0.7), 0 6px 20px rgba(24, 24, 27, 0.5);
   }
 }
 
@@ -1003,8 +1071,8 @@
   left: 10px !important;
   z-index: 1000 !important;
   background: rgba(255, 255, 255, 0.95) !important;
-  color: black !important;
-  border: 2px solid #764ba2 !important;
+  color: #18181B !important;
+  border: 2px solid #18181B !important;
   border-radius: 4px !important;
   padding: 8px !important;
   cursor: pointer !important;
@@ -1044,9 +1112,9 @@
   gap: 1px;
   box-sizing: border-box;
   background: #fff;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #D4D4D8;
   border-radius: 8px;
-  color: #764ba2;
+  color: #18181B;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
   appearance: none;
@@ -1062,15 +1130,15 @@
 .playvideo-crop-toggle:focus-visible,
 .playvideo-crop-toggle:active {
   background: #fff;
-  border: 1px solid #E5E7EB;
-  color: #764ba2;
+  border: 1px solid #D4D4D8;
+  color: #18181B;
   outline: none;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
   transform: none;
 }
 
 .playvideo-crop-toggle.is-active {
-  background: rgba(118, 75, 162, 0.08);
+  background: rgba(24, 24, 27, 0.08);
 }
 
 .playvideo-crop-toggle-icon,
@@ -1398,8 +1466,8 @@
 
 .screenmerch-btn {
     flex: 1 1 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
+    background: #18181B;
+    color: #FFFFFF;
     padding: 14px 24px;
     border: 0;
     outline: 0;
@@ -1410,7 +1478,7 @@
     line-height: 1.2;
     transition: all 0.3s ease;
     margin: 0;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(24, 24, 27, 0.3);
     text-align: center !important;
     display: flex;
     align-items: center;
@@ -1418,36 +1486,39 @@
 }
 
 .screenmerch-btn:hover {
-    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    background: #18181B;
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 6px 16px rgba(24, 24, 27, 0.4);
 }
 
-/* Select Screenshot button - Red */
+/* Select Screenshot button */
 .screenmerch-btn.screenshot-btn,
 .screenmerch-btn.make-merch-btn {
     border-radius: 0 !important;
 }
 
 .screenmerch-btn.screenshot-btn {
-    background: #dc3545 !important;
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+    background: #FFFFFF !important;
+    color: #18181B !important;
+    border: 1px solid #18181B;
+    box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(24, 24, 27, 0.15);
 }
 
 .screenmerch-btn.screenshot-btn:hover:not(:disabled) {
-    background: #c82333 !important;
+    background: #F4F4F5 !important;
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.4);
+    box-shadow: 0 6px 16px rgba(24, 24, 27, 0.2);
 }
 
 @keyframes screenshotBtnPulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.35), 0 0 0 0 rgba(220, 53, 69, 0.45);
+    box-shadow: 0 4px 12px rgba(24, 24, 27, 0.35), 0 0 0 0 rgba(24, 24, 27, 0.45);
   }
   50% {
     transform: scale(1.045);
-    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.55), 0 0 0 10px rgba(220, 53, 69, 0);
+    box-shadow: 0 8px 22px rgba(24, 24, 27, 0.55), 0 0 0 10px rgba(24, 24, 27, 0);
   }
 }
 
@@ -1459,10 +1530,11 @@
     animation: screenshotBtnPulse 1.4s ease-in-out infinite !important;
 }
 
-/* Make Merch button - Green */
+/* Make Merch button */
 .screenmerch-btn.make-merch-btn {
-    background: #28a745 !important;
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    background: #18181B !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(24, 24, 27, 0.3);
     padding: 14px 24px !important;
     min-height: 44px !important;
     line-height: 1.2 !important;
@@ -1472,9 +1544,9 @@
 }
 
 .screenmerch-btn.make-merch-btn:hover {
-    background: #218838 !important;
+    background: #18181B !important;
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4);
+    box-shadow: 0 6px 16px rgba(24, 24, 27, 0.4);
 }
 
 .screenmerch-images {
@@ -1654,7 +1726,7 @@
 .screenmerch-crop-btn {
     background: rgba(255,255,255,0.8);
     border: none;
-    color: #007bff;
+    color: #18181B;
     font-size: 14px;
     border-radius: 50%;
     width: 22px;
@@ -1669,7 +1741,7 @@
 }
 
 .screenmerch-crop-btn:hover {
-    background: #e3f2fd;
+    background: #F4F4F5;
 }
 
 .screenmerch-delete-btn {
@@ -1677,7 +1749,7 @@
     -webkit-appearance: none;
     background: #fff;
     border: 0;
-    color: #dc2626;
+    color: #DC2626;
     font-family: Arial, "Helvetica Neue", sans-serif;
     font-size: 18px;
     font-weight: 700;

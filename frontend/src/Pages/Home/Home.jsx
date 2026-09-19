@@ -11,6 +11,7 @@ import DemoStorefrontWelcome from '../../Components/DemoStorefrontBanner/DemoSto
 import { fetchPublicFavoriteLists, fetchPublicFavoritesByList, favoriteImageUrl, peekPublicFavoriteLists, storefrontHubPreviews, publicStorageCardUrl, memberFavoritePreviewUrls } from '../../utils/favoriteListsApi';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
 import { apiJoin } from '../../config/apiConfig';
+import { sortVideosForPlay } from '../../utils/videoPlayOrder';
 
 const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [videos, setVideos] = useState([]);
@@ -89,10 +90,10 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           const data = await res.json();
           const list = Array.isArray(data) ? data : [];
           setVideos(
-            list.map((v) => ({
+            sortVideosForPlay(list.map((v) => ({
               ...v,
               thumbnail: v.thumbnail || v.thumbnail_url || '',
-            }))
+            })))
           );
         }
       } catch (_) {
@@ -421,7 +422,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         />
 
 
-        {/* Main site: creator directory. Subdomains: Featured / Creators / Shop only. */}
+        {/* Main site: creator directory. Subdomains: Creator / Co-Creators / Shop only. */}
         {error && <div style={{padding: 24, color: 'red'}}>{error}</div>}
         {isMainSite && <CreatorDirectory />}
         {!error && !isMainSite && (

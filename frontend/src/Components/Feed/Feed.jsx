@@ -222,7 +222,7 @@ const Feed = ({
           <div className="feed-hubs" aria-label="Storefront sections">
             <button type="button" className="card hub-card" onClick={() => navigate('/favorites')}>
               <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />
-              <h2>Featured</h2>
+              <h2>Creator</h2>
             </button>
             <button
               type="button"
@@ -233,8 +233,8 @@ const Feed = ({
               }}
               onClick={() => navigate('/friend-pages')}
             >
-              <HubThumb src={hubThumbs.friend} emptyLabel="No Creators Yet" />
-              <h2>Creators</h2>
+              <HubThumb src={hubThumbs.friend} emptyLabel="No Co-Creators Yet" />
+              <h2>Co-Creators</h2>
             </button>
             <button type="button" className="card hub-card" onClick={() => navigate('/shop')}>
               <HubThumb src={hubThumbs.shop} emptyLabel="Shop" />
@@ -245,7 +245,7 @@ const Feed = ({
             <button
               type="button"
               className="card hub-card hub-card--shuffle"
-              aria-label="More from Featured"
+              aria-label="More from Creator"
               onClick={() => navigate('/favorites')}
             >
               <HubThumb src={shuffleThumbs.favorites} emptyLabel="" />
@@ -253,7 +253,7 @@ const Feed = ({
             <button
               type="button"
               className="card hub-card hub-card--shuffle"
-              aria-label="More from Creators"
+              aria-label="More from Co-Creators"
               onPointerEnter={() => {
                 const sub = getSubdomain();
                 if (sub) fetchPublicFavoriteLists(sub, { lite: true });

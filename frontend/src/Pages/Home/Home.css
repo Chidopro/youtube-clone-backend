@@ -488,9 +488,9 @@ body {
   max-width: 480px;
   text-align: center;
   padding: 2.5rem 1.75rem;
-  border: 1.5px dashed rgba(102, 126, 234, 0.45);
+  border: 1.5px dashed rgba(24, 24, 27, 0.45);
   border-radius: 16px;
-  background: #f8f9ff;
+  background: #F4F4F5;
 }
 
 .storefront-empty-card--clickable {
@@ -499,8 +499,8 @@ body {
 }
 
 .storefront-empty-card--clickable:hover {
-  border-color: rgba(102, 126, 234, 0.8);
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.12);
+  border-color: rgba(24, 24, 27, 0.8);
+  box-shadow: 0 8px 24px rgba(24, 24, 27, 0.12);
 }
 
 .storefront-empty-card h3 {
@@ -525,7 +525,7 @@ body {
   font-size: 1rem;
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #18181B;
 }
 
 .storefront-empty-cta:hover {

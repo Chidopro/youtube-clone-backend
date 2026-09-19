@@ -146,7 +146,7 @@ const FriendPages = ({ sidebar }) => {
         const { ok, data } = await fetchPublicFavoriteLists(sub, { lite: true });
         if (!ok || !data?.success) {
           if (!cached) {
-            setError(data?.error || 'Could not load creators list');
+            setError(data?.error || 'Could not load co-creators list');
             setPages([]);
           }
         } else {
@@ -196,13 +196,13 @@ const FriendPages = ({ sidebar }) => {
             <ChevronLeft />
           </button>
           <div className="friend-pages-toolbar-text">
-            <h1 className="friend-pages-title">Creators</h1>
+            <h1 className="friend-pages-title">Co-Creators</h1>
           </div>
           <button
             type="button"
             className="friend-pages-back-btn friend-pages-scroll-right-btn"
             onClick={() => scrollFriends(1)}
-            aria-label="Scroll creators right"
+            aria-label="Scroll co-creators right"
           >
             <ChevronRight />
           </button>
@@ -214,8 +214,8 @@ const FriendPages = ({ sidebar }) => {
 
         {!loading && !error && pages.length === 0 ? (
           <div className="friend-pages-empty">
-            <h2>No creators yet</h2>
-            <p>When creators join this storefront, their pages will show up here.</p>
+            <h2>No co-creators yet</h2>
+            <p>When co-creators join this storefront, their pages will show up here.</p>
           </div>
         ) : null}
 

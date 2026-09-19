@@ -86,6 +86,15 @@ export function artworkOrientationFromSize(width, height) {
   return width / height >= ARTWORK_LANDSCAPE_ASPECT ? 'landscape' : 'portrait';
 }
 
+export function artworkFrameFromSize(width, height) {
+  const landscape = artworkOrientationFromSize(width, height) === 'landscape';
+  return {
+    landscape,
+    aspect: landscape ? `${width} / ${height}` : '3 / 4',
+    aspectNumber: landscape && height > 0 ? width / height : 3 / 4,
+  };
+}
+
 export function detectArtworkOrientation(url) {
   return new Promise((resolve) => {
     if (!url || typeof url !== 'string') {

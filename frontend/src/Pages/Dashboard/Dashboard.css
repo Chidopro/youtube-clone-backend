@@ -119,6 +119,21 @@
     text-decoration: underline;
 }
 
+.page-media-hint {
+    margin: -4px 0 10px;
+    color: #6b7280;
+    font-size: 0.88rem;
+}
+
+.dashboard-video-card--reorder {
+    cursor: grab;
+}
+
+.dashboard-video-card--dragging {
+    opacity: 0.45;
+    cursor: grabbing;
+}
+
 .page-media-empty-action:disabled {
     color: #9ca3af;
     cursor: default;

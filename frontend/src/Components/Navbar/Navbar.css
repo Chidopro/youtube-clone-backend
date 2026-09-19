@@ -311,7 +311,7 @@ html:not(.creator-storefront) nav .nav-right .subscribe-btn:hover {
     box-shadow: inset 0 -2px 0 #111;
 }
 
-/* Storefront Sign In / Sign Up / Sign Out: text only, same as Featured / Creators / Shop. */
+/* Storefront Sign In / Sign Up / Sign Out: text only, same as Creator / Co-Creators / Shop. */
 html.creator-storefront nav .sign-in-btn,
 html.creator-storefront nav .nav-right .subscribe-btn {
     border: none !important;
@@ -624,6 +624,13 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         color: #111;
         background: rgba(0, 0, 0, 0.06);
         box-shadow: none;
+    }
+
+    @media (max-width: 380px) {
+        .storefront-tab-bar a {
+            font-size: 12px;
+            letter-spacing: 0;
+        }
     }
 
     /* Home.css zeros body padding with !important; pad the app shell instead. */

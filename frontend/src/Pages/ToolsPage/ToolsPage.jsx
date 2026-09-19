@@ -226,10 +226,10 @@ const APPAREL_PRINT_OVERRIDES = {
     left: 50.4,
   },
   "Men's Long Sleeve Shirt": {
-    widthFrac: 0.317,
-    heightFrac: 0.761,
-    top: 52.3,
-    left: 48.5,
+    widthFrac: 0.32,
+    heightFrac: 0.459,
+    top: 41.7,
+    left: 51.5,
   },
   "Oversized T-Shirt": {
     widthFrac: 0.404,
@@ -821,13 +821,24 @@ function roundedRectSdf(x, y, cx, cy, halfW, halfH, radius) {
   return Math.min(Math.max(qx, qy), 0) + Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - r;
 }
 
-/** Inward fade that follows a rounded rect so inner corners are not square. */
+function rectangularEdgeFeatherFactor(x, y, width, height, fadeX, fadeY) {
+  const maxX = Math.max(width - 1, 1);
+  const maxY = Math.max(height - 1, 1);
+  const fx = fadeX <= 0 ? 1 : (x < fadeX ? x / fadeX : (x > maxX - fadeX ? (maxX - x) / fadeX : 1));
+  const fy = fadeY <= 0 ? 1 : (y < fadeY ? y / fadeY : (y > maxY - fadeY ? (maxY - y) / fadeY : 1));
+  return Math.max(0, Math.min(1, Math.min(fx, fy)));
+}
+
+/** Inward fade. Follows corner radius when set; stays square when radius is 0. */
 function roundedRectFeatherFactor(x, y, width, height, fadeX, fadeY, cornerR) {
   const cx = (width - 1) * 0.5;
   const cy = (height - 1) * 0.5;
   const halfW = (width - 1) * 0.5;
   const halfH = (height - 1) * 0.5;
   const rOuter = Math.min(Math.max(0, cornerR), halfW, halfH);
+  if (rOuter <= 0) {
+    return rectangularEdgeFeatherFactor(x, y, width, height, fadeX, fadeY);
+  }
   const sdfOuter = roundedRectSdf(x, y, cx, cy, halfW, halfH, rOuter);
   const halfWIn = Math.max(0.5, halfW - fadeX);
   const halfHIn = Math.max(0.5, halfH - fadeY);
@@ -1712,9 +1723,6 @@ const ProductPreviewWithDrag = ({
       const commitOverlaySize = (width, height) => {
         overlayFitKeyRef.current = `${effectiveProductName}|${productSize || ''}`;
         setScreenshotDisplaySize((prev) => {
-          if (litePreview && prev.width >= 8 && prev.height >= 8) {
-            return prev;
-          }
           if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) {
             return prev;
           }
@@ -1934,7 +1942,6 @@ const ProductPreviewWithDrag = ({
     };
 
     calculateSize();
-    if (litePreview) return undefined;
     const raf = requestAnimationFrame(calculateSize);
     return () => cancelAnimationFrame(raf);
   }, [productName, productSize, productImageSize, selectedProductName, printAreaFit, productImage, detectedPrintBox, litePreview]);
@@ -1964,40 +1971,64 @@ const ProductPreviewWithDrag = ({
   // Measure the painted mockup only. naturalWidth is the file size and
   // makes the overlay huge on phones (then too tall once width is matched).
   const measureProductImage = () => {
-    if (litePreview && liteSizeLockedRef.current) return;
     const img = productImageRef.current;
     const stage = containerRef.current;
     if (!img && !stage) return;
     const rect = img ? img.getBoundingClientRect() : { width: 0, height: 0 };
     let width = rect.width || img?.clientWidth || img?.offsetWidth || 0;
     let height = rect.height || img?.clientHeight || img?.offsetHeight || 0;
+    const nw = img?.naturalWidth || 0;
+    const nh = img?.naturalHeight || 0;
+    // object-fit:contain can letterbox inside a fixed stage. Size the print
+    // to the painted photo, not the empty stage around it.
+    if (nw > 0 && nh > 0 && width >= 2 && height >= 2) {
+      const fitScale = Math.min(width / nw, height / nh);
+      const fittedW = nw * fitScale;
+      const fittedH = nh * fitScale;
+      if (fittedW + 1 < width || fittedH + 1 < height) {
+        width = fittedW;
+        height = fittedH;
+      }
+    }
     // iOS can report width before height:auto has resolved. Infer painted
     // height from file aspect — never use naturalWidth as the overlay size.
-    if (width >= 2 && height < 2 && img && img.naturalWidth > 0 && img.naturalHeight > 0) {
-      height = width * (img.naturalHeight / img.naturalWidth);
+    if (width >= 2 && height < 2 && nw > 0 && nh > 0) {
+      height = width * (nh / nw);
     }
     // Cached/mobile: img rect can be 0 on first layout. Stage width is the
     // mockup's CSS width (img is 100%).
-    const stageW = stage ? stage.getBoundingClientRect().width : 0;
+    const stageRect = stage ? stage.getBoundingClientRect() : { width: 0, height: 0 };
+    const stageW = stageRect.width || 0;
+    const stageH = stageRect.height || 0;
     if (width < 2 && stageW >= 2) {
       width = stageW;
-      if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
-        height = width * (img.naturalHeight / img.naturalWidth);
+      if (nw > 0 && nh > 0) {
+        height = width * (nh / nw);
       }
     }
     // Cap to the painted stage so a pre-CSS intrinsic box cannot inflate the overlay.
     if (stageW >= 2 && width > stageW + 1) {
-      const aspect = (img && img.naturalWidth > 0 && img.naturalHeight > 0)
-        ? (img.naturalHeight / img.naturalWidth)
+      const aspect = nw > 0 && nh > 0
+        ? (nh / nw)
         : (height > 0 && width > 0 ? height / width : 0);
       width = stageW;
       if (aspect > 0) height = width * aspect;
     }
+    if (stageH >= 2 && height > stageH + 1) {
+      const aspect = nw > 0 && nh > 0
+        ? (nw / nh)
+        : (width > 0 && height > 0 ? width / height : 0);
+      height = stageH;
+      if (aspect > 0) width = height * aspect;
+    }
     if (width < 2 || height < 2) return;
-    if (litePreview) liteSizeLockedRef.current = true;
+    // Wait for the stage to paint. An intrinsic file box (800px+) would size
+    // the print far outside the mockup print area, especially in Confirm.
+    if (stageW < 2 && width > 400) return;
+    const paintedOk = stageW >= 2 && width <= stageW + 1;
+    if (litePreview && paintedOk) liteSizeLockedRef.current = true;
     setProductImageSize((prev) => {
-      const slop = litePreview ? 24 : 0.5;
-      if (Math.abs(prev.width - width) < slop && Math.abs(prev.height - height) < slop) {
+      if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) {
         return prev;
       }
       return { width, height };
@@ -2029,7 +2060,7 @@ const ProductPreviewWithDrag = ({
         });
       }
     }
-    if (!litePreview && img && isApparelChestPrintProduct(name) && !getApparelPrintOverride(name)) {
+    if (img && isApparelChestPrintProduct(name) && !getApparelPrintOverride(name)) {
       const detectSrc = img.currentSrc || img.src;
       if (paintedPrintBoxCache.has(detectSrc)) {
         setDetectedPrintBox(paintedPrintBoxCache.get(detectSrc));
@@ -2040,10 +2071,9 @@ const ProductPreviewWithDrag = ({
           setDetectedPrintBox(detectPaintedPrintBox(sourceImg));
         });
       }
-    } else if (!litePreview && (!img || !isApparelChestPrintProduct(name) || getApparelPrintOverride(name))) {
+    } else if (!img || !isApparelChestPrintProduct(name) || getApparelPrintOverride(name)) {
       setDetectedPrintBox((prev) => (prev == null ? prev : null));
     }
-    if (litePreview) return;
     requestAnimationFrame(() => {
       measureProductImage();
       requestAnimationFrame(measureProductImage);
@@ -2052,7 +2082,7 @@ const ProductPreviewWithDrag = ({
 
   useLayoutEffect(() => {
     liteSizeLockedRef.current = false;
-    if (!litePreview) setDetectedPrintBox(null);
+    setDetectedPrintBox(null);
     measureProductImage();
     const img = productImageRef.current;
     const stage = containerRef.current;
@@ -2060,9 +2090,8 @@ const ProductPreviewWithDrag = ({
     if (img?.complete) {
       handleProductImageLoad();
     }
-    if (litePreview) return undefined;
     let measureCancelled = false;
-    const maxTicks = 4;
+    const maxTicks = litePreview ? 4 : 4;
     const tickMeasure = (attempt) => {
       if (measureCancelled) return;
       measureProductImage();
@@ -2071,6 +2100,11 @@ const ProductPreviewWithDrag = ({
       }
     };
     requestAnimationFrame(() => tickMeasure(0));
+    if (litePreview) {
+      return () => {
+        measureCancelled = true;
+      };
+    }
     const observer = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
         if (measureCancelled) return;

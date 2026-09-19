@@ -686,6 +686,10 @@ export class AdminService {
       if (updates.source_video_url !== undefined) {
         updateData.source_video_url = updates.source_video_url;
       }
+      if (updates.display_order !== undefined) {
+        const n = Number(updates.display_order);
+        if (Number.isFinite(n)) updateData.display_order = n;
+      }
 
       const { data, error } = await supabase
         .from('videos2')
