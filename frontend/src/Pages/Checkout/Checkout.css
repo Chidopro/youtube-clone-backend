@@ -488,6 +488,11 @@
   color: #fff;
 }
 
+.item-delete-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .item-name {
   font-size: 1.25rem;
   font-weight: 700;
@@ -1117,7 +1122,7 @@
     width: 100%;
     height: auto;
     max-height: 66.67dvh;
-    overflow: auto;
+    overflow: hidden;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     padding: 10px 12px 10px;
@@ -1130,44 +1135,73 @@
   }
 
   .design-modal-preview-card {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: visible;
     margin: 0 0 4px;
   }
 
   .design-modal-preview-title {
     margin: 0 0 2px;
+    flex-shrink: 0;
   }
 
   .design-modal-preview-name-row {
     margin: 0 0 4px;
+    flex-shrink: 0;
   }
 
   .design-modal-preview-name {
     min-height: 0;
   }
 
-  .design-modal-preview-visual {
-    flex: 0 0 auto;
+  .design-modal-preview-visual,
+  .design-modal-preview-visual--product-only {
+    flex: 1 1 auto;
+    width: 100%;
     height: auto;
-    min-height: 0;
+    max-height: min(200px, 28dvh);
+    min-height: 72px;
     margin: 0 auto 4px;
+    overflow: hidden;
   }
 
   .design-modal--preview .product-preview-stage {
-    max-width: min(280px, 100%);
-    width: min(280px, 100%);
+    max-width: min(180px, 100%);
+    width: min(180px, 100%);
     height: auto;
-    max-height: none;
+    max-height: min(200px, 28dvh);
     margin: 0 auto;
+    overflow: hidden;
+  }
+
+  .design-modal--preview .product-preview-mockup,
+  .design-modal-preview-product-only,
+  .design-modal-preview-fallback-shot {
+    width: auto !important;
+    max-width: 100%;
+    height: auto !important;
+    max-height: min(200px, 28dvh);
+    object-fit: contain !important;
+    margin: 0 auto;
+  }
+
+  .design-modal--preview .design-modal-orient-row,
+  .design-modal-preview-nav {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 8;
+    background: #fff;
   }
 
   .design-modal-footer {
     position: static;
-    z-index: 5;
+    z-index: 9;
     margin-top: 4px;
     padding-top: 4px;
     background: #fff;
     pointer-events: auto;
+    flex-shrink: 0;
   }
 
   .design-modal--preview .design-modal-tools-btn,
@@ -1182,12 +1216,19 @@
   }
 }
 
-.design-modal-preview-fallback-shot {
+.design-modal-preview-fallback-shot,
+.design-modal-preview-product-only {
   display: block;
   width: 100%;
   max-width: 200px;
+  height: auto;
+  object-fit: contain;
   margin: 0 auto;
   border-radius: 8px;
+}
+
+.design-modal-preview-visual--product-only {
+  overflow: visible;
 }
 
 .design-modal-preview-empty {
@@ -1367,6 +1408,12 @@
   color: #DC2626;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.design-modal-text-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  text-decoration: none;
 }
 
 .design-modal-text-sep {

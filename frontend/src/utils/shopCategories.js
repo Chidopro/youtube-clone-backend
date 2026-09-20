@@ -28,11 +28,14 @@ export function shopCategoryThumbUrl(previewFile) {
   return `${shopImgBase()}/${file}`;
 }
 
-/** Men's Long Sleeve Shirt uses the portrait beige mockup with the chest print box. */
+/** Forced mockups when browse cache or API still point at an older file. */
 export function storefrontMockupUrl(productName, fallbackUrl) {
   const n = String(productName || '');
   if (/men'?s long sleeve shirt/i.test(n) && !/fitted/i.test(n)) {
-    return `${shopImgBase()}/menslongsleeveshirtpreview5.png`;
+    return `${shopImgBase()}/menslongsleeveshirtpreview6.png`;
+  }
+  if (/baby body suit/i.test(n)) {
+    return `${shopImgBase()}/kidsbabybodysuitpreview2.png`;
   }
   return fallbackUrl;
 }

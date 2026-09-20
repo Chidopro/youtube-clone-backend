@@ -334,6 +334,12 @@ const APPAREL_PRINT_OVERRIDES = {
     top: 49.9,
     left: 49.9,
   },
+  "Baby Body Suit": {
+    widthFrac: 0.424,
+    heightFrac: 0.471,
+    top: 41.4,
+    left: 49.5,
+  },
 };
 APPAREL_PRINT_OVERRIDES["Unisex Champion Hoodie"] = APPAREL_PRINT_OVERRIDES["Champion Hoodie"];
 APPAREL_PRINT_OVERRIDES["Unisex Oversized T-Shirt"] = APPAREL_PRINT_OVERRIDES["Oversized T-Shirt"];
@@ -3431,8 +3437,11 @@ const ToolsPage = () => {
             let nextIndex = lastIndex;
             const focusOriginal = peekToolsFocusCartIndex();
             if (showNewest) {
+              const matched = focusOriginal != null
+                ? productsWithScreenshots.findIndex((p) => p.originalCartIndex === focusOriginal)
+                : -1;
               if (focusOriginal != null) consumeToolsFocusCartIndex();
-              nextIndex = lastIndex;
+              nextIndex = matched >= 0 ? matched : lastIndex;
             } else if (focusOriginal != null) {
               consumeToolsFocusCartIndex();
               const matched = productsWithScreenshots.findIndex(

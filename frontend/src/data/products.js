@@ -1370,8 +1370,8 @@ export const products = {
     "name": "Men's Long Sleeve",
     "price": 41.99,
     "description": "Comfortable men's long sleeve shirt",
-    "image": "/static/images/menslongsleeveshirt5.png",
-    "preview": "/static/images/menslongsleeveshirtpreview5.png",
+    "image": "/static/images/menslongsleeveshirt6.png",
+    "preview": "/static/images/menslongsleeveshirtpreview6.png",
     "category": "men's-shirts",
     "variables": {
       "sizes": [

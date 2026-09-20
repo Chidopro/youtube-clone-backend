@@ -1758,9 +1758,9 @@ PRODUCTS = [
     {
         "name": "Baby Body Suit",
         "price": 21.60,
-        "filename": "youthalloverprintswimsuit.png",
-        "main_image": "youthalloverprintswimsuit.png",
-        "preview_image": "kidsbabybodysuitpreview.png",
+        "filename": "kidsbabybodysuit2.png",
+        "main_image": "kidsbabybodysuit2.png",
+        "preview_image": "kidsbabybodysuitpreview2.png",
         "description": "Made from supremely soft cotton, this one-piece is ideal for delicate skin. The lap shoulder design and three-snap closure ensure quick, easy outfit changes, making it a practical choice for parents. Add your design, order this bodysuit for your little one, or start selling it online! 100% combed ring-spun cotton in a 1 × 1 rib. Heather color is 90% combed ring-spun cotton, 10% polyester. Fabric weight: 5 oz./yd.² (170 g/m²). Three-snap closure. Lap shoulders. Blank product sourced from India. Note that due to the ribbed fabric, the print can break when stretched. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Red", "Royal", "Pink", "White", "Vintage Indigo", "Ash"], "size": ["12m", "18m", "24m"]},
         "size_pricing": {
@@ -1934,9 +1934,9 @@ PRODUCTS = [
     {
         "name": "Men's Long Sleeve Shirt",
         "price": 22.79,
-        "filename": "menslongsleeveshirt5.png",
-        "main_image": "menslongsleeveshirt5.png",
-        "preview_image": "menslongsleeveshirtpreview5.png",
+        "filename": "menslongsleeveshirt6.png",
+        "main_image": "menslongsleeveshirt6.png",
+        "preview_image": "menslongsleeveshirtpreview6.png",
         "description": "With its classic and regular fit, this Men's Long Sleeve Shirt is a true wardrobe essential. It'll look great on its own or layered under a jacket and will be perfect for a relaxed and casual setting. 100% cotton. Sport Grey is 90% cotton, 10% polyester. Fabric weight: 6.0 oz./yd.² (203.43 g/m²). Classic fit with long sleeves and rib cuffs. Pre-shrunk jersey knit. Seamless double-needle ⅞ ″ (2.2 cm) collar. Double-needle bottom hem. Taped neck and shoulders. Quarter-turned to avoid crease down the middle. Blank product sourced from Honduras, Haiti, or Nicaragua. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {

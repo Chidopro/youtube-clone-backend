@@ -87,10 +87,10 @@ function useDisplaySrc(url, maxEdge, enabled = true, urgent = false) {
       cancelled = true;
     };
   }, [url, maxEdge, enabled, urgent]);
-  if (!enabled || !raw) return { src: '', width: 0, height: 0 };
+  if (!enabled || !raw) return { src: '', width: 0, height: 0, forUrl: '' };
   if (result.forUrl === raw && result.src) return result;
-  if (cached?.src) return cached;
-  return { src: '', width: 0, height: 0 };
+  if (cached?.src) return { ...cached, forUrl: raw };
+  return { src: '', width: 0, height: 0, forUrl: raw };
 }
 
 function OrderItemShot({ url, orientation, offsetX, offsetY, enabled = true }) {
@@ -117,6 +117,11 @@ function OrderItemShot({ url, orientation, offsetX, offsetY, enabled = true }) {
 /** Every cart item is shown in Confirm Your Design, including mugs and accessories. */
 function itemNeedsDesignConfirm(item) {
   return Boolean(item);
+}
+
+function isCheckoutHatProduct(productName) {
+  const n = String(productName || '').toLowerCase();
+  return n.includes('hat') || n.includes('cap');
 }
 
 function cartConfirmIndexes(itemList) {
@@ -184,7 +189,10 @@ const Checkout = () => {
   const designModalShownOnLoadRef = useRef(false);
   const shippingSectionRef = useRef(null);
   const confirmClickLockRef = useRef(false);
+  const removeClickLockRef = useRef(false);
+  const designModalOpenRef = useRef(false);
   const [, startConfirmTransition] = useTransition();
+  const [removeBusy, setRemoveBusy] = useState(false);
   const [confirmPreviewReady, setConfirmPreviewReady] = useState(false);
   const [showSampleSaleStop, setShowSampleSaleStop] = useState(false);
 
@@ -216,6 +224,9 @@ const Checkout = () => {
 
   const loadCart = useCallback(() => {
     if (!isDemoStorefront() && !signedIn) return;
+    // Confirm modal already updates items on Remove; reloading+repricing the
+    // full cart on every click stacks with overlay decode and freezes the tab.
+    if (designModalOpenRef.current) return;
     try {
       const parsed = readCartItems();
       const next = repriceCartItems(parsed, address.country_code);
@@ -266,6 +277,7 @@ const Checkout = () => {
 
   // When design modal opens, show Product Preview with the item's saved or default orientation.
   useEffect(() => {
+    designModalOpenRef.current = showDesignModal;
     setCartPersistPaused(showDesignModal);
     return () => setCartPersistPaused(false);
   }, [showDesignModal]);
@@ -882,27 +894,36 @@ const Checkout = () => {
   }, [items, address, searchParams]);
 
   const removeCartItem = (index) => {
+    if (removeClickLockRef.current) return;
+    removeClickLockRef.current = true;
+    setRemoveBusy(true);
     const updated = items.filter((_, i) => i !== index);
-    setItems(updated);
-    setSubtotal(updated.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
-    setDesignPreferences((prev) => prev.filter((_, i) => i !== index));
     writeCartItems(updated);
-    setConfirmedCartIndexes((prev) => prev
-      .filter((i) => i !== index)
-      .map((i) => (i > index ? i - 1 : i)));
-    setShipping((s) => ({ ...s, calculated: false, cost: 0, tax: 0, taxLabel: '', error: '' }));
-    if (updated.length === 0) {
-      setShowDesignModal(false);
-      return;
-    }
-    if (!showDesignModal) return;
-    const remainingConfirm = cartConfirmIndexes(updated);
-    if (remainingConfirm.length === 0) {
-      setShowDesignModal(false);
-      setDesignConfirmed(true);
-    } else {
-      setDesignPreviewIndex((prev) => Math.min(prev, remainingConfirm.length - 1));
-    }
+    startConfirmTransition(() => {
+      setItems(updated);
+      setSubtotal(updated.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
+      setDesignPreferences((prev) => prev.filter((_, i) => i !== index));
+      setConfirmedCartIndexes((prev) => prev
+        .filter((i) => i !== index)
+        .map((i) => (i > index ? i - 1 : i)));
+      setShipping((s) => ({ ...s, calculated: false, cost: 0, tax: 0, taxLabel: '', error: '' }));
+      if (updated.length === 0) {
+        setShowDesignModal(false);
+        return;
+      }
+      if (!showDesignModal) return;
+      const remainingConfirm = cartConfirmIndexes(updated);
+      if (remainingConfirm.length === 0) {
+        setShowDesignModal(false);
+        setDesignConfirmed(true);
+      } else {
+        setDesignPreviewIndex((prev) => Math.min(prev, remainingConfirm.length - 1));
+      }
+    });
+    window.setTimeout(() => {
+      removeClickLockRef.current = false;
+      setRemoveBusy(false);
+    }, 320);
   };
 
   const startEditCartItem = (index) => {
@@ -1035,6 +1056,7 @@ const Checkout = () => {
                         <button
                           type="button"
                           className="item-delete-btn"
+                          disabled={removeBusy}
                           onClick={() => removeCartItem(i)}
                           title="Remove item"
                           aria-label={`Remove ${ci.name || ci.product || 'item'} from cart`}
@@ -1374,6 +1396,7 @@ const Checkout = () => {
                 itemName,
                 item?.image || item?.img || previewMockups[previewCartIndex] || ''
               );
+              const hatProductOnly = isCheckoutHatProduct(itemName);
               const ts = item?.toolSettings && typeof item.toolSettings === 'object' ? item.toolSettings : {};
               const previewOrientation = (designPreferences[previewCartIndex]?.orientation === 'landscape')
                 ? 'landscape'
@@ -1381,6 +1404,8 @@ const Checkout = () => {
               const printAreaFit = (ts.printAreaFit && ts.printAreaFit !== 'none')
                 ? ts.printAreaFit
                 : 'product';
+              const shotMatches = !confirmShotUrl || confirmDisplayShot.forUrl === confirmShotUrl;
+              const overlayReady = confirmPreviewReady && (!confirmShotUrl || (Boolean(confirmDisplayShot.src) && shotMatches));
               return (
                 <div className="design-modal-preview-card">
                   <h3 className="design-modal-preview-title">
@@ -1396,9 +1421,16 @@ const Checkout = () => {
                       ) : null}
                     </div>
                   </div>
-                  <div className={`design-modal-preview-visual${confirmShotUrl && !confirmDisplayShot.src ? ' is-loading-shot' : ''}`}>
+                  <div className={`design-modal-preview-visual${confirmShotUrl && !overlayReady && !hatProductOnly ? ' is-loading-shot' : ''}${hatProductOnly ? ' design-modal-preview-visual--product-only' : ''}`}>
                     {mockupUrl ? (
-                      confirmPreviewReady && (!confirmShotUrl || confirmDisplayShot.src) ? (
+                      hatProductOnly ? (
+                        <img
+                          className="design-modal-preview-product-only"
+                          src={mockupUrl}
+                          alt={itemName}
+                          decoding="async"
+                        />
+                      ) : overlayReady ? (
                       <ProductPreviewWithDrag
                         key={previewCartIndex}
                         productImage={mockupUrl}
@@ -1491,6 +1523,7 @@ const Checkout = () => {
                     <button
                       type="button"
                       className="design-modal-text-action"
+                      disabled={removeBusy}
                       onClick={() => removeCartItem(previewCartIndex)}
                     >
                       Remove Item

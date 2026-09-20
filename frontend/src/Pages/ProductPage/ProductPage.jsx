@@ -317,7 +317,7 @@ const STATIC_PRODUCT_IMAGE_MAP = {
   "Men's Fitted Long Sleeve": { filename: 'mensfittedlongsleeve.png', preview: 'mensfittedlongsleevepreview.png', price: 31.33 },
   'T-Shirt': { filename: 'guidontee.png', preview: 'guidonteepreview.png', price: 23.69 },
   'Oversized T-Shirt': { filename: 'unisexoversizedtshirt.png', preview: 'unisexoversizedtshirtpreview.png', price: 28.49 },
-  "Men's Long Sleeve Shirt": { filename: 'menslongsleeveshirt5.png', preview: 'menslongsleeveshirtpreview5.png', price: 26.79 },
+  "Men's Long Sleeve Shirt": { filename: 'menslongsleeveshirt6.png', preview: 'menslongsleeveshirtpreview6.png', price: 26.79 },
   'Champion Hoodie': { filename: 'hoodiechampion.png', preview: 'hoodiechampionpreview.png', price: 47.00 },
   'Cropped Hoodie': { filename: 'womenscroppedhoodiepreview.png', preview: 'womenscroppedhoodiepreview.png', price: 45.15 },
   'Racerback Tank': { filename: 'womenstankpreview.png', preview: 'womenstankpreview.png', price: 22.95 },
@@ -334,7 +334,7 @@ const STATIC_PRODUCT_IMAGE_MAP = {
   'Toddler Jersey T-Shirt': { filename: 'toddlerjerseytshirt.png', preview: 'toddlerjerseytshirtpreview.png', price: 22.29 },
   'Baby Staple Tee': { filename: 'babystapletshirt.png', preview: 'babystapletshirtpreview.png', price: 24.19 },
   'Baby Jersey T-Shirt': { filename: 'toddlershortsleevet.png', preview: 'toddlershortsleevetpreview.png', price: 22.29 },
-  'Baby Body Suit': { filename: 'youthalloverprintswimsuit.png', preview: 'youthalloverprintswimsuitpreview.png', price: 22.90 },
+  'Baby Body Suit': { filename: 'kidsbabybodysuit2.png', preview: 'kidsbabybodysuitpreview2.png', price: 22.90 },
   'Kids Sweatshirt': { filename: 'kidssweatshirt.png', preview: 'kidssweatshirtpreview.png', price: 29.29 },
   'Youth All Over Print Swimsuit': { filename: 'youthalloverprintswimsuit.png', preview: 'youthalloverprintswimsuitpreview.png', price: 35.95 },
   'Girls Leggings': { filename: 'girlsleggings.png', preview: 'girlsleggingspreview.png', price: 30.31 },
@@ -1238,8 +1238,19 @@ const ProductPage = ({ sidebar }) => {
       } else {
         let focusIndex = Array.isArray(items) && items.length ? items.length - 1 : -1;
         let openedNewSelection = Boolean(peekToolsPreviewNewest());
+        const lastTouched = lastTouchedCartIndexRef.current;
+        const justAdded = (
+          lastTouched != null
+          && Array.isArray(items)
+          && lastTouched === items.length - 1
+          && picked?.product
+          && cartLineMatchesPick(items[lastTouched], picked.product, pickedColor, pickedSize)
+        );
 
-        if (picked?.product && !isShopCatalog) {
+        if (justAdded) {
+          focusIndex = lastTouched;
+          openedNewSelection = true;
+        } else if (picked?.product && !isShopCatalog) {
           let matchIdx = -1;
           for (let i = (items || []).length - 1; i >= 0; i--) {
             if (cartLineMatchesPick(items[i], picked.product, pickedColor, pickedSize)) {
@@ -1260,8 +1271,8 @@ const ProductPage = ({ sidebar }) => {
               focusIndex = items.length - 1;
             }
           }
-        } else if (lastTouchedCartIndexRef.current != null) {
-          focusIndex = lastTouchedCartIndexRef.current;
+        } else if (lastTouched != null) {
+          focusIndex = lastTouched;
           openedNewSelection = true;
         }
 
@@ -1272,6 +1283,7 @@ const ProductPage = ({ sidebar }) => {
 
         setToolsFocusCartIndex(focusIndex);
         setToolsPreviewNewest(openedNewSelection);
+        writeCartItems(readCartItems(), { immediate: true });
         items = readCartItems();
 
         let urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();

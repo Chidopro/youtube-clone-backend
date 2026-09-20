@@ -432,16 +432,33 @@ export function readPendingMerchData(options = {}) {
 }
 
 /**
- * Drop in-memory cart/screenshot caches and re-read storage.
- * Phone Tools kept the previous product image because module memory
- * outlived the last cart write; a manual refresh cleared that memory.
+ * Re-read cart from storage, without dropping a newer in-memory add.
+ * Phone refresh: storage can be newer than module memory.
+ * Add to Cart → Preview Design: memory is newer until persist finishes
+ * (or if sessionStorage quota rejects the write). Wiping memory first
+ * made Tools reopen the previous product.
  */
 export function resyncMerchSessionFromStorage() {
-  cartItemsMemory = null;
+  const memCart = Array.isArray(cartItemsMemory) ? cartItemsMemory : null;
+  const fromStore = readCartItems({ ignoreMemory: true });
+  const storeCart = Array.isArray(fromStore) ? fromStore : [];
+  const memLen = memCart ? memCart.length : -1;
+  const storeLen = storeCart.length;
+
+  if (memLen > storeLen) {
+    persistCartMemoryNow(true);
+    const flushed = readCartItems({ ignoreMemory: true });
+    if (Array.isArray(flushed) && flushed.length >= memLen) {
+      cartItemsMemory = flushed;
+    }
+    const pending = readPendingMerchData();
+    pendingMerchMemory = pending && typeof pending === 'object' ? pending : pendingMerchMemory;
+    return { cart: cartItemsMemory, pending: pendingMerchMemory };
+  }
+
+  cartItemsMemory = storeCart;
   pendingMerchMemory = null;
-  const cart = readCartItems({ ignoreMemory: true });
   const pending = readPendingMerchData({ ignoreMemory: true });
-  cartItemsMemory = Array.isArray(cart) ? cart : [];
   pendingMerchMemory = pending && typeof pending === 'object' ? pending : {};
   return { cart: cartItemsMemory, pending: pendingMerchMemory };
 }
@@ -838,7 +855,7 @@ export function writeCartItems(items, options = {}) {
   if (next.length > prevLen) setToolsPreviewNewest(true);
   cartPersistPrevLen = prevLen;
   cartPersistOptions = options || {};
-  if (options.immediate || next.length === 0) persistCartMemoryNow();
+  if (options.immediate || next.length === 0 || next.length > prevLen) persistCartMemoryNow();
   else scheduleCartPersist();
   emitCartUpdated();
 }
