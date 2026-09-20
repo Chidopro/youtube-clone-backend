@@ -112,7 +112,8 @@ const Navbar = ({ resetCategory }) => {
     const showStorefrontTabBar = showStorefrontHeaderLinks
         && location.pathname !== '/tools'
         && !location.pathname.startsWith('/checkout');
-    const customLogoUrl = (creatorSettings?.custom_logo_url || '').trim();
+    const cachedBrand = peekCachedStorefrontBrand();
+    const customLogoUrl = (creatorSettings?.custom_logo_url || cachedBrand?.custom_logo_url || '').trim();
     const logoSrc = customLogoUrl || (!isStorefront ? logo : '');
     const [logoOrientation, setLogoOrientation] = useState(() => {
         const cached = peekCachedStorefrontBrand()?.logo_orientation;
@@ -148,16 +149,24 @@ const Navbar = ({ resetCategory }) => {
         }
         if (img.dataset.logoCropping === '1') return;
         img.dataset.logoCropping = '1';
+        classifyLogoOrientation(img);
         const originalSrc = img.getAttribute('data-logo-original') || customLogoUrl;
-        cropCustomLogoFromUrl(originalSrc).then((croppedUrl) => {
-            if (!img.isConnected) return;
-            if (croppedUrl && img.src !== croppedUrl) {
-                img.dataset.logoCropped = '1';
-                img.src = croppedUrl;
-                return;
-            }
-            classifyLogoOrientation(img);
-        });
+        const runCrop = () => {
+            cropCustomLogoFromUrl(originalSrc).then((croppedUrl) => {
+                if (!img.isConnected) return;
+                if (croppedUrl && img.src !== croppedUrl) {
+                    img.dataset.logoCropped = '1';
+                    img.src = croppedUrl;
+                    return;
+                }
+                classifyLogoOrientation(img);
+            });
+        };
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(runCrop, { timeout: 600 });
+        } else {
+            window.setTimeout(runCrop, 0);
+        }
     };
 
     useEffect(() => {
@@ -1082,18 +1091,27 @@ const Navbar = ({ resetCategory }) => {
                             alt="Logo"
                             data-logo-original={customLogoUrl || undefined}
                             className={`logo${customLogoUrl ? ' logo--custom' : ''} logo--${logoOrientation}${isOrderSuccessPage ? ' order-success-logo' : ''}`}
+                            fetchPriority="high"
+                            decoding="async"
                             onLoad={(e) => prepareNavbarLogo(e.target)}
                             ref={(el) => {
                                 if (el?.complete && el.naturalWidth) prepareNavbarLogo(el);
                             }}
                             onError={(e) => {
-                                e.target.onerror = null;
-                                if (isStorefront) {
-                                    e.target.removeAttribute('src');
-                                    e.target.style.visibility = 'hidden';
+                                const imgEl = e.currentTarget;
+                                const original = imgEl.getAttribute('data-logo-original') || customLogoUrl;
+                                const attempt = Number(imgEl.dataset.logoRetry || 0);
+                                if (original && attempt < 2) {
+                                    imgEl.dataset.logoRetry = String(attempt + 1);
+                                    window.setTimeout(() => {
+                                        if (!imgEl.isConnected) return;
+                                        imgEl.src = `${original}${original.includes('?') ? '&' : '?'}retry=${attempt + 1}`;
+                                    }, attempt === 0 ? 250 : 900);
                                     return;
                                 }
-                                e.target.src = logo;
+                                if (isStorefront) return;
+                                imgEl.onerror = null;
+                                imgEl.src = logo;
                                 setLogoOrientation('square');
                                 if (customLogoUrl) console.warn('Custom logo failed to load. Check URL is public and correct:', customLogoUrl);
                             }}

@@ -69,6 +69,7 @@ function useUrlOrientations(urls) {
   const [map, setMap] = useState({});
   const urlsRef = useRef(urls);
   urlsRef.current = urls;
+  const mapRef = useRef({});
   const key = (urls || []).filter(Boolean).map((url) => (
     `${url.length}:${url.slice(0, 24)}:${url.slice(-24)}`
   )).join('|');
@@ -83,17 +84,25 @@ function useUrlOrientations(urls) {
         && prevHit.aspect === next.aspect
         && prevHit.aspectNumber === next.aspectNumber
       ) {
+        mapRef.current = prev;
         return prev;
       }
-      return { ...prev, [url]: next };
+      const merged = { ...prev, [url]: next };
+      mapRef.current = merged;
+      return merged;
     });
   }, []);
+  useEffect(() => {
+    mapRef.current = map;
+  }, [map]);
   useEffect(() => {
     const list = (urlsRef.current || []).filter(Boolean);
     if (!list.length) return undefined;
     let cancelled = false;
     list.forEach((url) => {
+      if (mapRef.current[url]) return;
       const img = new Image();
+      img.decoding = 'async';
       img.onload = () => {
         if (!cancelled) noteFrame(url, img.naturalWidth, img.naturalHeight);
       };
@@ -126,16 +135,11 @@ function useBrowseDisplaySrc(url) {
   const raw = String(url || '').trim();
   const [src, setSrc] = useState(() => {
     if (!raw) return '';
-    if (!(raw.startsWith('data:') || raw.startsWith('blob:'))) return raw;
-    return peekDisplaySrc(raw)?.src || '';
+    return peekDisplaySrc(raw)?.src || raw;
   });
   useEffect(() => {
     if (!raw) {
       setSrc('');
-      return undefined;
-    }
-    if (!(raw.startsWith('data:') || raw.startsWith('blob:'))) {
-      setSrc(raw);
       return undefined;
     }
     const hit = peekDisplaySrc(raw);
@@ -143,13 +147,17 @@ function useBrowseDisplaySrc(url) {
       setSrc(hit.src);
       return undefined;
     }
+    setSrc(raw);
+    if (!(raw.startsWith('data:') || raw.startsWith('blob:'))) {
+      return undefined;
+    }
     let cancelled = false;
     prepareDisplaySrc(raw, 360, { urgent: true })
       .then((next) => {
-        if (!cancelled) setSrc(next?.src || '');
+        if (!cancelled && next?.src) setSrc(next.src);
       })
       .catch(() => {
-        if (!cancelled) setSrc('');
+        /* keep the original so the Selected Image window is never blank */
       });
     return () => {
       cancelled = true;
@@ -1986,6 +1994,8 @@ const ProductPage = ({ sidebar }) => {
                         src={showVideoThumbLabel ? thumbnailUrl : (presetImageSrc || thumbnailUrl)} 
                         alt={showVideoThumbLabel ? 'Thumbnail' : 'Selected image'} 
                         className="screenshot-image"
+                        fetchPriority="high"
+                        decoding="async"
                         onLoad={(e) => noteImageFrame(thumbnailUrl, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
                       />
                       {showVideoThumbLabel ? <div className="screenshot-label">Thumbnail</div> : null}
@@ -2048,6 +2058,8 @@ const ProductPage = ({ sidebar }) => {
                             src={(!showVideoThumbLabel && presetImageSrc) ? presetImageSrc : screenshot} 
                             alt={label || `Image ${index + 1}`} 
                             className="screenshot-image"
+                            fetchPriority={selectedScreenshot === index ? 'high' : 'auto'}
+                            decoding="async"
                             onLoad={(e) => noteImageFrame(screenshot, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
                           />
                           {label ? <div className="screenshot-label">{label}</div> : null}

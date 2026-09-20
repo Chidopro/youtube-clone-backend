@@ -17,7 +17,8 @@ export const CreatorProvider = ({ children }) => {
   );
 
   const detectCreator = async () => {
-    setLoading(true);
+    const cachedBrand = peekCachedStorefrontBrand() || peekCachedPlatformBrand();
+    if (!cachedBrand) setLoading(true);
     
     try {
       const hostname = window.location.hostname.toLowerCase();

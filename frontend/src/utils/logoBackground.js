@@ -5,6 +5,8 @@
  * so wordmarks display at the header size instead of looking tiny.
  */
 const WHITE_THRESHOLD = 240;
+/** Process a smaller bitmap so mobile flood-fill cannot stall the header paint. Display CSS size is unchanged. */
+const PROCESS_MAX_EDGE = 800;
 const croppedLogoUrls = new Map();
 
 function isNearWhite(r, g, b, a, threshold) {
@@ -190,15 +192,18 @@ export function cropCustomLogoFromUrl(src, { threshold = WHITE_THRESHOLD } = {})
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        if (!canvas.width || !canvas.height) {
+        const srcW = img.naturalWidth || img.width;
+        const srcH = img.naturalHeight || img.height;
+        if (!srcW || !srcH) {
           resolve(null);
           return;
         }
+        const scale = Math.min(1, PROCESS_MAX_EDGE / Math.max(srcW, srcH, 1));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(srcW * scale));
+        canvas.height = Math.max(1, Math.round(srcH * scale));
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const processed = processLogoImageData(
           ctx.getImageData(0, 0, canvas.width, canvas.height),
           threshold

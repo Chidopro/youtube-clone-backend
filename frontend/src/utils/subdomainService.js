@@ -29,11 +29,43 @@ function normalizeLogoOrientation(value) {
   return value === 'horizontal' || value === 'square' ? value : null;
 }
 
+function readStorefrontBrandRaw() {
+  const key = storefrontBrandKey();
+  if (!key) return '';
+  try {
+    return localStorage.getItem(key) || '';
+  } catch (_) {
+    /* Safari private mode */
+  }
+  try {
+    return sessionStorage.getItem(key) || '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function writeStorefrontBrandRaw(value) {
+  const key = storefrontBrandKey();
+  if (!key) return;
+  try {
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    if (value) sessionStorage.setItem(key, value);
+    else sessionStorage.removeItem(key);
+  } catch (_) {
+    /* ignore */
+  }
+}
+
 /** Sync read of last storefront logo so the navbar does not flash ScreenMerch. */
 export function peekCachedStorefrontBrand() {
   if (!isCreatorStorefrontHostname()) return null;
   try {
-    const raw = localStorage.getItem(storefrontBrandKey());
+    const raw = readStorefrontBrandRaw();
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     const custom_logo_url = String(parsed?.custom_logo_url || '').trim();
@@ -50,14 +82,13 @@ export function rememberStorefrontBrand(settings) {
   const custom_logo_url = String(settings?.custom_logo_url || '').trim();
   try {
     if (!custom_logo_url) {
-      localStorage.removeItem(storefrontBrandKey());
+      writeStorefrontBrandRaw('');
       return;
     }
     const logo_orientation = normalizeLogoOrientation(settings?.logo_orientation)
       || peekCachedStorefrontBrand()?.logo_orientation
       || null;
-    localStorage.setItem(
-      storefrontBrandKey(),
+    writeStorefrontBrandRaw(
       JSON.stringify(logo_orientation ? { custom_logo_url, logo_orientation } : { custom_logo_url })
     );
   } catch (_) {}

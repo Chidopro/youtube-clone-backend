@@ -364,7 +364,11 @@ async function downscaleUrl(url, maxEdge) {
         resetWorker();
       }
     }
-    return { src: '', width: 0, height: 0 };
+    try {
+      return await downscaleOnMain(await dataUrlToBlob(url), maxEdge);
+    } catch {
+      return { src: url, width: 0, height: 0 };
+    }
   }
   try {
     const blob = await urlToBlob(url);
@@ -454,8 +458,8 @@ export function prepareDisplaySrc(url, _maxEdge = DISPLAY_EDGE, options = {}) {
       try {
         await nextIdle(urgent ? 16 : 80);
         const result = await downscaleUrl(src, DISPLAY_EDGE);
-        remember(key, result);
-        settle.resolve(result);
+        if (result?.src) remember(key, result);
+        settle.resolve(result?.src ? result : { src, width: 0, height: 0 });
       } catch (err) {
         settle.reject(err);
       } finally {
