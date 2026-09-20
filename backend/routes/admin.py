@@ -199,8 +199,19 @@ def _send_creator_welcome_email(creator_email):
     if not api_key:
         logger.warning("RESEND_API_KEY not set; skipping creator welcome email")
         return False
-    subject = "Welcome to Your ScreenMerch Creator Portal 🎉"
-    intro_video_block = f'<p style="margin-top: 24px;"><a href="{intro_video_url}" style="color: #667eea; font-weight: 600;">Want a full walkthrough? Watch our intro video here.</a></p>' if intro_video_url else ""
+    how_it_works_url = "https://screenmerch.com/how-it-works"
+    faq_url = "https://screenmerch.com/faq"
+    subject = "Welcome to ScreenMerch — your creator storefront is ready"
+    intro_video_block = ""
+    if intro_video_url:
+        intro_video_block = f"""
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td style="border-radius:8px;border:1px solid #667eea;">
+                    <a href="{intro_video_url}" style="display:inline-block;padding:12px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#667eea;text-decoration:none;">Watch the intro</a>
+                  </td>
+                </tr>
+              </table>"""
     html_body = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -208,90 +219,68 @@ def _send_creator_welcome_email(creator_email):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Welcome to ScreenMerch</title>
 </head>
-<body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.7; color: #333; max-width: 600px; margin: 0 auto; padding: 24px;">
-  <p style="font-size: 18px; margin-bottom: 8px;">Congratulations — and welcome to the ScreenMerch Creator Portal!</p>
-  <p style="margin-bottom: 20px;">We're excited to have you on board.</p>
-  <p style="margin-bottom: 16px;">Inside your dashboard, you'll find everything you need to build and manage your store:</p>
-
-  <p style="margin: 16px 0 4px 0; font-weight: 600;">🔹 Videos</p>
-  <p style="margin: 0 0 12px 0;">Add and manage the videos that will appear on your page.</p>
-
-  <p style="margin: 16px 0 4px 0; font-weight: 600;">🔹 Favorites</p>
-  <p style="margin: 0 0 12px 0;">Select your favorite screenshots or thumbnails to highlight.</p>
-
-  <p style="margin: 16px 0 4px 0; font-weight: 600;">🔹 Analytics</p>
-  <p style="margin: 0 0 12px 0;">Track your sales, see which products are selling, and view dates and earnings in real time.</p>
-
-  <p style="margin: 16px 0 4px 0; font-weight: 600;">🔹 Payout Setup</p>
-  <p style="margin: 0 0 12px 0;">Connect your PayPal account to receive payouts from your earnings.</p>
-
-  <p style="margin: 16px 0 4px 0; font-weight: 600;">🔹 Personalization</p>
-  <p style="margin: 0 0 20px 0;">Create your custom subdomain (yourname.screenmerch.com) for your personal video store. Upload your logo, choose your brand colors, add a favicon, and enter your custom Meta title and description so your store reflects your identity.</p>
-
-  <p style="margin-bottom: 16px;">We invite you to sign in and explore the full product catalog — including apparel for women, men, and kids, plus mugs, bags, hats, pet items, stickers, magnets, greeting cards, and more.</p>
-  <p style="margin-bottom: 20px;">You'll be able to see available colors and pricing so you know exactly what your fans can order.</p>
-
-  <p style="font-weight: 600; margin-bottom: 8px;">Here's how it works:</p>
-  <p style="margin-bottom: 16px;">Your fans pick a moment from your video, capture a screenshot, and place it on the product of their choice. Every screenshot is automatically processed for high-quality 300 DPI printing.</p>
-  <p style="margin-bottom: 20px;">You earn $6 per sale on most items (excluding greeting cards, stickers, and magnets). We handle the payment processing, printing, and shipping — so you can focus on creating content.</p>
-
-  <p style="font-weight: 600; margin-bottom: 12px;">Next Steps:</p>
-  <ul style="margin: 0 0 20px 0; padding-left: 22px;">
-    <li style="margin-bottom: 6px;">Create your password</li>
-    <li style="margin-bottom: 6px;">Sign in to your dashboard</li>
-    <li style="margin-bottom: 6px;">Set your subdomain</li>
-    <li style="margin-bottom: 6px;">Upload your videos</li>
-    <li style="margin-bottom: 6px;">Browse the product catalog</li>
-    <li style="margin-bottom: 6px;">Share your store link with your audience</li>
-  </ul>
-
-  <p style="margin-bottom: 12px; font-size: 14px; color: #555;"><em>Note: Your custom subdomain may take up to 24 hours to be reviewed and activated by host.</em></p>
-  <p style="margin-bottom: 8px;"><strong>👉 Create your password here:</strong></p>
-  <p style="margin-bottom: 24px;"><a href="{set_password_url}" style="color: #667eea; font-weight: 600; word-break: break-all;">{set_password_url}</a></p>
-  {intro_video_block}
-  <p style="margin-top: 24px;">Thank you for joining us — we're excited to support your journey.</p>
-  <p style="font-style: italic; color: #555; margin: 16px 0;">Your brand. Your content. Your earnings.</p>
-  <p style="margin-top: 24px;">The ScreenMerch Team</p>
+<body style="margin:0;padding:0;background-color:#14121c;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#14121c;">
+    <tr>
+      <td align="center" style="padding:28px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+          <tr>
+            <td style="background-color:#667eea;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:32px 36px 28px;border-radius:16px 16px 0 0;">
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:2.4px;text-transform:uppercase;color:#efeaff;">ScreenMerch Creator</p>
+              <h1 style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:1.25;font-weight:700;color:#ffffff;">Congratulations — welcome aboard.</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#ffffff;padding:32px 36px;font-family:Arial,Helvetica,sans-serif;color:#2a2438;font-size:16px;line-height:1.65;">
+              <p style="margin:0 0 16px 0;">We're excited to have you on ScreenMerch. Create your password, then sign in to add clips, personalize your storefront, and share it with your audience.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 28px 0;">
+                <tr>
+                  <td style="border-radius:10px;background-color:#667eea;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
+                    <a href="{set_password_url}" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;">Create your password</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 10px 0;font-size:13px;color:#6b6480;">Or paste this link: <a href="{set_password_url}" style="color:#5b4fcf;word-break:break-all;">{set_password_url}</a></p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;background-color:#f6f3ff;border-left:4px solid #764ba2;border-radius:8px;">
+                <tr>
+                  <td style="padding:16px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2a2438;">
+                    For the full walkthrough — clips, storefronts, merch, and payouts — read
+                    <a href="{how_it_works_url}" style="color:#5b4fcf;font-weight:700;text-decoration:none;">How it Works</a>.
+                    Questions? See the <a href="{faq_url}" style="color:#5b4fcf;font-weight:700;text-decoration:none;">FAQ</a>.
+                  </td>
+                </tr>
+              </table>
+              {intro_video_block}
+              <p style="margin:0;font-size:13px;line-height:1.55;color:#6b6480;">After you set your subdomain (<span style="color:#2a2438;font-weight:600;">yourname.screenmerch.com</span>), it may take up to 24 hours to activate.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#1c1828;padding:22px 36px 26px;border-radius:0 0 16px 16px;">
+              <p style="margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:16px;font-style:italic;color:#ddd6f3;">Your brand. Your content. Your earnings.</p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#9a92b3;">The ScreenMerch Team</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>"""
-    text_body = f"""Congratulations — and welcome to the ScreenMerch Creator Portal!
+    text_body = f"""Congratulations — and welcome to ScreenMerch!
 
 We're excited to have you on board.
 
-Inside your dashboard, you'll find everything you need to build and manage your store:
-
-🔹 Videos - Add and manage the videos that will appear on your page.
-
-🔹 Favorites - Select your favorite screenshots or thumbnails to highlight.
-
-🔹 Analytics - Track your sales, see which products are selling, and view dates and earnings in real time.
-
-🔹 Payout Setup - Connect your PayPal account to receive payouts from your earnings.
-
-🔹 Personalization - Create your custom subdomain (yourname.screenmerch.com) for your personal video store. Upload your logo, choose your brand colors, add a favicon, and enter your custom Meta title and description so your store reflects your identity.
-
-We invite you to sign in and explore the full product catalog — including apparel for women, men, and kids, plus mugs, bags, hats, pet items, stickers, magnets, greeting cards, and more.
-
-You'll be able to see available colors and pricing so you know exactly what your fans can order.
-
-Here's how it works:
-
-Your fans pick a moment from your video, capture a screenshot, and place it on the product of their choice. Every screenshot is automatically processed for high-quality 300 DPI printing.
-
-You earn $6 per sale on most items (excluding greeting cards, stickers, and magnets). We handle the payment processing, printing, and shipping — so you can focus on creating content.
-
-Next Steps:
-
-• Create your password
-• Sign in to your dashboard
-• Set your subdomain
-• Upload your videos
-• Browse the product catalog
-• Share your store link with your audience
-
-Note: Your custom subdomain may take up to 24 hours to be reviewed and activated by host.
+Create your password to sign in to your dashboard. From there you can add clips, personalize your storefront, and share it with your audience.
 
 👉 Create your password here: {set_password_url}
+
+For a full walkthrough of how ScreenMerch works — clips, storefronts, merch, and payouts — please read How it Works:
+{how_it_works_url}
+
+Questions? The FAQ is a good next stop:
+{faq_url}
+
+Note: After you set your subdomain (yourname.screenmerch.com), it may take up to 24 hours to activate.
 """
     if intro_video_url:
         text_body += f"\nWant a full walkthrough? Watch our intro video: {intro_video_url}\n"
