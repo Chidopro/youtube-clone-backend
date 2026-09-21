@@ -62,6 +62,27 @@ const clampOpacityPercent = (value) => {
     return Math.max(0, Math.min(100, Math.round(n)));
 };
 
+const readStoredAuthUser = () => {
+    try {
+        const raw = localStorage.getItem('user');
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+};
+
+const isCreatorOrAdminUser = (u) => {
+    const role = String(u?.role || '').toLowerCase();
+    return role === 'creator' || role === 'admin' || role === 'master_admin';
+};
+
+const shouldShowCreatorProfileMenu = (u, pathname) => {
+    if (!isCreatorOrAdminUser(u)) return false;
+    if (pathname === '/creator-thank-you') return false;
+    if (pathname === '/subscription-tiers' && (u?.status === 'pending' || u?.status === undefined)) return false;
+    return true;
+};
+
 const Navbar = ({ resetCategory }) => {
     const creatorContext = useCreator();
     const creatorSettings = creatorContext?.creatorSettings ?? null;
@@ -300,6 +321,10 @@ const Navbar = ({ resetCategory }) => {
                     return;
                 }
 
+                setUser(loggedInUser);
+                setUserProfile(loggedInUser);
+                setLoading(false);
+
                 // CRITICAL: Fetch profile from database FIRST before setting user state
                 // This ensures we have the correct role/status from the database
                 // Use ID if available, otherwise fallback to email
@@ -337,7 +362,9 @@ const Navbar = ({ resetCategory }) => {
                                 // Ensure ID is set from database if it was missing
                                 id: profile.id || loggedInUser.id,
                                 // PRIORITIZE database values - they are the source of truth
-                                role: profile.role !== null && profile.role !== undefined ? profile.role : (loggedInUser.role || 'customer'),
+                                role: isCreatorOrAdminUser(loggedInUser) && (!profile.role || profile.role === 'customer')
+                                    ? loggedInUser.role
+                                    : (profile.role !== null && profile.role !== undefined ? profile.role : (loggedInUser.role || 'customer')),
                                 status: profile.status !== null && profile.status !== undefined ? profile.status : (loggedInUser.status || 'active'),
                                 profile_image_url: profile.profile_image_url || loggedInUser.profile_image_url || loggedInUser.picture || loggedInUser.user_metadata?.picture,
                                 cover_image_url: profile.cover_image_url || loggedInUser.cover_image_url || '',
@@ -430,8 +457,9 @@ const Navbar = ({ resetCategory }) => {
                         }
 
                         if (isMounted) {
-                            // CRITICAL: Fetch from database FIRST before setting user state
-                            // This ensures we have the correct role/status from database
+                            setUser(loggedInUser);
+                            setUserProfile(loggedInUser);
+                            setLoading(false);
                             if (loggedInUser.id) {
                                 console.log('🔐 [FETCHUSER] Fetching latest user profile from backend for user:', loggedInUser.id);
                                 const profile = await fetchMyProfileFromBackend(loggedInUser.id);
@@ -451,7 +479,9 @@ const Navbar = ({ resetCategory }) => {
                                         ...loggedInUser,
                                         ...profile,
                                         // PRIORITIZE database values - they are the source of truth
-                                        role: profile.role !== null && profile.role !== undefined ? profile.role : (loggedInUser.role || 'customer'),
+                                        role: isCreatorOrAdminUser(loggedInUser) && (!profile.role || profile.role === 'customer')
+                                            ? loggedInUser.role
+                                            : (profile.role !== null && profile.role !== undefined ? profile.role : (loggedInUser.role || 'customer')),
                                         status: profile.status !== null && profile.status !== undefined ? profile.status : (loggedInUser.status || 'active'),
                                         // Prioritize database profile_image_url
                                         profile_image_url: profile.profile_image_url || loggedInUser.profile_image_url || loggedInUser.picture || loggedInUser.user_metadata?.picture,
@@ -504,6 +534,13 @@ const Navbar = ({ resetCategory }) => {
                         }
                     } catch (error) {
                         console.error('Error parsing user data:', error);
+                        try {
+                            const fallbackUser = JSON.parse(userData);
+                            if (isMounted && fallbackUser) {
+                                setUser(fallbackUser);
+                                setUserProfile(fallbackUser);
+                            }
+                        } catch (_) { /* ignore */ }
                     }
                 } else {
                     console.log('🔐 No authenticated user found. isAuthenticated:', isAuthenticated, 'userData:', userData);
@@ -1250,21 +1287,8 @@ const Navbar = ({ resetCategory }) => {
                         {loading ? (
                             <div className="loading-spinner-navbar"></div>
                         ) : (() => {
-                            const isCreatorOrAdmin = user && (user.role === 'creator' || user.role === 'admin');
-                            const isActive = user && (user.status === 'active' || user.status === undefined);
-                            const isThankYouPage = location.pathname === '/creator-thank-you';
-                            const isCalculatorAsPending = location.pathname === '/subscription-tiers' && (user?.status === 'pending' || user?.status === undefined);
-                            const shouldShowProfile = isCreatorOrAdmin && isActive && !isThankYouPage && !isCalculatorAsPending;
-                            console.log('🔍 Navbar render check:', {
-                                hasUser: !!user,
-                                role: user?.role,
-                                status: user?.status,
-                                isCreatorOrAdmin,
-                                isActive,
-                                isThankYouPage,
-                                isCalculatorAsPending,
-                                shouldShowProfile
-                            });
+                            const authUser = user || readStoredAuthUser();
+                            const shouldShowProfile = shouldShowCreatorProfileMenu(authUser, location.pathname);
                             return shouldShowProfile;
                         })() ? (
                             <>
@@ -1361,6 +1385,29 @@ const Navbar = ({ resetCategory }) => {
                     ) : oauthProcessing ? (
                         <div className="sign-in-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
                             Processing...
+                        </div>
+                    ) : isCreatorOrAdminUser(user || readStoredAuthUser()) ? (
+                        <div className="user-profile-menu" ref={profileMenuRef}>
+                            <button
+                                className="user-profile-container"
+                                type="button"
+                                aria-label="Account menu"
+                                aria-expanded={dropdownOpen}
+                                onClick={toggleProfileDropdown}
+                            >
+                                <img
+                                    className="user-profile"
+                                    src={(user || readStoredAuthUser())?.profile_image_url || (user || readStoredAuthUser())?.picture || '/default-avatar.svg'}
+                                    alt={(user || readStoredAuthUser())?.display_name || 'User'}
+                                    draggable={false}
+                                    onError={(e) => {
+                                        if (e.target.src !== `${window.location.origin}/default-avatar.svg` && !e.target.dataset.fallbackUsed) {
+                                            e.target.dataset.fallbackUsed = 'true';
+                                            e.target.src = '/default-avatar.svg';
+                                        }
+                                    }}
+                                />
+                            </button>
                         </div>
                     ) : isShopperSignedIn() || customerUser ? (
                         <button

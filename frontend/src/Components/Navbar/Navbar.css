@@ -1355,6 +1355,7 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .user-profile-container:focus {

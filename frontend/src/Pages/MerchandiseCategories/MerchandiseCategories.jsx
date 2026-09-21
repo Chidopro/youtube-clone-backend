@@ -131,6 +131,9 @@ const MerchandiseCategories = ({ sidebar }) => {
       <div className="merchandise-categories">
         <div className="categories-container">
           <h1 className="categories-title">Choose Category</h1>
+          <p className="categories-color-note">
+            Color shown is for display only. You&apos;ll receive the color you selected.
+          </p>
 
           <div className="categories-grid">
             {categories.map((cat, i) => (
