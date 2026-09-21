@@ -20,6 +20,7 @@ import {
 import { readShipToCountry, writeShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
 import { repriceCartItems } from '../../utils/regionalAvailability';
 import { peekDisplaySrc, prepareDisplaySrc } from '../../utils/displaySrc';
+import { artworkDisplayUrl } from '../../utils/favoriteListsApi';
 import './Checkout.css';
 
 const noopPreviewOffset = () => {};
@@ -63,11 +64,19 @@ function itemConfirmShotUrl(item) {
 
 function useDisplaySrc(url, maxEdge, enabled = true, urgent = false) {
   const raw = String(url || '').trim();
-  const cached = enabled && raw ? peekDisplaySrc(raw) : null;
-  const [result, setResult] = useState(() => cached || { src: '', width: 0, height: 0, forUrl: '' });
+  const httpDisplay = enabled && /^https?:/i.test(raw) ? (artworkDisplayUrl(raw) || raw) : '';
+  const cached = enabled && raw && !httpDisplay ? peekDisplaySrc(raw) : null;
+  const [result, setResult] = useState(() => {
+    if (httpDisplay) return { src: httpDisplay, width: 0, height: 0, forUrl: raw };
+    return cached || { src: '', width: 0, height: 0, forUrl: '' };
+  });
   useEffect(() => {
     if (!enabled || !raw) {
       setResult({ src: '', width: 0, height: 0, forUrl: '' });
+      return undefined;
+    }
+    if (httpDisplay) {
+      setResult({ src: httpDisplay, width: 0, height: 0, forUrl: raw });
       return undefined;
     }
     const hit = peekDisplaySrc(raw);
@@ -86,8 +95,9 @@ function useDisplaySrc(url, maxEdge, enabled = true, urgent = false) {
     return () => {
       cancelled = true;
     };
-  }, [url, maxEdge, enabled, urgent]);
+  }, [url, maxEdge, enabled, urgent, httpDisplay]);
   if (!enabled || !raw) return { src: '', width: 0, height: 0, forUrl: '' };
+  if (httpDisplay) return { src: httpDisplay, width: 0, height: 0, forUrl: raw };
   if (result.forUrl === raw && result.src) return result;
   if (cached?.src) return { ...cached, forUrl: raw };
   return { src: '', width: 0, height: 0, forUrl: raw };
@@ -388,10 +398,10 @@ const Checkout = () => {
     const currentIdx = indexes[designPreviewIndex];
     const nextIdx = indexes[designPreviewIndex + 1];
     const currentUrl = currentIdx != null ? itemConfirmShotUrl(items[currentIdx]) : '';
-    if (currentUrl) prepareDisplaySrc(currentUrl, 360, { urgent: true });
+    if (currentUrl && !/^https?:/i.test(currentUrl)) prepareDisplaySrc(currentUrl, 360, { urgent: true });
     if (nextIdx != null) {
       const nextUrl = itemConfirmShotUrl(items[nextIdx]);
-      if (nextUrl) prepareDisplaySrc(nextUrl, 360, { urgent: false });
+      if (nextUrl && !/^https?:/i.test(nextUrl)) prepareDisplaySrc(nextUrl, 360, { urgent: false });
     }
     return undefined;
   }, [showDesignModal, confirmPreviewReady, confirmShotUrl, designPreviewIndex]);

@@ -174,6 +174,40 @@ export function favoriteImageUrl(favorite) {
   return (favorite.image_url || favorite.thumbnail_url || favorite.thumbnail || '').trim();
 }
 
+/** Selected Image / cards: dedicated JPEG thumbs, else a resized render — never the print original. */
+export const SELECTED_IMAGE_PX = 800;
+
+export function artworkDisplayUrl(src, width = SELECTED_IMAGE_PX) {
+  const url = (src || '').trim();
+  if (!url) return '';
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+  return publicStorageCardUrl(url, width) || url;
+}
+
+export function favoriteDisplayUrl(favorite) {
+  if (!favorite) return '';
+  const thumb = favoriteCardThumbUrl(favorite);
+  const full = favoriteImageUrl(favorite);
+  if (isDedicatedFavoriteThumb(thumb)) return thumb;
+  if (isLightweightCardUrl(thumb) && thumb !== full) return thumb;
+  if (thumb && full && thumb !== full) return thumb;
+  return artworkDisplayUrl(full || thumb) || full || thumb || '';
+}
+
+/** Pending merch for a still image: light URL for Selected Image, full URL for print/cart. */
+export function favoriteMerchImagePayload(favorite) {
+  const full = favoriteImageUrl(favorite);
+  const display = favoriteDisplayUrl(favorite) || full;
+  return {
+    source: 'image',
+    thumbnail: display,
+    screenshots: display ? [display] : [],
+    selected_screenshot: full,
+    display_screenshot: display,
+    imageOrientation: 'portrait',
+  };
+}
+
 function isDedicatedFavoriteThumb(url) {
   return /\/favorites\/thumbs\//.test(url || '');
 }
@@ -181,7 +215,8 @@ function isDedicatedFavoriteThumb(url) {
 function isLightweightCardUrl(url) {
   const u = url || '';
   if (isDedicatedFavoriteThumb(u)) return true;
-  if (/_thumb\.(png|jpe?g|webp)(\?|$)/i.test(u)) return true;
+  // Only skip render for small JPEGs. Gee/Pom `_thumb.png` files are often 1–2MB.
+  if (/_thumb\.jpe?g(\?|$)/i.test(u)) return true;
   return false;
 }
 

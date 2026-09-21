@@ -5,6 +5,7 @@ import './Video.css'
 import { useParams, useNavigate } from "react-router-dom";
 import { useCreator } from '../../contexts/CreatorContext';
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
+import { artworkDisplayUrl } from '../../utils/favoriteListsApi';
 
 const Video = ({ sidebar }) => {
 
@@ -198,11 +199,16 @@ const Video = ({ sidebar }) => {
       const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : 0;
       const frameSeconds =
         screenshotTimestamps.length > 0 ? screenshotTimestamps[0] : screenshots.length > 0 ? 0 : currentTime;
+      const shots = screenshots.slice(0, 6);
+      const displayShots = shots.map((s) => artworkDisplayUrl(s) || s);
+      const displayThumb = artworkDisplayUrl(thumbnail) || thumbnail;
       const merchData = {
         source: 'video',
-        thumbnail,
+        thumbnail: displayThumb,
         videoUrl: window.location.href,
-        screenshots: screenshots.slice(0, 6),
+        screenshots: displayShots.length ? displayShots : shots,
+        selected_screenshot: shots[0] || thumbnail,
+        display_screenshot: displayShots[0] || displayThumb,
         screenshot_timestamp: frameSeconds,
         timestamp: frameSeconds,
         videoTitle: videoData?.title || 'Unknown Video',
@@ -224,11 +230,16 @@ const Video = ({ sidebar }) => {
       const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : 0;
       const frameSeconds =
         screenshotTimestamps.length > 0 ? screenshotTimestamps[0] : screenshots.length > 0 ? 0 : currentTime;
+      const shots = screenshots.slice(0, 6);
+      const displayShots = shots.map((s) => artworkDisplayUrl(s) || s);
+      const displayThumb = artworkDisplayUrl(thumbnail) || thumbnail;
       savePendingMerchData({
           source: 'video',
-          thumbnail,
+          thumbnail: displayThumb,
           videoUrl: window.location.href,
-          screenshots: screenshots.slice(0, 6),
+          screenshots: displayShots.length ? displayShots : shots,
+          selected_screenshot: shots[0] || thumbnail,
+          display_screenshot: displayShots[0] || displayThumb,
           screenshot_timestamp: frameSeconds,
           timestamp: frameSeconds,
           videoTitle: videoData?.title || 'Unknown Video',

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
-import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, publicStorageCardUrl, withMemberPublicIdentity, fetchMemberFavorites, peekPublicFavoriteLists } from '../../utils/favoriteListsApi';
+import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, favoriteMerchImagePayload, publicStorageCardUrl, withMemberPublicIdentity, fetchMemberFavorites, peekPublicFavoriteLists } from '../../utils/favoriteListsApi';
 import { favoriteListPageHeading, friendPageLabel } from '../../utils/favoriteListLabels';
 import { apiJoin } from '../../config/apiConfig';
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
@@ -14,6 +14,7 @@ import {
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
 import { ChevronLeft, ChevronRight } from '../../Components/Chevrons/Chevrons';
 import { sortVideosForPlay } from '../../utils/videoPlayOrder';
+import { prefetchVideoPlayback } from '../../utils/videoOptimize';
 import './Favorites.css';
 
 const sortNewest = (a, b) => {
@@ -546,11 +547,7 @@ const Favorites = ({ sidebar }) => {
     markMerchIntentStarted();
 
     const merchData = {
-      source: 'image',
-      thumbnail: imageUrl,
-      screenshots: [imageUrl],
-      selected_screenshot: imageUrl,
-      imageOrientation: 'portrait',
+      ...favoriteMerchImagePayload(favorite),
       videoTitle: favorite.title || 'Image',
       creatorName: currentCreator?.display_name || currentCreator?.username || 'Creator',
       screenshot_timestamp: '0:00',
@@ -577,6 +574,7 @@ const Favorites = ({ sidebar }) => {
   };
 
   const openVideo = (video) => {
+    prefetchVideoPlayback(video);
     navigate(`/video/${video.categoryId || 0}/${video.id}`, { state: { video } });
   };
 

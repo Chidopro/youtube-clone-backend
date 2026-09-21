@@ -8,6 +8,7 @@ import { API_CONFIG } from '../../config/apiConfig'
 import { isOptimizedPlaybackUrl, needsVideoOptimize, playbackUrlForVideo, candidateWebPlaybackUrls, requestVideoOptimize, screenshotSourceUrl } from '../../utils/videoOptimize'
 import { useCreator } from '../../contexts/CreatorContext'
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession'
+import { artworkDisplayUrl, publicStorageCardUrl } from '../../utils/favoriteListsApi'
 
 // Before 28 Jul 2026, mobile captured the on-screen player box (~small JPEG).
 // "screenshot/print fidelity" switched that to native videoWidth x videoHeight.
@@ -396,7 +397,7 @@ const PlayVideo = ({
             video.setAttribute('playsinline', 'true');
             video.setAttribute('webkit-playsinline', 'true');
             video.setAttribute('x-webkit-airplay', 'allow');
-            video.setAttribute('preload', 'auto');
+            video.setAttribute('preload', 'metadata');
             stripNativeControls(video);
             
             // Prevent fullscreen on mobile
@@ -446,10 +447,14 @@ const PlayVideo = ({
             optimizePendingRef.current = needsVideoOptimize(data);
             const originalPlayback = String(data.video_url || '');
             const playback = playbackUrlForVideo(data) || originalPlayback;
-            playbackFallbackRef.current = [...new Set([
-                ...candidateWebPlaybackUrls(data.source_video_url || originalPlayback),
-                originalPlayback,
-            ])].filter((u) => u && u !== playback);
+            if (isOptimizedPlaybackUrl(playback)) {
+                playbackFallbackRef.current = [];
+            } else {
+                playbackFallbackRef.current = [...new Set([
+                    ...candidateWebPlaybackUrls(data.source_video_url || originalPlayback),
+                    originalPlayback,
+                ])].filter((u) => u && u !== playback);
+            }
             if (optimizePendingRef.current) {
                 requestVideoOptimize({ videoId: data.id, videoUrl: originalPlayback }).then((result) => {
                     if (result?.video_url && isOptimizedPlaybackUrl(result.video_url)) {
@@ -880,11 +885,16 @@ const PlayVideo = ({
     const handleMakeMerch = async () => {
         markMerchIntentStarted();
         const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : (screenshotTimestamps[0] ?? 0);
+        const shots = (screenshots || []).slice(0, 6);
+        const displayShots = shots.map((s) => artworkDisplayUrl(s) || s);
+        const displayThumb = artworkDisplayUrl(thumbnail) || thumbnail;
         savePendingMerchData({
             source: 'video',
-            thumbnail,
+            thumbnail: displayThumb,
             videoUrl: video?.video_url || window.location.href,
-            screenshots: screenshots.slice(0, 6),
+            screenshots: displayShots.length ? displayShots : shots,
+            selected_screenshot: shots[0] || thumbnail,
+            display_screenshot: displayShots[0] || displayThumb,
             screenshot_timestamp: screenshotTimestamps[0] ?? currentTime,
             videoTitle: video?.title || 'Unknown Video',
             creatorName: video?.channelTitle || 'Unknown Creator'
@@ -1243,12 +1253,12 @@ const PlayVideo = ({
                     maxWidth: '100%'
                 }}>
                     <video 
-                        key={videoId}
+                        key={`${videoId}:${video.video_url || ''}`}
                         ref={videoRef} 
                         className={isMobile ? 'mobile-inline-controls' : ''}
                         controls={!isMobile && !isCropMode && !hideMediaChrome}
                         controlsList="nodownload nofullscreen noremoteplayback"
-                        poster={video.thumbnail || ''}
+                        poster={publicStorageCardUrl(video.thumbnail || video.poster || '', 720) || undefined}
                         width="100%" 
                         height={isMobile ? "320" : "360"}
                         style={{
@@ -1264,7 +1274,7 @@ const PlayVideo = ({
                         playsInline
                         webkit-playsinline="true"
                         x-webkit-airplay="allow"
-                        preload="auto"
+                        preload="metadata"
                         disablePictureInPicture
                         disableRemotePlayback
                         onTimeUpdate={() => {
@@ -1443,7 +1453,7 @@ const PlayVideo = ({
                             }}
                         >
                             {video.thumbnail ? (
-                                <img src={video.thumbnail} alt="" draggable="false" />
+                                <img src={publicStorageCardUrl(video.thumbnail, 720) || video.thumbnail} alt="" draggable="false" />
                             ) : null}
                             <canvas ref={pausedCanvasRef} style={{ visibility: 'hidden' }} />
                         </button>

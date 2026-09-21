@@ -8,9 +8,9 @@ import { AdminService } from '../../utils/adminService';
 import { sortVideosForPlay, moveItem } from '../../utils/videoPlayOrder';
 import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl, apiJoin } from '../../config/apiConfig';
-import { requestVideoOptimize, isOptimizedPlaybackUrl } from '../../utils/videoOptimize';
+import { requestVideoOptimize, isOptimizedPlaybackUrl, prefetchVideoPlayback } from '../../utils/videoOptimize';
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
-import { favoriteListsJson, fetchFavoritesForList, fetchPublicFavoriteLists, linkOwnerExtraPagesToStorefront } from '../../utils/favoriteListsApi';
+import { favoriteListsJson, fetchFavoritesForList, fetchPublicFavoriteLists, linkOwnerExtraPagesToStorefront, favoriteMerchImagePayload } from '../../utils/favoriteListsApi';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.jsx';
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
@@ -1573,7 +1573,8 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     };
 
     const openVideoPlayer = (video) => {
-        navigate(`/video/${video.categoryId || 0}/${video.id}`);
+        prefetchVideoPlayback(video);
+        navigate(`/video/${video.categoryId || 0}/${video.id}`, { state: { video } });
     };
 
     const handleEditFavorite = (favorite, event) => {
@@ -1880,9 +1881,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         if (!isLoggedIn) {
             // Store favorite data for after login
             const merchData = {
-                source: 'image',
-                thumbnail: favorite.image_url || favorite.thumbnail_url,
-                screenshots: [favorite.image_url || favorite.thumbnail_url],
+                ...favoriteMerchImagePayload(favorite),
                 videoUrl: window.location.href,
                 videoTitle: favorite.title || 'Favorite Image',
                 creatorName: favorite.channeltitle || favorite.channelTitle || userProfile?.display_name || userProfile?.username || 'Unknown Creator'
@@ -1894,9 +1893,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         
         // User is authenticated, save data and navigate to merchandise page
         const merchData = {
-            source: 'image',
-            thumbnail: favorite.image_url || favorite.thumbnail_url,
-            screenshots: [favorite.image_url || favorite.thumbnail_url],
+            ...favoriteMerchImagePayload(favorite),
             videoUrl: window.location.href,
             videoTitle: favorite.title || 'Favorite Image',
             creatorName: favorite.channeltitle || favorite.channelTitle || userProfile?.display_name || userProfile?.username || 'Unknown Creator'

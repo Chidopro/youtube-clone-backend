@@ -1,7 +1,7 @@
 import { apiJoin } from '../config/apiConfig';
 
 export function isOptimizedPlaybackUrl(url) {
-  return /_w720t\.|_w720\./i.test(String(url || ''));
+  return /_w720t\d*\.|_w720\./i.test(String(url || ''));
 }
 
 export function needsVideoOptimize(video) {
@@ -12,7 +12,7 @@ export function needsVideoOptimize(video) {
 
 const VIDEOS2_MARKER = '/storage/v1/object/public/videos2/';
 
-/** Same naming Caroline / DJ Panda use: original.mp4 → original_w720.mp4. */
+/** Same naming Caroline / DJ Panda use: original.mp4 → original_w720.mp4. Prefer the transcoded file. */
 export function candidateWebPlaybackUrls(url) {
   const raw = String(url || '').split('?')[0];
   if (!raw || isOptimizedPlaybackUrl(raw) || /youtube\.com|youtu\.be/i.test(raw)) return [];
@@ -27,8 +27,12 @@ export function candidateWebPlaybackUrls(url) {
   }
   const dot = rel.lastIndexOf('.');
   let base = dot >= 0 ? rel.slice(0, dot) : rel;
-  base = base.replace(/(_w720t|_w720|_web)$/i, '');
-  return [...new Set([`${root}${base}_w720.mp4`, `${root}${base}_w720t.mp4`])];
+  base = base.replace(/(_w720t\d*|_w720|_web)$/i, '');
+  return [...new Set([
+    `${root}${base}_w720t2.mp4`,
+    `${root}${base}_w720t.mp4`,
+    `${root}${base}_w720.mp4`,
+  ])];
 }
 
 /**
@@ -40,6 +44,26 @@ export function playbackUrlForVideo(video) {
   if (!url || /youtube\.com|youtu\.be/i.test(url)) return url;
   if (isOptimizedPlaybackUrl(url)) return url;
   return url;
+}
+
+/** Warm the small playback file as soon as Watch is tapped (Samurai Dog path). */
+export function prefetchVideoPlayback(video) {
+  const href = playbackUrlForVideo(video) || String(video?.video_url || '').trim();
+  if (!href || !/^https?:/i.test(href)) return;
+  try {
+    const already = Array.from(document.head.querySelectorAll('link[data-sm-video-preload]')).some(
+      (el) => el.getAttribute('data-sm-video-preload') === href
+    );
+    if (already) return;
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'video';
+    link.href = href;
+    link.setAttribute('data-sm-video-preload', href);
+    document.head.appendChild(link);
+  } catch (_) {
+    /* ignore */
+  }
 }
 
 /** Ask the backend to make a smoother H.264 playback file. Non-blocking. */

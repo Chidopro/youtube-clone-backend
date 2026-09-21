@@ -5,6 +5,8 @@ import './Profile.css';
 import '../../Components/ChannelHeader/ChannelHeaderShared.css';
 import { API_CONFIG, getBackendUrl } from '../../config/apiConfig';
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
+import { favoriteMerchImagePayload } from '../../utils/favoriteListsApi';
+import { prefetchVideoPlayback } from '../../utils/videoOptimize';
 
 const Profile = ({ sidebar }) => {
   const { username } = useParams();
@@ -107,9 +109,7 @@ const Profile = ({ sidebar }) => {
     if (!isLoggedIn) {
       // Store favorite data for after login
       const merchData = {
-        source: 'image',
-        thumbnail: favorite.image_url || favorite.thumbnail_url,
-        screenshots: [favorite.image_url || favorite.thumbnail_url],
+        ...favoriteMerchImagePayload(favorite),
         videoUrl: window.location.href,
         videoTitle: favorite.title || 'Favorite Image',
         creatorName: favorite.channeltitle || favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
@@ -123,9 +123,7 @@ const Profile = ({ sidebar }) => {
     
     // User is authenticated, proceed with merch creation
     const merchData = {
-      source: 'image',
-      thumbnail: favorite.image_url || favorite.thumbnail_url,
-      screenshots: [favorite.image_url || favorite.thumbnail_url],
+      ...favoriteMerchImagePayload(favorite),
       videoUrl: window.location.href,
       videoTitle: favorite.title || 'Favorite Image',
       creatorName: favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
@@ -241,8 +239,8 @@ const Profile = ({ sidebar }) => {
                     key={video.id}
                     style={{ cursor: 'pointer' }}
                     onClick={() => {
-                      console.log('Clicked video:', video);
-                      navigate(`/video/${video.categoryId || 0}/${video.id}`);
+                      prefetchVideoPlayback(video);
+                      navigate(`/video/${video.categoryId || 0}/${video.id}`, { state: { video } });
                     }}
                   >
                     <img src={video.thumbnail || 'https://via.placeholder.com/320x180?text=No+Thumbnail'} alt={video.title} />

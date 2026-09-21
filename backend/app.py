@@ -8640,6 +8640,17 @@ def complete_video_upload():
     saved = (result.data or [None])[0]
     if not saved:
         return jsonify({"success": False, "error": "Could not save video"}), 500
+    try:
+        from utils.video_optimize import start_optimize_background
+        start_optimize_background(
+            supabase_admin,
+            video_url,
+            saved.get("id"),
+            video_url,
+            force=False,
+        )
+    except Exception:
+        logger.exception("Could not queue _w720 playback after upload")
     return jsonify({"success": True, "video": saved, "user_id": user_id}), 200
 
 

@@ -5,7 +5,7 @@ import ToolsPage from '../ToolsPage/ToolsPage';
 import { supabase } from '../../supabaseClient';
 import { UserService, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl, apiJoin } from '../../config/apiConfig';
-import { favoriteListsJson } from '../../utils/favoriteListsApi';
+import { favoriteListsJson, artworkDisplayUrl } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest, isVideoScreenshotMerch, readBrowseToolSettings, writeBrowseToolSettings, rememberArtworkOrientation } from '../../utils/merchSession';
@@ -92,13 +92,19 @@ function BrowseLayoutPicker({ value, onChange }) {
 
 function useBrowseDisplaySrc(url) {
   const raw = String(url || '').trim();
+  const httpDisplay = /^https?:/i.test(raw) ? (artworkDisplayUrl(raw) || raw) : raw;
   const [src, setSrc] = useState(() => {
     if (!raw) return '';
-    return peekDisplaySrc(raw)?.src || raw;
+    if (httpDisplay && httpDisplay !== raw) return httpDisplay;
+    return peekDisplaySrc(raw)?.src || httpDisplay || raw;
   });
   useEffect(() => {
     if (!raw) {
       setSrc('');
+      return undefined;
+    }
+    if (httpDisplay && !raw.startsWith('data:') && !raw.startsWith('blob:')) {
+      setSrc(httpDisplay);
       return undefined;
     }
     const hit = peekDisplaySrc(raw);
@@ -121,7 +127,7 @@ function useBrowseDisplaySrc(url) {
     return () => {
       cancelled = true;
     };
-  }, [raw]);
+  }, [raw, httpDisplay]);
   return src;
 }
 
@@ -949,6 +955,10 @@ const ProductPage = ({ sidebar }) => {
 
   const screenshotForNewCartItem = () => {
     const pending = readPendingMerchData() || {};
+    if (pending.source === 'image') {
+      const original = pending.selected_screenshot || pending.edited_screenshot;
+      if (original) return original;
+    }
     const fromPicker = selectedScreenshotUrl || getSelectedScreenshotUrl();
     if (fromPicker) return fromPicker;
     if (editingCartItem?.selected_screenshot || editingCartItem?.screenshot) {
@@ -1100,6 +1110,12 @@ const ProductPage = ({ sidebar }) => {
       size: chosenSize,
       screenshot: screenshotUrl || editingCartItem?.screenshot,
       selected_screenshot: screenshotUrl || editingCartItem?.selected_screenshot,
+      displayScreenshot: (
+        (readPendingMerchData() || {}).display_screenshot
+        || editingCartItem?.displayScreenshot
+        || artworkDisplayUrl(screenshotUrl)
+        || ''
+      ),
       qty: isEditingCart && editingCartItem?.qty ? editingCartItem.qty : 1,
       category: category || '',
       printful_catalog_product_id: product?.printful_catalog_product_id ?? null,
@@ -1292,12 +1308,16 @@ const ProductPage = ({ sidebar }) => {
     try {
       const d = readPendingMerchData();
       if (d && (d.screenshots?.length || d.thumbnail || d.selected_screenshot || d.edited_screenshot)) {
-        const chosen = d.edited_screenshot || d.selected_screenshot || d.thumbnail || '';
+        const display = d.display_screenshot
+          || d.thumbnail
+          || artworkDisplayUrl(d.selected_screenshot || d.edited_screenshot || '')
+          || '';
+        const shots = Array.isArray(d?.screenshots) && d.screenshots.length
+          ? d.screenshots.slice(0, 6).map((s) => artworkDisplayUrl(s) || s)
+          : (display ? [display] : []);
         setFallbackImages({
-          screenshots: Array.isArray(d?.screenshots) && d.screenshots.length
-            ? d.screenshots.slice(0, 6)
-            : (chosen ? [chosen] : []),
-          thumbnail: d?.thumbnail || chosen || ''
+          screenshots: shots,
+          thumbnail: display || shots[0] || ''
         });
         
         // In creator mode, if we have video data, set up productData structure
@@ -1375,7 +1395,14 @@ const ProductPage = ({ sidebar }) => {
       const cartHasArt = Array.isArray(cartNow) && cartNow.some(
         (it) => it && String(it.screenshot || it.selected_screenshot || '').trim()
       );
-      if (!cartHasArt) applySelectedScreenshot(match.url);
+      if (!cartHasArt) {
+        const merch = readPendingMerchData() || {};
+        const original = merch.selected_screenshot;
+        const display = merch.display_screenshot;
+        if (!(original && display && match.url === display)) {
+          applySelectedScreenshot(match.url);
+        }
+      }
     } catch (_) {
       applySelectedScreenshot(match.url);
     }

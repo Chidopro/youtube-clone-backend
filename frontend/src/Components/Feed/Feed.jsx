@@ -3,6 +3,7 @@ import './Feed.css'
 import { useNavigate } from 'react-router-dom'
 import { publicStorageCardUrl, fetchPublicFavoriteLists } from '../../utils/favoriteListsApi'
 import { getSubdomain } from '../../utils/subdomainService'
+import { prefetchVideoPlayback } from '../../utils/videoOptimize'
 
 export const HUB_ROTATE_MS = 12000;
 
@@ -266,10 +267,13 @@ const Feed = ({
             key={item.id}
             className="card"
             style={{ cursor: 'pointer' }}
-            onClick={() => navigate(`/video/${item.categoryId || 0}/${item.id}`)}
+            onClick={() => {
+              prefetchVideoPlayback(item);
+              navigate(`/video/${item.categoryId || 0}/${item.id}`, { state: { video: item } });
+            }}
           >
             <img
-              src={item.thumbnail || item.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
+              src={publicStorageCardUrl(item.thumbnail || item.thumbnail_url || '', 720) || item.thumbnail || item.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
               alt=""
             />
             <h2>{item.title}</h2>

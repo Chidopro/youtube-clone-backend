@@ -5,9 +5,11 @@ import json
 import logging
 import os
 import queue
+import re
 import subprocess
 import tempfile
 import threading
+import time
 from urllib.parse import unquote, urlparse
 
 import requests
@@ -15,12 +17,14 @@ import requests
 logger = logging.getLogger(__name__)
 
 MAX_HEIGHT = 720
-MAX_VIDEO_BITRATE = 2_500_000
+MAX_VIDEO_BITRATE = 1_000_000
 FFMPEG_TIMEOUT_SEC = 360
 DOWNLOAD_TIMEOUT_SEC = 120
 MAX_DOWNLOAD_BYTES = 220 * 1024 * 1024
 PLAYBACK_MARK = "_w720."
 PLAYBACK_MARK_TRANSCODED = "_w720t."
+PLAYBACK_URL_RE = re.compile(r"_w720t\d*\.|_w720\.", re.I)
+PLAYBACK_SUFFIX_RE = re.compile(r"(_w720t\d*|_w720|_web)$", re.I)
 CACHE_CONTROL = "31536000"
 
 _lock = threading.Lock()
@@ -52,18 +56,20 @@ def public_videos2_path(video_url):
     return rel
 
 
-def _web_output_path(rel_path):
-    base, ext = os.path.splitext(rel_path)
-    for suffix in ("_w720t", "_w720", "_web"):
-        if base.endswith(suffix):
-            base = base[: -len(suffix)]
-            break
-    return f"{base}_w720t.mp4"
+def _strip_playback_suffix(rel_path):
+    base, _ext = os.path.splitext(rel_path)
+    return PLAYBACK_SUFFIX_RE.sub("", base)
+
+
+def _web_output_path(rel_path, generation=""):
+    """New uploads use _w720t. Force re-encodes use _w720t2 so CDN cannot keep the old file."""
+    base = _strip_playback_suffix(rel_path)
+    mark = f"_w720t{generation}" if generation else "_w720t"
+    return f"{base}{mark}.mp4"
 
 
 def _already_web_url(video_url):
-    url = str(video_url or "")
-    return bool(url) and (PLAYBACK_MARK_TRANSCODED in url or PLAYBACK_MARK in url)
+    return bool(PLAYBACK_URL_RE.search(str(video_url or "")))
 
 
 def _is_youtube_url(video_url):
@@ -89,9 +95,10 @@ def candidate_web_urls(video_url):
     if not rel:
         return []
     web_rel = _web_output_path(rel)
-    old_rel = web_rel.replace("_w720t.mp4", "_w720.mp4")
+    v2_rel = _web_output_path(rel, generation="2")
+    old_rel = f"{_strip_playback_suffix(rel)}_w720.mp4"
     out = []
-    for candidate_rel in (old_rel, web_rel):
+    for candidate_rel in (v2_rel, web_rel, old_rel):
         url = public_url_for_rel(video_url, candidate_rel)
         if url and url not in out:
             out.append(url)
@@ -275,7 +282,9 @@ def _transcode(src_path, dest_path):
             "-map",
             "0:a:0?",
             "-vf",
-            "scale=-2:'min(720,ih)'",
+            "scale=w='min(720,iw)':h='min(720,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2",
+            "-r",
+            "30",
             "-c:v",
             "libx264",
             "-preset",
@@ -287,9 +296,9 @@ def _transcode(src_path, dest_path):
             "-crf",
             "26",
             "-maxrate",
-            "2M",
+            "1M",
             "-bufsize",
-            "4M",
+            "2M",
             "-g",
             "60",
             "-keyint_min",
@@ -385,15 +394,18 @@ def optimize_video_url(admin_client, video_url, video_id=None, source_url=None, 
         fd_out, tmp_out = tempfile.mkstemp(prefix="smvid_web_", suffix=".mp4")
         os.close(fd_out)
 
-        logger.info("Optimizing video %s (%s)", video_id or "", rel)
+        logger.info("Optimizing video %s (%s) force=%s", video_id or "", rel, force)
         _download(source_url, tmp_in)
         _transcode(tmp_in, tmp_out)
-        web_rel = _web_output_path(rel)
+        web_rel = _web_output_path(rel, generation=str(int(time.time())) if force else "")
         playback_url = _upload_web_file(admin_client, web_rel, tmp_out)
         if isinstance(playback_url, str):
             playback_url = playback_url.split("?")[0]
+        print_source = source_url
+        if _already_web_url(print_source) and video_url and not _already_web_url(video_url):
+            print_source = video_url
         if video_id:
-            _update_video_row(admin_client, video_id, playback_url, source_url)
+            _update_video_row(admin_client, video_id, playback_url, print_source)
         logger.info("Optimized video %s -> %s", video_id or rel, playback_url)
         return {"ok": True, "skipped": False, "playback_url": playback_url, "source_url": source_url}
     except Exception as exc:
