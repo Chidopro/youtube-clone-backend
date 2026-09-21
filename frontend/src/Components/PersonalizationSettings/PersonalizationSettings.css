@@ -7,16 +7,79 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.storefront-setup-guide {
+  background: #F4F4F5;
+  border: 1px solid #E4E4E7;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.storefront-setup-guide-title {
+  margin: 0 0 8px;
+  color: #18181B;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.storefront-setup-guide-intro {
+  margin: 0 0 14px;
+  color: #52525B;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.storefront-setup-steps {
+  margin: 0;
+  padding: 0 0 0 18px;
+}
+
+.storefront-setup-steps li {
+  margin: 0 0 10px;
+  color: #52525B;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.storefront-setup-steps li:last-child {
+  margin-bottom: 0;
+}
+
+.storefront-setup-steps strong {
+  display: block;
+  color: #18181B;
+  font-weight: 600;
+}
+
+.storefront-setup-steps span {
+  color: #71717A;
+}
+
+.storefront-setup-help {
+  margin: 14px 0 0;
+  font-size: 0.9rem;
+}
+
+.storefront-setup-help a {
+  color: #2563EB;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.storefront-setup-help a:hover {
+  text-decoration: underline;
+}
+
 .personalization-settings h2 {
   margin: 0 0 10px 0;
-  color: #333;
+  color: #18181B;
   font-size: 1.8rem;
   font-weight: 700;
 }
 
 .personalization-description {
   margin: 0 0 30px 0;
-  color: #666;
+  color: #52525B;
   font-size: 1rem;
   line-height: 1.6;
 }
@@ -28,8 +91,8 @@
   gap: 12px;
   margin-bottom: 24px;
   padding: 16px 20px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
-  border: 1px solid rgba(102, 126, 234, 0.2);
+  background: #F4F4F5;
+  border: 1px solid #E4E4E7;
   border-radius: 10px;
 }
 
@@ -39,18 +102,18 @@
 }
 
 .personal-link-placeholder {
-  color: #64748b;
+  color: #71717A;
   font-size: 0.95rem;
 }
 
 .personal-link-label {
   font-weight: 600;
-  color: #4338ca;
+  color: #18181B;
   font-size: 0.95rem;
 }
 
 .personal-link-url {
-  color: #667eea;
+  color: #2563EB;
   font-size: 1rem;
   font-weight: 500;
   text-decoration: none;
@@ -63,18 +126,17 @@
 
 .personal-link-copy {
   padding: 8px 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
+  background: #18181B;
+  color: #FFFFFF;
+  border: 1px solid #18181B;
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.2s;
 }
 
 .personal-link-copy:hover {
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
 .personalization-settings-loading {
@@ -92,7 +154,7 @@
 }
 
 .setting-group--logo-focus {
-  outline: 2px solid #667eea;
+  outline: 2px solid #2563EB;
   outline-offset: 10px;
   border-radius: 10px;
   animation: logo-focus-pulse 1.6s ease;
@@ -104,7 +166,7 @@
 }
 
 @keyframes logo-focus-pulse {
-  0% { background: rgba(102, 126, 234, 0.16); }
+  0% { background: rgba(37, 99, 235, 0.12); }
   100% { background: transparent; }
 }
 
@@ -139,7 +201,7 @@
 .setting-input:focus,
 .setting-textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #2563EB;
 }
 
 .setting-input:disabled,
@@ -168,8 +230,9 @@
 .logo-upload-btn {
   display: inline-block;
   padding: 10px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #18181B;
+  color: #FFFFFF;
+  border: 1px solid #18181B;
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 600;
@@ -229,7 +292,7 @@
 
 .personalization-meta-intro {
   margin: 0 0 12px 0;
-  color: #667eea;
+  color: #52525B;
   font-weight: 500;
 }
 
@@ -267,7 +330,7 @@
 
 .color-text-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #2563EB;
 }
 
 .header-opacity-setting .setting-label {
@@ -280,7 +343,7 @@
 .opacity-value {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #667eea;
+  color: #18181B;
 }
 
 .opacity-slider {
@@ -303,7 +366,7 @@
   height: 18px;
   border-radius: 50%;
   background: #fff;
-  border: 2px solid #667eea;
+  border: 2px solid #2563EB;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   cursor: pointer;
 }
@@ -313,7 +376,7 @@
   height: 18px;
   border-radius: 50%;
   background: #fff;
-  border: 2px solid #667eea;
+  border: 2px solid #2563EB;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   cursor: pointer;
 }
@@ -334,20 +397,18 @@
 }
 
 .save-settings-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
+  background: #18181B;
+  color: #FFFFFF;
+  border: 1px solid #18181B;
   padding: 14px 32px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .save-settings-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  opacity: 0.92;
 }
 
 .save-settings-btn:disabled {

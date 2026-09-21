@@ -174,13 +174,25 @@ export function favoriteImageUrl(favorite) {
   return (favorite.image_url || favorite.thumbnail_url || favorite.thumbnail || '').trim();
 }
 
+function isDedicatedFavoriteThumb(url) {
+  return /\/favorites\/thumbs\//.test(url || '');
+}
+
+function isLightweightCardUrl(url) {
+  const u = url || '';
+  if (isDedicatedFavoriteThumb(u)) return true;
+  if (/_thumb\.(png|jpe?g|webp)(\?|$)/i.test(u)) return true;
+  return false;
+}
+
 /**
- * Lightweight URL for grid/cards. Keeps full image_url for Make Merch / print.
- * Uses a dedicated thumbnail when present; otherwise asks Supabase for a resized render.
+ * Lightweight URL for grid/cards. Dedicated JPEG thumbs are already small — skip
+ * the supabase render hop. Other storage objects may still use a resized render.
  */
 export function publicStorageCardUrl(src, width = 720) {
   const url = (src || '').trim();
   if (!url) return '';
+  if (isLightweightCardUrl(url)) return url;
   const w = Number(width);
   const px = Number.isFinite(w) && w >= 32 ? Math.round(w) : 720;
   try {
@@ -215,9 +227,10 @@ export function favoriteCardThumbUrl(favorite) {
   if (!favorite) return '';
   const full = (favorite.image_url || '').trim();
   const thumb = (favorite.thumbnail_url || favorite.thumbnail || '').trim();
+  if (isDedicatedFavoriteThumb(thumb) && (!full || thumb !== full)) return thumb;
   if (thumb && full && thumb !== full) return thumb;
   if (thumb && !full) return thumb;
-  return publicStorageCardUrl(full || thumb);
+  return full || thumb;
 }
 
 export function listPreviewImages(list) {
@@ -248,7 +261,7 @@ export async function memberFavoritePreviewUrls(userId) {
       return [];
     }
     const urls = (data || [])
-      .map((f) => String(f.image_url || f.thumbnail_url || '').trim())
+      .map((f) => favoriteCardThumbUrl(f))
       .filter(Boolean);
     memberPreviewMemory.set(uid, urls);
     return urls;

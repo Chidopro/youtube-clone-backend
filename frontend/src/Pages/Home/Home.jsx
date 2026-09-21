@@ -8,7 +8,7 @@ import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import DemoStorefrontWelcome from '../../Components/DemoStorefrontBanner/DemoStorefrontBanner';
-import { fetchPublicFavoriteLists, fetchPublicFavoritesByList, favoriteImageUrl, peekPublicFavoriteLists, storefrontHubPreviews, publicStorageCardUrl, memberFavoritePreviewUrls } from '../../utils/favoriteListsApi';
+import { fetchPublicFavoriteLists, fetchPublicFavoritesByList, favoriteCardThumbUrl, peekPublicFavoriteLists, storefrontHubPreviews, publicStorageCardUrl, memberFavoritePreviewUrls } from '../../utils/favoriteListsApi';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
 import { apiJoin } from '../../config/apiConfig';
 import { sortVideosForPlay } from '../../utils/videoPlayOrder';
@@ -66,14 +66,12 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
       setLoading(true);
       setError('');
 
-      // Creator storefronts: wait until creator context finishes loading
-      if (creatorLoading) {
-        setVideos([]);
-        return;
-      }
-      if (!currentCreator?.id) {
-        setVideos([]);
-        setLoading(false);
+      const ownerId = currentCreator?.id;
+      if (!ownerId) {
+        if (!creatorLoading) {
+          setVideos([]);
+          setLoading(false);
+        }
         return;
       }
 
@@ -162,7 +160,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           );
           if (!cancelled && okOwner && ownerData?.success) {
             ownerImages = (ownerData.favorites || [])
-              .map((f) => favoriteImageUrl(f))
+              .map((f) => favoriteCardThumbUrl(f))
               .filter(Boolean);
             setFavoritesPreview(ownerImages);
           }
@@ -196,7 +194,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
                 const { ok: okFriend, data: friendData } = await fetchPublicFavoritesByList(sub, slug);
                 if (okFriend && friendData?.success) {
                   extra.push(
-                    ...(friendData.favorites || []).map((f) => favoriteImageUrl(f)).filter(Boolean)
+                    ...(friendData.favorites || []).map((f) => favoriteCardThumbUrl(f)).filter(Boolean)
                   );
                 }
               }

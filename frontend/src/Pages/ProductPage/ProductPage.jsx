@@ -131,6 +131,33 @@ function screenshotTileOrientation(url, urlOrientations) {
   };
 }
 
+function BrowseLayoutPicker({ value, onChange }) {
+  return (
+    <div className="browse-layout-picker" role="radiogroup" aria-label="Image layout">
+      <label className="browse-layout-picker-option">
+        <input
+          type="radio"
+          name="browse-image-layout"
+          value="portrait"
+          checked={value !== 'landscape'}
+          onChange={() => onChange('portrait')}
+        />
+        Portrait
+      </label>
+      <label className="browse-layout-picker-option">
+        <input
+          type="radio"
+          name="browse-image-layout"
+          value="landscape"
+          checked={value === 'landscape'}
+          onChange={() => onChange('landscape')}
+        />
+        Landscape
+      </label>
+    </div>
+  );
+}
+
 function useBrowseDisplaySrc(url) {
   const raw = String(url || '').trim();
   const [src, setSrc] = useState(() => {
@@ -491,6 +518,7 @@ const ProductPage = ({ sidebar }) => {
   /** Actual URL/data of the selected screenshot (set on click). Used for add-to-cart so the exact chosen image is sent, not a fallback. */
   const [selectedScreenshotUrl, setSelectedScreenshotUrl] = useState(null);
   const [selectedEditPreset, setSelectedEditPreset] = useState('original');
+  const [browseLayoutOrientation, setBrowseLayoutOrientation] = useState('portrait');
   const [isDesktopLayout, setIsDesktopLayout] = useState(() => (
     typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
   ));
@@ -567,23 +595,27 @@ const ProductPage = ({ sidebar }) => {
   const browseIsLandscape = selectedFrame.landscape;
   const browseFrameAspect = selectedFrame.aspect;
   const browseAspectNumber = selectedFrame.aspectNumber;
+  const browseLayoutIsLandscape = browseLayoutOrientation === 'landscape';
+  const chooseBrowseLayout = useCallback((next) => {
+    const ori = next === 'landscape' ? 'landscape' : 'portrait';
+    setBrowseLayoutOrientation(ori);
+    rememberArtworkOrientation(ori);
+  }, []);
   useEffect(() => {
     if (isVideoScreenshotMerch()) {
       rememberArtworkOrientation('portrait');
       return;
     }
-    const measured = browseSourceUrl && urlOrientations[browseSourceUrl];
-    if (!measured) return;
-    rememberArtworkOrientation(measured.landscape ? 'landscape' : 'portrait');
-  }, [browseSourceUrl, urlOrientations]);
+    rememberArtworkOrientation(browseLayoutOrientation);
+  }, [browseLayoutOrientation]);
   const featherPresetMaskStyle = useMemo(
     () => featherEdgeMaskStyle(
       BROWSE_FEATHER_EDGE,
-      browseIsLandscape ? 320 : 240,
-      browseIsLandscape ? 180 : 320,
+      browseLayoutIsLandscape ? 320 : 240,
+      browseLayoutIsLandscape ? 180 : 320,
       0,
     ) || undefined,
-    [browseIsLandscape],
+    [browseLayoutIsLandscape],
   );
   useEffect(() => {
     setSelectedEditPreset('original');
@@ -1136,14 +1168,7 @@ const ProductPage = ({ sidebar }) => {
       }
     }
     if (!pendingOrientation) {
-      if (videoMerch) {
-        pendingOrientation = 'portrait';
-      } else {
-        const measuredShotOri = screenshotUrl && urlOrientations[screenshotUrl];
-        if (measuredShotOri) {
-          pendingOrientation = measuredShotOri.landscape ? 'landscape' : 'portrait';
-        }
-      }
+      pendingOrientation = videoMerch ? 'portrait' : browseLayoutOrientation;
     }
     try {
       const merchData = readPendingMerchData();
@@ -1186,6 +1211,7 @@ const ProductPage = ({ sidebar }) => {
     };
     if (pendingOrientation) {
       item.imageOrientation = pendingOrientation;
+      item.image_orientation = pendingOrientation;
       item.toolSettings = {
         ...(item.toolSettings || {}),
         imageOrientation: pendingOrientation
@@ -1934,10 +1960,16 @@ const ProductPage = ({ sidebar }) => {
           {/* Screenshot Selection Section — hidden in My Shop catalog (blank products only) */}
           {!isShopCatalog && (
           <div
-            className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}${showDesktopEditPresets ? ' screenshots-section--with-edits' : ''}${browseIsLandscape && !showVideoThumbLabel ? ' screenshots-section--landscape' : ''}`}
+            className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}${showDesktopEditPresets ? ' screenshots-section--with-edits' : ''}${showDesktopEditPresets && browseLayoutIsLandscape ? ' screenshots-section--layout-landscape' : ''}${!showDesktopEditPresets && browseIsLandscape && !showVideoThumbLabel ? ' screenshots-section--landscape' : ''}`}
             style={{
-              '--screenshot-frame-aspect': browseFrameAspect,
-              '--screenshot-aspect-number': String(browseAspectNumber),
+              '--screenshot-frame-aspect': showDesktopEditPresets
+                ? (browseLayoutIsLandscape ? '4 / 3' : '3 / 4')
+                : browseFrameAspect,
+              '--screenshot-aspect-number': String(
+                showDesktopEditPresets
+                  ? (browseLayoutIsLandscape ? 4 / 3 : 3 / 4)
+                  : browseAspectNumber
+              ),
             }}
           >
             {!creatorMode && (
@@ -1967,7 +1999,7 @@ const ProductPage = ({ sidebar }) => {
                   const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
                   const thumbOri = showVideoThumbLabel
                     ? { className: '', style: undefined }
-                    : screenshotTileOrientation(thumbnailUrl, urlOrientations);
+                    : (showDesktopEditPresets ? { className: '', style: undefined } : screenshotTileOrientation(thumbnailUrl, urlOrientations));
                   return thumbnailUrl ? (
                   <div
                     className={`screenshot-item${showDesktopEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}${thumbOri.className}`}
@@ -2003,16 +2035,19 @@ const ProductPage = ({ sidebar }) => {
                     {showDesktopEditPresets && !creatorMode ? (
                       <>
                         <span className="screenshot-preset-label screenshot-preset-label--selected">Selected</span>
-                        <button
-                          type="button"
-                          className="change-image-link"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleChangeImage();
-                          }}
-                        >
-                          Change Image
-                        </button>
+                        <div className="selected-image-actions">
+                          <button
+                            type="button"
+                            className="change-image-link"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleChangeImage();
+                            }}
+                          >
+                            Change Image
+                          </button>
+                          <BrowseLayoutPicker value={browseLayoutOrientation} onChange={chooseBrowseLayout} />
+                        </div>
                       </>
                     ) : null}
                   </div>
@@ -2027,7 +2062,7 @@ const ProductPage = ({ sidebar }) => {
                     const isFirstImage = !thumbnailUrl && index === 0;
                     const shotOri = showVideoThumbLabel
                       ? { className: '', style: undefined }
-                      : screenshotTileOrientation(screenshot, urlOrientations);
+                      : (showDesktopEditPresets ? { className: '', style: undefined } : screenshotTileOrientation(screenshot, urlOrientations));
                     const label = showVideoThumbLabel
                       ? (isFirstImage ? 'Thumbnail' : `Screenshot ${index + 1}`)
                       : '';
@@ -2067,16 +2102,19 @@ const ProductPage = ({ sidebar }) => {
                         {showDesktopEditPresets && !creatorMode && !thumbnailUrl && index === 0 ? (
                           <>
                             <span className="screenshot-preset-label screenshot-preset-label--selected">Selected</span>
-                            <button
-                              type="button"
-                              className="change-image-link"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleChangeImage();
-                              }}
-                            >
-                              Change Image
-                            </button>
+                            <div className="selected-image-actions">
+                              <button
+                                type="button"
+                                className="change-image-link"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleChangeImage();
+                                }}
+                              >
+                                Change Image
+                              </button>
+                              <BrowseLayoutPicker value={browseLayoutOrientation} onChange={chooseBrowseLayout} />
+                            </div>
                           </>
                         ) : null}
                       </div>

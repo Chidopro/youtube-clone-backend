@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import { normalizeStorageUrl } from '../../utils/storageUrl';
@@ -776,6 +777,36 @@ const PersonalizationSettings = ({ readOnly = false }) => {
 
   return (
     <div className="personalization-settings">
+      {showHomepageBrand ? null : (
+        <div className="storefront-setup-guide">
+          <h3 className="storefront-setup-guide-title">Get your storefront ready</h3>
+          <p className="storefront-setup-guide-intro">
+            Start with your personal ScreenMerch address, then add your branding and storefront details.
+          </p>
+          <ol className="storefront-setup-steps">
+            <li>
+              <strong>Choose your subdomain</strong>
+              <span>Create your personal address: yourname.screenmerch.com</span>
+            </li>
+            <li>
+              <strong>Add your branding</strong>
+              <span>Upload your logo and choose your storefront colors.</span>
+            </li>
+            <li>
+              <strong>Add your storefront details</strong>
+              <span>Set your favicon, page title, and description.</span>
+            </li>
+            <li>
+              <strong>Save your settings</strong>
+              <span>New subdomains may take up to 24 hours to become active.</span>
+            </li>
+          </ol>
+          <p className="storefront-setup-help">
+            <Link to="/how-it-works">Need help? View How ScreenMerch Works</Link>
+          </p>
+        </div>
+      )}
+
       <div className="personalization-personal-link personalization-personal-link--top">
         <span className="personal-link-label">Your personal link</span>
         {personalLinkUrl ? (
@@ -904,10 +935,11 @@ const PersonalizationSettings = ({ readOnly = false }) => {
         </div>
       ) : null}
 
-      <h2>{showHomepageBrand ? 'Your storefront (optional)' : 'Personalize Your ScreenMerch App'}</h2>
+      <h2>{showHomepageBrand ? 'Your storefront (optional)' : 'Set Up Your Storefront'}</h2>
       <p className="personalization-description">
-        Create your own branded ScreenMerch app with a custom subdomain, colors, and branding. 
-        Your personalized app will show only your content.
+        {showHomepageBrand
+          ? 'Create your own branded ScreenMerch app with a custom subdomain, colors, and branding. Your personalized app will show only your content.'
+          : 'Choose your ScreenMerch address and personalize how your storefront appears to your audience.'}
       </p>
       
       <div className="setting-group">

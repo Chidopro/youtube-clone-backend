@@ -117,7 +117,10 @@ const Navbar = ({ resetCategory }) => {
     const logoSrc = customLogoUrl || (!isStorefront ? logo : '');
     const [logoOrientation, setLogoOrientation] = useState(() => {
         const cached = peekCachedStorefrontBrand()?.logo_orientation;
-        return cached === 'horizontal' || cached === 'square' ? cached : 'square';
+        if (cached === 'horizontal' || cached === 'square') return cached;
+        // Unknown custom marks default to horizontal so a wordmark is not clipped
+        // inside the square box (that looked like a missing logo until refresh).
+        return isStorefront ? 'horizontal' : 'square';
     });
 
     // Storefront Personalization, or master-admin homepage branding on screenmerch.com
@@ -162,18 +165,18 @@ const Navbar = ({ resetCategory }) => {
                 classifyLogoOrientation(img);
             });
         };
+        const mobile = typeof window.matchMedia === 'function'
+            && window.matchMedia('(max-width: 768px)').matches;
+        const idleTimeout = mobile ? 2500 : 600;
         if (typeof requestIdleCallback === 'function') {
-            requestIdleCallback(runCrop, { timeout: 600 });
+            requestIdleCallback(runCrop, { timeout: idleTimeout });
         } else {
-            window.setTimeout(runCrop, 0);
+            window.setTimeout(runCrop, mobile ? 400 : 0);
         }
     };
 
     useEffect(() => {
-        if (!customLogoUrl) {
-            setLogoOrientation('square');
-            return;
-        }
+        if (!customLogoUrl) return;
         const cached = peekCachedStorefrontBrand();
         if (
             cached?.custom_logo_url === customLogoUrl
@@ -1092,6 +1095,7 @@ const Navbar = ({ resetCategory }) => {
                             data-logo-original={customLogoUrl || undefined}
                             className={`logo${customLogoUrl ? ' logo--custom' : ''} logo--${logoOrientation}${isOrderSuccessPage ? ' order-success-logo' : ''}`}
                             fetchPriority="high"
+                            loading="eager"
                             decoding="async"
                             onLoad={(e) => prepareNavbarLogo(e.target)}
                             ref={(el) => {

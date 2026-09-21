@@ -103,61 +103,46 @@ export function shuffleHubThumbs(pools, tick, stagnant) {
 }
 
 export function HubThumb({ src, emptyLabel }) {
-  const [shown, setShown] = useState(src || '');
+  const [current, setCurrent] = useState(src || '');
 
   useEffect(() => {
-    if (!src) {
-      setShown('');
-      return undefined;
-    }
-    if (src === shown) return undefined;
-    let cancelled = false;
-    const img = new Image();
-    const apply = (url) => {
-      if (!cancelled) setShown(url);
-    };
-    img.onload = () => apply(src);
-    img.onerror = () => {
-      try {
-        const u = new URL(src);
-        if (u.pathname.includes('/storage/v1/render/image/public/')) {
-          u.pathname = u.pathname.replace(
-            '/storage/v1/render/image/public/',
-            '/storage/v1/object/public/'
-          );
-          u.search = '';
-          const fallback = u.toString();
-          const retry = new Image();
-          retry.onload = () => apply(fallback);
-          retry.onerror = () => {
-            if (!cancelled && !shown) setShown('');
-          };
-          retry.src = fallback;
-          return;
-        }
-      } catch (_) { /* ignore */ }
-      if (!cancelled && !shown) setShown('');
-    };
-    img.src = src;
-    return () => {
-      cancelled = true;
-    };
-  }, [src, shown]);
+    setCurrent(src || '');
+  }, [src]);
 
-  if (shown) {
+  if (!current) {
     return (
-      <img
-        src={shown}
-        alt=""
-        loading="eager"
-        decoding="async"
-      />
+      <div className={`hub-card-empty${emptyLabel ? '' : ' hub-card-empty--pulse'}`} aria-hidden="true">
+        {emptyLabel ? <span>{emptyLabel}</span> : null}
+      </div>
     );
   }
+
   return (
-    <div className={`hub-card-empty${emptyLabel ? '' : ' hub-card-empty--pulse'}`} aria-hidden="true">
-      {emptyLabel ? <span>{emptyLabel}</span> : null}
-    </div>
+    <img
+      src={current}
+      alt=""
+      loading={emptyLabel ? 'eager' : 'lazy'}
+      decoding="async"
+      fetchPriority={emptyLabel ? 'high' : 'auto'}
+      onError={(e) => {
+        try {
+          const u = new URL(e.currentTarget.src);
+          if (u.pathname.includes('/storage/v1/render/image/public/')) {
+            u.pathname = u.pathname.replace(
+              '/storage/v1/render/image/public/',
+              '/storage/v1/object/public/'
+            );
+            u.search = '';
+            const fallback = u.toString();
+            if (e.currentTarget.src !== fallback) {
+              setCurrent(fallback);
+              return;
+            }
+          }
+        } catch (_) { /* ignore */ }
+        setCurrent('');
+      }}
+    />
   );
 }
 

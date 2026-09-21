@@ -5,8 +5,8 @@ import { supabase } from '../../supabaseClient';
 import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
-import { safeAuthReturnPath, consumeAuthReturnPath, peekAuthReturnPath } from '../../utils/shopperAuth';
-import { endDemoPreviewSession } from '../../utils/demoStorefront';
+import { safeAuthReturnPath, consumeAuthReturnPath, peekAuthReturnPath, creatorNeedsStorefrontSetup } from '../../utils/shopperAuth';
+import { endDemoPreviewSession, isDemoStorefront } from '../../utils/demoStorefront';
 import CustomerLegalConsent from '../../Components/CustomerLegalConsent/CustomerLegalConsent';
 import './Login.css';
 
@@ -434,7 +434,16 @@ const Login = () => {
           } else if (remembered) {
             goAfterAuth(remembered, navigate, { replace: true });
           } else {
-            goAfterAuth('/', navigate, { replace: true });
+            let loginUser = data?.user;
+            try {
+              const stored = JSON.parse(localStorage.getItem('user') || 'null');
+              if (stored) loginUser = stored;
+            } catch (_) {}
+            if (creatorNeedsStorefrontSetup(loginUser) && !isDemoStorefront()) {
+              goAfterAuth('/dashboard?tab=personalization', navigate, { replace: true });
+            } else {
+              goAfterAuth('/', navigate, { replace: true });
+            }
           }
         }, 700);
       }
@@ -603,7 +612,7 @@ const Login = () => {
                 Processing...
               </>
             ) : (
-              isCustomerSignup ? 'Submit' : isLoginMode ? 'Sign In' : 'Create Account'
+              isCustomerSignup ? 'Sign Up' : isLoginMode ? 'Sign In' : 'Create Account'
             )}
           </button>
           {isLoginMode && !isCustomerSignup && (

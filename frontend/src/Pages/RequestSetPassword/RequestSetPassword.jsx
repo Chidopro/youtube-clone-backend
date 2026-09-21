@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getBackendUrl } from '../../config/apiConfig';
 import { peekAuthReturnPath, safeAuthReturnPath } from '../../utils/shopperAuth';
+import screenMerchLogo from '../../assets/screenmerch_logo.png.png';
 import './RequestSetPassword.css';
 
 const RequestSetPassword = () => {
@@ -50,11 +51,16 @@ const RequestSetPassword = () => {
     <div className="request-set-password-page">
       <div className="request-set-password-card">
         <div className="request-set-password-header">
-          <div className="request-set-password-logo">🎯</div>
-          <h2 className="request-set-password-title">Set your password</h2>
+          <img
+            src={screenMerchLogo}
+            alt="ScreenMerch"
+            className="request-set-password-logo"
+          />
+          <h1 className="request-set-password-title">Create your ScreenMerch password</h1>
           <p className="request-set-password-subtitle">
-            Enter the email for your ScreenMerch account. We’ll send you a link to set or reset your password (valid for 24 hours).
+            Enter the email address associated with your ScreenMerch account. We'll send you a secure link to create or reset your password.
           </p>
+          <span className="request-set-password-expiration">The link will be valid for 24 hours.</span>
         </div>
 
         {message && (
@@ -84,13 +90,13 @@ const RequestSetPassword = () => {
               />
             </div>
             <button type="submit" className="request-set-password-submit" disabled={isLoading}>
-              {isLoading ? 'Sending…' : 'Send set-password link'}
+              {isLoading ? 'Sending…' : 'Send Password Link'}
             </button>
           </form>
         ) : null}
 
         <div className="request-set-password-footer">
-          <Link to="/login" className="request-set-password-link">Back to sign in</Link>
+          <Link to="/login" className="request-set-password-link">Return to Sign In</Link>
         </div>
       </div>
     </div>

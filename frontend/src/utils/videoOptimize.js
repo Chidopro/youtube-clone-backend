@@ -32,15 +32,14 @@ export function candidateWebPlaybackUrls(url) {
 }
 
 /**
- * Play the web file immediately, the way Caroline on Beach does.
- * If video_url is already _w720, use it. Otherwise use source_video_url's _w720.
+ * Play the stored file immediately.
+ * Do not guess a _w720 URL that may 404 for ~10s before the original starts.
  */
 export function playbackUrlForVideo(video) {
   const url = String(video?.video_url || '').split('?')[0];
-  if (!url || isOptimizedPlaybackUrl(url) || /youtube\.com|youtu\.be/i.test(url)) return url;
-  const source = String(video?.source_video_url || url).split('?')[0];
-  const [w720] = candidateWebPlaybackUrls(source);
-  return w720 || url;
+  if (!url || /youtube\.com|youtu\.be/i.test(url)) return url;
+  if (isOptimizedPlaybackUrl(url)) return url;
+  return url;
 }
 
 /** Ask the backend to make a smoother H.264 playback file. Non-blocking. */

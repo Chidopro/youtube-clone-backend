@@ -550,3 +550,118 @@ def reset_all_platform_sales_records(client, order_store=None, log=None):
         "deleted_screenmerch_payouts_count": deleted_screenmerch_payouts_count,
         "purged_order_store_count": purged_order_store_count,
     }
+
+
+def _normalize_subdomain(value):
+    return (value or "").strip().lower() or None
+
+
+def notify_admin_subdomain_for_netlify(
+    subdomain,
+    *,
+    previous_subdomain=None,
+    creator_email=None,
+    creator_name=None,
+):
+    """Email MAIL_TO the Netlify domain alias to add. Does not email the creator."""
+    import html as html_lib
+    import requests
+
+    new_sub = _normalize_subdomain(subdomain)
+    old_sub = _normalize_subdomain(previous_subdomain)
+    if not new_sub or new_sub == old_sub:
+        return False
+
+    api_key = os.getenv("RESEND_API_KEY")
+    from_addr = os.getenv("RESEND_FROM", "noreply@screenmerch.com")
+    to_addr = os.getenv("MAIL_TO") or os.getenv("ADMIN_EMAIL")
+    if not api_key or not from_addr or not to_addr:
+        logger.warning(
+            "Subdomain Netlify notice not sent (RESEND_API_KEY/RESEND_FROM/MAIL_TO missing) subdomain=%s",
+            new_sub,
+        )
+        return False
+
+    host = f"{new_sub}.screenmerch.com"
+    store_url = f"https://{host}"
+    safe_host = html_lib.escape(host)
+    safe_store_url = html_lib.escape(store_url)
+    safe_new = html_lib.escape(new_sub)
+    creator_label = (creator_name or "").strip() or (creator_email or "").strip() or "a creator"
+    safe_creator = html_lib.escape(creator_label)
+    safe_email = html_lib.escape((creator_email or "").strip()) if creator_email else ""
+    rename_html = ""
+    rename_text = ""
+    if old_sub:
+        safe_old_host = html_lib.escape(f"{old_sub}.screenmerch.com")
+        rename_html = f"<p style=\"margin:0 0 16px 0;color:#52525B;\">This replaces the previous address <strong>{safe_old_host}</strong>.</p>"
+        rename_text = f"This replaces the previous address {old_sub}.screenmerch.com.\n"
+
+    html = f"""
+<html>
+<body style="margin:0;padding:0;background:#F4F4F5;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F4F5;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border:1px solid #E4E4E7;border-radius:8px;">
+          <tr>
+            <td style="padding:28px 32px 8px;font-family:Arial,Helvetica,sans-serif;">
+              <p style="margin:0 0 6px;font-size:13px;letter-spacing:0.04em;color:#71717A;text-transform:uppercase;">ScreenMerch admin</p>
+              <h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;color:#18181B;">Add this subdomain in Netlify</h1>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#18181B;">
+                <strong>{safe_creator}</strong> saved a storefront address. Add it as a domain alias so HTTPS works.
+              </p>
+              {rename_html}
+              <p style="margin:0 0 8px;font-size:14px;color:#52525B;">Domain alias to add:</p>
+              <p style="margin:0 0 20px;padding:14px 16px;background:#F4F4F5;border-radius:6px;font-family:Consolas,Monaco,monospace;font-size:16px;color:#18181B;"><strong>{safe_host}</strong></p>
+              <ol style="margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.6;color:#18181B;">
+                <li>Netlify → Domain management → Add domain alias</li>
+                <li>Enter <strong>{safe_host}</strong></li>
+                <li>Wait for SSL, then open <a href="{safe_store_url}" style="color:#2563EB;">{safe_store_url}</a></li>
+              </ol>
+              <p style="margin:0;font-size:13px;line-height:1.55;color:#71717A;">
+                Already stored on the user row / Admin user list as <strong>{safe_new}</strong>
+                {f" ({safe_email})" if safe_email else ""}. The creator is not emailed; their dashboard already shows the personal link.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+    text = (
+        f"Add this subdomain in Netlify\n\n"
+        f"{creator_label} saved a storefront address.\n"
+        f"{rename_text}"
+        f"Domain alias to add: {host}\n\n"
+        f"1. Netlify → Domain management → Add domain alias\n"
+        f"2. Enter {host}\n"
+        f"3. Wait for SSL, then open {store_url}\n\n"
+        f"Already stored in Admin / users.subdomain as {new_sub}"
+        f"{f' ({creator_email.strip()})' if creator_email else ''}.\n"
+        f"The creator is not emailed.\n"
+    )
+    try:
+        resp = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "from": from_addr,
+                "to": [to_addr],
+                "subject": f"Netlify alias needed: {host}",
+                "html": html,
+                "text": text,
+            },
+            timeout=20,
+        )
+        if resp.status_code == 200:
+            logger.info("Subdomain Netlify notice sent to %s for %s", to_addr, host)
+            return True
+        logger.error("Subdomain Netlify notice failed %s: %s", resp.status_code, resp.text)
+        return False
+    except Exception:
+        logger.exception("Subdomain Netlify notice error for %s", host)
+        return False

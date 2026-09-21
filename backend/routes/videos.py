@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify, render_template, make_response
 from flask_cors import cross_origin
 import logging
+import threading
 from printful_catalog import (
     printful_dashboard_urls_by_product_name,
     printful_catalog_titles_by_product_name,
@@ -192,7 +193,15 @@ def get_videos():
             query = query.eq("user_id", user_id)
         response = query.execute()
         data = response.data if response.data is not None else []
-        _enqueue_unoptimized_videos(data)
+        # Existence HEADs / transcode enqueue must not block the clip shelf.
+        pending = [dict(row) for row in data]
+        if pending:
+            threading.Thread(
+                target=_enqueue_unoptimized_videos,
+                args=(pending,),
+                daemon=True,
+                name="video-optimize-enqueue",
+            ).start()
         return jsonify(_sort_videos_for_play(data)), 200
     except Exception as e:
         import traceback

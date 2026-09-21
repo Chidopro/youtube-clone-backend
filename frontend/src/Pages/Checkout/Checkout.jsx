@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef, useTransition, useLayo
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
-import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot, resolveItemImageOrientation, withItemImageOrientation, setCartPersistPaused, consumeToolsFocusCartIndex, CART_UPDATED_EVENT } from '../../utils/merchSession';
+import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot, resolveItemImageOrientation, withItemImageOrientation, setCartPersistPaused, consumeToolsFocusCartIndex, CART_UPDATED_EVENT, readArtworkOrientation } from '../../utils/merchSession';
 import { ProductPreviewWithDrag } from '../ToolsPage/ToolsPage';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
@@ -340,7 +340,7 @@ const Checkout = () => {
     setDesignPreferences((prev) => {
       if (!latest.length) return prev;
       return latest.map((it, i) => prev[i] || {
-        orientation: resolveItemImageOrientation(it) || 'portrait',
+        orientation: resolveItemImageOrientation(it) || readArtworkOrientation() || 'portrait',
       });
     });
   }, [showDesignModal]);

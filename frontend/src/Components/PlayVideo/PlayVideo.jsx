@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react'
 import './PlayVideo.css'
 import { value_converter } from '../../data'
 import moment from 'moment'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
 import { isOptimizedPlaybackUrl, needsVideoOptimize, playbackUrlForVideo, candidateWebPlaybackUrls, requestVideoOptimize, screenshotSourceUrl } from '../../utils/videoOptimize'
@@ -280,6 +280,7 @@ const PlayVideo = ({
     // Use prop if provided, otherwise fallback to URL param
     const params = useParams();
     const videoId = propVideoId || params.videoId;
+    const location = useLocation();
     const { isMobile, isMobilePortrait } = useIsMobile();
     const { creatorSettings } = useCreator();
     const navigate = useNavigate();
@@ -439,69 +440,65 @@ const PlayVideo = ({
             setLoading(false);
             return;
         }
-        const fetchVideo = async () => {
+
+        const applyRecord = (data) => {
+            if (!data?.video_url) return false;
+            optimizePendingRef.current = needsVideoOptimize(data);
+            const originalPlayback = String(data.video_url || '');
+            const playback = playbackUrlForVideo(data) || originalPlayback;
+            playbackFallbackRef.current = [...new Set([
+                ...candidateWebPlaybackUrls(data.source_video_url || originalPlayback),
+                originalPlayback,
+            ])].filter((u) => u && u !== playback);
+            if (optimizePendingRef.current) {
+                requestVideoOptimize({ videoId: data.id, videoUrl: originalPlayback }).then((result) => {
+                    if (result?.video_url && isOptimizedPlaybackUrl(result.video_url)) {
+                        playbackUrlRef.current = result.video_url;
+                        optimizePendingRef.current = false;
+                        setVideo((prev) => prev ? { ...prev, video_url: result.video_url, source_video_url: result.source_video_url || prev.source_video_url } : prev);
+                    }
+                });
+            }
+            playbackUrlRef.current = playback;
+            setVideo({ ...data, video_url: playback });
+            if (data.thumbnail || data.poster) {
+                const thumbnailUrl = data.thumbnail || data.poster;
+                setThumbnail(thumbnailUrl);
+                if (setScreenshots && screenshots.length === 0) {
+                    setScreenshots([thumbnailUrl]);
+                }
+            }
+            if (onVideoData) onVideoData(data);
+            return true;
+        };
+
+        const seeded = location.state?.video;
+        if (seeded && String(seeded.id) === String(videoId) && seeded.video_url) {
+            applyRecord(seeded);
+            setLoading(false);
+        } else {
             setLoading(true);
-            setError('');
-            setIsPortraitVideo(false);
+        }
+        setError('');
+        setIsPortraitVideo(false);
+
+        const fetchVideo = async () => {
             let { data, error } = await supabase
                 .from('videos2')
                 .select('*')
                 .eq('id', videoId)
                 .single();
             if (error) {
-                console.error('Supabase error:', error);
-                setError('Video not found.');
-                setVideo(null);
-            } else {
-                // console.log('Video data fetched:', data);
-                // console.log('Video URL:', data.video_url);
-                // console.log('Video thumbnail:', data.thumbnail);
-                // console.log('Video poster:', data.poster);
-                
-                // Validate video URL
-                if (!data.video_url) {
-                    console.error('No video URL found in data');
-                    setError('Video URL is missing.');
+                if (!seeded || String(seeded.id) !== String(videoId)) {
+                    console.error('Supabase error:', error);
+                    setError('Video not found.');
                     setVideo(null);
-                    setLoading(false);
-                    return;
                 }
-
-                optimizePendingRef.current = needsVideoOptimize(data);
-                const originalPlayback = String(data.video_url || '');
-                const playback = playbackUrlForVideo(data) || originalPlayback;
-                playbackFallbackRef.current = [...new Set([
-                    ...candidateWebPlaybackUrls(data.source_video_url || originalPlayback),
-                    originalPlayback,
-                ])].filter((u) => u && u !== playback);
-                if (optimizePendingRef.current) {
-                    requestVideoOptimize({ videoId: data.id, videoUrl: originalPlayback }).then((result) => {
-                        if (result?.video_url && isOptimizedPlaybackUrl(result.video_url)) {
-                            playbackUrlRef.current = result.video_url;
-                            optimizePendingRef.current = false;
-                            setVideo((prev) => prev ? { ...prev, video_url: result.video_url, source_video_url: result.source_video_url || prev.source_video_url } : prev);
-                        }
-                    });
-                }
-                playbackUrlRef.current = playback;
-                setVideo({ ...data, video_url: playback });
-                // Automatically set thumbnail if available
-                if (data.thumbnail || data.poster) {
-                    const thumbnailUrl = data.thumbnail || data.poster;
-                    // console.log('Setting thumbnail:', thumbnailUrl);
-                    setThumbnail(thumbnailUrl);
-                    // Only add thumbnail as first screenshot if screenshots are empty
-                    if (setScreenshots && screenshots.length === 0) {
-                        // console.log('Adding thumbnail as first screenshot');
-                        setScreenshots([thumbnailUrl]);
-                    }
-                } else {
-                    // console.log('No thumbnail found in video data');
-                }
-                // Pass video data to parent component
-                if (onVideoData) {
-                    onVideoData(data);
-                }
+            } else if (data?.video_url) {
+                applyRecord(data);
+            } else if (!seeded?.video_url) {
+                setError('Video URL is missing.');
+                setVideo(null);
             }
             setLoading(false);
         };

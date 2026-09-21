@@ -158,20 +158,17 @@ const AuthModal = ({ isOpen, onClose, onSuccess, promptText, returnTo = '' }) =>
   return createPortal(
     <div className="auth-modal-overlay" onClick={onClose}>
       <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="auth-close-btn" onClick={onClose} aria-label="Close">
+          ×
+        </button>
         <div className="auth-modal-header">
-          <div className="auth-logo">🎯</div>
-          <h2>ScreenMerch Login</h2>
-          <button type="button" className="auth-close-btn" onClick={onClose} aria-label="Close">
-            ×
-          </button>
+          <h2>{isLoginMode ? 'Sign in' : 'Create your account'}</h2>
         </div>
 
         <div className="auth-modal-body">
-          <div className="auth-message">
-            <strong>Login Required</strong>
-            <br />
+          <p className="auth-message">
             {promptText || 'To create merchandise, please log in or create an account with your email address.'}
-          </div>
+          </p>
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
@@ -182,7 +179,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess, promptText, returnTo = '' }) =>
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="Enter your email"
+                placeholder="you@example.com"
                 autoComplete="email"
               />
             </div>
@@ -196,7 +193,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess, promptText, returnTo = '' }) =>
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="Enter your password"
+                  placeholder="••••••••"
                   autoComplete="current-password"
                 />
               </div>
@@ -221,7 +218,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess, promptText, returnTo = '' }) =>
                   Processing...
                 </>
               ) : isLoginMode ? (
-                'Login'
+                'Sign In'
               ) : (
                 'Sign Up'
               )}
@@ -245,7 +242,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess, promptText, returnTo = '' }) =>
           <div className="auth-toggle">
             <span>{isLoginMode ? "Don't have an account?" : 'Already have an account?'}</span>
             <button type="button" onClick={toggleMode} className="auth-toggle-btn">
-              {isLoginMode ? 'Sign Up' : 'Login'}
+              {isLoginMode ? 'Sign Up' : 'Sign in'}
             </button>
           </div>
 

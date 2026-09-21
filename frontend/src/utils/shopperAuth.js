@@ -54,6 +54,12 @@ export function isShopperSignedIn() {
   return false;
 }
 
+/** Creators with no subdomain still need first-time storefront setup. */
+export function creatorNeedsStorefrontSetup(user) {
+  if (!user || user.role !== 'creator') return false;
+  return !String(user.subdomain || '').trim();
+}
+
 /** Persist email/password login the same way the full Login page does. */
 export function persistShopperSession(data = {}, email = '') {
   const user = data.user || null;

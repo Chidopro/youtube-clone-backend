@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
 # Import utilities
-from utils.helpers import _data_from_request, _allow_origin, build_platform_revenue_attribution_maps, platform_revenue_attribution_for_earning
+from utils.helpers import _data_from_request, _allow_origin, build_platform_revenue_attribution_maps, platform_revenue_attribution_for_earning, notify_admin_subdomain_for_netlify
 from utils.security import admin_required
 
 logger = logging.getLogger(__name__)
@@ -207,8 +207,8 @@ def _send_creator_welcome_email(creator_email):
         intro_video_block = f"""
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
                 <tr>
-                  <td style="border-radius:8px;border:1px solid #667eea;">
-                    <a href="{intro_video_url}" style="display:inline-block;padding:12px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#667eea;text-decoration:none;">Watch the intro</a>
+                  <td style="border-radius:8px;border:1px solid #18181B;">
+                    <a href="{intro_video_url}" style="display:inline-block;padding:12px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#2563EB;text-decoration:none;">Watch the intro</a>
                   </td>
                 </tr>
               </table>"""
@@ -219,45 +219,51 @@ def _send_creator_welcome_email(creator_email):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Welcome to ScreenMerch</title>
 </head>
-<body style="margin:0;padding:0;background-color:#14121c;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#14121c;">
+<body style="margin:0;padding:0;background-color:#F4F4F5;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F4F4F5;">
     <tr>
       <td align="center" style="padding:28px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+        <table role="presentation" width="620" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:620px;background-color:#FFFFFF;border:1px solid #E4E4E7;border-radius:12px;overflow:hidden;">
           <tr>
-            <td style="background-color:#667eea;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:32px 36px 28px;border-radius:16px 16px 0 0;">
-              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:2.4px;text-transform:uppercase;color:#efeaff;">ScreenMerch Creator</p>
-              <h1 style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:1.25;font-weight:700;color:#ffffff;">Congratulations — welcome aboard.</h1>
+            <td style="background-color:#FFFFFF;padding:32px 36px 12px;">
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#71717A;">SCREENMERCH CREATOR</p>
+              <h1 style="margin:12px 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:1.25;font-weight:700;color:#18181B;">Welcome to ScreenMerch</h1>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#18181B;">Your creator account is ready. Set your password to sign in and start building your storefront.</p>
             </td>
           </tr>
           <tr>
-            <td style="background-color:#ffffff;padding:32px 36px;font-family:Arial,Helvetica,sans-serif;color:#2a2438;font-size:16px;line-height:1.65;">
-              <p style="margin:0 0 16px 0;">We're excited to have you on ScreenMerch. Create your password, then sign in to add clips, personalize your storefront, and share it with your audience.</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 28px 0;">
+            <td style="background-color:#FFFFFF;padding:20px 36px 32px;font-family:Arial,Helvetica,sans-serif;color:#18181B;font-size:16px;line-height:1.65;">
+              <p style="margin:0 0 24px 0;">Once you're signed in, you can add your content, personalize your storefront, and get it ready to share with your audience.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0;">
                 <tr>
-                  <td style="border-radius:10px;background-color:#667eea;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
-                    <a href="{set_password_url}" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;">Create your password</a>
+                  <td style="border-radius:8px;background-color:#18181B;">
+                    <a href="{set_password_url}" style="display:inline-block;padding:14px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;">Set Your Password</a>
                   </td>
                 </tr>
               </table>
-              <p style="margin:0 0 10px 0;font-size:13px;color:#6b6480;">Or paste this link: <a href="{set_password_url}" style="color:#5b4fcf;word-break:break-all;">{set_password_url}</a></p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;background-color:#f6f3ff;border-left:4px solid #764ba2;border-radius:8px;">
+              <p style="margin:0 0 8px 0;font-size:13px;color:#71717A;">Having trouble with the button? Use this secure link:</p>
+              <p style="margin:0 0 24px 0;font-size:13px;"><a href="{set_password_url}" style="color:#2563EB;word-break:break-all;">{set_password_url}</a></p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;background-color:#F4F4F5;border:1px solid #E4E4E7;border-radius:8px;">
                 <tr>
-                  <td style="padding:16px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2a2438;">
-                    For the full walkthrough — clips, storefronts, merch, and payouts — read
-                    <a href="{how_it_works_url}" style="color:#5b4fcf;font-weight:700;text-decoration:none;">How it Works</a>.
-                    Questions? See the <a href="{faq_url}" style="color:#5b4fcf;font-weight:700;text-decoration:none;">FAQ</a>.
+                  <td style="padding:18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#18181B;">
+                    <p style="margin:0 0 8px 0;font-weight:700;">New to ScreenMerch?</p>
+                    <p style="margin:0 0 12px 0;color:#52525B;">See how to add content, personalize your storefront, create merchandise, and manage your earnings.</p>
+                    <p style="margin:0;">
+                      <a href="{how_it_works_url}" style="color:#2563EB;font-weight:700;text-decoration:none;">How It Works</a>
+                      &nbsp;&nbsp;
+                      <a href="{faq_url}" style="color:#2563EB;font-weight:700;text-decoration:none;">FAQ</a>
+                    </p>
                   </td>
                 </tr>
               </table>
               {intro_video_block}
-              <p style="margin:0;font-size:13px;line-height:1.55;color:#6b6480;">After you set your subdomain (<span style="color:#2a2438;font-weight:600;">yourname.screenmerch.com</span>), it may take up to 24 hours to activate.</p>
+              <p style="margin:0;font-size:13px;line-height:1.55;color:#71717A;">Your personalized ScreenMerch address can be set up from your storefront settings. New subdomains may take up to 24 hours to become active.</p>
             </td>
           </tr>
           <tr>
-            <td style="background-color:#1c1828;padding:22px 36px 26px;border-radius:0 0 16px 16px;">
-              <p style="margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:16px;font-style:italic;color:#ddd6f3;">Your brand. Your content. Your earnings.</p>
-              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#9a92b3;">The ScreenMerch Team</p>
+            <td style="background-color:#18181B;padding:22px 36px 26px;">
+              <p style="margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:16px;font-style:italic;color:#FFFFFF;">Your brand. Your content. Your earnings.</p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#FFFFFF;">The ScreenMerch Team</p>
             </td>
           </tr>
         </table>
@@ -266,27 +272,28 @@ def _send_creator_welcome_email(creator_email):
   </table>
 </body>
 </html>"""
-    text_body = f"""Congratulations — and welcome to ScreenMerch!
+    text_body = f"""Welcome to ScreenMerch
 
-We're excited to have you on board.
+Your creator account is ready. Set your password to sign in and start building your storefront.
 
-Create your password to sign in to your dashboard. From there you can add clips, personalize your storefront, and share it with your audience.
+Once you're signed in, you can add your content, personalize your storefront, and get it ready to share with your audience.
 
-👉 Create your password here: {set_password_url}
+Set Your Password: {set_password_url}
 
-For a full walkthrough of how ScreenMerch works — clips, storefronts, merch, and payouts — please read How it Works:
-{how_it_works_url}
+Having trouble with the button? Use this secure link:
+{set_password_url}
 
-Questions? The FAQ is a good next stop:
-{faq_url}
+New to ScreenMerch?
+See how to add content, personalize your storefront, create merchandise, and manage your earnings.
 
-Note: After you set your subdomain (yourname.screenmerch.com), it may take up to 24 hours to activate.
+How It Works: {how_it_works_url}
+FAQ: {faq_url}
+
+Your personalized ScreenMerch address can be set up from your storefront settings. New subdomains may take up to 24 hours to become active.
 """
     if intro_video_url:
         text_body += f"\nWant a full walkthrough? Watch our intro video: {intro_video_url}\n"
     text_body += """
-
-Thank you for joining us — we're excited to support your journey.
 
 Your brand. Your content. Your earnings.
 
@@ -1051,6 +1058,10 @@ def admin_update_subdomain(user_id):
         
         data = _data_from_request()
         new_subdomain = (data.get('subdomain') or '').strip().lower()
+        current = client.table('users').select('id, email, display_name, subdomain').eq('id', user_id).limit(1).execute()
+        previous_subdomain = current.data[0].get('subdomain') if current.data else None
+        creator_email = current.data[0].get('email') if current.data else None
+        creator_name = current.data[0].get('display_name') if current.data else None
         
         # Validate subdomain format
         if new_subdomain:
@@ -1078,6 +1089,12 @@ def admin_update_subdomain(user_id):
             return _allow_origin(response), 404
         
         logger.info(f"✅ [SUBDOMAIN-MGMT] Updated subdomain for user {user_id} to '{new_subdomain}'")
+        notify_admin_subdomain_for_netlify(
+            new_subdomain,
+            previous_subdomain=previous_subdomain,
+            creator_email=creator_email,
+            creator_name=creator_name,
+        )
         response = jsonify({
             "success": True,
             "user": result.data[0],

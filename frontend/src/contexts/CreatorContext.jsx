@@ -69,6 +69,10 @@ export const CreatorProvider = ({ children }) => {
         const subdomain = getSubdomain();
         if (subdomain) {
           creator = await getCreatorFromSubdomain(subdomain);
+          if (!creator) {
+            await new Promise((resolve) => window.setTimeout(resolve, 400));
+            creator = await getCreatorFromSubdomain(subdomain);
+          }
         }
       } else {
         // Not a screenmerch subdomain, try custom domain lookup

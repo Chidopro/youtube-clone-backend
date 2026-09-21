@@ -4,6 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 import time
+import threading
 from dotenv import load_dotenv
 from flask_cors import CORS, cross_origin
 import uuid
@@ -7864,6 +7865,113 @@ def _favorite_card_thumbnail_bytes(file_bytes, max_edge=720, quality=72):
         return None
 
 
+def _store_favorite_card_thumb(user_id, file_bytes):
+    """Upload a dedicated JPEG card thumb (favorites/thumbs/*.jpg). Returns public URL or None."""
+    if not user_id or not file_bytes or not supabase_admin:
+        return None
+    payload = _favorite_card_thumbnail_bytes(file_bytes)
+    if not payload:
+        return None
+    thumb_bytes, thumb_ctype = payload
+    thumb_path = f"{user_id}/favorites/thumbs/{int(time.time() * 1000)}-{secrets.token_hex(3)}.jpg"
+    try:
+        supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
+            path=thumb_path,
+            file=thumb_bytes,
+            file_options={"content-type": thumb_ctype, "upsert": "false"},
+        )
+        return (
+            f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{thumb_path}"
+        )
+    except Exception as thumb_err:
+        logger.warning("favorite card thumb upload failed: %s", thumb_err)
+        return None
+
+
+def _favorite_has_dedicated_thumb(row):
+    thumb = ((row or {}).get("thumbnail_url") or "").strip()
+    full = ((row or {}).get("image_url") or "").strip()
+    return bool(thumb and "/favorites/thumbs/" in thumb and (not full or thumb != full))
+
+
+def _fl_favorite_card_url(fav):
+    """Card/preview URL: dedicated JPEG thumb when present, else the stored image."""
+    thumb = ((fav or {}).get("thumbnail_url") or "").strip()
+    full = ((fav or {}).get("image_url") or "").strip()
+    if _favorite_has_dedicated_thumb(fav):
+        return thumb
+    if thumb and full and thumb != full:
+        return thumb
+    return thumb or full
+
+
+def _ensure_favorite_card_thumbnail(row):
+    """Create a dedicated JPEG thumb when thumbnail_url is missing or is the full image."""
+    if not row or not supabase_admin:
+        return row
+    if _favorite_has_dedicated_thumb(row):
+        return row
+    src = ((row.get("image_url") or row.get("thumbnail_url") or "")).strip()
+    uid = row.get("user_id")
+    fid = row.get("id")
+    if not src or not uid or not fid:
+        return row
+    try:
+        resp = requests.get(src, timeout=25)
+        if resp.status_code != 200 or not resp.content:
+            return row
+        thumb_url = _store_favorite_card_thumb(uid, resp.content)
+        if not thumb_url:
+            return row
+        supabase_admin.table("creator_favorites").update(
+            {"thumbnail_url": thumb_url}
+        ).eq("id", fid).execute()
+        out = dict(row)
+        out["thumbnail_url"] = thumb_url
+        return out
+    except Exception as err:
+        logger.warning("ensure favorite card thumb %s: %s", fid, err)
+        return row
+
+
+_thumb_backfill_lock = threading.Lock()
+_thumb_backfill_ids = set()
+
+
+def _schedule_favorite_thumb_backfill(rows):
+    """Fill missing JPEG card thumbs off the request path so older storefronts match new uploads."""
+    need = []
+    with _thumb_backfill_lock:
+        for row in rows or []:
+            fid = str((row or {}).get("id") or "")
+            if not fid or fid in _thumb_backfill_ids:
+                continue
+            if _favorite_has_dedicated_thumb(row):
+                continue
+            if not ((row.get("image_url") or row.get("thumbnail_url") or "").strip()):
+                continue
+            if not row.get("user_id"):
+                continue
+            _thumb_backfill_ids.add(fid)
+            need.append(row)
+    if not need:
+        return
+
+    def _run():
+        try:
+            for row in need:
+                try:
+                    _ensure_favorite_card_thumbnail(row)
+                except Exception as err:
+                    logger.warning("favorite thumb backfill row: %s", err)
+        finally:
+            with _thumb_backfill_lock:
+                for row in need:
+                    _thumb_backfill_ids.discard(str((row or {}).get("id") or ""))
+
+    threading.Thread(target=_run, daemon=True, name="fav-thumb-backfill").start()
+
+
 def _validate_favorites_session():
     """Same auth as get_my_profile: require session matching X-User-Id. Returns (user_id, error_response)."""
     user_id, err = _authenticate_x_user_id()
@@ -8027,20 +8135,7 @@ def upload_favorite():
             file_options={"content-type": file.content_type or "image/png", "upsert": "false"}
         )
         public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{path}"
-        thumb_url = public_url
-        thumb_payload = _favorite_card_thumbnail_bytes(file_bytes)
-        if thumb_payload:
-            thumb_bytes, thumb_ctype = thumb_payload
-            thumb_path = f"{favorite_user_id}/favorites/thumbs/{int(time.time() * 1000)}.jpg"
-            try:
-                supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
-                    path=thumb_path,
-                    file=thumb_bytes,
-                    file_options={"content-type": thumb_ctype, "upsert": "false"},
-                )
-                thumb_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{thumb_path}"
-            except Exception as thumb_err:
-                logger.warning("upload_favorite thumbnail upload failed: %s", thumb_err)
+        thumb_url = _store_favorite_card_thumb(favorite_user_id, file_bytes) or public_url
         insert_data = {
             "user_id": favorite_user_id,
             "channelTitle": channel_title,
@@ -8152,20 +8247,7 @@ def update_favorite():
                 file_options={"content-type": file.content_type or "image/png", "upsert": "false"},
             )
             public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{path}"
-            thumb_url = public_url
-            thumb_payload = _favorite_card_thumbnail_bytes(file_bytes)
-            if thumb_payload:
-                thumb_bytes, thumb_ctype = thumb_payload
-                thumb_path = f"{fav_uid}/favorites/thumbs/{int(time.time() * 1000)}.jpg"
-                try:
-                    supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
-                        path=thumb_path,
-                        file=thumb_bytes,
-                        file_options={"content-type": thumb_ctype, "upsert": "false"},
-                    )
-                    thumb_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{thumb_path}"
-                except Exception as thumb_err:
-                    logger.warning("update_favorite thumbnail upload failed: %s", thumb_err)
+            thumb_url = _store_favorite_card_thumb(fav_uid, file_bytes) or public_url
             update_data["image_url"] = public_url
             update_data["thumbnail_url"] = thumb_url
 
@@ -8246,11 +8328,12 @@ def favorites_save_url():
                 raise
         if not result.data:
             return jsonify({"success": False, "error": "Failed to save favorite"}), 500
+        favorite = _ensure_favorite_card_thumbnail(result.data[0])
         _fl_attach_orphan_favorites(favorite_user_id, target_list)
         return jsonify(
             {
                 "success": True,
-                "favorite": result.data[0],
+                "favorite": favorite,
                 "list_id": target_list,
                 "user_id": favorite_user_id,
             }
@@ -10406,11 +10489,13 @@ def _load_list_favorites(row):
                     by_id.setdefault(fid, fav)
         except Exception as extra_err:
             logger.warning("collaborator fallback favorites: %s", extra_err)
-    return sorted(
+    favorites = sorted(
         by_id.values(),
         key=lambda fav: str(fav.get("created_at") or ""),
         reverse=True,
     )
+    _schedule_favorite_thumb_backfill(favorites)
+    return favorites
 
 
 def _fl_attach_orphan_favorites(user_id, list_id):
@@ -10563,18 +10648,19 @@ def _fl_preview_map_for_lists(lists, limit_each=4):
     try:
         fr = (
             supabase_admin.table("creator_favorites")
-            .select("list_id, image_url, thumbnail_url")
+            .select("id, user_id, list_id, image_url, thumbnail_url")
             .in_("list_id", ids)
             .order("created_at", desc=True)
             .limit(max(32, int(limit_each) * len(ids)))
             .execute()
         )
+        _schedule_favorite_thumb_backfill(fr.data or [])
         for fav in fr.data or []:
             lid = fav.get("list_id")
             bucket = out.get(lid)
             if bucket is None or len(bucket) >= limit_each:
                 continue
-            _fl_append_preview_url(bucket, fav.get("image_url") or fav.get("thumbnail_url"))
+            _fl_append_preview_url(bucket, _fl_favorite_card_url(fav))
     except Exception as err:
         logger.warning("_fl_preview_map_for_lists: %s", err)
     return out
@@ -10623,7 +10709,7 @@ def _fl_user_favorite_preview_images(user_id, limit=8):
         )
         out = []
         for fav in fr.data or []:
-            _fl_append_preview_url(out, fav.get("image_url") or fav.get("thumbnail_url"))
+            _fl_append_preview_url(out, _fl_favorite_card_url(fav))
         return out
     except Exception as err:
         logger.warning("_fl_user_favorite_preview_images: %s", err)
@@ -10641,14 +10727,15 @@ def _fl_collect_preview_images(list_row, is_collab=False, limit=8):
         try:
             fr = (
                 supabase_admin.table("creator_favorites")
-                .select("image_url, thumbnail_url")
+                .select("id, user_id, image_url, thumbnail_url")
                 .eq("list_id", list_id)
                 .order("created_at", desc=True)
                 .limit(limit)
                 .execute()
             )
+            _schedule_favorite_thumb_backfill(fr.data or [])
             for fav in fr.data or []:
-                _fl_append_preview_url(images, fav.get("image_url") or fav.get("thumbnail_url"))
+                _fl_append_preview_url(images, _fl_favorite_card_url(fav))
         except Exception as preview_err:
             logger.warning("preview images for list %s: %s", list_id, preview_err)
     if is_collab and len(images) < 2 and user_id:
@@ -13114,10 +13201,39 @@ def update_creator_settings():
             update_data["subdomain"] = (update_data["subdomain"] or "").strip().lower() or None
         if "custom_domain" in update_data and update_data["custom_domain"] is not None:
             update_data["custom_domain"] = (update_data["custom_domain"] or "").strip().lower() or None
+        previous_subdomain = None
+        creator_email = None
+        creator_name = None
+        if "subdomain" in update_data:
+            try:
+                prev = (
+                    supabase_admin.table("users")
+                    .select("subdomain, email, display_name")
+                    .eq("id", user_id)
+                    .limit(1)
+                    .execute()
+                )
+                if prev.data:
+                    previous_subdomain = prev.data[0].get("subdomain")
+                    creator_email = prev.data[0].get("email")
+                    creator_name = prev.data[0].get("display_name")
+            except Exception:
+                logger.exception(
+                    "update_creator_settings: failed to load previous subdomain for user_id=%s",
+                    user_id,
+                )
         if update_data:
             result = supabase_admin.table("users").update(update_data).eq("id", user_id).execute()
             if not result.data:
                 logger.warning("update_creator_settings: no row updated for user_id=%s", user_id)
+            elif "subdomain" in update_data:
+                from utils.helpers import notify_admin_subdomain_for_netlify
+                notify_admin_subdomain_for_netlify(
+                    update_data.get("subdomain"),
+                    previous_subdomain=previous_subdomain,
+                    creator_email=creator_email,
+                    creator_name=creator_name,
+                )
         if header_opacity is not None:
             if not _write_header_opacity(user_id, header_opacity):
                 logger.warning(
@@ -13419,6 +13535,10 @@ def admin_update_subdomain(user_id):
         # Get new subdomain from request
         data = _data_from_request()
         new_subdomain = (data.get('subdomain') or '').strip().lower()
+        current = client.table('users').select('id, email, display_name, subdomain').eq('id', user_id).limit(1).execute()
+        previous_subdomain = current.data[0].get('subdomain') if current.data else None
+        creator_email = current.data[0].get('email') if current.data else None
+        creator_name = current.data[0].get('display_name') if current.data else None
         
         # Validate subdomain format
         if new_subdomain:
@@ -13450,6 +13570,13 @@ def admin_update_subdomain(user_id):
             return response, 404
         
         logger.info(f"✅ [SUBDOMAIN-MGMT] Updated subdomain for user {user_id} to '{new_subdomain}'")
+        from utils.helpers import notify_admin_subdomain_for_netlify
+        notify_admin_subdomain_for_netlify(
+            new_subdomain,
+            previous_subdomain=previous_subdomain,
+            creator_email=creator_email,
+            creator_name=creator_name,
+        )
         response = jsonify({
             "success": True,
             "user": result.data[0],

@@ -738,32 +738,52 @@ def auth_signup_email_only():
                 try:
                     # Use absolute URL in href so email clients (e.g. Yahoo) render a clickable link
                     verification_link_escaped = verification_link.replace("&", "&amp;")  # escape for HTML
-                    email_html = f"""
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="utf-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>Verify Your Email - ScreenMerch</title>
-                    </head>
-                    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-                            <h1 style="color: white; margin: 0;">Welcome to ScreenMerch!</h1>
-                        </div>
-                        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-                            <p style="margin: 0 0 16px 0;">Welcome to ScreenMerch thank you for signing up! Please verify your email address by clicking the link below.</p>
-                            <p style="margin: 0 0 12px 0;">
-                                <a href="{verification_link_escaped}" style="color: #2563eb; text-decoration: underline; font-weight: bold;">Click here to verify your email and set your password</a>
-                            </p>
-                            <p style="margin: 0 0 8px 0; font-size: 13px;">If the link above does not work, copy and paste this URL into your browser:</p>
-                            <p style="margin: 0 0 16px 0; font-size: 12px; word-break: break-all;">
-                                <a href="{verification_link_escaped}" style="color: #2563eb; text-decoration: underline;">{verification_link}</a>
-                            </p>
-                            <p style="font-size: 12px; color: #666; margin: 0;">This link expires in 72 hours.</p>
-                        </div>
-                    </body>
-                    </html>
-                    """
+                    email_html = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm your email - ScreenMerch</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F4F4F5;font-family:Arial,Helvetica,sans-serif;color:#18181B;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F4F4F5;">
+    <tr>
+      <td align="center" style="padding:28px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#FFFFFF;border:1px solid #E4E4E7;border-radius:12px;overflow:hidden;">
+          <tr>
+            <td style="background-color:#FFFFFF;padding:24px 32px;border-bottom:1px solid #E4E4E7;">
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#18181B;letter-spacing:0.02em;">ScreenMerch</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#FFFFFF;padding:36px 32px 32px;">
+              <h1 style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:1.25;font-weight:700;color:#18181B;">Confirm your email</h1>
+              <p style="margin:0 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#52525B;">You're almost ready to complete your purchase. Confirm your email address to verify your account and continue.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 24px auto;">
+                <tr>
+                  <td align="center" style="border-radius:8px;background-color:#18181B;">
+                    <a href="{verification_link_escaped}" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;">Confirm Email</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#71717A;">Having trouble with the button? Copy and paste the link below into your browser:</p>
+              <p style="margin:0 0 24px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;word-break:break-word;"><a href="{verification_link_escaped}" style="color:#2563EB;word-break:break-word;">{verification_link}</a></p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#71717A;">This link expires in 72 hours.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#FFFFFF;padding:22px 32px 26px;border-top:1px solid #E4E4E7;">
+              <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#71717A;">ScreenMerch</p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#71717A;">Turn moments into merch.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
                     
                     email_response = requests.post(
                         "https://api.resend.com/emails",
@@ -837,6 +857,7 @@ def auth_request_set_password():
             link += f"&next={quote(next_path, safe='/')}"
         if resend_api_key:
             try:
+                link_escaped = link.replace("&", "&amp;")
                 r = requests.post(
                     "https://api.resend.com/emails",
                     headers={"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"},
@@ -844,11 +865,52 @@ def auth_request_set_password():
                         "from": resend_from,
                         "to": email,
                         "subject": "Set your ScreenMerch password",
-                        "html": f"""
-                        <p>You requested to set your password for ScreenMerch.</p>
-                        <p><a href="{link}">Set your password</a> (link expires in 24 hours).</p>
-                        <p>If you didn't request this, you can ignore this email.</p>
-                        """
+                        "html": f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set Your Password</title>
+</head>
+<body style="margin:0;padding:32px 16px;background-color:#F4F4F5;font-family:Arial,Helvetica,sans-serif;color:#18181B;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F4F4F5;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#FFFFFF;border:1px solid #E4E4E7;border-radius:12px;overflow:hidden;">
+          <tr>
+            <td style="background-color:#FFFFFF;padding:24px 32px;border-bottom:1px solid #E4E4E7;">
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#18181B;letter-spacing:0.02em;">ScreenMerch</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#FFFFFF;padding:36px 32px;">
+              <h1 style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:26px;line-height:1.25;font-weight:700;color:#18181B;">Set Your Password</h1>
+              <p style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#52525B;">We received a request to create or reset the password for your ScreenMerch account.</p>
+              <p style="margin:0 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#52525B;">Use the button below to continue. This secure link will expire in 24 hours.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td style="border-radius:8px;background-color:#18181B;">
+                    <a href="{link_escaped}" style="display:inline-block;padding:14px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;">Set Your Password</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#71717A;">Having trouble with the button? Copy and paste this link into your browser:</p>
+              <p style="margin:0 0 30px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;word-break:break-word;"><a href="{link_escaped}" style="color:#2563EB;word-break:break-word;">{link}</a></p>
+              <p style="margin:0;padding-top:20px;border-top:1px solid #E4E4E7;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#71717A;">If you didn't request this, you can safely ignore this email. Your account will remain unchanged.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#18181B;padding:22px 32px;">
+              <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#FFFFFF;">ScreenMerch</p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#FFFFFF;">Your brand. Your content. Your earnings.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
                     },
                     timeout=30
                 )
@@ -982,6 +1044,7 @@ def auth_verify_email():
                     "display_name": row.get('display_name'),
                     "role": row.get('role', 'customer'),
                     "status": row.get('status', 'active'),
+                    "subdomain": row.get('subdomain'),
                 },
                 "token": token
             }

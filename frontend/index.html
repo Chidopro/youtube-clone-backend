@@ -6,6 +6,13 @@
         var host = (location.hostname || '').toLowerCase();
         if (host.endsWith('.screenmerch.com') && host !== 'www.screenmerch.com') {
           document.documentElement.classList.add('creator-storefront');
+          var sub = host.split('.')[0];
+          if (sub) document.documentElement.setAttribute('data-storefront', sub);
+          var preconnect = document.createElement('link');
+          preconnect.rel = 'preconnect';
+          preconnect.href = 'https://sojxbydpcdcdzfdtbypd.supabase.co';
+          preconnect.crossOrigin = 'anonymous';
+          document.head.appendChild(preconnect);
           try {
             var brandRaw = localStorage.getItem('sm_storefront_brand_' + host)
               || sessionStorage.getItem('sm_storefront_brand_' + host);
@@ -14,6 +21,7 @@
               var preload = document.createElement('link');
               preload.rel = 'preload';
               preload.as = 'image';
+              preload.setAttribute('fetchpriority', 'high');
               preload.href = logoUrl;
               document.head.appendChild(preload);
             }

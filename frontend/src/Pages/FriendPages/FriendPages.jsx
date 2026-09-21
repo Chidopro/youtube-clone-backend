@@ -7,7 +7,7 @@ import {
   peekPublicFavoriteLists,
   fetchPublicFavoritesByList,
   listPreviewImages,
-  favoriteImageUrl,
+  favoriteCardThumbUrl,
   publicStorageCardUrl,
   memberFavoritePreviewUrls,
   withMemberPublicIdentity,
@@ -64,7 +64,7 @@ async function attachPreviewUrls(lists, sub) {
           if (ok && data?.success) {
             previewUrls = uniqueUrls(
               (data.favorites || [])
-                .map((f) => publicStorageCardUrl(favoriteImageUrl(f), 800))
+                .map((f) => favoriteCardThumbUrl(f))
                 .filter(Boolean)
             );
           }

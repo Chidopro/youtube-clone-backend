@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { persistShopperSession, consumeAuthReturnPath, peekAuthReturnPath, safeAuthReturnPath } from '../../utils/shopperAuth';
+import { Link, useSearchParams } from 'react-router-dom';
+import { persistShopperSession, consumeAuthReturnPath, peekAuthReturnPath, safeAuthReturnPath, creatorNeedsStorefrontSetup } from '../../utils/shopperAuth';
 import './VerifyEmail.css';
 
 const BACKEND_URL =
@@ -20,6 +20,7 @@ const VerifyEmail = () => {
   const [email, setEmail] = useState(null);
   const [inviteToken, setInviteToken] = useState(null);
   const [resendLoading, setResendLoading] = useState(false);
+  const [passwordSetSuccess, setPasswordSetSuccess] = useState(false);
 
   useEffect(() => {
     const tokenParam = (searchParams.get('token') || '').trim();
@@ -99,10 +100,9 @@ const VerifyEmail = () => {
 
       const data = await response.json();
 
-      persistShopperSession(data, email);
-
       // Umbrella collaborator invite: complete membership after password is set
       if (inviteToken) {
+        persistShopperSession(data, email);
         try {
           const acceptRes = await fetch(`${BACKEND_URL}/api/umbrella-invites/accept`, {
             method: 'POST',
@@ -138,14 +138,23 @@ const VerifyEmail = () => {
         }
       }
 
-      try {
-        sessionStorage.setItem('from_password_set', '1');
-      } catch (_) {}
-
       const nextPath =
         safeAuthReturnPath(searchParams.get('next')) ||
         consumeAuthReturnPath() ||
         '/';
+
+      if (creatorNeedsStorefrontSetup(data.user) && nextPath !== '/checkout') {
+        setMessage(null);
+        setPasswordSetSuccess(true);
+        return;
+      }
+
+      persistShopperSession(data, email);
+
+      try {
+        sessionStorage.setItem('from_password_set', '1');
+      } catch (_) {}
+
       const dest =
         typeof window !== 'undefined' && window.location?.origin
           ? `${window.location.origin}${nextPath}`
@@ -203,15 +212,42 @@ const VerifyEmail = () => {
     }
   };
 
+  if (passwordSetSuccess) {
+    return (
+      <div className="verify-email-page">
+        <div className="verify-email-card">
+          <div className="verify-email-header">
+            <h1 className="verify-email-title">Your password is set</h1>
+            <p className="verify-email-subtitle">Your ScreenMerch creator account is ready.</p>
+          </div>
+          <p className="verify-email-success-copy">
+            Sign in with your email and new password to finish setting up your storefront.
+          </p>
+          <Link to="/login" className="verify-email-submit-btn verify-email-success-link">
+            Sign In to ScreenMerch
+          </Link>
+          <div className="verify-email-next">
+            <p className="verify-email-next-heading">What&apos;s next?</p>
+            <p className="verify-email-next-copy">
+              After signing in, you&apos;ll choose your ScreenMerch address and personalize your storefront.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="verify-email-page">
       <div className="verify-email-card">
-        <h2 className="verify-email-title">Set Your Password</h2>
-        <p className="verify-email-subtitle">
-          {inviteToken
-            ? 'Create a password to accept your collaborator invite.'
-            : 'Please create a password to complete your account setup'}
-        </p>
+        <div className="verify-email-header">
+          <h1 className="verify-email-title">Set Your Password</h1>
+          <p className="verify-email-subtitle">
+            {inviteToken
+              ? 'Create a password to accept your collaborator invite.'
+              : 'Create a password to finish setting up your ScreenMerch account.'}
+          </p>
+        </div>
 
         {message && (
           <div
@@ -297,13 +333,13 @@ const VerifyEmail = () => {
                   Verifying...
                 </>
               ) : (
-                'Verify & Set Password'
+                'Set Password'
               )}
             </button>
             <p className="verify-email-resend">
-              Link invalid or expired?{' '}
+              Verification link expired?{' '}
               <button type="button" className="verify-email-resend-btn" onClick={handleResendVerification} disabled={resendLoading}>
-                {resendLoading ? 'Sending...' : 'Send a new verification link'}
+                {resendLoading ? 'Sending...' : 'Request a new link'}
               </button>
             </p>
           </form>
