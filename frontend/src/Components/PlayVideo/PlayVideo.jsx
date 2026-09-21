@@ -354,6 +354,15 @@ const PlayVideo = ({
         video.setAttribute('webkit-playsinline', 'true');
     }, [videoRef]);
 
+    const startInlinePlay = useCallback((el) => {
+        const video = el || videoRef.current;
+        if (!video) return;
+        video.preload = 'auto';
+        video.setAttribute('preload', 'auto');
+        const play = video.play();
+        if (play && typeof play.catch === 'function') play.catch(() => {});
+    }, [videoRef]);
+
     const drawPausedFrame = useCallback(() => {
         const video = videoRef.current;
         const canvas = pausedCanvasRef.current;
@@ -397,7 +406,7 @@ const PlayVideo = ({
             video.setAttribute('playsinline', 'true');
             video.setAttribute('webkit-playsinline', 'true');
             video.setAttribute('x-webkit-airplay', 'allow');
-            video.setAttribute('preload', 'metadata');
+            video.setAttribute('preload', 'auto');
             stripNativeControls(video);
             
             // Prevent fullscreen on mobile
@@ -1274,7 +1283,7 @@ const PlayVideo = ({
                         playsInline
                         webkit-playsinline="true"
                         x-webkit-airplay="allow"
-                        preload="metadata"
+                        preload="auto"
                         disablePictureInPicture
                         disableRemotePlayback
                         onTimeUpdate={() => {
@@ -1290,9 +1299,7 @@ const PlayVideo = ({
                             if (!el) return;
                             const portrait = el.videoWidth > 0 && el.videoHeight > el.videoWidth;
                             setIsPortraitVideo(portrait);
-                            if (portrait) {
-                                el.removeAttribute('poster');
-                            }
+                            el.removeAttribute('poster');
                             if (el.duration && Number.isFinite(el.duration)) {
                                 setPlayerDuration(el.duration);
                             }
@@ -1307,7 +1314,7 @@ const PlayVideo = ({
                             if (!hideMediaChrome && e.clientY > rect.bottom - 44) return;
                             if (Date.now() - playStartedAtRef.current < 400) return;
                             if (el.paused) {
-                                el.play().catch(() => {});
+                                startInlinePlay(el);
                             } else {
                                 el.pause();
                             }
@@ -1449,7 +1456,7 @@ const PlayVideo = ({
                                 e.preventDefault();
                                 e.stopPropagation();
                                 if (mobilePlaying) return;
-                                videoRef.current?.play().catch(() => {});
+                                startInlinePlay(videoRef.current);
                             }}
                         >
                             {video.thumbnail ? (
@@ -1474,7 +1481,7 @@ const PlayVideo = ({
                                     e.stopPropagation();
                                     const el = videoRef.current;
                                     if (!el) return;
-                                    if (el.paused) el.play().catch(() => {});
+                                    if (el.paused) startInlinePlay(el);
                                     else el.pause();
                                 }}
                             >
