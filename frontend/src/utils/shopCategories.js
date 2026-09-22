@@ -49,7 +49,7 @@ export const SHOP_CATEGORIES = [
     name: 'Bags',
     emoji: '👜',
     category: 'bags',
-    preview: 'https://files.cdn.printful.com/products/394/10984_1737468114.jpg',
+    preview: 'https://files.cdn.printful.com/products/274/9039_1530789433.jpg',
   },
   {
     name: 'Pets',
@@ -61,7 +61,7 @@ export const SHOP_CATEGORIES = [
     name: 'Accessories',
     emoji: '📦',
     category: 'misc',
-    preview: 'https://files.cdn.printful.com/products/682/16952_1683889985.jpg',
+    preview: 'https://files.cdn.printful.com/products/682/16957_1683889996.jpg',
   },
 ];
 

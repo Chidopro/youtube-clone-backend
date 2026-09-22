@@ -335,7 +335,7 @@
   }
 
   .main-content-area:has(.merchandise-categories-page) .site-footer {
-    margin-top: 8px;
+    margin-top: 28px;
   }
 
   /* Mobile user flow section */
@@ -345,7 +345,7 @@
 
   .merchandise-categories-page.container {
     padding-top: 10px;
-    padding-bottom: 0;
+    padding-bottom: 40px;
   }
 
   .merchandise-categories-page .user-flow-section {

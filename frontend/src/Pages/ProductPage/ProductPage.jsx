@@ -71,6 +71,14 @@ const BROWSE_EDIT_PRESETS = [
 
 const BROWSE_FEATHER_EDGE = BROWSE_EDIT_PRESETS.find((p) => p.id === 'feather')?.settings?.featherEdge || 38;
 
+function isHatsCategory(cat) {
+  return String(cat || '').toLowerCase().trim() === 'hats';
+}
+
+function defaultBrowseOrientation(cat) {
+  return isHatsCategory(cat) ? 'landscape' : 'portrait';
+}
+
 function BrowseLayoutPicker({ value, onChange }) {
   return (
     <div className="browse-layout-picker" role="radiogroup" aria-label="Image layout">
@@ -514,7 +522,15 @@ const ProductPage = ({ sidebar }) => {
   /** Actual URL/data of the selected screenshot (set on click). Used for add-to-cart so the exact chosen image is sent, not a fallback. */
   const [selectedScreenshotUrl, setSelectedScreenshotUrl] = useState(null);
   const [selectedEditPreset, setSelectedEditPreset] = useState('original');
-  const [browseLayoutOrientation, setBrowseLayoutOrientation] = useState('portrait');
+  const [browseLayoutOrientation, setBrowseLayoutOrientation] = useState(() => {
+    try {
+      const fromQuery = new URLSearchParams(window.location.search).get('category');
+      const stored = localStorage.getItem('last_selected_category');
+      return defaultBrowseOrientation(fromQuery || stored || '');
+    } catch {
+      return 'portrait';
+    }
+  });
   const [isDesktopLayout, setIsDesktopLayout] = useState(() => (
     typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
   ));
@@ -572,18 +588,6 @@ const ProductPage = ({ sidebar }) => {
     || '';
   const browsePreviewSrc = useBrowseDisplaySrc(browseSourceUrl);
   const browseLayoutIsLandscape = browseLayoutOrientation === 'landscape';
-  const chooseBrowseLayout = useCallback((next) => {
-    const ori = next === 'landscape' ? 'landscape' : 'portrait';
-    setBrowseLayoutOrientation(ori);
-    rememberArtworkOrientation(ori);
-  }, []);
-  useEffect(() => {
-    if (isVideoScreenshotMerch()) {
-      rememberArtworkOrientation('portrait');
-      return;
-    }
-    rememberArtworkOrientation(browseLayoutOrientation);
-  }, [browseLayoutOrientation]);
   const featherPresetMaskStyle = useMemo(
     () => featherEdgeMaskStyle(
       BROWSE_FEATHER_EDGE,
@@ -620,6 +624,20 @@ const ProductPage = ({ sidebar }) => {
     () => SHOP_CATEGORIES.find((c) => c.category === category)?.name || 'Shop',
     [category]
   );
+
+  useEffect(() => {
+    const ori = defaultBrowseOrientation(category);
+    setBrowseLayoutOrientation(ori);
+    rememberArtworkOrientation(ori);
+  }, [category]);
+
+  const chooseBrowseLayout = useCallback((next) => {
+    const ori = isHatsCategory(category)
+      ? 'landscape'
+      : (next === 'landscape' ? 'landscape' : 'portrait');
+    setBrowseLayoutOrientation(ori);
+    rememberArtworkOrientation(ori);
+  }, [category]);
   
   const authenticated = searchParams.get('authenticated') === 'true';
   const email = searchParams.get('email') || '';
@@ -653,8 +671,9 @@ const ProductPage = ({ sidebar }) => {
     setSelectedScreenshot(key);
     setSelectedScreenshotUrl(url);
     applySelectedScreenshot(url);
-    setBrowseLayoutOrientation('portrait');
-    rememberArtworkOrientation('portrait');
+    const nextOri = defaultBrowseOrientation(category);
+    setBrowseLayoutOrientation(nextOri);
+    rememberArtworkOrientation(nextOri);
     setSelectedEditPreset('original');
     writeBrowseToolSettings(BROWSE_EDIT_ORIGINAL);
     if (creatorMode) setSelectedScreenshotForFavorite(key);
@@ -1176,7 +1195,9 @@ const ProductPage = ({ sidebar }) => {
 
     // Get video metadata from merch session (including screenshot_timestamp for email/order)
     let videoMetadata = {};
-    const pendingOrientation = 'portrait';
+    const pendingOrientation = isHatsCategory(category)
+      ? 'landscape'
+      : (browseLayoutOrientation === 'landscape' ? 'landscape' : 'portrait');
     try {
       const merchData = readPendingMerchData();
       if (merchData && typeof merchData === 'object') {
@@ -1227,8 +1248,16 @@ const ProductPage = ({ sidebar }) => {
         imageOrientation: pendingOrientation
       };
     }
-    rememberArtworkOrientation('portrait');
+    rememberArtworkOrientation(pendingOrientation);
     Object.assign(item, mergeBrowseToolSettings(item));
+    if (pendingOrientation) {
+      item.imageOrientation = pendingOrientation;
+      item.image_orientation = pendingOrientation;
+      item.toolSettings = {
+        ...(item.toolSettings || {}),
+        imageOrientation: pendingOrientation,
+      };
+    }
     const bakedItem = await applyBrowsePresetToCartItem(item, item.toolSettings);
     Object.assign(item, bakedItem);
     if (!item.favorite_list_id) {
@@ -1480,8 +1509,9 @@ const ProductPage = ({ sidebar }) => {
 
     setSelectedScreenshot(match.key);
     setSelectedScreenshotUrl(match.url);
-    setBrowseLayoutOrientation('portrait');
-    rememberArtworkOrientation('portrait');
+    const nextOri = defaultBrowseOrientation(category);
+    setBrowseLayoutOrientation(nextOri);
+    rememberArtworkOrientation(nextOri);
     if (creatorMode) setSelectedScreenshotForFavorite(match.key);
 
     try {
@@ -1997,7 +2027,7 @@ const ProductPage = ({ sidebar }) => {
           {/* Screenshot Selection Section — hidden in My Shop catalog (blank products only) */}
           {!isShopCatalog && (
           <div
-            className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}${showDesktopEditPresets ? ' screenshots-section--with-edits' : ''}${showDesktopEditPresets && browseLayoutIsLandscape ? ' screenshots-section--layout-landscape' : ''}`}
+            className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}${showDesktopEditPresets ? ' screenshots-section--with-edits' : ''}${browseLayoutIsLandscape ? ' screenshots-section--layout-landscape' : ''}`}
             style={{
               '--screenshot-frame-aspect': browseLayoutIsLandscape ? '4 / 3' : '3 / 4',
               '--screenshot-aspect-number': String(browseLayoutIsLandscape ? 4 / 3 : 3 / 4),
@@ -2030,7 +2060,7 @@ const ProductPage = ({ sidebar }) => {
                   const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
                   return thumbnailUrl ? (
                   <div
-                    className={`screenshot-item${showDesktopEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}`}
+                    className={`screenshot-item${showDesktopEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${browseLayoutIsLandscape ? ' screenshot-item--landscape' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}`}
                   >
                     <div
                       role="button"
@@ -2092,7 +2122,7 @@ const ProductPage = ({ sidebar }) => {
                     return (
                       <div
                         key={`shot-${index}`}
-                        className={`screenshot-item${showDesktopEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--original' : ''}${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${selectedScreenshot === index && selectedEditPreset === 'original' ? ' selected' : ''}`}
+                        className={`screenshot-item${showDesktopEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--original' : ''}${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${browseLayoutIsLandscape ? ' screenshot-item--landscape' : ''}${selectedScreenshot === index && selectedEditPreset === 'original' ? ' selected' : ''}`}
                       >
                         <div
                           role="button"
@@ -2181,6 +2211,9 @@ const ProductPage = ({ sidebar }) => {
                 <button type="button" className="change-image-link" onClick={handleChangeImage}>
                   Change Image
                 </button>
+                {showAutoEditPresets ? (
+                  <BrowseLayoutPicker value={browseLayoutOrientation} onChange={chooseBrowseLayout} />
+                ) : null}
               </div>
             )}
             </div>

@@ -130,11 +130,11 @@ function itemNeedsDesignConfirm(item) {
   return Boolean(item);
 }
 
-/** Selected-image overlay stays on shirts, hoodies, and hats. Other categories use a Printful photo. */
+/** Selected-image overlay stays on shirts and hoodies. Hats, mugs, bags, pets, and accessories use a Printful photo. */
 function isConfirmPrintOverlayProduct(item) {
   const cat = String(item?.category || '').toLowerCase().trim();
-  if (cat === 'mugs' || cat === 'bags' || cat === 'pets' || cat === 'misc') return false;
-  if (cat === 'hats' || cat === 'womens' || cat === 'mens' || cat === 'kids') return true;
+  if (cat === 'mugs' || cat === 'bags' || cat === 'pets' || cat === 'misc' || cat === 'hats') return false;
+  if (cat === 'womens' || cat === 'mens' || cat === 'kids') return true;
   const n = String(item?.name || item?.product || '').toLowerCase();
   if (
     n.includes('mug')
@@ -149,13 +149,13 @@ function isConfirmPrintOverlayProduct(item) {
     || n.includes('apron')
     || n.includes('puzzle')
     || n.includes('greeting')
+    || n.includes('hat')
+    || n.includes('cap')
   ) {
     return false;
   }
   return (
-    n.includes('hat')
-    || n.includes('cap')
-    || n.includes('shirt')
+    n.includes('shirt')
     || n.includes('hoodie')
     || n.includes('sweatshirt')
     || n.includes('tank')
@@ -315,7 +315,7 @@ const Checkout = () => {
     return () => cancelAnimationFrame(frame);
   }, [items.length]);
 
-  // Confirm Your Design for shirts, hoodies, and hats. Mugs, bags, pets, and accessories skip it.
+  // Confirm Your Design for shirts and hoodies. Hats, mugs, bags, pets, and accessories skip the overlay.
   useEffect(() => {
     if ((!signedIn && !isDemoStorefront()) || items.length === 0 || designModalShownOnLoadRef.current) return;
     designModalShownOnLoadRef.current = true;
@@ -391,7 +391,12 @@ const Checkout = () => {
     setDesignPreferences((prev) => {
       if (!latest.length) return prev;
       return latest.map((it, i) => prev[i] || {
-        orientation: resolveItemImageOrientation(it) || readArtworkOrientation() || 'portrait',
+        orientation: (
+          String(it?.category || '').toLowerCase() === 'hats'
+          || /hat|cap/i.test(String(it?.name || it?.product || ''))
+        )
+          ? 'landscape'
+          : (resolveItemImageOrientation(it) || readArtworkOrientation() || 'portrait'),
       });
     });
   }, [showDesignModal]);
@@ -1622,6 +1627,7 @@ const Checkout = () => {
                 const currentPrefs = designPreferencesRef.current;
                 for (let i = 0; i < confirmIndexes.length; i += 1) {
                   const idx = confirmIndexes[i];
+                  if (!isConfirmPrintOverlayProduct(items[idx])) continue;
                   const chosen = (currentPrefs[idx] ?? {}).orientation;
                   if (chosen !== 'landscape' && chosen !== 'portrait') {
                     alert('Please choose Portrait or Landscape for your design.');
@@ -1630,7 +1636,7 @@ const Checkout = () => {
                   }
                 }
                 const updated = items.map((it, idx) => {
-                  if (!itemNeedsDesignConfirm(it)) return it;
+                  if (!isConfirmPrintOverlayProduct(it)) return it;
                   const chosen = ((currentPrefs[idx] ?? {}).orientation);
                   return withItemImageOrientation(it, chosen);
                 });
