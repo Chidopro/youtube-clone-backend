@@ -12,6 +12,14 @@ import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPend
 import { applyBrowsePresetToCartItem, featherEdgeMaskStyle } from '../../utils/bakeBrowsePreset';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
+import {
+  getPrintfulColorCode,
+  getPrintfulColorMockupUrl,
+  isColorMockupPreviewEnabled,
+  pendingSwatchColors,
+  swatchToneClass,
+  usesPrintfulVariantColorTint,
+} from '../../utils/printfulColorMockups';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { saveShopAddIntent, SHOP_CATEGORIES, storefrontMockupUrl } from '../../utils/shopCategories';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
@@ -175,8 +183,58 @@ const getProductImageUrl = (product, preferPreview = true) => {
 
 // Cart screenshots still need a unique query when the same URL is reused.
 const getCacheBuster = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+/** Keep the current mockup visible until the next color photo is decoded, same as Women's Shirt. */
+function PrintfulColorMockupImg({
+  src,
+  className,
+  alt,
+  loading,
+  fetchPriority,
+  sizes,
+  onError,
+  tintColor,
+}) {
+  const [shownSrc, setShownSrc] = useState(src);
+  useEffect(() => {
+    if (!src || src === shownSrc) return undefined;
+    let cancelled = false;
+    const img = new Image();
+    img.decoding = 'async';
+    const commit = () => {
+      if (!cancelled) setShownSrc(src);
+    };
+    img.onload = commit;
+    img.onerror = commit;
+    img.src = src;
+    if (img.complete) commit();
+    return () => {
+      cancelled = true;
+    };
+  }, [src, shownSrc]);
+  const image = (
+    <img
+      className={className}
+      src={shownSrc || src}
+      alt={alt}
+      loading={loading}
+      fetchPriority={fetchPriority}
+      sizes={sizes}
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={onError}
+    />
+  );
+  if (!tintColor) return image;
+  return (
+    <span className="product-image-tint-shell" style={{ backgroundColor: tintColor }}>
+      {image}
+    </span>
+  );
+}
+
 const categoryBrowseCache = new Map();
-const BROWSE_CACHE_KEY = (category) => `sm_browse_v7_${String(category || '').trim().toLowerCase()}`;
+const BROWSE_CACHE_KEY = (category) => `sm_browse_v8_${String(category || '').trim().toLowerCase()}`;
 
 function readBrowseCache(category) {
   const mem = categoryBrowseCache.get(category);
@@ -461,6 +519,7 @@ const ProductPage = ({ sidebar }) => {
     typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
   ));
   const [selectedColors, setSelectedColors] = useState({});
+  const [previewColors, setPreviewColors] = useState({});
   const [selectedSizes, setSelectedSizes] = useState({});
   const [variantAvailability, setVariantAvailability] = useState({});
   const [addingProductIndex, setAddingProductIndex] = useState(null);
@@ -565,6 +624,7 @@ const ProductPage = ({ sidebar }) => {
   const authenticated = searchParams.get('authenticated') === 'true';
   const email = searchParams.get('email') || '';
   const isShopCatalog = searchParams.get('from') === 'shop';
+  const colorMockupPreview = isColorMockupPreviewEnabled();
   const isBrowseMode =
     !productId || productId === 'browse' || productId === 'undefined' || productId === 'null';
   const goToMainCategories = () => navigate(isShopCatalog ? '/shop' : '/merchandise');
@@ -944,6 +1004,40 @@ const ProductPage = ({ sidebar }) => {
       const next = { ...prev };
       delete next[index];
       return next;
+    });
+  };
+
+  const previewProductColor = (index, color, product) => {
+    if (!color) return;
+    setPreviewColors((prev) => (
+      prev[index] === color ? prev : { ...prev, [index]: color }
+    ));
+    const url = getPrintfulColorMockupUrl(product, color);
+    if (url) preloadImageUrls([url]);
+  };
+
+  const clearPreviewColor = (index) => {
+    setPreviewColors((prev) => {
+      if (!(index in prev)) return prev;
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+  };
+
+  const applyProductColor = (product, index, newColor) => {
+    if (!product || !newColor) return;
+    rememberPickedProduct(product, index);
+    clearVariantAvailability(index);
+    setSelectedColors((prev) => ({ ...prev, [index]: newColor }));
+    clearPreviewColor(index);
+    const availableSizes = getAvailableSizes(product, newColor);
+    setSelectedSizes((prev) => {
+      const currentSize = prev[index] || product.options?.size?.[0];
+      if (availableSizes.length > 0 && !availableSizes.includes(currentSize)) {
+        return { ...prev, [index]: availableSizes[0] };
+      }
+      return prev;
     });
   };
 
@@ -1599,6 +1693,19 @@ const ProductPage = ({ sidebar }) => {
   }, [productData, selectedSizes, shipToCountry]);
 
   useEffect(() => {
+    if (!colorMockupPreview || !productData?.products?.length) return;
+    const urls = [];
+    productData.products.forEach((product) => {
+      const colors = getColorsForCountry(product, shipToCountry);
+      (colors.length ? colors : pendingSwatchColors(product)).forEach((color) => {
+        const url = getPrintfulColorMockupUrl(product, color);
+        if (url) urls.push(url);
+      });
+    });
+    preloadImageUrls(urls);
+  }, [colorMockupPreview, productData, shipToCountry]);
+
+  useEffect(() => {
     if (!isEditingCart || !editingCartItem) return;
     const shot = editingCartItem.selected_screenshot || editingCartItem.screenshot;
     if (shot) setSelectedScreenshotUrl(shot);
@@ -2178,7 +2285,7 @@ const ProductPage = ({ sidebar }) => {
               <div className="product-catalog-heading">
                 <h2 className="product-catalog-title">{categoryDisplayName} Products</h2>
                 <p className="product-catalog-subtitle">Choose a product for your selected image.</p>
-                {(category === 'womens' || category === 'mens' || category === 'kids') && (
+                {(category === 'womens' || category === 'mens' || category === 'kids') && !colorMockupPreview && (
                   <p className="product-mockup-color-notice product-mockup-color-notice-intro">
                     Product mockups show representative colors. Your order will be made in the colors you select.
                   </p>
@@ -2212,6 +2319,29 @@ const ProductPage = ({ sidebar }) => {
                   || !variantSelectable(product, index)
                 );
                 const isAddingThis = addingProductIndex === index;
+                const { color: resolvedColor } = resolvedColorSize(product, index);
+                const availableColors = stockPending ? [] : getColorsForCountry(product, shipToCountry);
+                const fallbackSwatches = pendingSwatchColors(product);
+                const swatchColors = colorMockupPreview
+                  ? (availableColors.length ? availableColors : fallbackSwatches)
+                  : availableColors;
+                const displayColor = (
+                  colorMockupPreview
+                  && selectedColors[index]
+                  && swatchColors.includes(selectedColors[index])
+                ) ? selectedColors[index] : resolvedColor;
+                const hoverColor = previewColors[index];
+                const mockupColor = (
+                  colorMockupPreview
+                  && hoverColor
+                  && (!swatchColors.length || swatchColors.includes(hoverColor))
+                ) ? hoverColor : displayColor;
+                const colorMockupUrl = colorMockupPreview ? getPrintfulColorMockupUrl(product, mockupColor) : '';
+                const colorMockupTint = (
+                  colorMockupUrl && usesPrintfulVariantColorTint(colorMockupUrl)
+                    ? getPrintfulColorCode(product, mockupColor)
+                    : ''
+                );
                 return (
                 <div
                   key={product?.name ? `${product.name}-${index}` : index}
@@ -2227,22 +2357,20 @@ const ProductPage = ({ sidebar }) => {
                   {/* Product Image - always show; stable URL so images load despite re-renders */}
                   {(() => {
                     const isApparelCategory = category === 'womens' || category === 'mens' || category === 'kids';
-                    const imgUrl = getProductImageUrl(product, true);
+                    const imgUrl = colorMockupUrl || getProductImageUrl(product, true);
                     const safeUrl = (imgUrl && typeof imgUrl === 'string') ? imgUrl : `${getImgBase()}/placeholder.png`;
                     const loadHints = browseImageLoadHints(index);
                     return (
-                      <div className="product-image">
+                      <div className={`product-image${colorMockupUrl ? ' product-image--color-mockup' : ''}`}>
                         <div className="product-image-wrapper">
-                          <img
-                            key={safeUrl}
-                            className={isApparelCategory ? "product-image-clear" : "product-image-normal"}
+                          <PrintfulColorMockupImg
+                            className={(isApparelCategory || colorMockupUrl) ? "product-image-clear" : "product-image-normal"}
                             src={safeUrl}
-                            alt={product.name}
+                            alt={`${product.name}${mockupColor ? ` ${mockupColor}` : ''}`}
                             loading={loadHints.loading}
                             fetchPriority={loadHints.fetchPriority}
                             sizes="(max-width: 768px) 46vw, 240px"
-                            decoding="async"
-                            referrerPolicy="no-referrer"
+                            tintColor={colorMockupTint}
                             onError={(e) => handleProductImageError(e, product)}
                           />
                         </div>
@@ -2263,33 +2391,44 @@ const ProductPage = ({ sidebar }) => {
                   
                   <div className="product-options" onClick={(e) => e.stopPropagation()}>
                     {/* Color Options - reserved: use product.options.color / selectedColors only */}
-                    {product.options && product.options.color && product.options.color.length > 0 && (() => {
-                      const { color: displayColor } = resolvedColorSize(product, index);
-                      const availableColors = stockPending ? [] : getColorsForCountry(product, shipToCountry);
-                      return (
-                      <div className="option-group">
-                        <label>Color:</label>
+                    {product.options && product.options.color && product.options.color.length > 0 && (
+                      <div className="option-group option-group--swatches">
+                        <label>Color:{colorMockupPreview && mockupColor ? ` ${mockupColor}` : ''}</label>
+                        {colorMockupPreview && swatchColors.length > 0 && (
+                          <div
+                            className="color-swatch-row"
+                            onPointerLeave={(event) => {
+                              if (event.pointerType && event.pointerType !== 'mouse') return;
+                              clearPreviewColor(index);
+                            }}
+                          >
+                            {swatchColors.map((color) => {
+                              const swatchHex = getPrintfulColorCode(product, color) || '#cccccc';
+                              const isSelected = displayColor === color;
+                              const isPreview = hoverColor === color;
+                              return (
+                                <button
+                                  key={color}
+                                  type="button"
+                                  className={`color-swatch${swatchToneClass(swatchHex)}${isSelected ? ' is-selected' : ''}${isPreview ? ' is-preview' : ''}`}
+                                  style={{ '--swatch': swatchHex }}
+                                  title={color}
+                                  aria-label={color}
+                                  aria-pressed={isSelected}
+                                  onPointerEnter={() => previewProductColor(index, color, product)}
+                                  onPointerDown={() => previewProductColor(index, color, product)}
+                                  onFocus={() => previewProductColor(index, color, product)}
+                                  onClick={() => applyProductColor(product, index, color)}
+                                />
+                              );
+                            })}
+                          </div>
+                        )}
                         <select 
-                          className="color-select"
+                          className={`color-select${colorMockupPreview && swatchColors.length ? ' color-select--hidden' : ''}`}
                           value={availableColors.includes(displayColor) ? displayColor : (availableColors[0] || '')}
                           disabled={!availableColors.length}
-                          onChange={(e) => {
-                            rememberPickedProduct(product, index);
-                            clearVariantAvailability(index);
-                            const newSelectedColors = { ...selectedColors };
-                            const newColor = e.target.value;
-                            newSelectedColors[index] = newColor;
-                            setSelectedColors(newSelectedColors);
-                            
-                            // Check if current size is available for new color, if not reset to first available
-                            const availableSizes = getAvailableSizes(product, newColor);
-                            const currentSize = selectedSizes[index] || product.options?.size?.[0];
-                            if (availableSizes.length > 0 && !availableSizes.includes(currentSize)) {
-                              const newSelectedSizes = { ...selectedSizes };
-                              newSelectedSizes[index] = availableSizes[0];
-                              setSelectedSizes(newSelectedSizes);
-                            }
-                          }}
+                          onChange={(e) => applyProductColor(product, index, e.target.value)}
                         >
                           {availableColors.length ? availableColors.map((color, colorIndex) => (
                             <option key={colorIndex} value={color}>
@@ -2300,8 +2439,7 @@ const ProductPage = ({ sidebar }) => {
                           )}
                         </select>
                       </div>
-                      );
-                    })()}
+                    )}
                     
                     {/* Handle Color Options */}
                     {product.options && product.options.handle_color && product.options.handle_color.length > 0 && (
@@ -2416,7 +2554,7 @@ const ProductPage = ({ sidebar }) => {
 
             {/* Cart Buttons Below Products */}
             <div className="cart-section-bottom-wrap">
-              {!isShopCatalog && (category === 'womens' || category === 'mens' || category === 'kids') && (
+              {!isShopCatalog && (category === 'womens' || category === 'mens' || category === 'kids') && !colorMockupPreview && (
                 <p className="product-mockup-color-notice product-mockup-color-notice-center product-mockup-color-notice-bottom">
                   Product mockups show representative colors. Your order will be made in the colors you select.
                 </p>

@@ -37,6 +37,20 @@ class TestPrintfulDashboardUrls(unittest.TestCase):
         self.assertIn("Unisex T-Shirt", urls)
         self.assertEqual(urls["T-Shirt"], urls["Unisex T-Shirt"])
 
+    def test_womens_ribbed_neck_opens_satu001_womens(self):
+        self.assertEqual(PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME["Women's Ribbed Neck"], 818)
+        self.assertEqual(
+            printful_dashboard_url_for_product_name("Women's Ribbed Neck"),
+            "https://www.printful.com/dashboard/custom/womens/t-shirts/unisex-organic-ribbed-neck-t-shirt-stanley-stella-satu001",
+        )
+
+    def test_womens_pullover_hoodie_opens_bella_3719_womens(self):
+        self.assertEqual(PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME["Pullover Hoodie"], 294)
+        self.assertEqual(
+            printful_dashboard_url_for_product_name("Pullover Hoodie"),
+            "https://www.printful.com/dashboard/custom/womens/hoodies/unisex-pullover-hoodie-bella-canvas-3719",
+        )
+
     def test_oversized_tshirt_maps_to_bella_3010(self):
         self.assertEqual(PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME["Oversized T-Shirt"], 1592)
         self.assertEqual(PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME["Unisex Oversized T-Shirt"], 1592)

@@ -63,7 +63,7 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Unisex Heavyweight T-Shirt": 586,  # legacy alias
     # Printful: Women's Relaxed T-Shirt | Bella + Canvas 6400 — ScreenMerch name is "Women's Shirt".
     "Women's Shirt": 360,
-    # Stanley/Stella SATU001; Printful title says "Unisex" — matches storefront organic ribbed tee colors.
+    # Stanley/Stella SATU001 listed under Printful Women's t-shirts.
     "Women's Ribbed Neck": 818,
     # Printful: Women's Ideal Racerback Tank Top | Next Level 1533 — ScreenMerch: "Racerback Tank".
     "Racerback Tank": 857,
@@ -139,12 +139,12 @@ PRINTFUL_DASHBOARD_URLS_BY_CATALOG_ID: Dict[int, str] = {
     511: "https://www.printful.com/dashboard/custom/kids-teen/shirts/youth-long-sleeve-tee-bella-canvas-3501y",
     689: "https://www.printful.com/dashboard/custom/kids-teen/hoodies/youth-heavy-blend-hoodie-gildan-18500-b",
     677: "https://www.printful.com/dashboard/custom/kids-teen/hoodies/youth-crew-neck-sweatshirt-gildan-18000b",
-    294: "https://www.printful.com/dashboard/custom/mens/hoodies-sweatshirts/unisex-pullover-hoodie-bella-canvas-3719",
+    294: "https://www.printful.com/dashboard/custom/womens/hoodies/unisex-pullover-hoodie-bella-canvas-3719",
     380: "https://www.printful.com/dashboard/custom/mens/hoodies/unisex-premium-hoodie-cotton-heritage-m2580",
     317: "https://www.printful.com/dashboard/custom/womens/hoodies-sweatshirts/womens-cropped-hoodie-bella-canvas-7502",
     586: "https://www.printful.com/dashboard/custom/womens/t-shirts/unisex-garment-dyed-heavyweight-shirt-comfort-colors-1717",
     360: "https://www.printful.com/dashboard/custom/womens/t-shirts/womens-relaxed-t-shirt-bella-canvas-6400",
-    818: "https://www.printful.com/dashboard/custom/mens/shirts/unisex-organic-ribbed-neck-t-shirt-stanley-stella-satu001",
+    818: "https://www.printful.com/dashboard/custom/womens/t-shirts/unisex-organic-ribbed-neck-t-shirt-stanley-stella-satu001",
     857: "https://www.printful.com/dashboard/custom/womens/tank-tops/womens-ideal-racerback-tank-top-next-level-1533",
     780: "https://www.printful.com/dashboard/custom/womens/tank-tops/womens-micro-rib-tank-top-bella-canvas-1012",
     636: "https://www.printful.com/dashboard/custom/womens/crop-tops/womens-crop-top-as-colour-4062",

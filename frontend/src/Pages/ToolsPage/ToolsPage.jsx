@@ -3400,6 +3400,7 @@ const ToolsPage = () => {
               color: item.color || 'N/A',
               size: item.size || 'N/A',
               category: item.category || '',
+              printful_catalog_product_id: item.printful_catalog_product_id || null,
               screenshot: item.originalScreenshot || item.screenshot || '',
               originalScreenshot: item.originalScreenshot || '',
               productImage: storefrontMockupUrl(item.name || item.product, item.image || ''),
