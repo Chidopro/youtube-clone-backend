@@ -994,7 +994,7 @@
   width: 360px;
   min-width: 360px;
   max-width: 360px;
-  height: min(640px, calc(100dvh - 24px));
+  height: auto;
   padding: 14px 16px 12px;
   max-height: min(640px, calc(100dvh - 24px));
   overflow-x: hidden;
@@ -1029,12 +1029,12 @@
 }
 
 .design-modal-preview-card {
-  margin: 0 0 8px;
-  overflow: hidden;
+  margin: 0 0 4px;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 
 .design-modal-preview-title {
@@ -1056,20 +1056,21 @@
   font-weight: 700;
   font-size: 13px;
   word-break: break-word;
-  min-height: 2.8em;
+  min-height: 0;
 }
 
 .design-modal-preview-visual {
   width: 100%;
-  height: 280px;
-  flex: 0 0 280px;
-  margin: 0 auto 8px;
+  height: auto;
+  max-height: 210px;
+  flex: 0 0 auto;
+  margin: 0 auto 2px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   position: relative;
   overflow: hidden;
-  isolation: isolate;
+  isolation: auto;
 }
 
 .design-modal-preview-visual.is-loading-shot::after {
@@ -1085,11 +1086,20 @@
   max-width: 200px;
   width: 200px;
   height: auto;
-  max-height: none;
+  max-height: 210px;
   display: block;
   overflow: hidden;
-  contain: layout paint;
-  isolation: isolate;
+  contain: none;
+  isolation: auto;
+}
+
+.design-modal--preview .product-preview-overlay-clip {
+  transform: none;
+  background: transparent !important;
+}
+
+.design-modal--preview .product-preview-overlay-clip img {
+  background: transparent;
 }
 
 .design-modal--preview .product-preview-mockup {
@@ -1105,6 +1115,7 @@
   z-index: 8;
   flex-shrink: 0;
   pointer-events: auto;
+  background: #fff;
 }
 
 @media (max-width: 640px) {
@@ -1135,7 +1146,7 @@
   }
 
   .design-modal-preview-card {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
     overflow: visible;
     margin: 0 0 4px;
@@ -1187,11 +1198,18 @@
   }
 
   .design-modal--preview .design-modal-orient-row,
-  .design-modal-preview-nav {
+  .design-modal-preview-nav,
+  .design-modal-color-note,
+  .design-modal-remove-under-note {
     flex-shrink: 0;
     position: relative;
     z-index: 8;
     background: #fff;
+  }
+
+  .design-modal-color-note {
+    font-size: 11px;
+    margin: 0 4px 2px;
   }
 
   .design-modal-footer {
@@ -1229,6 +1247,26 @@
 
 .design-modal-preview-visual--product-only {
   overflow: visible;
+}
+
+.design-modal-color-note {
+  margin: 0 8px 2px;
+  padding: 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 400;
+  color: #666;
+  line-height: 1.35;
+  flex-shrink: 0;
+}
+
+.design-modal-remove-under-note {
+  display: block;
+  width: max-content;
+  margin: 0 auto 6px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 8;
 }
 
 .design-modal-preview-empty {
@@ -1273,7 +1311,7 @@
 
 .design-modal--preview .design-modal-tools-btn {
   height: 42px;
-  margin: 0 0 8px;
+  margin: 4px 0 8px;
   font-size: 15px;
   flex-shrink: 0;
 }

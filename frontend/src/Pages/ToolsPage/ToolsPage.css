@@ -405,6 +405,10 @@ body.tools-page-active .site-footer {
   transform: translateZ(0);
 }
 
+.product-preview-overlay-clip--lite {
+  transform: none;
+}
+
 .product-preview-overlay-fit {
   object-fit: cover !important;
 }

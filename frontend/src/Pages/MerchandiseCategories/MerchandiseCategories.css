@@ -15,20 +15,9 @@
   font-size: 36px;
   font-weight: 700;
   color: #1a1a1a;
-  margin: 0 0 8px;
+  margin: 0 0 22px;
   padding: 0;
   line-height: 1.2;
-}
-
-.merchandise-categories-page .categories-color-note {
-  margin: 0 auto 22px;
-  padding: 0 12px;
-  max-width: 36em;
-  font-size: 14px;
-  font-weight: 400;
-  color: #666;
-  line-height: 1.4;
-  text-align: center;
 }
 
 /* Match Home / Product page 1-2-3 bar width */
@@ -171,7 +160,7 @@
   font-size: 36px;
   font-weight: 700;
   color: #1a1a1a;
-  margin: 0 0 8px;
+  margin: 0 0 22px;
   padding: 0;
   line-height: 1.2;
   white-space: normal;
@@ -263,7 +252,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f8f8f8;
+  background: #ffffff;
   overflow: hidden;
   z-index: 2;
   position: relative;
@@ -452,15 +441,9 @@
     font-size: 24px;
     font-weight: 700;
     margin-top: 0;
-    margin-bottom: 8px;
+    margin-bottom: 16px;
     padding: 0;
     white-space: normal;
-  }
-
-  .merchandise-categories-page .categories-color-note {
-    margin-bottom: 16px;
-    font-size: 13px;
-    padding: 0 8px;
   }
 
   .categories-subtitle {
@@ -513,14 +496,9 @@
 
   .merchandise-categories-page .categories-title {
     font-size: 22px;
-    margin-bottom: 6px;
+    margin-bottom: 14px;
     padding-bottom: 0;
     white-space: normal;
-  }
-
-  .merchandise-categories-page .categories-color-note {
-    margin-bottom: 14px;
-    font-size: 12px;
   }
 
   .categories-subtitle {

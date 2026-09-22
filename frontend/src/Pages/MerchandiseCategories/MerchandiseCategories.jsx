@@ -7,9 +7,10 @@ import { readPendingMerchData } from '../../utils/merchSession';
 import { useNavigate } from 'react-router-dom';
 import { SHOP_CATEGORIES, shopCategoryThumbUrl } from '../../utils/shopCategories';
 
-function CategoryThumb({ preview, emoji }) {
+function CategoryThumb({ preview, emoji, thumbFit }) {
   const [failed, setFailed] = useState(false);
   const src = shopCategoryThumbUrl(preview);
+  const isModel = thumbFit === 'model';
 
   if (!src || failed) {
     return (
@@ -20,13 +21,14 @@ function CategoryThumb({ preview, emoji }) {
   }
 
   return (
-    <div className="category-thumb">
+    <div className={`category-thumb${isModel ? ' category-thumb--model' : ''}`}>
       <img
-        className="category-thumb-img"
+        className={`category-thumb-img${isModel ? ' category-thumb-img--model' : ''}`}
         src={src}
         alt=""
         loading="lazy"
         decoding="async"
+        referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
       />
     </div>
@@ -131,9 +133,6 @@ const MerchandiseCategories = ({ sidebar }) => {
       <div className="merchandise-categories">
         <div className="categories-container">
           <h1 className="categories-title">Choose Category</h1>
-          <p className="categories-color-note">
-            Color shown is for display only. You&apos;ll receive the color you selected.
-          </p>
 
           <div className="categories-grid">
             {categories.map((cat, i) => (
@@ -147,7 +146,7 @@ const MerchandiseCategories = ({ sidebar }) => {
                   window.__DEBUG__ && console.log('👆 touchstart:', cat.category)
                 }
               >
-                <CategoryThumb preview={cat.preview} emoji={cat.emoji} />
+                <CategoryThumb preview={cat.preview} emoji={cat.emoji} thumbFit={cat.thumbFit} />
                 <div className="category-name">{cat.name}</div>
               </button>
             ))}

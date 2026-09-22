@@ -12,19 +12,63 @@ function shopImgBase() {
 
 /** Storefront shop hubs: the 8 product categories (no Product Info / Image Tools). */
 export const SHOP_CATEGORIES = [
-  { name: "Women's", emoji: '👩', category: 'womens', preview: 'womenshirtpreview.png' },
-  { name: "Men's", emoji: '👨', category: 'mens', preview: 'mensunisextshirtpreview.png' },
-  { name: 'Kids', emoji: '👶', category: 'kids', preview: 'kidsshirtpreview.png' },
-  { name: 'Hats', emoji: '🧢', category: 'hats', preview: 'hatsdistresseddadhatpreview.png' },
-  { name: 'Mugs', emoji: '☕', category: 'mugs', preview: 'mugwhiteglossymugpreview.png' },
-  { name: 'Bags', emoji: '👜', category: 'bags', preview: 'bagslaptopsleevepreview.png' },
-  { name: 'Pets', emoji: '🐕', category: 'pets', preview: 'petspetbowlalloverprintpreview.png' },
-  { name: 'Accessories', emoji: '📦', category: 'misc', preview: 'miscellaneoushardcovernotebookpreview.png' },
+  {
+    name: "Women's",
+    emoji: '👩',
+    category: 'womens',
+    thumbFit: 'model',
+    preview: 'https://files.cdn.printful.com/products/360/14268_1774363083.jpg',
+  },
+  {
+    name: "Men's",
+    emoji: '👨',
+    category: 'mens',
+    thumbFit: 'model',
+    preview: 'https://files.cdn.printful.com/products/71/4086_1752236281.jpg',
+  },
+  {
+    name: 'Kids',
+    emoji: '👶',
+    category: 'kids',
+    thumbFit: 'model',
+    preview: 'https://files.cdn.printful.com/products/307/10616_1738935713.jpg',
+  },
+  {
+    name: 'Hats',
+    emoji: '🧢',
+    category: 'hats',
+    preview: 'https://files.cdn.printful.com/products/396/10992_1582184592.jpg',
+  },
+  {
+    name: 'Mugs',
+    emoji: '☕',
+    category: 'mugs',
+    preview: 'https://files.cdn.printful.com/products/19/1320_1663762583.jpg',
+  },
+  {
+    name: 'Bags',
+    emoji: '👜',
+    category: 'bags',
+    preview: 'https://files.cdn.printful.com/products/394/10984_1737468114.jpg',
+  },
+  {
+    name: 'Pets',
+    emoji: '🐕',
+    category: 'pets',
+    preview: 'https://files.cdn.printful.com/products/678/16785_1680768114.jpg',
+  },
+  {
+    name: 'Accessories',
+    emoji: '📦',
+    category: 'misc',
+    preview: 'https://files.cdn.printful.com/products/682/16952_1683889985.jpg',
+  },
 ];
 
 export function shopCategoryThumbUrl(previewFile) {
   const file = String(previewFile || '').trim();
   if (!file) return '';
+  if (/^https?:\/\//i.test(file)) return file;
   return `${shopImgBase()}/${file}`;
 }
 

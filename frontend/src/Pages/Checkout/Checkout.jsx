@@ -8,6 +8,7 @@ import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAu
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { storefrontMockupUrl } from '../../utils/shopCategories';
+import { getPrintfulColorMockupUrl } from '../../utils/printfulColorMockups';
 import { matchPrintAreaProductName } from '../../config/printAreaConfig';
 import {
   CHECKOUT_COUNTRY_OPTIONS,
@@ -129,9 +130,49 @@ function itemNeedsDesignConfirm(item) {
   return Boolean(item);
 }
 
-function isCheckoutHatProduct(productName) {
-  const n = String(productName || '').toLowerCase();
-  return n.includes('hat') || n.includes('cap');
+/** Selected-image overlay stays on shirts, hoodies, and hats. Other categories use a Printful photo. */
+function isConfirmPrintOverlayProduct(item) {
+  const cat = String(item?.category || '').toLowerCase().trim();
+  if (cat === 'mugs' || cat === 'bags' || cat === 'pets' || cat === 'misc') return false;
+  if (cat === 'hats' || cat === 'womens' || cat === 'mens' || cat === 'kids') return true;
+  const n = String(item?.name || item?.product || '').toLowerCase();
+  if (
+    n.includes('mug')
+    || n.includes('bowl')
+    || n.includes('bandana')
+    || n.includes('tote')
+    || n.includes('drawstring')
+    || n.includes('laptop')
+    || n.includes('utility bag')
+    || n.includes('crossbody')
+    || n.includes('notebook')
+    || n.includes('apron')
+    || n.includes('puzzle')
+    || n.includes('greeting')
+  ) {
+    return false;
+  }
+  return (
+    n.includes('hat')
+    || n.includes('cap')
+    || n.includes('shirt')
+    || n.includes('hoodie')
+    || n.includes('sweatshirt')
+    || n.includes('tank')
+    || n.includes('tee')
+    || n.includes('onesie')
+    || n.includes('body suit')
+    || n.includes('crop')
+  );
+}
+
+function confirmPrintfulPhotoUrl(item) {
+  const product = {
+    name: item?.name || item?.product,
+    printful_catalog_product_id: item?.printful_catalog_product_id,
+  };
+  const color = item?.color || item?.handle_color || item?.handleColor || 'White';
+  return getPrintfulColorMockupUrl(product, color) || getPrintfulColorMockupUrl(product, 'White') || '';
 }
 
 function cartConfirmIndexes(itemList) {
@@ -390,10 +431,16 @@ const Checkout = () => {
     : -1;
   const previewItemForShot = previewCartIndexForShot >= 0 ? items[previewCartIndexForShot] : null;
   const confirmShotUrl = showDesignModal && confirmPreviewReady ? itemConfirmShotUrl(previewItemForShot) : '';
-  const confirmDisplayShot = useDisplaySrc(confirmShotUrl, 360, showDesignModal && confirmPreviewReady, true);
+  const confirmLiveOverlay = itemHasLiveOverlayEdits(previewItemForShot);
+  const confirmDisplayShot = useDisplaySrc(
+    confirmShotUrl,
+    360,
+    showDesignModal && confirmPreviewReady && !confirmLiveOverlay,
+    true
+  );
 
   useEffect(() => {
-    if (!showDesignModal || !confirmPreviewReady) return undefined;
+    if (!showDesignModal || !confirmPreviewReady || confirmLiveOverlay) return undefined;
     const indexes = cartConfirmIndexes(items);
     const currentIdx = indexes[designPreviewIndex];
     const nextIdx = indexes[designPreviewIndex + 1];
@@ -404,7 +451,7 @@ const Checkout = () => {
       if (nextUrl && !/^https?:/i.test(nextUrl)) prepareDisplaySrc(nextUrl, 360, { urgent: false });
     }
     return undefined;
-  }, [showDesignModal, confirmPreviewReady, confirmShotUrl, designPreviewIndex]);
+  }, [showDesignModal, confirmPreviewReady, confirmShotUrl, confirmLiveOverlay, designPreviewIndex]);
 
   // If destination changes, discard a prior quote so totals stay honest.
   useEffect(() => {
@@ -1406,7 +1453,10 @@ const Checkout = () => {
                 itemName,
                 item?.image || item?.img || previewMockups[previewCartIndex] || ''
               );
-              const hatProductOnly = isCheckoutHatProduct(itemName);
+              const overlayProduct = isConfirmPrintOverlayProduct(item);
+              const printfulPhotoUrl = overlayProduct ? '' : confirmPrintfulPhotoUrl(item);
+              const productOnlyUrl = printfulPhotoUrl || mockupUrl;
+              const productOnly = !overlayProduct;
               const ts = item?.toolSettings && typeof item.toolSettings === 'object' ? item.toolSettings : {};
               const previewOrientation = (designPreferences[previewCartIndex]?.orientation === 'landscape')
                 ? 'landscape'
@@ -1415,7 +1465,11 @@ const Checkout = () => {
                 ? ts.printAreaFit
                 : 'product';
               const shotMatches = !confirmShotUrl || confirmDisplayShot.forUrl === confirmShotUrl;
-              const overlayReady = confirmPreviewReady && (!confirmShotUrl || (Boolean(confirmDisplayShot.src) && shotMatches));
+              const overlaySrc = confirmLiveOverlay ? confirmShotUrl : confirmDisplayShot.src;
+              const overlayReady = confirmPreviewReady && (
+                !confirmShotUrl
+                || (confirmLiveOverlay ? Boolean(confirmShotUrl) : (Boolean(confirmDisplayShot.src) && shotMatches))
+              );
               return (
                 <div className="design-modal-preview-card">
                   <h3 className="design-modal-preview-title">
@@ -1431,20 +1485,21 @@ const Checkout = () => {
                       ) : null}
                     </div>
                   </div>
-                  <div className={`design-modal-preview-visual${confirmShotUrl && !overlayReady && !hatProductOnly ? ' is-loading-shot' : ''}${hatProductOnly ? ' design-modal-preview-visual--product-only' : ''}`}>
-                    {mockupUrl ? (
-                      hatProductOnly ? (
+                  <div className={`design-modal-preview-visual${confirmShotUrl && !overlayReady && !productOnly ? ' is-loading-shot' : ''}${productOnly ? ' design-modal-preview-visual--product-only' : ''}`}>
+                    {productOnlyUrl ? (
+                      productOnly ? (
                         <img
                           className="design-modal-preview-product-only"
-                          src={mockupUrl}
+                          src={productOnlyUrl}
                           alt={itemName}
                           decoding="async"
+                          referrerPolicy="no-referrer"
                         />
                       ) : overlayReady ? (
                       <ProductPreviewWithDrag
                         key={previewCartIndex}
                         productImage={mockupUrl}
-                        screenshot={confirmDisplayShot.src}
+                        screenshot={overlaySrc}
                         productName={printProductName}
                         productSize={item?.size}
                         offsetX={ts.offsetX || 0}
@@ -1463,8 +1518,12 @@ const Checkout = () => {
                         imageOffsetY={ts.imageOffsetY || 0}
                         imageOrientation={previewOrientation}
                         blackAndWhite={Boolean(ts.blackAndWhite)}
-                        featherFadeEnabled={Boolean(ts.featherFadeEnabled)}
-                        featherFadeColor={ts.featherFadeColor || 'white'}
+                        featherFadeEnabled={Boolean(ts.featherFadeEnabled) && ts.featherFadeColor !== 'transparent'}
+                        featherFadeColor={
+                          (!ts.featherFadeEnabled || ts.featherFadeColor === 'transparent')
+                            ? 'transparent'
+                            : (ts.featherFadeColor === 'black' ? 'black' : 'white')
+                        }
                         textEnabled={Boolean(ts.textEnabled)}
                         textContent={ts.textContent || ''}
                         textFont={ts.textFont}
@@ -1474,8 +1533,9 @@ const Checkout = () => {
                         textOffsetY={ts.textOffsetY}
                         textDirection={ts.textDirection}
                         litePreview
-                        sourceWidth={confirmDisplayShot.width}
-                        sourceHeight={confirmDisplayShot.height}
+                        shirtFillHint={ts.shirtFillColor || ''}
+                        sourceWidth={confirmLiveOverlay ? 0 : confirmDisplayShot.width}
+                        sourceHeight={confirmLiveOverlay ? 0 : confirmDisplayShot.height}
                       />
                       ) : (
                         <img
@@ -1489,6 +1549,18 @@ const Checkout = () => {
                       <p className="design-modal-preview-empty">No preview available</p>
                     )}
                   </div>
+                  <p className="design-modal-color-note">
+                    Color shown is for display only. You&apos;ll receive the color you selected.
+                  </p>
+                  <button
+                    type="button"
+                    className="design-modal-text-action design-modal-remove-under-note"
+                    disabled={removeBusy}
+                    onClick={() => removeCartItem(previewCartIndex)}
+                  >
+                    Remove Item
+                  </button>
+                  {!productOnly && (
                   <div className="design-modal-orient-row" role="group" aria-label="Image orientation">
                       <label className="design-modal-orient-check">
                         <input
@@ -1521,6 +1593,7 @@ const Checkout = () => {
                         Landscape
                       </label>
                     </div>
+                  )}
                   <div className="design-modal-preview-nav">
                     <button
                       type="button"
@@ -1529,14 +1602,6 @@ const Checkout = () => {
                       onClick={() => setDesignPreviewIndex((prev) => Math.max(0, prev - 1))}
                     >
                       Previous
-                    </button>
-                    <button
-                      type="button"
-                      className="design-modal-text-action"
-                      disabled={removeBusy}
-                      onClick={() => removeCartItem(previewCartIndex)}
-                    >
-                      Remove Item
                     </button>
                     <button
                       type="button"
@@ -1608,6 +1673,7 @@ const Checkout = () => {
               const handleGoToTools = () => {
                 if (!applyOrientationToCart()) return;
                 setShowDesignModal(false);
+                setToolsPreviewNewest(false);
                 try {
                   const cart = readCartItems();
                   const previewIndex = Math.min(Math.max(0, designPreviewIndex), confirmIndexes.length - 1);

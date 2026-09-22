@@ -427,7 +427,9 @@ function sampleShirtFillFromMockup(img, productName) {
       if (alpha < 80) continue;
       if (isPrintBoxPixel(r, g, b)) continue;
       const l = 0.299 * r + 0.587 * g + 0.114 * b;
-      if (l > 210) continue;
+      // Skip near-white highlights only. Light shirts (sky/cyan) must still sample.
+      const sat = Math.max(r, g, b) - Math.min(r, g, b);
+      if (l > 245 && sat < 18) continue;
       samples.push([r, g, b, l]);
     }
     if (!samples.length) return '';
@@ -914,31 +916,34 @@ function overlayFeatherMaskStyle(featherEdge, width, height, cornerRadiusPx = 0)
 }
 
 function normalizeFeatherFadeColor(value) {
-  return value === 'black' ? 'black' : 'white';
+  if (value === 'black') return 'black';
+  if (value === 'transparent') return 'transparent';
+  return 'white';
+}
+
+function isTransparentFeatherFade(enabled, color) {
+  return !enabled || color === 'transparent';
 }
 
 function overlayFeatherFadeBackground(enabled, color) {
-  if (!enabled) return 'transparent';
+  if (isTransparentFeatherFade(enabled, color)) return 'transparent';
   return color === 'black' ? '#000' : '#fff';
 }
 
 function flattenCanvasFeatherToColor(ctx, canvas, fadeColor) {
   if (!ctx || !canvas) return;
-  const fill = fadeColor === 'black' ? 0 : 255;
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const data = imageData.data;
-  for (let i = 0; i < data.length; i += 4) {
-    const a = data[i + 3];
-    if (a === 0) continue;
-    if (a < 255) {
-      const inv = 255 - a;
-      data[i] = Math.round((data[i] * a + fill * inv) / 255);
-      data[i + 1] = Math.round((data[i + 1] * a + fill * inv) / 255);
-      data[i + 2] = Math.round((data[i + 2] * a + fill * inv) / 255);
-    }
-    data[i + 3] = 255;
-  }
-  ctx.putImageData(imageData, 0, 0);
+  const raw = String(fadeColor || '').trim();
+  if (!raw || raw === 'transparent') return;
+  const fillCss = raw === 'black' || raw === '#000' || raw === '#000000'
+    ? '#000000'
+    : (raw === 'white' || raw === '#fff' || raw === '#ffffff'
+      ? '#ffffff'
+      : raw);
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.fillStyle = fillCss;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
 }
 
 function roundedRectPath(ctx, x, y, width, height, radius) {
@@ -1094,7 +1099,183 @@ function applyRadiusFeatherFade(sourceCanvas, {
   return canvas;
 }
 
-function exportPreviewDataUrl(sourceCanvas) {
+function LiteOverlayArtwork({
+  screenshot,
+  vis,
+  layout,
+  cornerRadius = 0,
+  featherEdge = 0,
+  featherFadeEnabled = false,
+  featherFadeColor = 'white',
+  shirtFillColor = '',
+  mockupSrc = '',
+  productName = '',
+  blackAndWhite = false,
+  posX = 50,
+  posY = 50,
+  objectFit = 'cover',
+}) {
+  const visW = Math.max(0, Number(vis?.width) || 0);
+  const visH = Math.max(0, Number(vis?.height) || 0);
+  const [png, setPng] = useState('');
+  const transparentFade = isTransparentFeatherFade(featherFadeEnabled, featherFadeColor);
+  useEffect(() => {
+    const src = String(screenshot || '');
+    const solidFill = transparentFade
+      ? ''
+      : (featherFadeColor === 'black' ? '#000000' : '#ffffff');
+    if (!src || !(visW > 1) || !(visH > 1)) {
+      setPng('');
+      return undefined;
+    }
+    let cancelled = false;
+
+    const rasterize = (flattenFill) => {
+      const img = new Image();
+      img.onload = () => {
+        if (cancelled) return;
+        try {
+          const w = Math.max(1, Math.round(visW));
+          const h = Math.max(1, Math.round(visH));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d', { alpha: true });
+          if (!ctx) {
+            setPng('');
+            return;
+          }
+          ctx.clearRect(0, 0, w, h);
+          if (flattenFill) {
+            ctx.fillStyle = flattenFill;
+            ctx.fillRect(0, 0, w, h);
+          }
+          if (blackAndWhite) ctx.filter = 'grayscale(1)';
+          const iw = img.naturalWidth || img.width;
+          const ih = img.naturalHeight || img.height;
+          if (layout && Number(layout.width) > 0 && Number(layout.height) > 0) {
+            ctx.drawImage(
+              img,
+              0,
+              0,
+              iw,
+              ih,
+              (Number(layout.left) || 0) - (Number(vis?.left) || 0),
+              (Number(layout.top) || 0) - (Number(vis?.top) || 0),
+              Number(layout.width) || w,
+              Number(layout.height) || h
+            );
+          } else if (iw > 0 && ih > 0) {
+            const cover = objectFit !== 'contain';
+            const scale = cover
+              ? Math.max(w / iw, h / ih)
+              : Math.min(w / iw, h / ih);
+            const dw = iw * scale;
+            const dh = ih * scale;
+            const dx = (w - dw) * (Math.max(0, Math.min(100, Number(posX) || 50)) / 100);
+            const dy = (h - dh) * (Math.max(0, Math.min(100, Number(posY) || 50)) / 100);
+            ctx.drawImage(img, dx, dy, dw, dh);
+          }
+          ctx.filter = 'none';
+          const processed = applyRadiusFeatherFade(canvas, {
+            cornerRadius,
+            featherEdge,
+            featherFadeEnabled: false,
+            featherFadeColor: 'transparent',
+          });
+          const pctx = processed.getContext('2d', { alpha: true });
+          if (flattenFill) {
+            flattenCanvasFeatherToColor(pctx, processed, flattenFill);
+          } else if (transparentFade) {
+            if (!cancelled) setPng('');
+            return;
+          }
+          if (cancelled) return;
+          setPng(processed.toDataURL('image/png'));
+        } catch {
+          if (!cancelled) setPng('');
+        }
+      };
+      img.onerror = () => {
+        if (!cancelled) setPng('');
+      };
+      img.src = src;
+    };
+
+    const hinted = String(shirtFillColor || '').trim();
+    if (!transparentFade) {
+      rasterize(solidFill);
+      return () => {
+        cancelled = true;
+      };
+    }
+    if (hinted && hinted !== 'transparent' && hinted !== 'black' && hinted !== '#000' && hinted !== '#000000') {
+      rasterize(hinted);
+      return () => {
+        cancelled = true;
+      };
+    }
+    const mockup = String(mockupSrc || '');
+    if (!mockup) {
+      rasterize('');
+      return () => {
+        cancelled = true;
+      };
+    }
+    const mockImg = new Image();
+    mockImg.onload = () => {
+      if (cancelled) return;
+      const sampled = sampleShirtFillFromMockup(mockImg, productName);
+      rasterize(sampled || '');
+    };
+    mockImg.onerror = () => {
+      if (!cancelled) rasterize('');
+    };
+    mockImg.src = mockup;
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    screenshot,
+    visW,
+    visH,
+    vis?.left,
+    vis?.top,
+    layout?.left,
+    layout?.top,
+    layout?.width,
+    layout?.height,
+    cornerRadius,
+    featherEdge,
+    transparentFade,
+    featherFadeColor,
+    shirtFillColor,
+    mockupSrc,
+    productName,
+    blackAndWhite,
+    posX,
+    posY,
+    objectFit,
+  ]);
+  if (!png) return null;
+  return (
+    <img
+      src={png}
+      alt=""
+      decoding="async"
+      draggable={false}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'block',
+        pointerEvents: 'none',
+        userSelect: 'none',
+      }}
+    />
+  );
+}
+
+function exportPreviewDataUrl(sourceCanvas, { keepAlpha = false } = {}) {
   if (!sourceCanvas || !(sourceCanvas.width > 0) || !(sourceCanvas.height > 0)) return '';
   const scale = Math.min(1, BAKE_EXPORT_MAX / Math.max(sourceCanvas.width, sourceCanvas.height, 1));
   let out = sourceCanvas;
@@ -1102,11 +1283,13 @@ function exportPreviewDataUrl(sourceCanvas) {
     out = document.createElement('canvas');
     out.width = Math.max(1, Math.round(sourceCanvas.width * scale));
     out.height = Math.max(1, Math.round(sourceCanvas.height * scale));
-    const octx = out.getContext('2d');
+    const octx = out.getContext('2d', { alpha: true });
     if (!octx) return '';
+    octx.clearRect(0, 0, out.width, out.height);
     octx.drawImage(sourceCanvas, 0, 0, out.width, out.height);
   }
   try {
+    if (keepAlpha) return out.toDataURL('image/png');
     return out.toDataURL('image/jpeg', 0.82);
   } catch {
     try {
@@ -1418,7 +1601,9 @@ function editorSlotFromCartItem(item) {
     imageOrientation: ori === 'landscape' ? 'landscape' : (ori === 'portrait' ? 'portrait' : (hasSettings ? s.imageOrientation : 'portrait')),
     offsetX: hasSettings && typeof s.offsetX === 'number' ? s.offsetX : 0,
     offsetY: hasSettings && typeof s.offsetY === 'number' ? s.offsetY : 0,
-    sourceScreenshot: slotSourceKey(item.screenshot || item.selected_screenshot || ''),
+    sourceScreenshot: slotSourceKey(
+      item.originalScreenshot || item.screenshot || item.selected_screenshot || ''
+    ),
     fitUserSet: true,
   };
 }
@@ -1480,7 +1665,7 @@ function hydrateSlotsFromCart(slots) {
     cartNow.forEach((item, i) => {
       const fromCart = editorSlotFromCartItem(item);
       if (!fromCart) return;
-      const shot = item.screenshot || item.selected_screenshot || '';
+      const shot = item.originalScreenshot || item.screenshot || item.selected_screenshot || '';
       if (!savedMatchesSourcePreview(next[i], shot, shot)) {
         next[i] = fromCart;
       }
@@ -1491,11 +1676,31 @@ function hydrateSlotsFromCart(slots) {
   return next;
 }
 
+function screenshotMatchKeys(url) {
+  const raw = String(url || '');
+  if (!raw) return [];
+  const key = slotSourceKey(raw);
+  const finger = shotFingerprint(raw);
+  return [raw, key, finger].filter(Boolean);
+}
+
 function savedMatchesSourcePreview(saved, screenshot, screenshotFromCart) {
-  if (!saved || screenshot !== screenshotFromCart) return false;
+  if (!saved) return false;
   if (!saved.sourceScreenshot) return true;
-  const shotKey = shotFingerprint(screenshot);
-  return saved.sourceScreenshot === screenshot || saved.sourceScreenshot === shotKey;
+  const keys = new Set([
+    ...screenshotMatchKeys(screenshot),
+    ...screenshotMatchKeys(screenshotFromCart),
+  ]);
+  return keys.has(saved.sourceScreenshot);
+}
+
+function slotMatchesCartShot(slot, product) {
+  if (!slot?.sourceScreenshot || !product) return false;
+  return savedMatchesSourcePreview(
+    slot,
+    product.originalScreenshot || product.screenshot || '',
+    product.screenshot || product.selected_screenshot || ''
+  );
 }
 
 function slotSourceKey(url) {
@@ -1638,6 +1843,7 @@ const ProductPreviewWithDrag = ({
   onOverlayBoxChange,
   onShirtFillChange,
   litePreview = false,
+  shirtFillHint = '',
 }) => {
   const containerRef = useRef(null);
   const productImageRef = useRef(null);
@@ -1651,9 +1857,16 @@ const ProductPreviewWithDrag = ({
   const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 0, height: 0 });
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
   const [detectedPrintBox, setDetectedPrintBox] = useState(null);
-  const [shirtFillColor, setShirtFillColor] = useState('');
+  const [shirtFillColor, setShirtFillColor] = useState(() => String(shirtFillHint || ''));
+  const [overlayNaturalSize, setOverlayNaturalSize] = useState({ width: 0, height: 0 });
   const overlayFitKeyRef = useRef('');
   const liteSizeLockedRef = useRef(false);
+
+  useEffect(() => {
+    const hint = String(shirtFillHint || '');
+    if (!hint) return;
+    setShirtFillColor((prev) => prev || hint);
+  }, [shirtFillHint]);
 
   const clampFrameOffset = (x, y) => {
     const placeName = selectedProductName || productName;
@@ -1679,6 +1892,35 @@ const ProductPreviewWithDrag = ({
       printH: visualPrintH,
     });
   };
+
+  useEffect(() => {
+    if (sourceWidth > 0 && sourceHeight > 0) {
+      setOverlayNaturalSize((prev) => (
+        prev.width === sourceWidth && prev.height === sourceHeight
+          ? prev
+          : { width: sourceWidth, height: sourceHeight }
+      ));
+      return undefined;
+    }
+    const src = String(screenshot || '');
+    if (!src) {
+      setOverlayNaturalSize((prev) => (prev.width || prev.height ? { width: 0, height: 0 } : prev));
+      return undefined;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      const w = img.naturalWidth || 0;
+      const h = img.naturalHeight || 0;
+      if (!(w > 0 && h > 0)) return;
+      setOverlayNaturalSize((prev) => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
+    };
+    img.src = src;
+    return () => {
+      cancelled = true;
+    };
+  }, [screenshot, sourceWidth, sourceHeight]);
 
   // Calculate screenshot display size based on product print area
   useLayoutEffect(() => {
@@ -2046,23 +2288,22 @@ const ProductPreviewWithDrag = ({
     const img = productImageRef.current;
     const name = (printAreaFit === 'product' && selectedProductName) ? selectedProductName : productName;
     const src = img ? (img.currentSrc || img.src) : '';
-    if (!litePreview && src) {
+    if (src) {
       const fillKey = `${src}|${name}`;
+      const applyFill = (fill) => {
+        if (!fill) return;
+        setShirtFillColor((prev) => (prev === fill ? prev : fill));
+        if (onShirtFillChange) onShirtFillChange(fill);
+      };
       if (shirtFillCache.has(fillKey)) {
-        const cached = shirtFillCache.get(fillKey);
-        if (cached) {
-          setShirtFillColor((prev) => (prev === cached ? prev : cached));
-          if (onShirtFillChange) onShirtFillChange(cached);
-        }
+        applyFill(shirtFillCache.get(fillKey));
+      } else if (litePreview) {
+        applyFill(sampleShirtFillFromMockup(img, name));
       } else {
         const sourceImg = img;
         scheduleIdleWork(() => {
           if ((productImageRef.current?.currentSrc || productImageRef.current?.src) !== src) return;
-          const fill = sampleShirtFillFromMockup(sourceImg, name);
-          if (fill) {
-            setShirtFillColor((prev) => (prev === fill ? prev : fill));
-            if (onShirtFillChange) onShirtFillChange(fill);
-          }
+          applyFill(sampleShirtFillFromMockup(sourceImg, name));
         });
       }
     }
@@ -2242,7 +2483,6 @@ const ProductPreviewWithDrag = ({
         width: '100%',
         margin: '0 auto',
         overflow: litePreview ? 'hidden' : undefined,
-        contain: litePreview ? 'layout paint' : undefined,
         cursor: litePreview || imageOrientation === 'landscape' ? 'default' : (isDragging ? 'grabbing' : 'grab'),
         userSelect: 'none',
         WebkitUserSelect: 'none',
@@ -2312,11 +2552,13 @@ const ProductPreviewWithDrag = ({
             const objectPos = printBoxObjectPosition(placeName, imageOrientation, imageOffsetX, imageOffsetY);
             const posX = objectPos.x;
             const posY = objectPos.y;
+            const artworkSrcW = sourceWidth > 0 ? sourceWidth : overlayNaturalSize.width;
+            const artworkSrcH = sourceHeight > 0 ? sourceHeight : overlayNaturalSize.height;
             const artworkLayout = artworkLayoutInBox(
               scaledWidth,
               scaledHeight,
-              sourceWidth,
-              sourceHeight,
+              artworkSrcW,
+              artworkSrcH,
               screenshotScale,
               posX,
               posY
@@ -2343,8 +2585,8 @@ const ProductPreviewWithDrag = ({
               featherEdge,
               frameEnabled,
               frameWidth,
-              sourceWidth,
-              sourceHeight,
+              sourceWidth: artworkSrcW,
+              sourceHeight: artworkSrcH,
             });
             const clipBox = {
               width: `${scaledWidth}px`,
@@ -2353,6 +2595,9 @@ const ProductPreviewWithDrag = ({
             const fadeBg = overlayFeatherFadeBackground(featherFadeEnabled, featherFadeColor);
             const visStyle = overlayVisBoxStyle(vis, scaledWidth, scaledHeight);
             const zoomImgStyle = artworkImageOffsetStyle(artworkLayout, vis);
+            const rasterizeLiteFeather = Boolean(
+              litePreview && (featherEdge > 0 || cornerRadius > 0)
+            );
             return (
               <div
                 style={{
@@ -2367,22 +2612,42 @@ const ProductPreviewWithDrag = ({
                   style={{
                     ...visStyle,
                     overflow: 'hidden',
-                    borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
-                    background: fadeBg === 'transparent' ? 'transparent' : fadeBg,
+                    borderRadius: rasterizeLiteFeather ? 0 : (clipRadius > 0 ? `${clipRadius}px` : 0),
+                    background: rasterizeLiteFeather
+                      ? (shirtFillColor || 'transparent')
+                      : (fadeBg === 'transparent' ? 'transparent' : fadeBg),
                   }}
                 >
                 <div
-                  className="product-preview-overlay-clip"
-                  style={{
+                    className={`product-preview-overlay-clip${litePreview ? ' product-preview-overlay-clip--lite' : ''}`}
+                    style={{
                     width: '100%',
                     height: '100%',
                     position: 'relative',
                     overflow: 'hidden',
-                    borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+                    borderRadius: rasterizeLiteFeather ? 0 : (clipRadius > 0 ? `${clipRadius}px` : 0),
                     background: 'transparent',
-                    ...(featherMask || {})
+                    ...(rasterizeLiteFeather ? {} : (featherMask || {})),
                   }}
                 >
+                    {rasterizeLiteFeather ? (
+                      <LiteOverlayArtwork
+                        screenshot={screenshot}
+                        vis={vis}
+                        layout={artworkLayout}
+                        cornerRadius={cornerRadius}
+                        featherEdge={featherEdge}
+                        featherFadeEnabled={featherFadeEnabled}
+                        featherFadeColor={featherFadeColor}
+                        shirtFillColor={shirtFillColor}
+                        mockupSrc={productImage}
+                        productName={placeName}
+                        blackAndWhite={blackAndWhite}
+                        posX={posX}
+                        posY={posY}
+                        objectFit={oriented.objectFit}
+                      />
+                    ) : (
                     <img 
                       className={`product-preview-overlay${overlayFitClass}`}
                       key={screenshot || 'overlay'}
@@ -2405,6 +2670,7 @@ const ProductPreviewWithDrag = ({
                       }}
                       draggable={false}
                     />
+                    )}
                 </div>
                 </div>
                 {previewFrame > 0 && (
@@ -3038,6 +3304,7 @@ const ToolsPage = () => {
       blackAndWhite,
       featherFadeEnabled,
       featherFadeColor,
+      shirtFillColor: printBoxFillColor || '',
       textEnabled,
       textContent,
       textFont,
@@ -3057,7 +3324,9 @@ const ToolsPage = () => {
       offsetX: offset.x,
       offsetY: offset.y,
       fitUserSet: idx != null ? Boolean(fitUserSetRef.current[idx]) : false,
-      sourceScreenshot: slotSourceKey(imageUrl || product?.screenshot || ''),
+      sourceScreenshot: slotSourceKey(
+        imageUrl || product?.originalScreenshot || product?.screenshot || ''
+      ),
       editLog: buildLiveEditLog(product),
       ...extra,
     };
@@ -3072,8 +3341,9 @@ const ToolsPage = () => {
     if (typeof saved.frameWidth === 'number') setFrameWidth(saved.frameWidth);
     if (typeof saved.doubleFrame === 'boolean') setDoubleFrame(saved.doubleFrame);
     setBlackAndWhite(Boolean(saved.blackAndWhite));
-    setFeatherFadeEnabled(Boolean(saved.featherFadeEnabled));
-    setFeatherFadeColor(normalizeFeatherFadeColor(saved.featherFadeColor));
+    const savedTransparent = isTransparentFeatherFade(saved.featherFadeEnabled, saved.featherFadeColor);
+    setFeatherFadeEnabled(!savedTransparent);
+    setFeatherFadeColor(savedTransparent ? 'transparent' : normalizeFeatherFadeColor(saved.featherFadeColor));
     if (typeof saved.textEnabled === 'boolean') setTextEnabled(saved.textEnabled);
     if (typeof saved.textContent === 'string') setTextContent(saved.textContent);
     if (saved.textFont) setTextFont(saved.textFont);
@@ -3085,6 +3355,7 @@ const ToolsPage = () => {
     if (typeof saved.imageOffsetX === 'number') setImageOffsetX(saved.imageOffsetX);
     if (typeof saved.imageOffsetY === 'number') setImageOffsetY(saved.imageOffsetY);
     if (typeof saved.screenshotScale === 'number') setScreenshotScale(clampArtworkZoom(saved.screenshotScale));
+    if (saved.shirtFillColor) setPrintBoxFillColor(saved.shirtFillColor);
   };
 
   const persistEditorSlotsNow = (opts = {}) => {
@@ -3109,8 +3380,11 @@ const ToolsPage = () => {
       frameWidth: slot.frameWidth,
       doubleFrame: slot.doubleFrame,
       blackAndWhite: slot.blackAndWhite,
-      featherFadeEnabled: Boolean(slot.featherFadeEnabled),
-      featherFadeColor: normalizeFeatherFadeColor(slot.featherFadeColor),
+      featherFadeEnabled: Boolean(slot.featherFadeEnabled) && slot.featherFadeColor !== 'transparent',
+      featherFadeColor: isTransparentFeatherFade(slot.featherFadeEnabled, slot.featherFadeColor)
+        ? 'transparent'
+        : normalizeFeatherFadeColor(slot.featherFadeColor),
+      shirtFillColor: slot.shirtFillColor || '',
       textEnabled: slot.textEnabled,
       textContent: slot.textContent,
       textFont: slot.textFont,
@@ -3262,7 +3536,7 @@ const ToolsPage = () => {
       selectedCartProductIndex,
     });
     syncLiveEditorToCartItem(idx);
-  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, searchParams]);
+  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, searchParams]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -3433,10 +3707,15 @@ const ToolsPage = () => {
             const seenCount = readToolsSeenCartCount();
             const newProductAdded = productsWithScreenshots.length > seenCount;
             writeToolsSeenCartCount(productsWithScreenshots.length);
-            const showNewest = consumeToolsPreviewNewest() || newProductAdded || addedWhileOpen;
+            const focusOriginal = peekToolsFocusCartIndex();
+            const previewNewestFlag = consumeToolsPreviewNewest();
+            // Returning from Confirm/Preview Design sets a focus index and must
+            // keep live edits. Do not treat that remount as a newest-item reset.
+            const showNewest = previewNewestFlag
+              || addedWhileOpen
+              || (newProductAdded && focusOriginal == null);
 
             let nextIndex = lastIndex;
-            const focusOriginal = peekToolsFocusCartIndex();
             if (showNewest) {
               const matched = focusOriginal != null
                 ? productsWithScreenshots.findIndex((p) => p.originalCartIndex === focusOriginal)
@@ -3461,8 +3740,7 @@ const ToolsPage = () => {
             const chosen = productsWithScreenshots[nextIndex];
             if (identityChanged && chosen && !showNewest) {
               const slot = slotStateRef.current[nextIndex];
-              const chosenKey = slotSourceKey(chosen.screenshot);
-              if (slot && slot.sourceScreenshot && slot.sourceScreenshot !== chosen.screenshot && slot.sourceScreenshot !== chosenKey) {
+              if (slot && slot.sourceScreenshot && !slotMatchesCartShot(slot, chosen)) {
                 delete slotStateRef.current[nextIndex];
                 persistEditorSlotsNow();
                 setEditedImageUrl('');
@@ -3470,12 +3748,7 @@ const ToolsPage = () => {
             }
             if (showNewest && chosen) {
               const existingSlot = slotStateRef.current[nextIndex];
-              const sameShot = Boolean(
-                existingSlot &&
-                existingSlot.sourceScreenshot &&
-                (existingSlot.sourceScreenshot === chosen.screenshot ||
-                  existingSlot.sourceScreenshot === slotSourceKey(chosen.screenshot))
-              );
+              const sameShot = slotMatchesCartShot(existingSlot, chosen);
               if (!sameShot) {
                 switchingSlotRef.current = true;
                 delete slotStateRef.current[nextIndex];
@@ -3507,11 +3780,20 @@ const ToolsPage = () => {
                 setPrintAreaFit((slot && slot.printAreaFit) || 'none');
               }
               const settings = showNewest ? null : chosen?.toolSettings;
-              // Do not restore cart-saved screenshotScale — that value was often
-              // compensation for a wrong first size and makes the overlay jump larger.
               const savedSlot = !showNewest ? slotStateRef.current[nextIndex] : null;
+              const restoreEdits = savedSlot || settings;
+              if (!showNewest && restoreEdits) {
+                applySavedEditorFields(restoreEdits);
+              }
               const sessionScale = savedSlot?.screenshotScale;
-              setScreenshotScale(sessionScale !== undefined ? sessionScale : 100);
+              const cartScale = settings && typeof settings.screenshotScale === 'number'
+                ? settings.screenshotScale
+                : undefined;
+              setScreenshotScale(
+                sessionScale !== undefined
+                  ? sessionScale
+                  : (cartScale !== undefined ? cartScale : 100)
+              );
               if (chosen && savedSlot && savedSlot.offsetX !== undefined) {
                 const ox = savedSlot.offsetX ?? 0;
                 const oy = savedSlot.offsetY ?? 0;
@@ -4593,6 +4875,9 @@ const ToolsPage = () => {
         featherFadeEnabled,
         featherFadeColor,
       });
+      if (isTransparentFeatherFade(featherFadeEnabled, featherFadeColor) && printBoxFillColor) {
+        flattenCanvasFeatherToColor(processed.getContext('2d', { alpha: true }), processed, printBoxFillColor);
+      }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (visFills) {
@@ -4605,6 +4890,13 @@ const ToolsPage = () => {
           ctx.fillRect(visPx.left, visPx.top, visPx.width, visPx.height);
         }
         ctx.drawImage(processed, visPx.left, visPx.top);
+      }
+      if (isTransparentFeatherFade(featherFadeEnabled, featherFadeColor) && printBoxFillColor) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-over';
+        ctx.fillStyle = printBoxFillColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
       }
 
       // Paint the frame on the visible artwork (print box when zoomed in / 100%).
@@ -4659,7 +4951,9 @@ const ToolsPage = () => {
       }
 
       // Convert to data URL (capped jpeg so Apply Edits does not freeze checkout)
-      const dataUrl = exportPreviewDataUrl(canvas);
+      const dataUrl = exportPreviewDataUrl(canvas, {
+        keepAlpha: isTransparentFeatherFade(featherFadeEnabled, featherFadeColor) && !printBoxFillColor,
+      });
       if (!dataUrl) return;
       if (cancelled) return;
       editedImageUrlRef.current = dataUrl;
@@ -5018,6 +5312,7 @@ const ToolsPage = () => {
         blackAndWhite,
         featherFadeEnabled,
         featherFadeColor,
+        shirtFillColor: printBoxFillColor || '',
         textEnabled,
         textContent,
         textFont,
@@ -5156,7 +5451,9 @@ const ToolsPage = () => {
 
   const applyFeatherFadeChoice = (choice) => {
     if (choice === 'transparent') {
+      setFeatherFadeColor('transparent');
       setFeatherFadeEnabled(false);
+      setFeatherEdge((prev) => (prev > 0 ? prev : 20));
       return;
     }
     setFeatherFadeColor(choice === 'black' ? 'black' : 'white');
@@ -5818,9 +6115,9 @@ const ToolsPage = () => {
                     </span>
                   </div>
                   {(() => {
-                    const fadeChoice = featherFadeEnabled
-                      ? (featherFadeColor === 'black' ? 'black' : 'white')
-                      : 'transparent';
+                    const fadeChoice = isTransparentFeatherFade(featherFadeEnabled, featherFadeColor)
+                      ? 'transparent'
+                      : (featherFadeColor === 'black' ? 'black' : 'white');
                     return (
                       <>
                         <p className="tool-description feather-fade-caption">

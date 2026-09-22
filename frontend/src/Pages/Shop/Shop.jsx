@@ -9,9 +9,10 @@ import {
 } from '../../utils/shopCategories';
 import './Shop.css';
 
-function ShopTileThumb({ preview, emoji }) {
+function ShopTileThumb({ preview, emoji, thumbFit }) {
   const [failed, setFailed] = useState(false);
   const src = shopCategoryThumbUrl(preview);
+  const isModel = thumbFit === 'model';
 
   if (!src || failed) {
     return (
@@ -23,11 +24,12 @@ function ShopTileThumb({ preview, emoji }) {
 
   return (
     <img
-      className="shop-tile-img"
+      className={`shop-tile-img${isModel ? ' shop-tile-img--model' : ''}`}
       src={src}
       alt=""
       loading="lazy"
       decoding="async"
+      referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
     />
   );
@@ -65,8 +67,8 @@ const Shop = ({ sidebar }) => {
                 aria-label={`Open ${cat.name}`}
                 onClick={() => navigate(browseShopCategoryPath(cat.category))}
               >
-                <span className="shop-tile-thumb">
-                  <ShopTileThumb preview={cat.preview} emoji={cat.emoji} />
+                <span className={`shop-tile-thumb${cat.thumbFit === 'model' ? ' shop-tile-thumb--model' : ''}`}>
+                  <ShopTileThumb preview={cat.preview} emoji={cat.emoji} thumbFit={cat.thumbFit} />
                 </span>
                 <span className="shop-tile-name">{cat.name}</span>
               </button>
