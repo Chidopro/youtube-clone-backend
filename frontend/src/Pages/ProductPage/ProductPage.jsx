@@ -2616,19 +2616,17 @@ const ProductPage = ({ sidebar }) => {
             ) : (
               <div className="cart-items-wrapper">
                 <h2 className="cart-section-title">Cart Items</h2>
-                <p className="cart-mockup-remark">Product mockup, your item will be made in the color you selected.</p>
                 <div className="cart-items">
                   {cartItems.map((ci, i) => (
                   <div key={i} className="cart-item">
-                    <div className="cart-item-image-wrapper">
-                      {ci.image && <img src={ci.image.includes('?') ? `${ci.image}&v=${getCacheBuster()}` : `${ci.image}?v=${getCacheBuster()}`} alt={ci.name} />}
-                      <div className="cart-item-meta">{ci.color} • {ci.size}</div>
-                    </div>
                     <div className="cart-item-info">
                       <div className="cart-item-name">{ci.name}</div>
+                      {(ci.color || ci.size) ? (
+                        <div className="cart-item-meta">{[ci.color, ci.size].filter(Boolean).join(' • ')}</div>
+                      ) : null}
                       <div className="cart-item-price">${(ci.price || 0).toFixed(2)}</div>
                     </div>
-                    {ci.screenshot && <img className="cart-item-shot" src={ci.screenshot} alt="screenshot" />}
+                    {ci.screenshot && <img className="cart-item-shot" src={ci.screenshot} alt="" />}
                     <button 
                       className="cart-item-delete" 
                       onClick={() => {

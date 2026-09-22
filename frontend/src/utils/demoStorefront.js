@@ -13,6 +13,11 @@ export function isDemoStorefront() {
   return getSubdomain() === DEMO_STOREFRONT_SUBDOMAIN;
 }
 
+/** Apex homepage may show this storefront as the Take a Tour card — never other subdomains. */
+export function isHomepagePublicStorefront(subdomain) {
+  return String(subdomain || '').trim().toLowerCase() === DEMO_STOREFRONT_SUBDOMAIN;
+}
+
 export function readStoredUser() {
   try {
     const raw = localStorage.getItem('user');

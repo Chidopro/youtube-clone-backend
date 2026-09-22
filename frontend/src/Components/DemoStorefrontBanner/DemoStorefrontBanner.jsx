@@ -28,8 +28,8 @@ const DemoStorefrontWelcome = ({ isOpen, onClose }) => {
         </button>
         <h2 id="demo-storefront-welcome-title">Sample storefront</h2>
         <p>
-          View and create products, try the tools page, and click Sign In to see
-          storefront dashboard tools.
+          This is a sample storefront tour. Sign In opens the dashboard with
+          editing turned off.
         </p>
         <div className="demo-storefront-welcome-actions">
           <button type="button" className="demo-storefront-welcome-btn" onClick={onClose}>

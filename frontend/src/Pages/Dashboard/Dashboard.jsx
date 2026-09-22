@@ -3294,10 +3294,20 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                             );
                                             const netLabel = umbrellaOnly
                                                 ? 'Your payout'
-                                                : (isMasterAdmin ? 'Creator payouts' : 'Your payout');
+                                                : (isMasterAdmin ? 'Creator payouts' : 'Store Payout');
+                                            const latestScreenmerchPayout = sortPayoutsNewestFirst(screenmerchPayouts)[0];
+                                            const latestPaidAmount = Number(latestScreenmerchPayout?.amount || 0);
+                                            const latestPaidDate = formatPayoutDate(
+                                                latestScreenmerchPayout?.paid_at
+                                                || latestScreenmerchPayout?.payout_date
+                                            );
                                             const netValue = umbrellaOnly
                                                 ? (collabPay || (Number(analyticsData.collaborator_net_owed ?? 0) + Number(analyticsData.paid_total ?? 0)))
-                                                : (isMasterAdmin ? ownerPayout : pendingFromScreenmerch);
+                                                : (isMasterAdmin
+                                                    ? ownerPayout
+                                                    : (pendingFromScreenmerch > 0
+                                                        ? pendingFromScreenmerch
+                                                        : latestPaidAmount));
                                             const netSubtitle = umbrellaOnly
                                                 ? (feePerItem > 0
                                                     ? `${money(COLLAB_SHARE_PER_ITEM - feePerItem)} per item after ${money(feePerItem)} storefront fee`
@@ -3306,7 +3316,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                     ? 'Owed to storefront owners ($6/item)'
                                                     : (pendingFromScreenmerch > 0
                                                         ? `Pending payout ${formatPayoutDate(nextPay)}`
-                                                        : `Paid up · payout ${formatPayoutDate(nextPay)}`));
+                                                        : (latestPaidAmount > 0
+                                                            ? `Paid · ${latestPaidDate}`
+                                                            : `Paid up · payout ${formatPayoutDate(nextPay)}`)));
                                             const payoutCard = (
                                             <div className="summary-card highlight">
                                                 <div className="summary-label">{netLabel}</div>

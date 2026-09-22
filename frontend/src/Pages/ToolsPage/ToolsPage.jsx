@@ -2347,11 +2347,6 @@ const ProductPreviewWithDrag = ({
       }
     };
     requestAnimationFrame(() => tickMeasure(0));
-    if (litePreview) {
-      return () => {
-        measureCancelled = true;
-      };
-    }
     const observer = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
         if (measureCancelled) return;
@@ -2482,7 +2477,7 @@ const ProductPreviewWithDrag = ({
         position: 'relative',
         width: '100%',
         margin: '0 auto',
-        overflow: litePreview ? 'hidden' : undefined,
+        overflow: litePreview ? 'visible' : undefined,
         cursor: litePreview || imageOrientation === 'landscape' ? 'default' : (isDragging ? 'grabbing' : 'grab'),
         userSelect: 'none',
         WebkitUserSelect: 'none',

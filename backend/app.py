@@ -4574,6 +4574,8 @@ SOFT_LAUNCH_DEMO_SUBDOMAIN = "maxfreedom"
 # Live for testing only — not a public homepage reserve seat.
 SOFT_LAUNCH_TEST_SUBDOMAINS = frozenset({"filialsons"})
 SOFT_LAUNCH_TEST_EMAILS = frozenset({"filialsons@gmail.com"})
+# Only MaxFreedom appears as a claimed window on screenmerch.com.
+SOFT_LAUNCH_HOMEPAGE_SUBDOMAINS = frozenset({SOFT_LAUNCH_DEMO_SUBDOMAIN})
 
 
 def _demo_storefront_user_id():
@@ -4643,6 +4645,8 @@ def creators_list():
             if _is_staff_or_excluded_creator(row):
                 continue
             subdomain = (row.get("subdomain") or "").strip()
+            if subdomain.lower() not in SOFT_LAUNCH_HOMEPAGE_SUBDOMAINS:
+                continue
             creators.append({
                 "id": row.get("id"),
                 "username": row.get("username") or "",
@@ -4703,14 +4707,19 @@ def soft_launch_spots():
         else:
             ordered = [demo_row] + rest
         taken_slots = []
+        claimed = 0
         for row in ordered:
             if not (row.get("subdomain") or "").strip():
                 continue
+            claimed += 1
+            sub = (row.get("subdomain") or "").strip().lower()
+            if sub not in SOFT_LAUNCH_HOMEPAGE_SUBDOMAINS:
+                continue
             spot = len(taken_slots) + 1
             if spot > TOTAL:
-                break
+                continue
             taken_slots.append(_soft_launch_slot_payload(row, spot))
-        claimed = len(taken_slots)
+        claimed = min(TOTAL, claimed)
         available = max(0, TOTAL - claimed)
         return jsonify({
             "success": True,

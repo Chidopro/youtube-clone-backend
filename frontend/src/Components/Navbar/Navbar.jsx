@@ -15,7 +15,7 @@ import { useCreator } from '../../contexts/CreatorContext'
 import { isCreatorStorefrontHostname, peekCachedStorefrontBrand, rememberStorefrontBrand } from '../../utils/subdomainService'
 import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
-import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront } from '../../utils/demoStorefront'
+import { DEMO_DASHBOARD_PATH, endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
 import { cropCustomLogoFromUrl } from '../../utils/logoBackground'
 import { apiJoin, getBackendUrl } from '../../config/apiConfig'
 import ShipToPicker from '../ShipToPicker/ShipToPicker'
@@ -714,6 +714,11 @@ const Navbar = ({ resetCategory }) => {
     }, [user]);
 
     const handleLogin = () => {
+        if (isDemoStorefront()) {
+            startDemoPreviewSession();
+            navigate(DEMO_DASHBOARD_PATH);
+            return;
+        }
         navigate('/login');
     };
 
@@ -1032,7 +1037,7 @@ const Navbar = ({ resetCategory }) => {
                             e.preventDefault();
                             e.stopPropagation();
                             setDropdownOpen(false);
-                            navigate('/dashboard');
+                            navigate(isDemoStorefront() ? DEMO_DASHBOARD_PATH : '/dashboard');
                         }}
                     >
                         Dashboard
@@ -1274,7 +1279,7 @@ const Navbar = ({ resetCategory }) => {
                     </div>
                     )}
                     <div className="nav-right flex-div">
-                        {user && !isDemoPreviewUser(user) && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && location.pathname !== '/creator-thank-you' && !(location.pathname === '/subscription-tiers' && (user?.status === 'pending' || user?.status === undefined)) ? (
+                        {user && !isDemoStorefront() && !isDemoPreviewUser(user) && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && location.pathname !== '/creator-thank-you' && !(location.pathname === '/subscription-tiers' && (user?.status === 'pending' || user?.status === undefined)) ? (
                             console.log('🎥 Rendering upload link for creator:', user?.display_name, 'User object:', user) ||
                             <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
                         ) : oauthProcessing ? (
@@ -1423,7 +1428,7 @@ const Navbar = ({ resetCategory }) => {
                             <button 
                                 className="sign-in-btn" 
                                 onClick={handleLogin}
-                                title="Sign in"
+                                title={isDemoStorefront() ? 'Open sample dashboard' : 'Sign in'}
                             >
                                 Sign In
                             </button>

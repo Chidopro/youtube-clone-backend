@@ -1074,26 +1074,16 @@ const Checkout = () => {
               </div>
               <div className="items-list">
                 {items.map((ci, i) => {
-                  // Get product image and screenshot separately (matching cart display)
-                  const productImage = storefrontMockupUrl(ci.name || ci.product, ci.image || ci.img);
                   const screenshot = itemShotUrl(ci);
-                  
                   return (
                     <div key={i} className="item-card">
-                      <div className="item-image-wrapper">
-                        {productImage && (
-                          <img
-                            src={productImage}
-                            alt={ci.name || ci.product}
-                            decoding="async"
-                          />
-                        )}
-                        <div className="item-variants">
-                          {ci.color} • {ci.size}
-                        </div>
-                      </div>
                       <div className="item-info">
                         <h3 className="item-name">{ci.name || ci.product}</h3>
+                        {(ci.color || ci.size) ? (
+                          <div className="item-variants">
+                            {[ci.color, ci.size].filter(Boolean).join(' • ')}
+                          </div>
+                        ) : null}
                         <div className="item-price">${(ci.price || 0).toFixed(2)}</div>
                       </div>
                       {screenshot ? (
@@ -1130,7 +1120,6 @@ const Checkout = () => {
                   );
                 })}
               </div>
-              <p className="checkout-mockup-remark">Product mockup, your item will be made in the color you selected.</p>
             </div>
 
             {/* Shipping Section */}
@@ -1477,18 +1466,13 @@ const Checkout = () => {
               );
               return (
                 <div className="design-modal-preview-card">
-                  <h3 className="design-modal-preview-title">
-                    Product Preview ({previewIndex + 1} of {confirmIndexes.length})
-                  </h3>
                   <div className="design-modal-preview-name-row">
-                    <div className="design-modal-preview-name">
-                      <div>{itemName}</div>
-                      {itemSize || item?.color ? (
-                        <div className="design-modal-item-size">
-                          {[item?.color, itemSize].filter(Boolean).join(' · ')}
-                        </div>
-                      ) : null}
-                    </div>
+                    <span className="design-modal-preview-name">{itemName}</span>
+                    {itemSize || item?.color ? (
+                      <span className="design-modal-item-size">
+                        {[item?.color, itemSize].filter(Boolean).join(' · ')}
+                      </span>
+                    ) : null}
                   </div>
                   <div className={`design-modal-preview-visual${confirmShotUrl && !overlayReady && !productOnly ? ' is-loading-shot' : ''}${productOnly ? ' design-modal-preview-visual--product-only' : ''}`}>
                     {productOnlyUrl ? (
@@ -1557,48 +1541,6 @@ const Checkout = () => {
                   <p className="design-modal-color-note">
                     Color shown is for display only. You&apos;ll receive the color you selected.
                   </p>
-                  <button
-                    type="button"
-                    className="design-modal-text-action design-modal-remove-under-note"
-                    disabled={removeBusy}
-                    onClick={() => removeCartItem(previewCartIndex)}
-                  >
-                    Remove Item
-                  </button>
-                  {!productOnly && (
-                  <div className="design-modal-orient-row" role="group" aria-label="Image orientation">
-                      <label className="design-modal-orient-check">
-                        <input
-                          type="checkbox"
-                          checked={previewOrientation === 'portrait'}
-                          onChange={() => {
-                            setDesignPreferences((prev) => {
-                              const next = prev.slice();
-                              while (next.length <= previewCartIndex) next.push({ orientation: 'portrait' });
-                              next[previewCartIndex] = { ...(next[previewCartIndex] || {}), orientation: 'portrait' };
-                              return next;
-                            });
-                          }}
-                        />
-                        Portrait
-                      </label>
-                      <label className="design-modal-orient-check">
-                        <input
-                          type="checkbox"
-                          checked={previewOrientation === 'landscape'}
-                          onChange={() => {
-                            setDesignPreferences((prev) => {
-                              const next = prev.slice();
-                              while (next.length <= previewCartIndex) next.push({ orientation: 'portrait' });
-                              next[previewCartIndex] = { ...(next[previewCartIndex] || {}), orientation: 'landscape' };
-                              return next;
-                            });
-                          }}
-                        />
-                        Landscape
-                      </label>
-                    </div>
-                  )}
                   <div className="design-modal-preview-nav">
                     <button
                       type="button"
@@ -1608,6 +1550,50 @@ const Checkout = () => {
                     >
                       Previous
                     </button>
+                    <div className="design-modal-preview-nav-mid">
+                      <button
+                        type="button"
+                        className="design-modal-text-action design-modal-remove-under-note"
+                        disabled={removeBusy}
+                        onClick={() => removeCartItem(previewCartIndex)}
+                      >
+                        Remove Item
+                      </button>
+                      {!productOnly ? (
+                        <div className="design-modal-orient-row" role="group" aria-label="Image orientation">
+                          <label className="design-modal-orient-check">
+                            <input
+                              type="checkbox"
+                              checked={previewOrientation === 'portrait'}
+                              onChange={() => {
+                                setDesignPreferences((prev) => {
+                                  const next = prev.slice();
+                                  while (next.length <= previewCartIndex) next.push({ orientation: 'portrait' });
+                                  next[previewCartIndex] = { ...(next[previewCartIndex] || {}), orientation: 'portrait' };
+                                  return next;
+                                });
+                              }}
+                            />
+                            Portrait
+                          </label>
+                          <label className="design-modal-orient-check">
+                            <input
+                              type="checkbox"
+                              checked={previewOrientation === 'landscape'}
+                              onChange={() => {
+                                setDesignPreferences((prev) => {
+                                  const next = prev.slice();
+                                  while (next.length <= previewCartIndex) next.push({ orientation: 'portrait' });
+                                  next[previewCartIndex] = { ...(next[previewCartIndex] || {}), orientation: 'landscape' };
+                                  return next;
+                                });
+                              }}
+                            />
+                            Landscape
+                          </label>
+                        </div>
+                      ) : null}
+                    </div>
                     <button
                       type="button"
                       className="design-modal-nav-btn"

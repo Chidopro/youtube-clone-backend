@@ -4,7 +4,7 @@ import { apiJoin } from '../../config/apiConfig';
 import './Feed.css';
 import './CreatorDirectory.css';
 import { RESERVE_SLOT_THEMES, TOTAL_CREATOR_SPOTS } from './reserveSlotThemes';
-import { DEMO_STOREFRONT_SUBDOMAIN, TEST_STOREFRONT_SUBDOMAIN } from '../../utils/demoStorefront';
+import { DEMO_STOREFRONT_SUBDOMAIN, isHomepagePublicStorefront } from '../../utils/demoStorefront';
 import {
   fetchPublicFavoriteLists,
   publicStorageCardUrl,
@@ -27,18 +27,12 @@ function collectSlotShuffleUrls(lists) {
   ).slice(0, 16);
 }
 
-/** Maxfreedom always occupies seat 1; remaining live storefronts fill 2, 3, … in API order. */
+/** Maxfreedom always occupies seat 1; other live storefronts never appear on the apex homepage. */
 function pinSoftLaunchSlots(rawSlots, total) {
   const demoKey = DEMO_STOREFRONT_SUBDOMAIN.toLowerCase();
-  const testKey = TEST_STOREFRONT_SUBDOMAIN.toLowerCase();
   const slots = (Array.isArray(rawSlots) ? rawSlots : [])
     .map((s) => ({ ...s }))
-    .filter((s) => {
-      const sub = (s.subdomain || '').trim().toLowerCase();
-      if (!sub) return false;
-      if (sub === testKey) return false;
-      return true;
-    });
+    .filter((s) => isHomepagePublicStorefront(s.subdomain));
   const demoIdx = slots.findIndex(
     (s) => (s.subdomain || '').trim().toLowerCase() === demoKey
   );
@@ -123,7 +117,12 @@ const CreatorDirectory = () => {
         const data = await res.json().catch(() => ({}));
         if (cancelled || !data?.success) return;
         const pinned = pinSoftLaunchSlots(data.taken_slots, TOTAL_CREATOR_SPOTS);
-        setClaimedCount(Math.min(TOTAL_CREATOR_SPOTS, pinned.length));
+        const claimed = Number(data.claimed);
+        setClaimedCount(
+          Number.isFinite(claimed)
+            ? Math.min(TOTAL_CREATOR_SPOTS, Math.max(pinned.length, claimed))
+            : Math.min(TOTAL_CREATOR_SPOTS, pinned.length)
+        );
         const map = {};
         pinned.forEach((slot) => {
           if (slot?.spot) map[slot.spot] = slot;
@@ -272,7 +271,9 @@ const CreatorDirectory = () => {
               : (canVisit ? `${subdomain}.screenmerch.com` : 'Soft launch seat claimed');
           const openSlot = () => {
             if (canVisit) {
-              window.location.href = isDemo ? `${storeHref}?from=hub` : storeHref;
+              window.location.href = isDemo
+                ? `https://${DEMO_STOREFRONT_SUBDOMAIN}.screenmerch.com/demo/dashboard`
+                : storeHref;
               return;
             }
             if (!isTaken) openReserveCta();

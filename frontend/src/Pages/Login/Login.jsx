@@ -6,7 +6,7 @@ import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { safeAuthReturnPath, consumeAuthReturnPath, peekAuthReturnPath, creatorNeedsStorefrontSetup } from '../../utils/shopperAuth';
-import { endDemoPreviewSession, isDemoStorefront } from '../../utils/demoStorefront';
+import { DEMO_DASHBOARD_PATH, endDemoPreviewSession, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront';
 import CustomerLegalConsent from '../../Components/CustomerLegalConsent/CustomerLegalConsent';
 import './Login.css';
 
@@ -66,6 +66,12 @@ const Login = () => {
       setIsCreatorSignup(false);
     }
   }, [location.pathname, location.state]);
+
+  useEffect(() => {
+    if (!isDemoStorefront()) return;
+    startDemoPreviewSession();
+    goAfterAuth(DEMO_DASHBOARD_PATH, navigate, { replace: true });
+  }, [navigate]);
 
   // Check if user is already authenticated
   // Only redirect if there's a returnTo parameter (coming from a protected route)
@@ -486,6 +492,10 @@ const Login = () => {
     setEmail('');
     setPassword('');
   };
+
+  if (isDemoStorefront()) {
+    return null;
+  }
 
   return (
     <div className="login-page">
