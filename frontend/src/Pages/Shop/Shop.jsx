@@ -53,7 +53,7 @@ const Shop = ({ sidebar }) => {
             <ChevronLeft />
           </button>
           <div className="shop-toolbar-text">
-            <h1 className="shop-page-title">Shop by Category</h1>
+            <h1 className="shop-page-title">Choose Category</h1>
           </div>
         </div>
 

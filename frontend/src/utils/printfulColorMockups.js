@@ -47,6 +47,10 @@ const SHIRT_CATALOG_IDS_BY_NAME = {
   'Laptop Sleeve': 394,
   'Pet Bowl All-Over Print': 678,
   'Pet Bandana Collar': 902,
+  'Distressed Dad Hat': 396,
+  'Closed Back Cap': 140,
+  'Five Panel Trucker Hat': 100,
+  'Five Panel Baseball Cap': 952,
 };
 
 const COLOR_ALIASES = {
@@ -65,6 +69,9 @@ const COLOR_ALIASES = {
   },
   906: {
     'white (glossy)': 'White',
+  },
+  396: {
+    'charcoal gray': 'Charcoal Grey',
   },
 };
 
@@ -153,6 +160,20 @@ const STOREFRONT_COLORS_BY_NAME = {
   "Men's Fitted Long Sleeve": ['Black', 'Heavy Metal', 'White'],
   "Men's Long Sleeve Shirt": ['Black', 'White', 'Navy', 'Royal', 'Sport Grey', 'Maroon', 'Red', 'Light Blue', 'Military Green', 'Sand', 'Irish Green', 'Ash', 'Forest Green', 'Indigo Blue', 'Light Pink'],
   "Men's Tank Top": ['Black', 'White', 'Navy', 'True Royal', 'Red', 'Athletic Heather'],
+  'Distressed Dad Hat': ['Black', 'Navy', 'Charcoal Gray', 'Khaki'],
+  'Closed Back Cap': [
+    'Dark Navy', 'Black', 'Royal Blue', 'Red', 'Grey', 'White',
+    'Dark Grey', 'Multicam Black', 'Olive', 'Multicam Green', 'Khaki',
+  ],
+  'Five Panel Trucker Hat': [
+    'Black/ White', 'Black', 'Charcoal', 'Black/ White/ Black', 'Red/ White/ Red',
+    'White', 'Navy/ White/ Navy', 'Royal/ White/ Royal', 'Kelly/ White/ Kelly',
+    'Navy', 'Navy/ White', 'Charcoal/ White', 'Silver/ Black',
+  ],
+  'Five Panel Baseball Cap': [
+    'Black', 'Black/Natural', 'Red/Natural', 'Navy/Natural',
+    'Dark Green/Natural', 'Royal/Natural', 'White',
+  ],
 };
 
 export function pendingSwatchColors(product) {

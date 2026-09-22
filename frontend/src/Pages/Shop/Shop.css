@@ -205,7 +205,7 @@
 
   .shop-toolbar {
     display: block;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     padding-top: 8px;
   }
 
@@ -215,15 +215,15 @@
 
   .shop-toolbar-text {
     pointer-events: auto;
-    align-items: flex-start;
-    text-align: left;
+    align-items: center;
+    text-align: center;
   }
 
   .shop-page-title {
     font-size: 24px;
     font-weight: 700;
-    text-align: left;
-    width: auto;
+    text-align: center;
+    width: 100%;
     padding-top: 4px;
     padding-bottom: 0;
     background-image: none;

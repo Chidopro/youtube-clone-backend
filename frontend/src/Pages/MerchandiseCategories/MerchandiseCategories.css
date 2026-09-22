@@ -444,6 +444,8 @@
     margin-bottom: 16px;
     padding: 0;
     white-space: normal;
+    text-align: center;
+    width: 100%;
   }
 
   .categories-subtitle {
@@ -497,6 +499,8 @@
   .merchandise-categories-page .categories-title {
     font-size: 22px;
     margin-bottom: 14px;
+    text-align: center;
+    width: 100%;
     padding-bottom: 0;
     white-space: normal;
   }
