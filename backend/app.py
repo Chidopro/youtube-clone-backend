@@ -12764,6 +12764,64 @@ def _sale_line_creator_share(product_name, amount, quantity=1):
     return cs
 
 
+def _sale_row_qty(row):
+    try:
+        return max(1, int((row or {}).get("quantity") or (row or {}).get("qty") or 1))
+    except (TypeError, ValueError):
+        return 1
+
+
+def _created_on_date(value):
+    from datetime import datetime
+
+    if not value or value == "N/A":
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).date()
+    except Exception:
+        try:
+            return datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
+        except Exception:
+            return None
+
+
+def _analytics_clock_date(sales_rows, anchor_latest=False):
+    """Calendar 'today' for week/daily charts.
+
+    The MaxFreedom tour dashboard freezes to the latest sample sale so the
+    weekly summary does not decay to zero if no new test orders are placed.
+    Real storefronts keep using the current date.
+    """
+    from datetime import datetime
+
+    today = datetime.now().date()
+    if not anchor_latest:
+        return today
+    latest = None
+    for row in sales_rows or []:
+        day = _created_on_date((row or {}).get("created_at"))
+        if day is None:
+            continue
+        if latest is None or day > latest:
+            latest = day
+    return latest or today
+
+
+def _week_item_count(rows, date_key="created_at", as_of=None):
+    """Qualifying items from as_of through 7 calendar days ago (inclusive)."""
+    from datetime import datetime
+
+    today = as_of or datetime.now().date()
+    total = 0
+    for row in rows or []:
+        day = _created_on_date((row or {}).get(date_key))
+        if day is None:
+            continue
+        if 0 <= (today - day).days <= 7:
+            total += _sale_row_qty(row)
+    return total
+
+
 def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Video"):
     from datetime import datetime, timedelta
 
@@ -12785,11 +12843,17 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
         except Exception:
             return None
 
-    week_cutoff = datetime.now() - timedelta(days=7)
     week_sales_count = 0
+    today = datetime.now().date()
     for order in all_orders:
         od = _order_dt(order)
-        if od is not None and od >= week_cutoff:
+        if od is None or not (0 <= (today - od.date()).days <= 7):
+            continue
+        items = [item for item in (order.get("cart") or []) if isinstance(item, dict)]
+        if items:
+            for item in items:
+                week_sales_count += _sale_row_qty(item)
+        else:
             week_sales_count += 1
 
     products_sold = {}
@@ -14224,6 +14288,12 @@ def get_analytics():
             od['total_value'] = total_value
             all_orders.append(od)
         
+        demo_uid = _demo_storefront_user_id()
+        freeze_to_latest = bool(
+            user_id and demo_uid and str(user_id) == str(demo_uid) and not platform_wide
+        )
+        clock_date = _analytics_clock_date(sales_rows, freeze_to_latest)
+
         payout_summary = _analytics_payout_fields_from_sales(
             sales_rows, None if platform_wide else user_id
         )
@@ -14280,7 +14350,10 @@ def get_analytics():
             try:
                 if order.get('created_at') and order.get('created_at') != 'N/A':
                     order_date = datetime.fromisoformat(order.get('created_at').replace('Z', '+00:00'))
-                    days_ago = (datetime.now() - order_date.replace(tzinfo=None)).days
+                    if freeze_to_latest:
+                        days_ago = (clock_date - order_date.date()).days
+                    else:
+                        days_ago = (datetime.now() - order_date.replace(tzinfo=None)).days
                     if 0 <= days_ago < 30:
                         sales_data[days_ago] += 1
             except:
@@ -14288,9 +14361,8 @@ def get_analytics():
         
         # Generate daily sales data for last 7 days (for daily chart)
         daily_sales = []
-        now = datetime.now()
-        for i in range(6, -1, -1):  # Last 7 days, from 6 days ago to today
-            date = now - timedelta(days=i)
+        for i in range(6, -1, -1):  # Last 7 days, from 6 days ago to clock_date
+            date = clock_date - timedelta(days=i)
             date_str = date.strftime('%Y-%m-%d')
             date_display = date.strftime('%a, %b %d')
             
@@ -14355,6 +14427,7 @@ def get_analytics():
             'avg_order_value': round(avg_order_value, 2),
             'products_sold_count': len(products_sold),
             'videos_with_sales_count': len(videos_with_sales),
+            'week_sales_count': _week_item_count(sales_rows, as_of=clock_date),
             'sales_data': sales_data,
             'daily_sales': daily_sales,  # Last 7 days with date, count, revenue
             'products_sold': products_sold_list,

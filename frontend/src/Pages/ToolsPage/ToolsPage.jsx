@@ -6032,9 +6032,6 @@ const ToolsPage = () => {
                     })()}
                       </div>
                     </div>
-                    <p className="product-preview-color-note">
-                      Color shown is for display only. You&apos;ll receive the color you selected.
-                    </p>
                     <p className="edit-tools-under-preview">Customize Your Design</p>
                   </div>
                 );

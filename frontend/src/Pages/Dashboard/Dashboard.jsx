@@ -3339,7 +3339,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                             <div className="summary-card">
                                                 <div className="summary-label">This week</div>
                                                 <div className="summary-value">{weekSales}</div>
-                                                <div className="summary-subtitle">Orders</div>
+                                                <div className="summary-subtitle">Sales</div>
                                             </div>
                                             <div className="summary-card">
                                                 <div className="summary-label">Gross Revenue</div>

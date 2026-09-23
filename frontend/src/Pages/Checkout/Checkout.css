@@ -1205,17 +1205,11 @@
 
   .design-modal--preview .design-modal-orient-row,
   .design-modal-preview-nav,
-  .design-modal-color-note,
   .design-modal-remove-under-note {
     flex-shrink: 0;
     position: relative;
     z-index: 8;
     background: #fff;
-  }
-
-  .design-modal-color-note {
-    font-size: 11px;
-    margin: 0 4px 2px;
   }
 
   .design-modal-footer {
@@ -1253,17 +1247,6 @@
 
 .design-modal-preview-visual--product-only {
   overflow: visible;
-}
-
-.design-modal-color-note {
-  margin: 0 8px 2px;
-  padding: 0;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 400;
-  color: #666;
-  line-height: 1.35;
-  flex-shrink: 0;
 }
 
 .design-modal-remove-under-note {

@@ -300,16 +300,6 @@ body.tools-page-active .site-footer {
   line-height: 1.2;
 }
 
-.product-preview-color-note {
-  margin: 8px 0 0;
-  padding: 0 4px;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 400;
-  color: #666;
-  line-height: 1.35;
-}
-
 .mug-product-preview-image {
   --preview-max-side: 240px;
   width: 100%;
@@ -1420,11 +1410,6 @@ body.tools-page-active .site-footer {
 
   .edit-tools-under-preview {
     display: none;
-  }
-
-  .product-preview-color-note {
-    font-size: 11px;
-    margin-top: 6px;
   }
 
   .product-preview-inner-card {

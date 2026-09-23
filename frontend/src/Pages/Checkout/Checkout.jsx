@@ -1539,9 +1539,6 @@ const Checkout = () => {
                       <p className="design-modal-preview-empty">No preview available</p>
                     )}
                   </div>
-                  <p className="design-modal-color-note">
-                    Color shown is for display only. You&apos;ll receive the color you selected.
-                  </p>
                   <div className="design-modal-preview-nav">
                     <button
                       type="button"
