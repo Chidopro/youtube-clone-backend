@@ -53,23 +53,15 @@ function roundedRectSdf(x, y, cx, cy, halfW, halfH, radius) {
   return Math.min(Math.max(qx, qy), 0) + Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - r;
 }
 
-function rectangularEdgeFeatherFactor(x, y, width, height, fadeX, fadeY) {
-  const maxX = Math.max(width - 1, 1);
-  const maxY = Math.max(height - 1, 1);
-  const fx = fadeX <= 0 ? 1 : (x < fadeX ? x / fadeX : (x > maxX - fadeX ? (maxX - x) / fadeX : 1));
-  const fy = fadeY <= 0 ? 1 : (y < fadeY ? y / fadeY : (y > maxY - fadeY ? (maxY - y) / fadeY : 1));
-  return Math.max(0, Math.min(1, Math.min(fx, fy)));
-}
-
-function roundedRectFeatherFactor(x, y, width, height, fadeX, fadeY, cornerR) {
+/** Inward fade using Euclidean box distance (the old Gaussian/distance-transform brush).
+ * Straight sides stay square; corners blend in a quarter-circle so X/Y ramps do not crease.
+ */
+export function roundedRectFeatherFactor(x, y, width, height, fadeX, fadeY, cornerR) {
   const cx = (width - 1) * 0.5;
   const cy = (height - 1) * 0.5;
   const halfW = (width - 1) * 0.5;
   const halfH = (height - 1) * 0.5;
   const rOuter = Math.min(Math.max(0, cornerR), halfW, halfH);
-  if (rOuter <= 0) {
-    return rectangularEdgeFeatherFactor(x, y, width, height, fadeX, fadeY);
-  }
   const sdfOuter = roundedRectSdf(x, y, cx, cy, halfW, halfH, rOuter);
   const halfWIn = Math.max(0.5, halfW - fadeX);
   const halfHIn = Math.max(0.5, halfH - fadeY);

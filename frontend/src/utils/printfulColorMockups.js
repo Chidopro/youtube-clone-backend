@@ -1,5 +1,4 @@
 import mockupsByCatalogId from '../data/printfulColorMockups.json';
-import { isDemoStorefront } from './demoStorefront';
 
 /** Catalog ids with Printful per-color photos. */
 const SHIRT_CATALOG_IDS_BY_NAME = {
@@ -79,14 +78,9 @@ function normalizeColor(value) {
   return String(value || '').trim().toLowerCase();
 }
 
-/** Local work on localhost; live MaxFreedom only if this branch ever ships. */
+/** Printful per-color photos and swatches on every storefront product page. */
 export function isColorMockupPreviewEnabled() {
-  if (isDemoStorefront()) return true;
-  try {
-    return Boolean(import.meta.env?.DEV);
-  } catch {
-    return false;
-  }
+  return true;
 }
 
 export function catalogIdForColorMockup(product) {

@@ -125,7 +125,7 @@ function OrderItemShot({ url, orientation, offsetX, offsetY, enabled = true }) {
   );
 }
 
-/** Every cart item is shown in Confirm Your Design, including mugs and accessories. */
+/** Every cart item is shown in Confirm Order, including mugs and accessories. */
 function itemNeedsDesignConfirm(item) {
   return Boolean(item);
 }
@@ -1433,7 +1433,7 @@ const Checkout = () => {
             >
               ×
             </button>
-            <h2>Confirm Your Design</h2>
+            <h2>Confirm Order</h2>
 
             {(() => {
               const confirmIndexes = cartConfirmIndexes(items);
