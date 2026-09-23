@@ -1099,6 +1099,10 @@
   margin: 0 auto;
 }
 
+.design-modal--preview .product-preview-garment-tint {
+  inset: 0;
+}
+
 .design-modal-footer {
   position: relative;
   z-index: 6;
@@ -1183,6 +1187,10 @@
     max-height: calc(100dvh - 280px);
     object-fit: contain;
     margin: 0 auto;
+  }
+
+  .design-modal--preview .product-preview-garment-tint {
+    inset: 0;
   }
 
   .design-modal-preview-product-only,

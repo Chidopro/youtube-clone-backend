@@ -7,8 +7,8 @@ import { ProductPreviewWithDrag } from '../ToolsPage/ToolsPage';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
-import { storefrontMockupUrl } from '../../utils/shopCategories';
-import { getPrintfulColorMockupUrl } from '../../utils/printfulColorMockups';
+import { toolsPreviewMockupUrl } from '../../utils/shopCategories';
+import { getPrintfulColorMockupUrl, getWhiteBlankGarmentTint } from '../../utils/printfulColorMockups';
 import { matchPrintAreaProductName } from '../../config/printAreaConfig';
 import {
   CHECKOUT_COUNTRY_OPTIONS,
@@ -1443,7 +1443,7 @@ const Checkout = () => {
               const itemName = item?.name || item?.product || `Item ${previewCartIndex + 1}`;
               const itemSize = (item?.size || '').trim();
               const printProductName = matchPrintAreaProductName(itemName) || itemName;
-              const mockupUrl = storefrontMockupUrl(
+              const mockupUrl = toolsPreviewMockupUrl(
                 itemName,
                 item?.image || item?.img || previewMockups[previewCartIndex] || ''
               );
@@ -1523,6 +1523,7 @@ const Checkout = () => {
                         textDirection={ts.textDirection}
                         litePreview
                         shirtFillHint={ts.shirtFillColor || ''}
+                        garmentTintColor={getWhiteBlankGarmentTint(item, item?.color)}
                         sourceWidth={confirmLiveOverlay ? 0 : confirmDisplayShot.width}
                         sourceHeight={confirmLiveOverlay ? 0 : confirmDisplayShot.height}
                       />

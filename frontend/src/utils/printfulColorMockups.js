@@ -139,6 +139,144 @@ function isLightSwatch(hex) {
   return (r * 299 + g * 587 + b * 114) / 1000 > 210;
 }
 
+/** True white / off-white blanks — pastels like Pink still need a tint. */
+function isNearWhiteBlank(hex) {
+  const h = String(hex || '').replace('#', '');
+  if (h.length !== 6) return false;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const sat = Math.max(r, g, b) - Math.min(r, g, b);
+  const l = (r * 299 + g * 587 + b * 114) / 1000;
+  return l > 242 && sat < 18;
+}
+
+/** White flat blanks we tint to the cart color in Tools / Confirm. */
+const WHITE_BLANK_TINT_NAMES = new Set([
+  'Baby Body Suit',
+  'Kids Shirt',
+  'Kids Long Sleeve',
+  'Kids Sweatshirt',
+  'Youth Heavy Blend Hoodie',
+  'Kids Hoodie',
+  'Toddler Jersey T-Shirt',
+  'Baby Staple Tee',
+  'Baby Jersey T-Shirt',
+  'T-Shirt',
+  'Unisex T-Shirt',
+  'Mens Fitted T-Shirt',
+  "Men's Fitted Long Sleeve",
+  "Men's Long Sleeve Shirt",
+  "Men's Tank Top",
+  'Oversized T-Shirt',
+  'Unisex Oversized T-Shirt',
+  'Hoodie',
+  'Unisex Hoodie',
+  'Champion Hoodie',
+  'Unisex Champion Hoodie',
+  "Women's Shirt",
+  'Heavyweight T-Shirt',
+  'Unisex Heavyweight T-Shirt',
+  "Women's Ribbed Neck",
+  'Micro-Rib Tank Top',
+  'Racerback Tank',
+  "Women's Crop Top",
+  'Pullover Hoodie',
+  'Unisex Pullover Hoodie',
+  'Cropped Hoodie',
+]);
+
+export function usesWhiteBlankGarmentTint(productName) {
+  const name = String(productName || '').trim();
+  return WHITE_BLANK_TINT_NAMES.has(name) || /baby body suit/i.test(name);
+}
+
+const NAMED_GARMENT_HEX = {
+  black: '#131313',
+  white: '#ffffff',
+  pink: '#ffb2da',
+  heather: '#babdc0',
+  red: '#da0a1a',
+  royal: '#253f8d',
+  navy: '#1a1f2e',
+  maroon: '#47171c',
+  forest: '#1C3727',
+  'true royal': '#05499b',
+  berry: '#c02773',
+  kelly: '#0e7b4e',
+  mustard: '#E6A133',
+  'dark grey heather': '#3e3c3d',
+  'heather forest': '#4F5549',
+  'heather columbia blue': '#6495ff',
+  'athletic heather': '#b5b5b7',
+  'dark heather': '#424248',
+  'carolina blue': '#9ABEF5',
+  'sport grey': '#cacacd',
+  'hot pink': '#fe607a',
+  'light pink': '#FFD6DC',
+  'light blue': '#cbdbec',
+  charcoal: '#6e6661',
+  'navy blazer': '#1c2b4a',
+  'charcoal heather': '#3e3c3d',
+  'carbon grey': '#5b5c5e',
+  'vintage black': '#2b2b2b',
+  'team royal': '#2a4fa3',
+  'desert pink': '#e8b4b8',
+  'midnight navy': '#191970',
+  'royal blue': '#4169e1',
+  'heavy metal': '#4a4a4a',
+  'light steel': '#c5c6c8',
+  'soft pink': '#f4c6d1',
+  'dusty rose': '#d4a5a5',
+  'oatmeal heather': '#d8cfc4',
+  natural: '#e8e0d5',
+  'dark grey': '#3d3d3d',
+  toast: '#c4a574',
+  adobe: '#c47a5a',
+  latte: '#c8b89a',
+  lavender: '#b57edc',
+  'team gold': '#d4a017',
+  'team red': '#b22222',
+  'military green': '#4b5320',
+  'forest green': '#213b21',
+  'black heather': '#2a2a2a',
+  asphalt: '#3c3c3c',
+  'soft cream': '#f2ead8',
+  'cotton pink': '#FFE9EB',
+  'fraiche peche': '#FFD2BE',
+  'pale pink': '#ffd4c5',
+  'hazy pink': '#cba59b',
+  bubblegum: '#ffc5d4',
+  'solid pink blend': '#ffd7de',
+  lilac: '#fabbd8',
+  peach: '#f8bc9f',
+  storm: '#746e72',
+  blossom: '#ffd6e1',
+  cancun: '#c2faf9',
+  'tahiti blue': '#52c7bd',
+  leaf: '#84a357',
+  'vintage indigo': '#3b4c6b',
+  ash: '#e9e7e4',
+};
+
+function cssHex(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const hex = raw.startsWith('#') ? raw : `#${raw}`;
+  return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : '';
+}
+
+/** Printful swatch for a white-blank mockup. Empty for White (already the blank). */
+export function getWhiteBlankGarmentTint(product, colorName) {
+  const name = product?.name || product?.product || product;
+  if (!usesWhiteBlankGarmentTint(name)) return '';
+  const prod = product && typeof product === 'object' ? product : { name: String(name || '') };
+  const hex = cssHex(getPrintfulColorCode(prod, colorName))
+    || cssHex(NAMED_GARMENT_HEX[normalizeColor(colorName)]);
+  if (!hex || isNearWhiteBlank(hex)) return '';
+  return hex;
+}
+
 export function swatchToneClass(hex) {
   return isLightSwatch(hex) ? ' color-swatch--light' : '';
 }

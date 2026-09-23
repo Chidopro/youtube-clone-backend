@@ -4,7 +4,8 @@ import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, ge
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
 import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest, peekToolsPreviewNewest, rememberArtworkOrientation } from '../../utils/merchSession';
 import { isDemoStorefront } from '../../utils/demoStorefront';
-import { storefrontMockupUrl } from '../../utils/shopCategories';
+import { toolsPreviewMockupUrl } from '../../utils/shopCategories';
+import { getWhiteBlankGarmentTint } from '../../utils/printfulColorMockups';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlainText, cornerRadiusPx, featherPx } from '../../utils/editLog';
 import './ToolsPage.css';
@@ -353,6 +354,42 @@ APPAREL_PRINT_OVERRIDES["Crop Top"] = APPAREL_PRINT_OVERRIDES["Women's Crop Top"
 function getApparelPrintOverride(productName) {
   const name = matchPrintAreaProductName(productName) || String(productName || '').trim();
   return APPAREL_PRINT_OVERRIDES[name] || APPAREL_PRINT_OVERRIDES[String(productName || '').trim()] || null;
+}
+
+function parseCssHex(hex) {
+  const h = String(hex || '').replace('#', '').trim();
+  if (h.length !== 6) return null;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  if (![r, g, b].every((n) => Number.isFinite(n))) return null;
+  return [r, g, b];
+}
+
+/** Multiply opaque white-blank mockup pixels by a Printful swatch. Keeps the mint print box. */
+function tintMockupCanvas(img, hex) {
+  const rgb = parseCssHex(hex);
+  const nw = img?.naturalWidth || 0;
+  const nh = img?.naturalHeight || 0;
+  if (!rgb || !nw || !nh) return '';
+  const canvas = document.createElement('canvas');
+  canvas.width = nw;
+  canvas.height = nh;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return '';
+  ctx.drawImage(img, 0, 0, nw, nh);
+  const imageData = ctx.getImageData(0, 0, nw, nh);
+  const data = imageData.data;
+  const [tr, tg, tb] = rgb;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 20) continue;
+    if (isPrintBoxPixel(data[i], data[i + 1], data[i + 2])) continue;
+    data[i] = Math.round((data[i] * tr) / 255);
+    data[i + 1] = Math.round((data[i + 1] * tg) / 255);
+    data[i + 2] = Math.round((data[i + 2] * tb) / 255);
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas.toDataURL('image/png');
 }
 
 function isPrintBoxPixel(r, g, b) {
@@ -1844,6 +1881,7 @@ const ProductPreviewWithDrag = ({
   onShirtFillChange,
   litePreview = false,
   shirtFillHint = '',
+  garmentTintColor = '',
 }) => {
   const containerRef = useRef(null);
   const productImageRef = useRef(null);
@@ -1857,16 +1895,50 @@ const ProductPreviewWithDrag = ({
   const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 0, height: 0 });
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
   const [detectedPrintBox, setDetectedPrintBox] = useState(null);
-  const [shirtFillColor, setShirtFillColor] = useState(() => String(shirtFillHint || ''));
+  const [shirtFillColor, setShirtFillColor] = useState(() => String(garmentTintColor || shirtFillHint || ''));
+  const [tintedMockupSrc, setTintedMockupSrc] = useState('');
   const [overlayNaturalSize, setOverlayNaturalSize] = useState({ width: 0, height: 0 });
   const overlayFitKeyRef = useRef('');
   const liteSizeLockedRef = useRef(false);
 
   useEffect(() => {
+    const tint = String(garmentTintColor || '').trim();
+    if (tint) {
+      setShirtFillColor(tint);
+      return;
+    }
     const hint = String(shirtFillHint || '');
     if (!hint) return;
     setShirtFillColor((prev) => prev || hint);
-  }, [shirtFillHint]);
+  }, [shirtFillHint, garmentTintColor]);
+
+  useEffect(() => {
+    const tint = String(garmentTintColor || '').trim();
+    const src = String(productImage || '').trim();
+    if (!tint || !src) {
+      setTintedMockupSrc('');
+      return undefined;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (cancelled) return;
+      try {
+        const next = tintMockupCanvas(img, tint);
+        if (!cancelled) setTintedMockupSrc(next || '');
+      } catch {
+        if (!cancelled) setTintedMockupSrc('');
+      }
+    };
+    img.onerror = () => {
+      if (!cancelled) setTintedMockupSrc('');
+    };
+    img.src = src;
+    return () => {
+      cancelled = true;
+    };
+  }, [garmentTintColor, productImage]);
 
   const clampFrameOffset = (x, y) => {
     const placeName = selectedProductName || productName;
@@ -2291,9 +2363,11 @@ const ProductPreviewWithDrag = ({
     if (src) {
       const fillKey = `${src}|${name}`;
       const applyFill = (fill) => {
-        if (!fill) return;
-        setShirtFillColor((prev) => (prev === fill ? prev : fill));
-        if (onShirtFillChange) onShirtFillChange(fill);
+        const tint = String(garmentTintColor || '').trim();
+        const next = tint || fill;
+        if (!next) return;
+        setShirtFillColor((prev) => (prev === next ? prev : next));
+        if (onShirtFillChange) onShirtFillChange(next);
       };
       if (shirtFillCache.has(fillKey)) {
         applyFill(shirtFillCache.get(fillKey));
@@ -2488,13 +2562,14 @@ const ProductPreviewWithDrag = ({
       onTouchStart={litePreview ? undefined : handleTouchStart}
     >
       {/* Product Image */}
-      <img 
+      <img
         ref={productImageRef}
         className="product-preview-mockup"
         key={productImage || 'mockup'}
-        src={productImage} 
+        src={tintedMockupSrc || productImage}
         alt={productName}
         decoding="async"
+        crossOrigin="anonymous"
         onLoad={handleProductImageLoad}
         onDragStart={(e) => e.preventDefault()}
         style={{
@@ -3583,7 +3658,7 @@ const ToolsPage = () => {
                 category: p.category || '',
                 screenshot: hasOriginal ? p.original_screenshot : (p.screenshot || ''),
                 originalScreenshot: hasOriginal ? p.original_screenshot : '',
-                productImage: storefrontMockupUrl(p.product, (p.preview_image_url && p.preview_image_url.trim()) || ''),
+                productImage: toolsPreviewMockupUrl(p.product, (p.preview_image_url && p.preview_image_url.trim()) || ''),
                 imageOrientation: ori,
                 toolSettings: hasOriginal
                   ? ts
@@ -3603,7 +3678,7 @@ const ToolsPage = () => {
               missing.map((item) =>
                 fetch(apiJoin(`/api/product-preview-url?name=${encodeURIComponent(item.name)}`))
                   .then((r) => r.ok ? r.json() : null)
-                  .then((data) => (data && data.url ? { ...item, productImage: storefrontMockupUrl(item.name, data.url) } : item))
+                  .then((data) => (data && data.url ? { ...item, productImage: toolsPreviewMockupUrl(item.name, data.url) } : item))
                   .catch(() => item)
               )
             ).then((filled) => {
@@ -3672,7 +3747,7 @@ const ToolsPage = () => {
               printful_catalog_product_id: item.printful_catalog_product_id || null,
               screenshot: item.originalScreenshot || item.screenshot || '',
               originalScreenshot: item.originalScreenshot || '',
-              productImage: storefrontMockupUrl(item.name || item.product, item.image || ''),
+              productImage: toolsPreviewMockupUrl(item.name || item.product, item.image || ''),
               imageOrientation: item.imageOrientation || item.toolSettings?.imageOrientation || '',
               toolSettings: item.toolSettings || null // Store tool settings if they exist
             }))
@@ -5824,7 +5899,15 @@ const ToolsPage = () => {
                       
                       // Regular products (shirts, etc.): Show normal preview (use placeholder when productImage missing, e.g. loaded from order_id)
                       if (currentImage) {
-                        const productImg = fitPreviewImageUrl || product.productImage || getPlaceholderProductImage();
+                        const previewName = selectedProductName || product.name;
+                        const productImg = toolsPreviewMockupUrl(
+                          previewName,
+                          fitPreviewImageUrl || product.productImage || getPlaceholderProductImage()
+                        );
+                        const garmentTintColor = getWhiteBlankGarmentTint(
+                          { ...product, name: previewName },
+                          product.color
+                        );
                         return (
                           <ProductPreviewWithDrag
                             key={`${cartIndex}|${shotFingerprint(productImg)}|${shotFingerprint(overlayScreenshot)}`}
@@ -5868,6 +5951,7 @@ const ToolsPage = () => {
                             featherFadeColor={featherFadeColor}
                             onOverlayBoxChange={handleOverlayBoxChange}
                             onShirtFillChange={handleShirtFillChange}
+                            garmentTintColor={garmentTintColor}
                           />
                         );
                       }

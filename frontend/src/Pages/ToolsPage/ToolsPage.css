@@ -393,6 +393,29 @@ body.tools-page-active .site-footer {
   display: block;
 }
 
+.product-preview-garment-tint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  background-color: var(--garment-tint, transparent);
+  -webkit-mask-image: var(--garment-mask);
+  mask-image: var(--garment-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-source-type: alpha;
+  mask-mode: alpha;
+}
+
+.product-preview-mockup--multiply {
+  mix-blend-mode: multiply;
+}
+
 .product-preview-overlay {
   max-width: none;
   max-height: none;

@@ -79,9 +79,63 @@ export function storefrontMockupUrl(productName, fallbackUrl) {
     return `${shopImgBase()}/menslongsleeveshirtpreview6.png`;
   }
   if (/baby body suit/i.test(n)) {
-    return `${shopImgBase()}/kidsbabybodysuitpreview2.png`;
+    return `${shopImgBase()}/kidsbabybodysuitpreview6.png`;
+  }
+  if (/kids long sleeve/i.test(n)) {
+    return `${shopImgBase()}/kidslongsleevepreview2.png`;
+  }
+  if (/kids shirt/i.test(n)) {
+    return `${shopImgBase()}/kidsshirtpreview2.png`;
+  }
+  if (/youth heavy blend hoodie|kids hoodie/i.test(n)) {
+    return `${shopImgBase()}/kidsyouthheavyblendhoodiepreview2.png`;
+  }
+  if (/kids sweatshirt/i.test(n)) {
+    return `${shopImgBase()}/kidssweatshirtpreview2.png`;
+  }
+  if (/toddler jersey/i.test(n)) {
+    return `${shopImgBase()}/kidstoddlerjerseytshirtpreview2.png`;
+  }
+  if (/baby staple/i.test(n)) {
+    return `${shopImgBase()}/kidsbabystapleteepreview2.png`;
+  }
+  if (/baby jersey/i.test(n)) {
+    return `${shopImgBase()}/kidsbabyjerseytshirtpreview2.png`;
   }
   return fallbackUrl;
+}
+
+/**
+ * Tools / Confirm overlay only. White flats we tint to the cart color.
+ * Does not change shop browse cards or ColorPickerModal.
+ */
+const TOOLS_WHITE_BLANK_FILES = [
+  [/oversized t-shirt/i, 'mensunisexoversizedtshirtpreview2.png'],
+  [/champion hoodie/i, 'mensunisexchampionhoodiepreview2.png'],
+  [/fitted long sleeve/i, 'mensfittedlongsleeveshirtpreview2.png'],
+  [/men'?s long sleeve shirt/i, 'menslongsleeveshirtpreview7.png'],
+  [/men'?s tank/i, 'menstanktoppreview2.png'],
+  [/mens fitted t-shirt|^fitted t-shirt$/i, 'mensfittedtshirtpreview2.png'],
+  [/heavyweight t-shirt/i, 'womenshdshirtpreview2.png'],
+  [/micro-rib/i, 'womensmicroribtanktoppreview2.png'],
+  [/racerback/i, 'womenstankpreview2.png'],
+  [/cropped hoodie/i, 'womenscroppedhoodiepreview2.png'],
+  [/pullover hoodie/i, 'womensunisexpulloverhoodiepreview2.png'],
+  [/crop top/i, 'womenscroptoppreview2.png'],
+  [/ribbed neck/i, 'womensribbedneckpreview2.png'],
+  [/^women'?s shirt$/i, 'womenshirtpreview2.png'],
+  [/^t-shirt$/i, 'mensunisextshirtpreview2.png'],
+  [/^unisex t-shirt$/i, 'mensunisextshirtpreview2.png'],
+  [/^hoodie$/i, 'mensunisexhoodiepreview2.png'],
+  [/^unisex hoodie$/i, 'mensunisexhoodiepreview2.png'],
+];
+
+export function toolsPreviewMockupUrl(productName, fallbackUrl) {
+  const n = String(productName || '').trim();
+  for (const [pattern, file] of TOOLS_WHITE_BLANK_FILES) {
+    if (pattern.test(n)) return `${shopImgBase()}/${file}`;
+  }
+  return storefrontMockupUrl(productName, fallbackUrl);
 }
 
 const SHOP_ADD_INTENT_KEY = 'sm_shop_add_intent';
