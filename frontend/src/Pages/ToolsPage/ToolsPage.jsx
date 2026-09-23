@@ -5,7 +5,7 @@ import API_CONFIG, { apiJoin } from '../../config/apiConfig';
 import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest, peekToolsPreviewNewest, rememberArtworkOrientation } from '../../utils/merchSession';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { toolsPreviewMockupUrl } from '../../utils/shopCategories';
-import { getWhiteBlankGarmentTint } from '../../utils/printfulColorMockups';
+import { getWhiteBlankGarmentTint, getPrintfulColorMockupUrl } from '../../utils/printfulColorMockups';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlainText, cornerRadiusPx, featherPx } from '../../utils/editLog';
 import './ToolsPage.css';
@@ -342,6 +342,43 @@ const APPAREL_PRINT_OVERRIDES = {
     left: 49.5,
   },
 };
+
+const BASEBALL_FRONT_PRINT = {
+  widthFrac: 0.50,
+  heightFrac: 0.20,
+  top: 46.5,
+  left: 50,
+  topShift: 7,
+  landscapeAspect: 2.5,
+};
+const DAD_FRONT_PRINT = {
+  widthFrac: 0.54,
+  heightFrac: 0.216,
+  top: 45.2,
+  left: 50,
+  topShift: 4,
+  landscapeAspect: 2.5,
+};
+const CLOSED_BACK_FRONT_PRINT = {
+  widthFrac: 0.50,
+  heightFrac: 0.20,
+  top: 46.5,
+  left: 50,
+  topShift: 7,
+  landscapeAspect: 2.5,
+};
+const TRUCKER_FRONT_PRINT = {
+  widthFrac: 0.48,
+  heightFrac: 0.218,
+  top: 48,
+  left: 50,
+  topShift: 10,
+  landscapeAspect: 2.2,
+};
+APPAREL_PRINT_OVERRIDES["Distressed Dad Hat"] = DAD_FRONT_PRINT;
+APPAREL_PRINT_OVERRIDES["Closed Back Cap"] = CLOSED_BACK_FRONT_PRINT;
+APPAREL_PRINT_OVERRIDES["Five Panel Trucker Hat"] = TRUCKER_FRONT_PRINT;
+APPAREL_PRINT_OVERRIDES["Five Panel Baseball Cap"] = BASEBALL_FRONT_PRINT;
 APPAREL_PRINT_OVERRIDES["Unisex Champion Hoodie"] = APPAREL_PRINT_OVERRIDES["Champion Hoodie"];
 APPAREL_PRINT_OVERRIDES["Unisex Oversized T-Shirt"] = APPAREL_PRINT_OVERRIDES["Oversized T-Shirt"];
 APPAREL_PRINT_OVERRIDES["Unisex Hoodie"] = APPAREL_PRINT_OVERRIDES["Hoodie"];
@@ -1440,16 +1477,16 @@ function paintFrameRings(ctx, vis, {
 function apparelOverlayPlacement(productName, detected) {
   const box = resolveApparelPrintBox(productName, detected);
   if (box && box.top != null) {
-    return { top: box.top, left: box.left ?? 50 };
+    return { top: box.top, left: box.left ?? 50, topShift: Number(box.topShift) || 0 };
   }
   const n = String(productName || '').toLowerCase();
-  if (n.includes('hat') || n.includes('cap')) return { top: 42, left: 50 };
-  if (n.includes('hoodie') || n.includes('sweatshirt')) return { top: 52, left: 50 };
-  if (n.includes('tank')) return { top: 44.8, left: 50.2 };
-  if (n.includes('women')) return { top: 43.0, left: 50.7 };
-  if (n.includes('baby') || n.includes('toddler')) return { top: 48, left: 50 };
-  if (n.includes('kids') || n.includes('youth')) return { top: 46.8, left: 50.2 };
-  return { top: 43.8, left: 50.35 };
+  if (n.includes('hat') || n.includes('cap')) return { top: 42, left: 50, topShift: 0 };
+  if (n.includes('hoodie') || n.includes('sweatshirt')) return { top: 52, left: 50, topShift: 0 };
+  if (n.includes('tank')) return { top: 44.8, left: 50.2, topShift: 0 };
+  if (n.includes('women')) return { top: 43.0, left: 50.7, topShift: 0 };
+  if (n.includes('baby') || n.includes('toddler')) return { top: 48, left: 50, topShift: 0 };
+  if (n.includes('kids') || n.includes('youth')) return { top: 46.8, left: 50.2, topShift: 0 };
+  return { top: 43.8, left: 50.35, topShift: 0 };
 }
 
 // Sync Product Specific fit before first paint when a cart item is already known
@@ -1845,6 +1882,7 @@ function printBoxPreviewAspect(productName, productSize, orientation, printAreaF
 // Component for product preview with draggable screenshot
 const ProductPreviewWithDrag = ({ 
   productImage, 
+  fallbackMockupUrl = '',
   screenshot, 
   productName, 
   productSize,
@@ -1897,9 +1935,14 @@ const ProductPreviewWithDrag = ({
   const [detectedPrintBox, setDetectedPrintBox] = useState(null);
   const [shirtFillColor, setShirtFillColor] = useState(() => String(garmentTintColor || shirtFillHint || ''));
   const [tintedMockupSrc, setTintedMockupSrc] = useState('');
+  const [mockupSrc, setMockupSrc] = useState(productImage);
   const [overlayNaturalSize, setOverlayNaturalSize] = useState({ width: 0, height: 0 });
   const overlayFitKeyRef = useRef('');
   const liteSizeLockedRef = useRef(false);
+
+  useEffect(() => {
+    setMockupSrc(productImage);
+  }, [productImage]);
 
   useEffect(() => {
     const tint = String(garmentTintColor || '').trim();
@@ -2092,14 +2135,23 @@ const ProductPreviewWithDrag = ({
           let minPercent, maxPercent;
           
           if (isHat) {
-            // For hats: 5" print area on ~6.5" hat = ~77% of hat width
-            // But we want it to look proportional, so use 60-75% range
-            minPercent = 0.60;  // 60% of hat width for 5" print area
-            maxPercent = 0.75;  // 75% of hat width for 5.5" print area (trucker hat)
-            
-            // Calculate percentage directly based on print area width
-            // 5" = 60%, 5.5" = 75% (linear interpolation)
-            const hatPrintWidth = printDimensions.width; // 5 or 5.5
+            if (getApparelPrintOverride(effectiveProductName)) {
+              const sized = sizeApparelPrintOverlay(
+                printDimensions.width,
+                printDimensions.height,
+                displayedProductWidth,
+                displayedProductHeight,
+                effectiveProductName,
+                detectedPrintBox
+              );
+              commitOverlaySize(sized.width, sized.height);
+              if (DEBUG_OVERLAY_SIZE) console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" → ${sized.width.toFixed(0)}x${sized.height.toFixed(0)}px [hat front]`);
+              return;
+            }
+            // Fallback when a hat has no Printful-front override (legacy crop).
+            minPercent = 0.60;
+            maxPercent = 0.75;
+            const hatPrintWidth = printDimensions.width;
             const widthPercent = hatPrintWidth <= 5 ? 0.60 : 0.60 + ((hatPrintWidth - 5) / 0.5) * (0.75 - 0.60);
             
             // Calculate base width from product image
@@ -2360,7 +2412,7 @@ const ProductPreviewWithDrag = ({
     const img = productImageRef.current;
     const name = (printAreaFit === 'product' && selectedProductName) ? selectedProductName : productName;
     const src = img ? (img.currentSrc || img.src) : '';
-    if (src) {
+    if (src && !isPrintfulMockupUrl(src)) {
       const fillKey = `${src}|${name}`;
       const applyFill = (fill) => {
         const tint = String(garmentTintColor || '').trim();
@@ -2565,12 +2617,17 @@ const ProductPreviewWithDrag = ({
       <img
         ref={productImageRef}
         className="product-preview-mockup"
-        key={productImage || 'mockup'}
-        src={tintedMockupSrc || productImage}
+        key={mockupSrc || productImage || 'mockup'}
+        src={tintedMockupSrc || mockupSrc || productImage}
         alt={productName}
         decoding="async"
-        crossOrigin="anonymous"
+        referrerPolicy="no-referrer"
+        crossOrigin={garmentTintColor ? 'anonymous' : undefined}
         onLoad={handleProductImageLoad}
+        onError={() => {
+          const fb = String(fallbackMockupUrl || '').trim();
+          if (fb && fb !== mockupSrc) setMockupSrc(fb);
+        }}
         onDragStart={(e) => e.preventDefault()}
         style={{
           width: '100%',
@@ -2589,11 +2646,8 @@ const ProductPreviewWithDrag = ({
           imageOrientation,
           placeName
         );
-        const productNameLower = (placeName || '').toLowerCase();
-        const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
-        const topPct = (isHat && productImageSize.height > 0)
-          ? `${50 - 8}%`
-          : `${apparelOverlayPlacement(placeName, detectedPrintBox).top}%`;
+        const place = apparelOverlayPlacement(placeName, detectedPrintBox);
+        const topPct = `${place.top}%`;
         const clampedOffset = imageOrientation === 'landscape'
           ? { x: 0, y: 0 }
           : clampFrameOffset(offsetX, offsetY);
@@ -2602,8 +2656,8 @@ const ProductPreviewWithDrag = ({
           style={{
             position: 'absolute',
             top: topPct,
-            left: `${apparelOverlayPlacement(placeName, detectedPrintBox).left}%`,
-            transform: `translate(calc(-50% + ${clampedOffset.x + (printBox.rightShift || 0)}px), calc(-50% + ${clampedOffset.y}px))`,
+            left: `${place.left}%`,
+            transform: `translate(calc(-50% + ${clampedOffset.x + (printBox.rightShift || 0)}px), calc(-50% + ${clampedOffset.y + (place.topShift || 0)}px))`,
             cursor: litePreview || imageOrientation === 'landscape' ? 'default' : (isDragging ? 'grabbing' : 'grab'),
             userSelect: 'none',
             WebkitUserSelect: 'none',
@@ -3059,12 +3113,33 @@ const ToolsUnavailableNotice = ({ info }) => (
   </div>
 );
 
-const getGenericHatImage = () => {
-  // Use a generic hat image for all hats in tools page
-  // This flat front-facing hat template works well for accurate screenshot positioning
-  // All hats use this same preview image in tools (except 5 Panel Trucker Hat which has slightly bigger print area)
-  return "https://screenmerch.fly.dev/static/images/hatflatfront.png";
-};
+function isPrintfulMockupUrl(url) {
+  return /files\.cdn\.printful\.com/i.test(String(url || ''));
+}
+
+function toolsHatLocalMockupUrl(product) {
+  const fallback = String(product?.productImage || '').trim();
+  if (fallback && !/hatflatfront/i.test(fallback) && !isPrintfulMockupUrl(fallback)) return fallback;
+  return '';
+}
+
+/** Tools Product Preview only: selected hat + cart color from Printful. No tint, no hatflatfront. */
+function toolsHatPreviewUrl(product, selectedName) {
+  const name = String(selectedName || product?.name || product?.product || '').trim();
+  const cartName = String(product?.name || product?.product || '').trim();
+  const sameHat =
+    isHatProduct(cartName) &&
+    (!name || name === cartName || matchPrintAreaProductName(name) === matchPrintAreaProductName(cartName));
+  const fromPrintful = getPrintfulColorMockupUrl(
+    {
+      name,
+      printful_catalog_product_id: sameHat ? product?.printful_catalog_product_id : undefined,
+    },
+    product?.color
+  );
+  if (fromPrintful) return fromPrintful;
+  return toolsHatLocalMockupUrl(product);
+}
 
 // Placeholder when product image is missing (e.g. products loaded from order_id) so screenshot still shows
 let _placeholderProductImage = null;
@@ -5750,11 +5825,6 @@ const ToolsPage = () => {
                       const noMockupPreview = getNoMockupPreviewInfo(product.name || productName, product.category);
                       const toolsUnavailable = getToolsUnavailableInfo(product.name || productName, product.category);
                       
-                      // Debug logging for hat products
-                      if (isHat) {
-                        console.log('🎩 [HAT DETECTED] Product:', productName, 'Will use generic hat image');
-                      }
-                      
                       if (toolsUnavailable) {
                         return <ToolsUnavailableNotice info={toolsUnavailable} />;
                       }
@@ -5814,19 +5884,16 @@ const ToolsPage = () => {
                         return previewNotice;
                       }
                       
-                      // Hats: Use generic hat image for all hats (always, even without screenshot)
+                      // Hats: Printful front photo for this SKU + cart color (overlay stays on the front panel).
                       if (isHat) {
-                        const hatImage = getGenericHatImage();
-                        console.log('🎩 [HAT DETECTED] Product:', productName);
-                        console.log('🎩 [HAT IMAGE] Using generic hat image:', hatImage);
-                        console.log('🎩 [HAT IMAGE] Original product image from cart:', product.productImage);
-                        console.log('🎩 [HAT IMAGE] Will override with:', hatImage);
-                        // Only show preview if there's a screenshot
+                        const hatImage = toolsHatPreviewUrl(product, productName) || getPlaceholderProductImage();
+                        const hatFallback = toolsHatLocalMockupUrl(product);
                         if (currentImage) {
                           return (
                             <ProductPreviewWithDrag
                               key={`${cartIndex}|${shotFingerprint(hatImage)}|${shotFingerprint(overlayScreenshot)}`}
                               productImage={hatImage}
+                              fallbackMockupUrl={hatFallback}
                               screenshot={overlayScreenshot}
                               productName={productName}
                               productSize={product.size}
@@ -5887,6 +5954,11 @@ const ToolsPage = () => {
                               <img 
                                 src={hatImage} 
                                 alt={productName}
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  const fb = toolsHatLocalMockupUrl(product);
+                                  if (fb && e.currentTarget.src !== fb) e.currentTarget.src = fb;
+                                }}
                                 style={{ maxWidth: '200px', maxHeight: '150px', marginBottom: '10px' }}
                               />
                               <div style={{ fontSize: '14px', color: '#666' }}>
