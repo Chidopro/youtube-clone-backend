@@ -1,27 +1,35 @@
-/* Subscription Tiers Page */
+/* Subscription Tiers — graphite / stone, same as sign-in and confirm emails */
 .subscription-tiers {
+    --st-ink: #18181B;
+    --st-ink-hover: #111827;
+    --st-muted: #71717A;
+    --st-line: #E4E4E7;
+    --st-wash: #F4F4F5;
+    --st-card: #FFFFFF;
     min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    background: #F4F4F5;
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
     padding: 40px 20px;
 }
 
 .subscription-tiers::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="10" cy="60" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="90" cy="40" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-    opacity: 0.3;
-    pointer-events: none;
+    display: none;
+}
+
+.tiers-header,
+.performance-metrics,
+.tier-calculator-section,
+.value-proposition,
+.signup-cta-section {
+    max-width: 1080px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .tiers-header {
     text-align: center;
-    color: white;
+    color: var(--st-ink);
     margin-bottom: 50px;
     position: relative;
     z-index: 1;
@@ -31,53 +39,43 @@
     font-size: 3.5rem;
     margin-bottom: 15px;
     font-weight: 800;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    background: linear-gradient(45deg, #fff, #f0f0f0);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes glow {
-    from { filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
-    to { filter: drop-shadow(0 0 20px rgba(255,255,255,0.8)); }
+    color: var(--st-ink);
+    letter-spacing: -0.03em;
 }
 
 .tiers-header p {
     font-size: 1.3rem;
-    opacity: 0.95;
-    font-weight: 300;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    color: var(--st-muted);
+    font-weight: 400;
     margin-bottom: 30px;
 }
 
 .hero-signup-btn {
-    background: transparent;
-    color: white;
-    border: 3px solid white;
+    background: var(--st-ink);
+    color: #FFFFFF;
+    border: none;
     border-radius: 8px;
-    padding: 18px 48px;
-    font-size: 1.3rem;
-    font-weight: 700;
+    padding: 16px 40px;
+    font-size: 1.15rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
-    letter-spacing: 0.5px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transition: background 0.2s ease;
+    letter-spacing: 0.01em;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.16);
     margin-top: 20px;
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .hero-signup-btn:hover:not(:disabled) {
-    background: white;
-    color: #667eea;
-    transform: translateY(-3px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    background: var(--st-ink-hover);
+    color: #FFFFFF;
+    transform: none;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.22);
 }
 
 .hero-signup-btn:active:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+    transform: none;
+    box-shadow: 0 4px 12px rgba(24, 24, 27, 0.18);
 }
 
 .hero-signup-btn:disabled {
@@ -137,13 +135,12 @@
 
 /* Performance Metrics */
 .performance-metrics {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 24px;
+    background: #FFFFFF;
+    border-radius: 16px;
     padding: 40px;
     margin-bottom: 40px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+    border: 1px solid #E4E4E7;
     position: relative;
     z-index: 1;
 }
@@ -159,7 +156,7 @@
 
 .metrics-header h3 {
     margin: 0 0 10px 0;
-    color: #333;
+    color: #18181B;
     font-size: 1.6rem;
     font-weight: 700;
 }
@@ -172,31 +169,30 @@
 
 .metrics-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 25px;
 }
 
 .metric-card {
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    background: var(--st-wash);
     padding: 25px;
-    border-radius: 15px;
+    border-radius: 12px;
     text-align: center;
-    border: 1px solid #dee2e6;
-    transition: all 0.3s ease;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border: 1px solid var(--st-line);
+    transition: box-shadow 0.2s ease;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.06);
 }
 
 .metric-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    transform: none;
+    box-shadow: 0 10px 28px rgba(24, 24, 27, 0.1);
 }
 
 .metric-value {
     font-size: 2.5rem;
     font-weight: 800;
-    color: #667eea;
+    color: var(--st-ink);
     margin-bottom: 10px;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
 }
 
 .metric-label {
@@ -207,13 +203,12 @@
 
 /* Tier Calculator Styles */
 .tier-calculator-section {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 24px;
+    background: #FFFFFF;
+    border-radius: 16px;
     padding: 40px;
     margin-bottom: 40px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+    border: 1px solid #E4E4E7;
     position: relative;
     z-index: 1;
 }
@@ -225,7 +220,7 @@
 
 .calculator-header h4 {
     margin: 0 0 10px 0;
-    color: #333;
+    color: #18181B;
     font-size: 1.8rem;
     font-weight: 700;
 }
@@ -262,7 +257,7 @@
 
 .calculator-pair-card:hover {
     transform: none !important;
-    box-shadow: 0 20px 50px rgba(102, 126, 234, 0.25);
+    box-shadow: 0 20px 50px rgba(24, 24, 27, 0.12);
 }
 
 .calculator-pair-body {
@@ -313,17 +308,17 @@
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+    background: linear-gradient(90deg, #18181B, #27272A, #52525B);
     border-radius: 20px 20px 0 0;
 }
 
 .tier-card.current {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 249, 255, 0.98) 100%);
-    transform: scale(1.02);
-    border-width: 3px;
+    border-color: #18181B;
+    background: #FFFFFF;
+    transform: none;
+    border-width: 2px;
     border-style: solid;
-    box-shadow: 0 20px 50px rgba(102, 126, 234, 0.25);
+    box-shadow: 0 8px 28px rgba(24, 24, 27, 0.08);
 }
 
 .tier-card.upgrade {
@@ -332,16 +327,16 @@
 }
 
 .tier-card.enterprise {
-    border-color: #6f42c1;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 240, 255, 0.95) 100%);
+    border-color: #18181B;
+    background: #FFFFFF;
 }
 
 .tier-card.breakdown-card {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 249, 255, 0.98) 100%);
-    border-width: 3px;
+    border-color: #18181B;
+    background: #FFFFFF;
+    border-width: 2px;
     border-style: solid;
-    box-shadow: 0 20px 50px rgba(102, 126, 234, 0.25);
+    box-shadow: 0 8px 28px rgba(24, 24, 27, 0.08);
 }
 
 .tier-card.breakdown-card .tier-fee {
@@ -353,7 +348,7 @@
 }
 
 .tier-card.breakdown-card .tier-header.breakdown-header-aligned.calculator-pair-header {
-    border-bottom: 3px solid #667eea;
+    border-bottom: 3px solid #18181B;
     margin-bottom: 20px;
     padding-bottom: 14px;
     text-align: center;
@@ -363,7 +358,7 @@
 .tier-card.breakdown-card .tier-header h5 {
     font-size: 1.8rem;
     font-weight: 800;
-    color: #495057;
+    color: #18181B;
     margin-bottom: 20px;
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
@@ -391,8 +386,8 @@
 .tier-card.breakdown-card .product-image-centered {
     width: 200px;
     height: 200px;
-    border: 4px solid #28a745;
-    box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
+    border: 2px solid #E4E4E7;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.08);
     border-radius: 12px;
     object-fit: contain;
     background: white;
@@ -484,7 +479,7 @@
 
 .tier-card.breakdown-card:hover {
     transform: none;
-    box-shadow: 0 20px 50px rgba(102, 126, 234, 0.25);
+    box-shadow: 0 20px 50px rgba(24, 24, 27, 0.12);
 }
 
 .tier-header {
@@ -495,7 +490,7 @@
 }
 
 .tier-card.current .tier-header.calculator-pair-header {
-    border-bottom: 3px solid #667eea !important;
+    border-bottom: 3px solid #18181B !important;
     margin-bottom: 20px !important;
     padding-bottom: 14px !important;
 }
@@ -510,27 +505,27 @@
 .tier-card.current .tier-header h5 {
     font-size: 1.8rem !important;
     margin-bottom: 20px !important;
-    color: #495057 !important;
+    color: #18181B !important;
     font-weight: 800 !important;
 }
 
 .tier-fee {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: #18181B;
     color: white;
     padding: 10px 24px;
     border-radius: 30px;
     font-size: 0.95rem;
     font-weight: 700;
-    box-shadow: 0 5px 18px rgba(102, 126, 234, 0.5);
+    box-shadow: 0 5px 18px rgba(24, 24, 27, 0.18);
     display: inline-block;
     letter-spacing: 0.3px;
 }
 
 .tier-card.current .tier-fee {
-    background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+    background: #18181B;
     padding: 12px 28px;
     font-size: 1rem;
-    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+    box-shadow: 0 6px 20px rgba(24, 24, 27, 0.18);
 }
 
 .tier-card.upgrade .tier-fee {
@@ -539,8 +534,8 @@
 }
 
 .tier-card.enterprise .tier-fee {
-    background: linear-gradient(135deg, #6f42c1, #8e44ad);
-    box-shadow: 0 4px 15px rgba(111, 66, 193, 0.4);
+    background: #18181B;
+    box-shadow: 0 4px 15px rgba(24, 24, 27, 0.18);
 }
 
 .tier-revenue {
@@ -553,16 +548,16 @@
     display: block;
     font-size: 4rem !important;
     font-weight: 900 !important;
-    color: #28a745 !important;
+    color: #FFFFFF !important;
     margin-bottom: 10px !important;
-    text-shadow: 2px 2px 6px rgba(40, 167, 69, 0.3) !important;
+    text-shadow: none !important;
     line-height: 1.1 !important;
     letter-spacing: -2px !important;
 }
 
 .tier-card.current .tier-savings.earnings-top .savings-label {
     font-size: 1rem !important;
-    color: #28a745 !important;
+    color: #A1A1AA !important;
     font-weight: 600 !important;
     display: block !important;
 }
@@ -672,7 +667,7 @@
 .tier-icon-container {
     width: 200px;
     height: 200px;
-    border: 4px solid #28a745;
+    border: 2px solid #E4E4E7;
     border-radius: 12px;
     margin: 20px auto 0;
     margin-bottom: 0;
@@ -680,7 +675,7 @@
     align-items: center;
     justify-content: center;
     background: white;
-    box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.08);
 }
 
 .tier-icon-image {
@@ -692,30 +687,30 @@
 
 .tier-savings {
     text-align: center;
-    background: linear-gradient(135deg, #d4edda, #c3e6cb);
-    border-radius: 16px;
+    background: #18181B;
+    border-radius: 12px;
     padding: 20px;
-    border: 3px solid #28a745;
-    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+    border: 1px solid #18181B;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.16);
     margin-top: 20px;
 }
 
 .tier-savings.earnings-bottom {
     margin-top: 30px !important;
     margin-bottom: 0 !important;
-    background: linear-gradient(135deg, #d4edda, #c3e6cb) !important;
-    border: 3px solid #28a745 !important;
-    border-radius: 16px !important;
-    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3) !important;
+    background: #18181B !important;
+    border: 1px solid #18181B !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.16) !important;
 }
 
 .tier-card.current .tier-savings .savings-amount {
     display: block;
     font-size: 4rem !important;
     font-weight: 900 !important;
-    color: #28a745 !important;
+    color: #FFFFFF !important;
     margin-bottom: 10px !important;
-    text-shadow: 2px 2px 6px rgba(40, 167, 69, 0.3) !important;
+    text-shadow: none !important;
     line-height: 1.1 !important;
     letter-spacing: -2px !important;
 }
@@ -724,23 +719,23 @@
     display: block;
     font-size: 4rem !important;
     font-weight: 900 !important;
-    color: #28a745 !important;
+    color: #FFFFFF !important;
     margin-bottom: 10px !important;
-    text-shadow: 2px 2px 6px rgba(40, 167, 69, 0.3) !important;
+    text-shadow: none !important;
     line-height: 1.1 !important;
     letter-spacing: -2px !important;
 }
 
 .tier-card.current .tier-savings .savings-label {
     font-size: 1rem !important;
-    color: #28a745 !important;
+    color: #A1A1AA !important;
     font-weight: 600 !important;
     display: block !important;
 }
 
 .tier-card.current .tier-savings.earnings-bottom .savings-label {
     font-size: 1rem !important;
-    color: #28a745 !important;
+    color: #A1A1AA !important;
     font-weight: 600 !important;
     display: block !important;
 }
@@ -749,13 +744,13 @@
     display: block;
     font-size: 1.4rem;
     font-weight: 800;
-    color: #155724;
+    color: #FFFFFF;
     margin-bottom: 5px;
 }
 
 .savings-label {
     font-size: 0.8rem;
-    color: #155724;
+    color: #A1A1AA;
     font-weight: 600;
 }
 
@@ -844,28 +839,28 @@
 }
 
 .upgrade-btn {
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    background: #18181B;
     color: white;
-    border: 3px solid #e55a2b;
+    border: none;
     padding: 18px 40px;
-    border-radius: 15px;
+    border-radius: 8px;
     font-size: 1.2rem;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5), 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: background 0.2s ease;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.16);
     margin-bottom: 20px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    text-transform: none;
+    letter-spacing: 0.01em;
     position: relative;
     overflow: hidden;
 }
 
 .upgrade-btn:hover {
-    background: linear-gradient(135deg, #e55a2b, #ff6b35);
-    transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(255, 107, 53, 0.7), 0 6px 20px rgba(0, 0, 0, 0.3);
-    border-color: #d14a1a;
+    background: #111827;
+    transform: none;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.22);
+    border-color: transparent;
 }
 
 .upgrade-btn:disabled {
@@ -877,17 +872,7 @@
 
 /* Add a subtle pulsing glow effect to make the button more prominent */
 .upgrade-btn::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(135deg, #ff6b35, #f7931e, #ff6b35);
-    border-radius: 17px;
-    z-index: -1;
-    opacity: 0.3;
-    animation: pulse-glow 2s ease-in-out infinite alternate;
+    display: none;
 }
 
 @keyframes pulse-glow {
@@ -910,13 +895,12 @@
 
 /* Value Proposition */
 .value-proposition {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 24px;
+    background: #FFFFFF;
+    border-radius: 16px;
     padding: 30px;
     margin-bottom: 30px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+    border: 1px solid #E4E4E7;
     position: relative;
     z-index: 1;
 }
@@ -924,7 +908,7 @@
 .value-proposition h3 {
     text-align: center;
     margin: 0 0 20px 0;
-    color: #333;
+    color: #18181B;
     font-size: 1.8rem;
     font-weight: 700;
 }
@@ -940,23 +924,23 @@
 
 .value-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 25px;
 }
 
 .value-item {
     text-align: center;
     padding: 25px;
-    border-radius: 15px;
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    border: 1px solid #dee2e6;
-    transition: all 0.3s ease;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border-radius: 12px;
+    background: #F4F4F5;
+    border: 1px solid #E4E4E7;
+    transition: box-shadow 0.2s ease;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.06);
 }
 
 .value-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    transform: none;
+    box-shadow: 0 10px 28px rgba(24, 24, 27, 0.1);
 }
 
 .value-icon {
@@ -1062,19 +1046,17 @@
     text-align: center;
     padding: 60px 20px;
     font-size: 1.2rem;
-    color: white;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    color: #18181B;
 }
 
 /* Calculation Breakdown */
 .calculation-breakdown {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #18181B;
     border-radius: 16px;
     padding: 30px;
     margin-top: 30px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 10px 30px rgba(24, 24, 27, 0.16);
+    border: 1px solid #18181B;
 }
 
 .calculation-breakdown h5 {
@@ -1150,7 +1132,7 @@
     .hero-signup-btn {
         font-size: 1.1rem;
         padding: 16px 36px;
-        letter-spacing: 1.5px;
+        letter-spacing: 0.01em;
     }
     
     .performance-metrics,
@@ -1411,11 +1393,11 @@
 }
 
 .earnings-card {
-    background: linear-gradient(135deg, #28a745, #20c997);
+    background: #18181B;
     color: white;
     padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 15px 40px rgba(40, 167, 69, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 8px 28px rgba(24, 24, 27, 0.16);
     min-width: 400px;
     max-width: 500px;
 }
@@ -1477,22 +1459,23 @@
 }
 
 .get-started-btn {
-    background: linear-gradient(135deg, #28a745, #20c997);
+    background: #18181B;
     color: white;
     border: none;
     padding: 18px 40px;
-    border-radius: 50px;
+    border-radius: 8px;
     font-size: 1.2rem;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 10px 30px rgba(40, 167, 69, 0.3);
+    transition: background 0.2s ease;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.16);
     margin: 20px 0;
 }
 
 .get-started-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 15px 40px rgba(40, 167, 69, 0.4);
+    transform: none;
+    background: #111827;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.22);
 }
 
 .get-started-btn:disabled {
@@ -1585,7 +1568,7 @@
     .hero-signup-btn {
         font-size: 1rem;
         padding: 14px 28px;
-        letter-spacing: 1px;
+        letter-spacing: 0.01em;
     }
     
     .performance-metrics,
@@ -1696,7 +1679,7 @@
     margin: 20px 0 0;
     text-align: center;
     font-size: 0.9rem;
-    color: #6c757d;
+    color: #71717A;
     line-height: 1.5;
     max-width: 640px;
     margin-left: auto;
@@ -1752,14 +1735,14 @@
     content: '✓';
     position: absolute;
     left: 0;
-    color: #28a745;
+    color: #18181B;
     font-weight: 900;
 }
 
 .calculator-pair-header .calculator-card-title {
     font-size: 1.75rem !important;
     font-weight: 800 !important;
-    color: #495057 !important;
+    color: #18181B !important;
     line-height: 1.2;
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
@@ -1805,7 +1788,7 @@
     content: '✓';
     position: absolute;
     left: 0;
-    color: #28a745;
+    color: #18181B;
     font-weight: 900;
 }
 
@@ -1865,21 +1848,22 @@
 
 .apply-creator-btn {
     margin-top: 8px;
-    background: linear-gradient(135deg, #28a745, #20c997);
+    background: #18181B;
     color: white;
     border: none;
     padding: 14px 32px;
-    border-radius: 50px;
+    border-radius: 8px;
     font-size: 1.05rem;
-    font-weight: 800;
+    font-weight: 700;
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 8px 24px rgba(40, 167, 69, 0.35);
+    transition: background 0.2s ease;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.16);
 }
 
 .apply-creator-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 28px rgba(40, 167, 69, 0.45);
+    background: #111827;
+    transform: none;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.22);
 }
 
 .apply-creator-btn:disabled {
@@ -1916,35 +1900,35 @@
 
 .calculator-product-select:focus {
     outline: none;
-    border-color: #ffc107;
-    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.35);
+    border-color: #18181B;
+    box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.12);
 }
 
 .creator-earnings-hero {
     width: 100%;
     max-width: 100%;
-    background: linear-gradient(145deg, #c8f5d4 0%, #8fd99a 45%, #28a745 100%);
-    border: 4px solid #1e7e34;
-    border-radius: 16px;
-    box-shadow: 0 14px 36px rgba(40, 167, 69, 0.45);
+    background: #18181B;
+    border: 1px solid #18181B;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, 0.16);
     text-align: center;
     margin: 0;
 }
 
 .creator-earnings-hero-label {
     font-size: 0.95rem;
-    font-weight: 800;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #145523;
+    letter-spacing: 0.08em;
+    color: #A1A1AA;
     margin-bottom: 10px;
 }
 
 .creator-earnings-hero-value {
     font-size: clamp(2.25rem, 5vw, 3.25rem);
     font-weight: 900;
-    color: #fff;
-    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+    color: #FFFFFF;
+    text-shadow: none;
     line-height: 1.05;
     letter-spacing: -0.03em;
 }
@@ -1961,7 +1945,7 @@
     max-width: 420px;
     font-size: 0.78rem;
     line-height: 1.45;
-    color: #868e96;
+    color: #71717A;
     text-align: center;
 }
 

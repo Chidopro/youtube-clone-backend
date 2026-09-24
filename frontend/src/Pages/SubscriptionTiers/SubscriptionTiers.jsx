@@ -10,7 +10,7 @@ import CreatorSignupModal from '../../Components/CreatorSignupModal/CreatorSignu
 const CREATOR_PAYOUT_PER_SALE = 6.0;
 
 /** Fixed illustration volume for headline metrics. */
-const MONTHLY_UNITS_SOLD_EXAMPLE = 217;
+const MONTHLY_UNITS_SOLD_EXAMPLE = 100;
 
 const EXAMPLE_MUG = {
     productName: 'White Glossy Mug',
@@ -137,7 +137,7 @@ const SubscriptionTiers = () => {
     return (
         <div className="subscription-tiers">
             <div className="tiers-header">
-                <h1>💰 Creator Earnings Calculator</h1>
+                <h1>Creator Earnings Calculator</h1>
                 <p>
                     See how much you can earn from your content with just coffee mugs. One of dozens of products to choose from.
                 </p>
@@ -160,7 +160,7 @@ const SubscriptionTiers = () => {
 
             <div className="performance-metrics">
                 <div className="metrics-header">
-                    <h3>📊 Example Creator Performance</h3>
+                    <h3>Example creator performance</h3>
                 </div>
                 <div className="metrics-grid">
                     <div className="metric-card">
@@ -177,7 +177,7 @@ const SubscriptionTiers = () => {
                     </div>
                 </div>
                 <p className="metrics-footnote">
-                    Example only—actual earnings depend on your sales volume. Creators earn $6 per sale on every product.
+                    Sample month: {MONTHLY_UNITS_SOLD_EXAMPLE} glossy mugs at $6 each. Actual earnings depend on your sales. Creators earn $6 per sale on every product.
                 </p>
             </div>
 
@@ -207,7 +207,7 @@ const SubscriptionTiers = () => {
                         </ul>
                         <div className="tier-savings earnings-bottom calculator-pair-earnings-bar">
                             <span className="savings-amount">${annualCreatorEarnings.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                            <span className="savings-label">Annual Creator Earnings 🔥</span>
+                            <span className="savings-label">Annual creator earnings</span>
                         </div>
                         </div>
                         <div className="tier-content-centered">
@@ -264,7 +264,7 @@ const SubscriptionTiers = () => {
             </div>
 
             <div className="value-proposition">
-                <h3>🎯 Why Choose ScreenMerch?</h3>
+                <h3>Why ScreenMerch</h3>
                 <div className="value-grid">
                     <div className="value-item">
                         <div className="value-icon">💰</div>
