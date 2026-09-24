@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 
 MAX_HEIGHT = 720
 MAX_VIDEO_BITRATE = 1_000_000
+# Jenny ~2.2MB / 30fps starts on iPhone. First-pass 15fps files were 6–7MB.
+MAX_PLAYBACK_BYTES = 3_200_000
+MIN_PLAYBACK_FPS = 24
+MAX_PLAYBACK_FPS = 32
 FFMPEG_TIMEOUT_SEC = 360
 DOWNLOAD_TIMEOUT_SEC = 120
 MAX_DOWNLOAD_BYTES = 220 * 1024 * 1024
@@ -25,7 +29,12 @@ PLAYBACK_MARK = "_w720."
 PLAYBACK_MARK_TRANSCODED = "_w720t."
 PLAYBACK_URL_RE = re.compile(r"_w720t\d*\.|_w720\.", re.I)
 PLAYBACK_SUFFIX_RE = re.compile(r"(_w720t\d*|_w720|_web)$", re.I)
+TIMESTAMPED_PLAYBACK_RE = re.compile(r"_w720t\d{5,}\.", re.I)
+GATED_PLAYBACK_RE = re.compile(r"_w720t2\.", re.I)
 CACHE_CONTROL = "31536000"
+_HEAD_CACHE_TTL_SEC = 120
+
+_head_cache = {}
 
 _lock = threading.Lock()
 _in_flight = set()
@@ -69,7 +78,96 @@ def _web_output_path(rel_path, generation=""):
 
 
 def _already_web_url(video_url):
-    return bool(PLAYBACK_URL_RE.search(str(video_url or "")))
+    return bool(PLAYBACK_URL_RE.search(str(video_url or "").split("?")[0]))
+
+
+def _playback_path(video_url):
+    return str(video_url or "").split("?")[0]
+
+
+def is_gated_playback_url(video_url):
+    """Force recode path the player already knows: clip_w720t2.mp4."""
+    return bool(GATED_PLAYBACK_RE.search(_playback_path(video_url)))
+
+
+def is_timestamped_playback_url(video_url):
+    """Unix-timestamp names are not on the Jenny/Samurai path."""
+    return bool(TIMESTAMPED_PLAYBACK_RE.search(_playback_path(video_url)))
+
+
+def is_first_pass_playback_url(video_url):
+    path = _playback_path(video_url)
+    if not _already_web_url(path) or is_gated_playback_url(path) or is_timestamped_playback_url(path):
+        return False
+    return True
+
+
+def _fps_from_rate(rate):
+    raw = str(rate or "").strip()
+    if not raw or raw in ("0/0", "N/A"):
+        return 0.0
+    try:
+        if "/" in raw:
+            num, den = raw.split("/", 1)
+            den_f = float(den)
+            if den_f == 0:
+                return 0.0
+            return float(num) / den_f
+        return float(raw)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def playback_is_phone_safe(probe, file_size=0):
+    """True for Jenny-class playback: H.264, <=720p, ~30fps, small enough to start on cellular."""
+    if not probe:
+        return False
+    if probe.get("codec") not in ("h264", "avc1"):
+        return False
+    if (probe.get("height") or 0) > MAX_HEIGHT:
+        return False
+    fps = float(probe.get("fps") or 0)
+    if fps < MIN_PLAYBACK_FPS or fps > MAX_PLAYBACK_FPS:
+        return False
+    try:
+        size = int(file_size or 0)
+    except (TypeError, ValueError):
+        size = 0
+    if size <= 0 or size > MAX_PLAYBACK_BYTES:
+        return False
+    return True
+
+
+def _content_length(url):
+    """Cached HEAD Content-Length. Does not run on the clip-shelf request path."""
+    path = _playback_path(url)
+    if not path:
+        return None
+    now = time.time()
+    cached = _head_cache.get(path)
+    if cached and cached[0] > now:
+        return cached[1]
+    size = None
+    try:
+        resp = requests.head(path, timeout=4, allow_redirects=True)
+        if resp.status_code == 200:
+            try:
+                size = int(resp.headers.get("Content-Length") or 0) or None
+            except (TypeError, ValueError):
+                size = None
+        elif resp.status_code == 405:
+            resp = requests.get(path, timeout=4, headers={"Range": "bytes=0-0"}, allow_redirects=True)
+            if resp.status_code in (200, 206):
+                cr = resp.headers.get("Content-Range") or ""
+                if "/" in cr:
+                    try:
+                        size = int(cr.rsplit("/", 1)[-1])
+                    except (TypeError, ValueError):
+                        size = None
+    except Exception:
+        size = None
+    _head_cache[path] = (now + _HEAD_CACHE_TTL_SEC, size)
+    return size
 
 
 def _is_youtube_url(video_url):
@@ -162,6 +260,33 @@ def row_needs_optimize(row):
     return bool(public_videos2_path(playback) or public_videos2_path(source))
 
 
+def row_needs_safer_playback(row, content_length=None):
+    """
+    Recode onto _w720t2 when playback is a timestamped URL or an oversized first pass.
+    Jenny-class _w720t files (small, already on the right path) are left alone.
+    """
+    if not row:
+        return False
+    playback = (row.get("video_url") or "").strip()
+    source = (row.get("source_video_url") or playback).strip()
+    if _is_youtube_url(playback) or _is_youtube_url(source):
+        return False
+    if is_gated_playback_url(playback):
+        return False
+    if is_timestamped_playback_url(playback):
+        return True
+    if not is_first_pass_playback_url(playback):
+        return False
+    size = content_length
+    if size is None:
+        size = _content_length(playback)
+    try:
+        size = int(size or 0)
+    except (TypeError, ValueError):
+        size = 0
+    return size > MAX_PLAYBACK_BYTES
+
+
 def _probe(path):
     try:
         result = subprocess.run(
@@ -172,7 +297,7 @@ def _probe(path):
                 "-select_streams",
                 "v:0",
                 "-show_entries",
-                "stream=codec_name,height,bit_rate:format=bit_rate,size,duration",
+                "stream=codec_name,height,bit_rate,avg_frame_rate,r_frame_rate:format=bit_rate,size,duration",
                 "-of",
                 "json",
                 path,
@@ -185,7 +310,7 @@ def _probe(path):
         data = json.loads(result.stdout or "{}")
         stream = (data.get("streams") or [{}])[0]
         fmt = data.get("format") or {}
-        info = {"codec": "", "height": 0, "bit_rate": 0}
+        info = {"codec": "", "height": 0, "bit_rate": 0, "fps": 0.0}
         info["codec"] = str(stream.get("codec_name") or "").strip().lower()
         try:
             info["height"] = int(float(stream.get("height") or 0))
@@ -196,6 +321,7 @@ def _probe(path):
             info["bit_rate"] = int(float(bit_rate))
         except (TypeError, ValueError):
             info["bit_rate"] = 0
+        info["fps"] = _fps_from_rate(stream.get("avg_frame_rate")) or _fps_from_rate(stream.get("r_frame_rate"))
         return info
     except Exception as exc:
         logger.warning("ffprobe failed: %s", exc)
@@ -265,7 +391,7 @@ def _remux_faststart(src_path, dest_path):
     )
 
 
-def _transcode(src_path, dest_path):
+def _transcode(src_path, dest_path, crf="27", maxrate="700k", bufsize="1400k"):
     # Match clips that already play on iPhone (Jenny / Space Fight / Surfboard):
     # height cap 720 → 16:9 becomes 1280x720. Pad to multiples of 16 (404px failed on iOS).
     _run_ffmpeg(
@@ -284,9 +410,11 @@ def _transcode(src_path, dest_path):
             "-map",
             "0:a:0?",
             "-vf",
-            "scale=-2:'min(720,ih)',pad=ceil(iw/16)*16:ceil(ih/16)*16:(ow-iw)/2:(oh-ih)/2,setsar=1",
+            "fps=30,scale=-2:'min(720,ih)',pad=ceil(iw/16)*16:ceil(ih/16)*16:(ow-iw)/2:(oh-ih)/2,setsar=1",
             "-r",
             "30",
+            "-video_track_timescale",
+            "30000",
             "-c:v",
             "libx264",
             "-preset",
@@ -300,11 +428,11 @@ def _transcode(src_path, dest_path):
             "-pix_fmt",
             "yuv420p",
             "-crf",
-            "27",
+            str(crf),
             "-maxrate",
-            "700k",
+            maxrate,
             "-bufsize",
-            "1400k",
+            bufsize,
             "-g",
             "30",
             "-keyint_min",
@@ -330,6 +458,10 @@ def _transcode(src_path, dest_path):
 def _upload_web_file(admin_client, rel_path, file_path):
     with open(file_path, "rb") as handle:
         data = handle.read()
+    try:
+        admin_client.storage.from_("videos2").remove([rel_path])
+    except Exception:
+        pass
     admin_client.storage.from_("videos2").upload(
         rel_path,
         data,
@@ -380,10 +512,16 @@ def optimize_video_url(admin_client, video_url, video_id=None, source_url=None, 
 
     existing = None if force else existing_web_url(source_url)
     if existing:
-        if video_id:
-            _update_video_row(admin_client, video_id, existing, source_url)
-        logger.info("Reusing existing playback file for %s -> %s", video_id or rel, existing)
-        return {"ok": True, "skipped": True, "playback_url": existing, "source_url": source_url}
+        if is_timestamped_playback_url(existing) or (
+            is_first_pass_playback_url(existing)
+            and (_content_length(existing) or 0) > MAX_PLAYBACK_BYTES
+        ):
+            existing = None
+        else:
+            if video_id:
+                _update_video_row(admin_client, video_id, existing, source_url)
+            logger.info("Reusing existing playback file for %s -> %s", video_id or rel, existing)
+            return {"ok": True, "skipped": True, "playback_url": existing, "source_url": source_url}
 
     key = str(video_id or source_url)
     with _lock:
@@ -403,16 +541,34 @@ def optimize_video_url(admin_client, video_url, video_id=None, source_url=None, 
         logger.info("Optimizing video %s (%s) force=%s", video_id or "", rel, force)
         _download(source_url, tmp_in)
         _transcode(tmp_in, tmp_out)
-        web_rel = _web_output_path(rel, generation=str(int(time.time())) if force else "")
+        probe = _probe(tmp_out)
+        out_size = os.path.getsize(tmp_out) if os.path.exists(tmp_out) else 0
+        if not playback_is_phone_safe(probe, out_size):
+            logger.info(
+                "Playback gate: first pass not phone-safe for %s fps=%s size=%s; recoding tighter",
+                video_id or rel,
+                (probe or {}).get("fps"),
+                out_size,
+            )
+            _transcode(tmp_in, tmp_out, crf="28", maxrate="500k", bufsize="1000k")
+            probe = _probe(tmp_out)
+            out_size = os.path.getsize(tmp_out) if os.path.exists(tmp_out) else 0
+        safe = playback_is_phone_safe(probe, out_size)
+        # Unsafe first-pass _w720t must not become the player URL. Use _w720t2.
+        # Fail closed: never point playback at the original 75MB file.
+        generation = "2" if (force or not safe) else ""
+        web_rel = _web_output_path(rel, generation=generation)
         playback_url = _upload_web_file(admin_client, web_rel, tmp_out)
         if isinstance(playback_url, str):
             playback_url = playback_url.split("?")[0]
+            if generation == "2" and out_size:
+                playback_url = f"{playback_url}?v={out_size}"
         print_source = source_url
         if _already_web_url(print_source) and video_url and not _already_web_url(video_url):
             print_source = video_url
         if video_id:
             _update_video_row(admin_client, video_id, playback_url, print_source)
-        logger.info("Optimized video %s -> %s", video_id or rel, playback_url)
+        logger.info("Optimized video %s -> %s safe=%s", video_id or rel, playback_url, safe)
         return {"ok": True, "skipped": False, "playback_url": playback_url, "source_url": source_url}
     except Exception as exc:
         logger.error("Video optimize failed for %s: %s", video_id or source_url, exc)
@@ -474,18 +630,27 @@ def enqueue_optimize(admin_client, video_url, video_id=None, source_url=None, fo
 
 def enqueue_video_row(admin_client, row):
     """Point video_url at an existing _w720 file, or queue a transcode."""
-    if not row_needs_optimize(row):
-        return False
-    to_transcode, screenshot_source = transcode_and_source_urls(row)
-    existing = existing_web_url(to_transcode)
-    if existing:
-        video_id = row.get("id")
-        if admin_client and video_id:
-            _update_video_row(admin_client, video_id, existing, screenshot_source)
-        row["video_url"] = existing
-        row["source_video_url"] = screenshot_source
-        return False
-    return enqueue_optimize(admin_client, to_transcode, row.get("id"), screenshot_source)
+    if row_needs_optimize(row):
+        to_transcode, screenshot_source = transcode_and_source_urls(row)
+        existing = existing_web_url(to_transcode)
+        if existing and not is_timestamped_playback_url(existing):
+            too_big = (
+                is_first_pass_playback_url(existing)
+                and (_content_length(existing) or 0) > MAX_PLAYBACK_BYTES
+            )
+            if not too_big:
+                video_id = row.get("id")
+                if admin_client and video_id:
+                    _update_video_row(admin_client, video_id, existing, screenshot_source)
+                row["video_url"] = existing
+                row["source_video_url"] = screenshot_source
+                return False
+            return enqueue_optimize(admin_client, to_transcode, row.get("id"), screenshot_source, force=True)
+        return enqueue_optimize(admin_client, to_transcode, row.get("id"), screenshot_source)
+    if row_needs_safer_playback(row):
+        to_transcode, screenshot_source = transcode_and_source_urls(row)
+        return enqueue_optimize(admin_client, to_transcode, row.get("id"), screenshot_source, force=True)
+    return False
 
 
 def start_optimize_background(admin_client, video_url, video_id=None, source_url=None, force=False):

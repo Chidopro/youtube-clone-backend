@@ -36,14 +36,18 @@ export function candidateWebPlaybackUrls(url) {
 }
 
 /**
- * Play the stored file immediately.
- * Do not guess a _w720 URL that may 404 for ~10s before the original starts.
+ * Play the Jenny / Samurai Dog file: original_w720t.mp4, or original_w720t2.mp4
+ * after a recode. Unix-timestamp names are not on that path.
  */
 export function playbackUrlForVideo(video) {
-  const url = String(video?.video_url || '').split('?')[0];
-  if (!url || /youtube\.com|youtu\.be/i.test(url)) return url;
-  if (isOptimizedPlaybackUrl(url)) return url;
-  return url;
+  const raw = String(video?.video_url || '').trim();
+  if (!raw || /youtube\.com|youtu\.be/i.test(raw)) return raw;
+  const path = raw.split('?')[0];
+  const qs = raw.includes('?') ? `?${raw.split('?').slice(1).join('?')}` : '';
+  const stable = path.replace(/_w720t\d{5,}\.mp4$/i, '_w720t2.mp4');
+  if (stable !== path) return `${stable}${qs || '?v=2'}`;
+  if (isOptimizedPlaybackUrl(path)) return `${stable}${qs}`;
+  return raw;
 }
 
 /** Warm the small playback file as soon as Watch is tapped (Samurai Dog path). */

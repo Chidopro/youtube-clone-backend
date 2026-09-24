@@ -1,12 +1,19 @@
 from utils.video_optimize import (
     _already_web_url,
+    _fps_from_rate,
     _is_web_ready,
     _web_output_path,
     candidate_web_urls,
+    is_first_pass_playback_url,
+    is_gated_playback_url,
+    is_timestamped_playback_url,
+    playback_is_phone_safe,
     public_url_for_rel,
     public_videos2_path,
     row_needs_optimize,
+    row_needs_safer_playback,
     transcode_and_source_urls,
+    MAX_PLAYBACK_BYTES,
 )
 
 
@@ -71,3 +78,45 @@ def test_is_web_ready():
     assert not _is_web_ready({"codec": "h264", "height": 2160, "bit_rate": 800_000})
     assert not _is_web_ready({"codec": "h264", "height": 1080, "bit_rate": 800_000})
     assert not _is_web_ready({"codec": "h264", "height": 720, "bit_rate": 12_000_000})
+
+
+def test_playback_path_kinds():
+    t = "https://x.supabase.co/storage/v1/object/public/videos2/a/clip_w720t.mp4"
+    t2 = "https://x.supabase.co/storage/v1/object/public/videos2/a/clip_w720t2.mp4?v=9"
+    ts = "https://x.supabase.co/storage/v1/object/public/videos2/a/clip_w720t1790169241.mp4"
+    assert is_first_pass_playback_url(t)
+    assert not is_gated_playback_url(t)
+    assert is_gated_playback_url(t2)
+    assert not is_first_pass_playback_url(t2)
+    assert is_timestamped_playback_url(ts)
+    assert not is_first_pass_playback_url(ts)
+    assert not is_gated_playback_url(ts)
+
+
+def test_fps_from_rate():
+    assert abs(_fps_from_rate("30/1") - 30) < 0.01
+    assert abs(_fps_from_rate("15360/1000") - 15.36) < 0.01
+    assert _fps_from_rate("0/0") == 0
+
+
+def test_playback_is_phone_safe():
+    jenny = {"codec": "h264", "height": 720, "fps": 30, "bit_rate": 800_000}
+    assert playback_is_phone_safe(jenny, 2_215_000)
+    assert not playback_is_phone_safe(jenny, 6_500_000)
+    assert not playback_is_phone_safe({"codec": "h264", "height": 720, "fps": 15.36}, 1_900_000)
+    assert not playback_is_phone_safe({"codec": "hevc", "height": 720, "fps": 30}, 2_000_000)
+    assert not playback_is_phone_safe({"codec": "h264", "height": 1080, "fps": 30}, 2_000_000)
+    assert MAX_PLAYBACK_BYTES >= 2_800_000
+
+
+def test_row_needs_safer_playback():
+    base = "https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/videos2/u/"
+    jenny = {"id": "1", "video_url": base + "clip_w720t.mp4"}
+    assert not row_needs_safer_playback(jenny, content_length=2_215_000)
+    oversized = {"id": "2", "video_url": base + "clip_w720t.mp4"}
+    assert row_needs_safer_playback(oversized, content_length=7_000_000)
+    gated = {"id": "3", "video_url": base + "clip_w720t2.mp4?v=2696"}
+    assert not row_needs_safer_playback(gated, content_length=9_000_000)
+    stamped = {"id": "4", "video_url": base + "clip_w720t1790169241.mp4"}
+    assert row_needs_safer_playback(stamped, content_length=1_900_000)
+    assert not row_needs_safer_playback({"id": "5", "video_url": "https://youtube.com/watch?v=abc"})

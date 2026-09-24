@@ -357,8 +357,9 @@ const PlayVideo = ({
     const startInlinePlay = useCallback((el) => {
         const video = el || videoRef.current;
         if (!video) return;
-        video.preload = 'auto';
-        video.setAttribute('preload', 'auto');
+        video.playsInline = true;
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
         const play = video.play();
         if (play && typeof play.catch === 'function') play.catch(() => {});
     }, [videoRef]);
@@ -367,7 +368,7 @@ const PlayVideo = ({
         const video = videoRef.current;
         const canvas = pausedCanvasRef.current;
         if (!video || !canvas) return;
-        if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+        if (!videoHasPlayedRef.current || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
             canvas.style.visibility = 'hidden';
             return;
         }
@@ -1299,7 +1300,6 @@ const PlayVideo = ({
                             if (!el) return;
                             const portrait = el.videoWidth > 0 && el.videoHeight > el.videoWidth;
                             setIsPortraitVideo(portrait);
-                            el.removeAttribute('poster');
                             if (el.duration && Number.isFinite(el.duration)) {
                                 setPlayerDuration(el.duration);
                             }
