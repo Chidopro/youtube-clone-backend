@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../supabaseClient';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import './ColorPickerModal.css';
@@ -11,6 +11,10 @@ const ColorPickerModal = ({ isOpen, onClose, currentPrimaryColor, currentSeconda
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
+  const primaryRef = useRef(primaryColor);
+  const secondaryRef = useRef(secondaryColor);
+  primaryRef.current = primaryColor;
+  secondaryRef.current = secondaryColor;
 
   useEffect(() => {
     if (isOpen) {
@@ -29,6 +33,9 @@ const ColorPickerModal = ({ isOpen, onClose, currentPrimaryColor, currentSeconda
     setMessageType('');
 
     try {
+      const primaryColor = primaryRef.current;
+      const secondaryColor = secondaryRef.current;
+
       // Validate color format
       const colorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
       if (!colorRegex.test(primaryColor)) {
@@ -138,7 +145,9 @@ const ColorPickerModal = ({ isOpen, onClose, currentPrimaryColor, currentSeconda
         document.documentElement.style.setProperty('--secondary-color', secondaryColor);
 
         // Trigger CreatorContext refresh
-        window.dispatchEvent(new CustomEvent('creatorSettingsUpdated'));
+        window.dispatchEvent(new CustomEvent('creatorSettingsUpdated', {
+          detail: { primary_color: primaryColor, secondary_color: secondaryColor },
+        }));
 
         setMessage('✅ Colors saved successfully!');
         setMessageType('success');
@@ -178,6 +187,7 @@ const ColorPickerModal = ({ isOpen, onClose, currentPrimaryColor, currentSeconda
                 type="color"
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
+                onInput={(e) => setPrimaryColor(e.target.value)}
                 className="color-picker-input"
               />
               <input
@@ -197,6 +207,7 @@ const ColorPickerModal = ({ isOpen, onClose, currentPrimaryColor, currentSeconda
                 type="color"
                 value={secondaryColor}
                 onChange={(e) => setSecondaryColor(e.target.value)}
+                onInput={(e) => setSecondaryColor(e.target.value)}
                 className="color-picker-input"
               />
               <input

@@ -13,6 +13,7 @@ from utils.video_optimize import (
     row_needs_optimize,
     row_needs_safer_playback,
     transcode_and_source_urls,
+    parse_cropdetect_log,
     MAX_PLAYBACK_BYTES,
 )
 
@@ -120,3 +121,11 @@ def test_row_needs_safer_playback():
     stamped = {"id": "4", "video_url": base + "clip_w720t1790169241.mp4"}
     assert row_needs_safer_playback(stamped, content_length=1_900_000)
     assert not row_needs_safer_playback({"id": "5", "video_url": "https://youtube.com/watch?v=abc"})
+
+
+def test_parse_cropdetect_log_clipchamp_letterbox():
+    log = "[Parsed_cropdetect_0 @ 0] x1:0 x2:1919 y1:128 y2:951 w:1920 h:824 x:0 y:128 pts:1 t:0.03 crop=1920:824:0:128"
+    assert parse_cropdetect_log(log, 1920, 1080) == "crop=1920:824:0:128"
+    assert parse_cropdetect_log("", 1920, 1080) is None
+    assert parse_cropdetect_log("crop=1920:1080:0:0", 1920, 1080) is None
+    assert parse_cropdetect_log("crop=1920:200:0:400", 1920, 1080) is None

@@ -153,16 +153,27 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         const ownerList = lists.find((L) => L.is_primary || L.slug === 'owner');
         let { ownerImages, friendImages } = applyLists(lists, currentCreator?.id);
 
-        if (!ownerImages.length && ownerList) {
+        if (ownerImages.length < 6 && ownerList) {
           const { ok: okOwner, data: ownerData } = await fetchPublicFavoritesByList(
             sub,
             ownerList.slug || 'owner'
           );
           if (!cancelled && okOwner && ownerData?.success) {
-            ownerImages = (ownerData.favorites || [])
+            const extraOwner = (ownerData.favorites || [])
               .map((f) => favoriteCardThumbUrl(f))
               .filter(Boolean);
-            setFavoritesPreview(ownerImages);
+            if (extraOwner.length) {
+              const seen = new Set(ownerImages.map((u) => String(u).split('?')[0].toLowerCase()));
+              const merged = [...ownerImages];
+              for (const u of extraOwner) {
+                const k = String(u).split('?')[0].toLowerCase();
+                if (!k || seen.has(k)) continue;
+                seen.add(k);
+                merged.push(u);
+              }
+              ownerImages = merged;
+              setFavoritesPreview(ownerImages);
+            }
           }
         }
         if (ownerList?.id) {
@@ -408,14 +419,10 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           currentPrimaryColor={creatorSettings?.primary_color}
           currentSecondaryColor={creatorSettings?.secondary_color}
           onSave={async (primary, secondary) => {
-            // Wait a moment for database to update, then refresh creator context
-            setTimeout(() => {
-              if (refreshCreator) {
-                refreshCreator();
-              }
-              // Also trigger the event for other listeners
-              window.dispatchEvent(new CustomEvent('creatorSettingsUpdated'));
-            }, 800);
+            if (refreshCreator) refreshCreator();
+            window.dispatchEvent(new CustomEvent('creatorSettingsUpdated', {
+              detail: { primary_color: primary, secondary_color: secondary },
+            }));
           }}
         />
 

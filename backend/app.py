@@ -981,7 +981,6 @@ def add_security_headers(response):
                 and (
                     request.path.startswith("/api/product/browse")
                     or request.path.startswith("/api/public/")
-                    or request.path.startswith("/api/subdomain/")
                     or request.path == "/api/videos"
                 )
             )
@@ -5154,6 +5153,12 @@ def process_thumbnail_print_quality():
         frame_color = data.get("frame_color", "#FF0000")
         frame_width = int(data.get("frame_width", 10))  # Ensure it's an integer
         double_frame = data.get("double_frame", False)
+        inner_frame_color = data.get("inner_frame_color") or data.get("innerFrameColor") or frame_color
+        try:
+            image_opacity = int(round(float(data.get("image_opacity") if data.get("image_opacity") is not None else data.get("imageOpacity", 100))))
+        except (TypeError, ValueError):
+            image_opacity = 100
+        image_opacity = max(0, min(100, image_opacity))
         text_enabled = data.get("text_enabled", False)
         text_content = (data.get("text_content") or "").strip()
         text_font = data.get("text_font", "Arial")
@@ -5211,7 +5216,7 @@ def process_thumbnail_print_quality():
         logger.info(f"📧 [PRINT_QUALITY] Processing thumbnail - Type: {thumbnail_type}, Length: {thumbnail_length}, Preview: {thumbnail_preview}...")
         logger.info(f"📧 [PRINT_QUALITY] DPI={print_dpi}, soft_corners={soft_corners}, edge_feather={edge_feather}")
         logger.info(f"📧 [PRINT_QUALITY] corner_radius_percent={corner_radius_percent}, feather_edge_percent={feather_edge_percent}")
-        logger.info(f"📧 [PRINT_QUALITY] frame_enabled={frame_enabled}, frame_color={frame_color}, frame_width={frame_width}, double_frame={double_frame}")
+        logger.info(f"📧 [PRINT_QUALITY] frame_enabled={frame_enabled}, frame_color={frame_color}, inner_frame_color={inner_frame_color}, frame_width={frame_width}, double_frame={double_frame}")
         logger.info(f"📧 [PRINT_QUALITY] text_enabled={text_enabled}, color={text_color}, size={text_size}, pos={text_offset_x}/{text_offset_y}, dir={text_direction}")
         logger.info(f"📧 [PRINT_QUALITY] add_white_background={add_white_background}")
         if crop_area:
@@ -5230,6 +5235,8 @@ def process_thumbnail_print_quality():
             frame_color=frame_color,
             frame_width=frame_width,
             double_frame=double_frame,
+            inner_frame_color=inner_frame_color,
+            image_opacity=image_opacity,
             text_enabled=text_enabled and bool(text_content),
             text_content=text_content,
             text_font=text_font,
@@ -7573,6 +7580,7 @@ def get_subdomain_creator(subdomain):
                     "hide_screenmerch_branding": creator.get('hide_screenmerch_branding', False)
                 }
             })
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
             return response, 200
         else:
             logger.warning(f"⚠️ [SUBDOMAIN API] No creator found for subdomain: {normalized}")
@@ -11216,7 +11224,7 @@ def public_favorite_lists():
             lists = _fl_lists_for_storefront(owner_id, repair=True)
         approved_ids = _approved_umbrella_friend_ids(owner_id)
         paused_ids = _paused_umbrella_friend_ids(owner_id)
-        preview_map = _fl_preview_map_for_lists(lists, 4 if lite else 8)
+        preview_map = _fl_preview_map_for_lists(lists, 8)
         safe_lists = []
         for L in lists:
             # Collaborator pages only while membership is approved (removed/paused stay hidden)
@@ -11262,7 +11270,7 @@ def public_favorite_lists():
                 dn = nick + (" Favorites" if nick and "Favorites" not in nick else "")
             preview_images = list(preview_map.get(L.get("id"), []) or [])
             if not preview_images and is_collab:
-                preview_images = _fl_video_preview_images(L.get("owner_user_id"), 4 if lite else 8)
+                preview_images = _fl_video_preview_images(L.get("owner_user_id"), 8)
             elif not preview_images and not lite:
                 preview_images = _fl_collect_preview_images(L, is_collab=is_collab)
             payload = {

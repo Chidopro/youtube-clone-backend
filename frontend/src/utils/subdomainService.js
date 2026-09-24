@@ -135,8 +135,10 @@ export const getCreatorFromSubdomain = async (subdomain) => {
     // Use backend API endpoint which bypasses RLS
     const response = await fetch(apiJoin(`/api/subdomain/${normalizedSubdomain}`), {
       method: 'GET',
+      cache: 'no-store',
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache',
       }
     });
     

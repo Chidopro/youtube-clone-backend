@@ -465,8 +465,7 @@
     aspect-ratio: 16 / 9;
     max-height: 50vh; /* Limit maximum height to 50% of viewport height */
     border-radius: 0;
-    object-fit: contain;
-    /* Prevent fullscreen on mobile */
+    object-fit: cover;
     -webkit-playsinline: true;
     playsinline: true;
     -webkit-presentation-mode: inline;
@@ -1004,10 +1003,15 @@
   }
 
   .video-page-container .play-video video {
-    object-fit: contain !important;
+    object-fit: cover !important;
+    object-position: center center;
     background: #000 !important;
     border-radius: 0 !important;
     display: block !important;
+  }
+
+  .video-page-container .play-video.play-video--portrait video {
+    object-fit: contain !important;
   }
 
   .video-viewer .screenmerch-actions {
@@ -1101,6 +1105,12 @@
 
 .video-page-container .capture-studio .play-video video {
   background: #000 !important;
+  object-fit: cover !important;
+  object-position: center center;
+}
+
+.video-page-container .capture-studio .play-video.play-video--portrait video {
+  object-fit: contain !important;
 }
 
 .video-page-container .screenmerch-btn.screenshot-btn,
@@ -1274,7 +1284,8 @@
     max-height: none !important;
     min-height: 0 !important;
     aspect-ratio: 16 / 9;
-    object-fit: contain !important;
+    object-fit: cover !important;
+    object-position: center center;
   }
 
   /* Portrait clips (Samurai Dog) stay in the same 16:9 window; contain letterboxes. */
@@ -1429,7 +1440,8 @@
     width: 100% !important;
     height: auto !important;
     aspect-ratio: 16 / 9;
-    object-fit: contain !important;
+    object-fit: cover !important;
+    object-position: center center;
     background: #000 !important;
   }
 

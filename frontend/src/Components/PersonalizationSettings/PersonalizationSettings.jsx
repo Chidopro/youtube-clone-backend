@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
@@ -50,6 +50,8 @@ const PersonalizationSettings = ({ readOnly = false }) => {
   const [homepageMessage, setHomepageMessage] = useState('');
   const [homepageMessageType, setHomepageMessageType] = useState('');
   const showHomepageBrand = isMasterAdmin && !(typeof window !== 'undefined' && getSubdomain());
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   useEffect(() => {
     loadSettings();
@@ -407,6 +409,7 @@ const PersonalizationSettings = ({ readOnly = false }) => {
     setSaving(true);
     setMessage('');
     setMessageType('');
+    const settings = settingsRef.current;
     
     try {
       // Declare userId and user variables at the start
@@ -716,25 +719,25 @@ const PersonalizationSettings = ({ readOnly = false }) => {
           setMessage('✅ Settings saved! If the navbar logo doesn’t update, refresh the page (F5).');
         }
         setMessageType('success');
-        
-        // Reload settings to get updated values from database
-        console.log('🔄 Reloading settings after save...');
-        await loadSettings();
-        
-        // Trigger CreatorContext refresh so navbar logo and theme update immediately
-        window.dispatchEvent(new CustomEvent('creatorSettingsUpdated'));
+
+        window.dispatchEvent(new CustomEvent('creatorSettingsUpdated', {
+          detail: {
+            primary_color: settings.primary_color,
+            secondary_color: settings.secondary_color,
+            header_opacity: clampHeaderOpacity(settings.header_opacity),
+            custom_logo_url: settings.custom_logo_url,
+            custom_favicon_url: settings.custom_favicon_url,
+          },
+        }));
         if (typeof refreshCreator === 'function') {
           refreshCreator();
         }
-        
-        // Force immediate color update (even if not on subdomain yet)
+
         if (settings.primary_color) {
           document.documentElement.style.setProperty('--primary-color', settings.primary_color);
-          console.log('✅ Immediately set --primary-color to:', settings.primary_color);
         }
         if (settings.secondary_color) {
           document.documentElement.style.setProperty('--secondary-color', settings.secondary_color);
-          console.log('✅ Immediately set --secondary-color to:', settings.secondary_color);
         }
       }
     } catch (error) {
@@ -1032,7 +1035,8 @@ const PersonalizationSettings = ({ readOnly = false }) => {
                 <input
                   type="color"
                   value={settings.primary_color}
-                  onChange={(e) => setSettings({...settings, primary_color: e.target.value})}
+                  onChange={(e) => setSettings((prev) => ({...prev, primary_color: e.target.value}))}
+                  onInput={(e) => setSettings((prev) => ({...prev, primary_color: e.target.value}))}
                   className="color-picker"
                   disabled={readOnly}
                 />
@@ -1055,7 +1059,8 @@ const PersonalizationSettings = ({ readOnly = false }) => {
                 <input
                   type="color"
                   value={settings.secondary_color}
-                  onChange={(e) => setSettings({...settings, secondary_color: e.target.value})}
+                  onChange={(e) => setSettings((prev) => ({...prev, secondary_color: e.target.value}))}
+                  onInput={(e) => setSettings((prev) => ({...prev, secondary_color: e.target.value}))}
                   className="color-picker"
                   disabled={readOnly}
                 />

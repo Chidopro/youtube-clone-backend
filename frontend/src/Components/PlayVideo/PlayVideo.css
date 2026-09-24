@@ -131,8 +131,13 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   pointer-events: none;
+}
+
+.play-video.play-video--portrait .mobile-video-frame-cover img,
+.play-video.play-video--portrait .mobile-video-frame-cover canvas {
+  object-fit: contain;
 }
 
 .play-video .mobile-video-bar {
@@ -446,6 +451,7 @@
     height: 320px !important;
     max-height: 320px !important;
     object-fit: contain !important;
+    object-position: center center;
   }
   
   /* Ensure video container stays within bounds */
@@ -984,6 +990,7 @@
     max-width: 100% !important;
     height: 360px !important;
     object-fit: contain !important;
+    object-position: center center;
     /* Professional video constraints - fixed height to prevent size changes */
     aspect-ratio: 16/9;
     border-radius: 12px;
@@ -1015,7 +1022,7 @@
   }
 }
 
-/* Keep the player box size; letterbox portrait video instead of cropping it */
+/* Landscape fills the player (no black bars). Portrait clips still letterbox. */
 .play-video video {
   background: #000 !important;
   background-color: #000 !important;
@@ -1024,7 +1031,19 @@
   display: block !important;
   width: 100% !important;
   height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center;
+}
+
+.play-video.play-video--portrait video {
   object-fit: contain !important;
+}
+
+.play-video:not(.play-video--portrait) video,
+.play-video:not(.play-video--portrait) video[playsinline],
+.play-video:not(.play-video--portrait) video[webkit-playsinline="true"] {
+  object-fit: cover !important;
+  object-position: center center;
 }
 
 /* Mobile override for forced video background rule */
@@ -1042,6 +1061,7 @@
   width: 100% !important;
   height: 100% !important;
   min-height: 400px !important;
+  overflow: hidden;
 }
 
 /* Mobile override for video container height */
@@ -1806,6 +1826,7 @@
   .play-video video[playsinline],
   .play-video video[webkit-playsinline="true"] {
     object-fit: contain !important;
+    object-position: center center;
     background: #000 !important;
     border-radius: 0 !important;
   }

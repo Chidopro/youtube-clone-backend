@@ -34,6 +34,7 @@ function itemHasLiveOverlayEdits(item) {
     || ts.blackAndWhite
     || Number(ts.featherEdge) > 0
     || Number(ts.cornerRadius) > 0
+    || (Number.isFinite(Number(ts.imageOpacity)) && Number(ts.imageOpacity) < 100)
     || (ts.textEnabled && String(ts.textContent || '').trim())
   );
 }
@@ -1500,6 +1501,7 @@ const Checkout = () => {
                         frameColor={ts.frameColor || '#FF0000'}
                         frameWidth={ts.frameWidth ?? 10}
                         doubleFrame={Boolean(ts.doubleFrame)}
+                        innerFrameColor={ts.innerFrameColor || ts.frameColor || '#FF0000'}
                         printAreaFit={printAreaFit}
                         selectedProductName={printProductName}
                         screenshotScale={ts.screenshotScale ?? 100}
@@ -1507,6 +1509,8 @@ const Checkout = () => {
                         imageOffsetY={ts.imageOffsetY || 0}
                         imageOrientation={previewOrientation}
                         blackAndWhite={Boolean(ts.blackAndWhite)}
+                        bwIntensity={ts.bwIntensity}
+                        imageOpacity={ts.imageOpacity}
                         featherFadeEnabled={Boolean(ts.featherFadeEnabled) && ts.featherFadeColor !== 'transparent'}
                         featherFadeColor={
                           (!ts.featherFadeEnabled || ts.featherFadeColor === 'transparent')

@@ -3,6 +3,8 @@
  * screenshot so checkout, confirm, and fulfillment use the chosen look.
  */
 
+import { blackAndWhiteCssFilter } from './blackAndWhiteFilter';
+
 const WORK_MAX = 640;
 const EXPORT_MAX = 720;
 const DISPLAY_EDGE = 360;
@@ -14,6 +16,7 @@ export function browsePresetHasPixelEdits(settings) {
     || Number(settings.cornerRadius) > 0
     || Number(settings.featherEdge) > 0
     || settings.frameEnabled
+    || (Number.isFinite(Number(settings.imageOpacity)) && Number(settings.imageOpacity) < 100)
   );
 }
 
@@ -148,8 +151,13 @@ export async function bakeBrowsePresetImage(sourceUrl, settings) {
   if (!ctx) return src;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.filter = settings.blackAndWhite ? 'grayscale(1)' : 'none';
+  ctx.filter = settings.blackAndWhite
+    ? blackAndWhiteCssFilter(true, settings.bwIntensity)
+    : 'none';
+  const opacity = Number(settings.imageOpacity);
+  ctx.globalAlpha = Number.isFinite(opacity) ? Math.max(0, Math.min(1, opacity / 100)) : 1;
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  ctx.globalAlpha = 1;
   ctx.filter = 'none';
 
   const maxR = Math.min(canvas.width, canvas.height) / 2;
@@ -204,8 +212,8 @@ export async function bakeBrowsePresetImage(sourceUrl, settings) {
 
   if (settings.frameEnabled) {
     const thickness = Math.max(4, Math.round(Math.min(canvas.width, canvas.height) * ((Number(settings.frameWidth) || 12) / 180)));
-    const paintFrameRing = (inset) => {
-      ctx.strokeStyle = settings.frameColor || '#111111';
+    const paintFrameRing = (inset, color) => {
+      ctx.strokeStyle = color || settings.frameColor || '#111111';
       ctx.lineWidth = thickness;
       ctx.lineJoin = 'round';
       const x = inset + thickness / 2;
@@ -224,9 +232,12 @@ export async function bakeBrowsePresetImage(sourceUrl, settings) {
         ctx.strokeRect(x, y, w, h);
       }
     };
-    paintFrameRing(0);
+    paintFrameRing(0, settings.frameColor || '#111111');
     if (settings.doubleFrame) {
-      paintFrameRing(thickness + Math.max(2, thickness * 0.25));
+      paintFrameRing(
+        thickness + Math.max(2, thickness * 0.25),
+        settings.innerFrameColor || settings.frameColor || '#111111'
+      );
     }
   }
 

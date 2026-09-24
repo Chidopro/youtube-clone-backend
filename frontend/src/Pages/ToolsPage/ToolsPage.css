@@ -455,6 +455,19 @@ body.tools-page-active .site-footer {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.image-opacity-slider {
+  background:
+    linear-gradient(to right, rgba(24, 24, 27, 0.12) 0%, #18181B 100%),
+    repeating-linear-gradient(
+      45deg,
+      #ececec 0,
+      #ececec 4px,
+      #ffffff 4px,
+      #ffffff 8px
+    );
+  background-blend-mode: multiply, normal;
+}
+
 .screenshot-preview-title {
   margin: 0 0 8px 0;
   font-size: 14px;
@@ -784,6 +797,36 @@ body.tools-page-active .site-footer {
   color: #18181B;
   font-weight: 600;
   text-align: right;
+}
+
+.bw-intensity-control {
+  margin-top: 0.75rem;
+}
+
+.bw-intensity-slider {
+  background: linear-gradient(to right, #fafafa 0%, #737373 50%, #111111 100%);
+  height: 10px;
+}
+
+.bw-intensity-slider::-webkit-slider-thumb {
+  border: 2px solid #fafafa;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.bw-intensity-ends {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: #71717A;
+  letter-spacing: 0.02em;
+}
+
+.bw-intensity-ends .slider-value {
+  flex: 1;
+  text-align: center;
+  font-size: 0.85rem;
 }
 
 .tools-text-direction {

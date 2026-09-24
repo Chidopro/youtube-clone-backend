@@ -996,7 +996,7 @@ class VideoScreenshotCapture:
         except Exception as e:
             logger.error(f"Error cleaning up: {e}")
     
-    def process_thumbnail_for_print(self, image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0):
+    def process_thumbnail_for_print(self, image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, inner_frame_color=None, image_opacity=100, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0):
         """Process a thumbnail image for print quality output"""
         try:
             # Import the function from the screenshot_capture module
@@ -1013,6 +1013,8 @@ class VideoScreenshotCapture:
                 frame_color=frame_color,
                 frame_width=frame_width,
                 double_frame=double_frame,
+                inner_frame_color=inner_frame_color,
+                image_opacity=image_opacity,
                 text_enabled=text_enabled,
                 text_content=text_content,
                 text_font=text_font,

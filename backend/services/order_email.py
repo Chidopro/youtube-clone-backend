@@ -155,7 +155,9 @@ def item_edit_log(item):
         "frameWidthPx": _num(src.get("frameWidthPx", src.get("frameWidth"))),
         "frameWidthPrintPx": _num(src.get("frameWidthPrintPx")),
         "doubleFrame": _flag_on(src.get("doubleFrame")),
+        "innerFrameColor": str(src.get("innerFrameColor") or src.get("frameColor") or "#FF0000"),
         "blackAndWhite": _flag_on(src.get("blackAndWhite")),
+        "imageOpacity": max(0, min(100, int(round(_num(src.get("imageOpacity"), 100))))),
         "featherFadeEnabled": _flag_on(src.get("featherFadeEnabled")),
         "featherFadeColor": "black" if str(src.get("featherFadeColor") or "").strip().lower() == "black" else "white",
         "textEnabled": bool(text_on),
@@ -219,12 +221,21 @@ def format_item_edit_log_rows(log):
         if _num(log.get("frameWidthPrintPx")):
             print_frame = f" → 300 DPI {round(_num(log.get('frameWidthPrintPx')), 1):g}px"
         dbl = " · double" if log.get("doubleFrame") else ""
+        inner = ""
+        if log.get("doubleFrame"):
+            inner_color = str(log.get("innerFrameColor") or "")
+            outer_color = str(log.get("frameColor") or "")
+            if inner_color and inner_color != outer_color:
+                inner = f" inner {inner_color}"
         rows.append((
             "Frame",
-            f"{round(_num(log.get('frameWidthPx')), 1):g}px {log.get('frameColor') or ''}{print_frame}{dbl}".strip(),
+            f"{round(_num(log.get('frameWidthPx')), 1):g}px {log.get('frameColor') or ''}{print_frame}{dbl}{inner}".strip(),
         ))
     if log.get("blackAndWhite"):
         rows.append(("Color", "Black and white"))
+    opacity = _num(log.get("imageOpacity"), 100)
+    if opacity < 100:
+        rows.append(("Opacity", f"{int(round(max(0, min(100, opacity))))}%"))
     if log.get("textEnabled") and log.get("textContent"):
         snippet = str(log.get("textContent"))
         if len(snippet) > 60:

@@ -15,6 +15,22 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def _hex_to_bgr(hex_color, default=(0, 0, 255)):
+    """Convert #RGB or #RRGGBB to OpenCV BGR. Falls back to default on bad input."""
+    try:
+        raw = str(hex_color or "").strip().lstrip("#")
+        if len(raw) == 3:
+            raw = "".join(ch * 2 for ch in raw)
+        if len(raw) == 6:
+            r = int(raw[0:2], 16)
+            g = int(raw[2:4], 16)
+            b = int(raw[4:6], 16)
+            return (b, g, r)
+    except Exception:
+        pass
+    return default
+
+
 def _corner_radius_px(percent, width, height):
     """Same selected corner-radius percent used on Tools, in pixels for this box."""
     if percent <= 0 or width <= 0 or height <= 0:
@@ -1016,7 +1032,7 @@ def _draw_print_overlay_text(draw, text, font, fill, center_x, center_y, font_px
         )
 
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0):
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, inner_frame_color=None, image_opacity=100, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -1323,7 +1339,17 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 image = cv2.resize(image, (orig_w, orig_h), interpolation=cv2.INTER_LINEAR)
                 target_width, target_height = orig_w, orig_h
                 logger.info(f"[PRINT_QUALITY] Upscaled feathered image back to {target_width}x{target_height}")
-        
+
+        try:
+            opacity = float(100 if image_opacity is None else image_opacity)
+        except (TypeError, ValueError):
+            opacity = 100.0
+        opacity = max(0.0, min(1.0, opacity / 100.0))
+        if opacity < 1.0:
+            if len(image.shape) < 3 or image.shape[2] == 3:
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+            image[:, :, 3] = np.round(image[:, :, 3].astype(np.float32) * opacity).astype(np.uint8)
+
         # Apply frame border if enabled (AFTER feather to ensure frame is on top and visible)
         if frame_enabled and frame_width > 0:
             slider_px = max(1, min(100, int(frame_width)))
@@ -1344,20 +1370,10 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 f"(source {src_w}x{src_h} -> print {target_width}x{target_height})"
             )
             
-            logger.info(f"Applying frame border: color={frame_color}, width={frame_width}px, double={double_frame}, image_size={target_width}x{target_height}")
+            logger.info(f"Applying frame border: color={frame_color}, inner={inner_frame_color or frame_color}, width={frame_width}px, double={double_frame}, image_size={target_width}x{target_height}")
             
-            # Convert hex color to BGR
-            try:
-                hex_color = frame_color.lstrip('#')
-                if len(hex_color) == 6:
-                    r = int(hex_color[0:2], 16)
-                    g = int(hex_color[2:4], 16)
-                    b = int(hex_color[4:6], 16)
-                    frame_bgr = (b, g, r)  # OpenCV uses BGR
-                else:
-                    frame_bgr = (0, 0, 255)  # Default red
-            except:
-                frame_bgr = (0, 0, 255)  # Default red on error
+            frame_bgr = _hex_to_bgr(frame_color)
+            inner_frame_bgr = _hex_to_bgr(inner_frame_color or frame_color, frame_bgr)
             
             # Get current alpha channel to determine visible shape (after feather)
             current_alpha = image[:, :, 3] if image.shape[2] == 4 else np.full((target_height, target_width), 255, dtype=np.uint8)
@@ -1471,7 +1487,7 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 num_channels = image.shape[2] if len(image.shape) > 2 else 1
                 if num_channels >= 3:
                     for c in range(3):  # BGR channels
-                        image[:, :, c] = np.where(inner_frame_mask > 0, frame_bgr[c], image[:, :, c])
+                        image[:, :, c] = np.where(inner_frame_mask > 0, inner_frame_bgr[c], image[:, :, c])
                 
                 # Set alpha to fully opaque where inner frame is drawn
                 if num_channels == 4:

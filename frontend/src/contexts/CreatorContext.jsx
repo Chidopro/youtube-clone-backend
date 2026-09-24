@@ -193,14 +193,26 @@ export const CreatorProvider = ({ children }) => {
 
   useEffect(() => {
     detectCreator();
-    
-    // Listen for settings update events
-    const handleSettingsUpdate = () => {
+
+    const handleSettingsUpdate = (event) => {
+      const patch = event?.detail;
+      if (patch && typeof patch === 'object') {
+        setCreatorSettings((prev) => {
+          const next = { ...(prev || {}), ...patch };
+          if (next.primary_color) {
+            document.documentElement.style.setProperty('--primary-color', next.primary_color);
+          }
+          if (next.secondary_color) {
+            document.documentElement.style.setProperty('--secondary-color', next.secondary_color);
+          }
+          return next;
+        });
+      }
       detectCreator();
     };
-    
+
     window.addEventListener('creatorSettingsUpdated', handleSettingsUpdate);
-    
+
     return () => {
       window.removeEventListener('creatorSettingsUpdated', handleSettingsUpdate);
     };

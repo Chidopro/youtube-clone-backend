@@ -39,6 +39,7 @@ export function editLogHasEntries(log) {
   if (asNumber(log.cornerRadiusPercent) > 0) return true;
   if (log.frameEnabled) return true;
   if (log.blackAndWhite) return true;
+  if (asNumber(log.imageOpacity, 100) < 100) return true;
   if (log.featherFadeEnabled) return true;
   if (log.textEnabled && String(log.textContent || '').trim()) return true;
   if (String(log.imageOrientation || '').toLowerCase() === 'landscape') return true;
@@ -57,7 +58,10 @@ export function buildEditLog({
   frameColor = '#FF0000',
   frameWidth = 10,
   doubleFrame = false,
+  innerFrameColor = '',
   blackAndWhite = false,
+  bwIntensity = 50,
+  imageOpacity = 100,
   featherFadeEnabled = false,
   featherFadeColor = 'white',
   textEnabled = false,
@@ -107,7 +111,10 @@ export function buildEditLog({
     frameWidthPx: framePx,
     frameWidthPrintPx: scaleToPrint ? round1(framePx * scaleToPrint) : 0,
     doubleFrame: Boolean(doubleFrame),
+    innerFrameColor: (innerFrameColor || frameColor || '#FF0000'),
     blackAndWhite: Boolean(blackAndWhite),
+    bwIntensity: Number.isFinite(Number(bwIntensity)) ? Math.max(0, Math.min(100, Math.round(Number(bwIntensity)))) : 50,
+    imageOpacity: Number.isFinite(Number(imageOpacity)) ? Math.max(0, Math.min(100, Math.round(Number(imageOpacity)))) : 100,
     featherFadeEnabled: Boolean(featherFadeEnabled),
     featherFadeColor: featherFadeEnabled && featherFadeColor === 'black' ? 'black' : 'white',
     textEnabled: textOn,
@@ -189,13 +196,25 @@ export function formatEditLogLines(log) {
       ? ` → 300 DPI ${round1(log.frameWidthPrintPx)}px`
       : '';
     const dbl = log.doubleFrame ? ' · double' : '';
+    const inner = log.doubleFrame && log.innerFrameColor && log.innerFrameColor !== log.frameColor
+      ? ` inner ${log.innerFrameColor}`
+      : '';
     lines.push({
       label: 'Frame',
-      value: `${asNumber(log.frameWidthPx)}px ${log.frameColor || ''}${printFrame}${dbl}`.trim(),
+      value: `${asNumber(log.frameWidthPx)}px ${log.frameColor || ''}${printFrame}${dbl}${inner}`.trim(),
     });
   }
   if (log.blackAndWhite) {
-    lines.push({ label: 'Color', value: 'Black and white' });
+    const n = Number(log.bwIntensity);
+    const intensity = Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : 50;
+    lines.push({
+      label: 'Color',
+      value: intensity === 50 ? 'Black and white' : `Black and white · intensity ${intensity} (white 0 – black 100)`,
+    });
+  }
+  const opacity = asNumber(log.imageOpacity, 100);
+  if (opacity < 100) {
+    lines.push({ label: 'Opacity', value: `${Math.max(0, Math.min(100, Math.round(opacity)))}%` });
   }
   if (log.textEnabled && String(log.textContent || '').trim()) {
     const snippet = String(log.textContent).trim();
@@ -228,7 +247,10 @@ export function editLogFromToolSettings(ts) {
     frameColor: ts.frameColor,
     frameWidth: ts.frameWidth,
     doubleFrame: ts.doubleFrame,
+    innerFrameColor: ts.innerFrameColor,
     blackAndWhite: ts.blackAndWhite,
+    bwIntensity: ts.bwIntensity,
+    imageOpacity: ts.imageOpacity,
     featherFadeEnabled: ts.featherFadeEnabled,
     featherFadeColor: ts.featherFadeColor,
     textEnabled: ts.textEnabled,

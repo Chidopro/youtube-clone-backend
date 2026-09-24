@@ -192,11 +192,6 @@ const Upload = () => {
             return;
         }
 
-        if (!description.trim()) {
-            setMessage('❌ Please enter a video description');
-            return;
-        }
-
         if (!file) {
             setMessage('❌ Please select a video file');
             return;
@@ -403,14 +398,13 @@ const Upload = () => {
                         </div>
 
                         <div className="upload-form-group">
-                            <label htmlFor="upload-video-description">Description *</label>
+                            <label htmlFor="upload-video-description">Description</label>
                             <textarea
                                 id="upload-video-description"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                required
                                 rows={3}
-                                placeholder="Enter video description"
+                                placeholder="Enter video description (optional)"
                             />
                         </div>
 

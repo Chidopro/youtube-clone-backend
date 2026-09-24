@@ -31,6 +31,7 @@ PLAYBACK_URL_RE = re.compile(r"_w720t\d*\.|_w720\.", re.I)
 PLAYBACK_SUFFIX_RE = re.compile(r"(_w720t\d*|_w720|_web)$", re.I)
 TIMESTAMPED_PLAYBACK_RE = re.compile(r"_w720t\d{5,}\.", re.I)
 GATED_PLAYBACK_RE = re.compile(r"_w720t2\.", re.I)
+CROPDETECT_RE = re.compile(r"crop=(\d+):(\d+):(\d+):(\d+)")
 CACHE_CONTROL = "31536000"
 _HEAD_CACHE_TTL_SEC = 120
 
@@ -391,9 +392,103 @@ def _remux_faststart(src_path, dest_path):
     )
 
 
-def _transcode(src_path, dest_path, crf="27", maxrate="700k", bufsize="1400k"):
-    # Match clips that already play on iPhone (Jenny / Space Fight / Surfboard):
-    # height cap 720 → 16:9 becomes 1280x720. Pad to multiples of 16 (404px failed on iOS).
+def parse_cropdetect_log(text, src_w=0, src_h=0):
+    """Return ffmpeg crop=W:H:X:Y for Clipchamp-style letterbox, else None."""
+    matches = CROPDETECT_RE.findall(str(text or ""))
+    if not matches:
+        return None
+    width, height, x, y = (int(v) for v in matches[-1])
+    if width < 16 or height < 16 or x < 0 or y < 0:
+        return None
+    if src_w and (x + width > src_w + 2):
+        return None
+    if src_h and (y + height > src_h + 2):
+        return None
+    src_w = src_w or (width + x)
+    src_h = src_h or (height + y)
+    if src_w <= 0 or src_h <= 0:
+        return None
+    top = y
+    bottom = max(0, src_h - height - y)
+    left = x
+    right = max(0, src_w - width - x)
+    if top < 8 and bottom < 8 and left < 8 and right < 8:
+        return None
+    if top > src_h * 0.22 or bottom > src_h * 0.22 or left > src_w * 0.22 or right > src_w * 0.22:
+        return None
+    if width * height < src_w * src_h * 0.5:
+        return None
+    return f"crop={width}:{height}:{x}:{y}"
+
+
+def _detect_letterbox_crop(src_path):
+    """Find black bars that Clipchamp bakes into 16:9 exports."""
+    probe = _probe(src_path) or {}
+    src_h = int(probe.get("height") or 0)
+    src_w = 0
+    try:
+        size_probe = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "csv=p=0",
+                src_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        parts = (size_probe.stdout or "").strip().split(",")
+        if len(parts) >= 2:
+            src_w = int(float(parts[0]))
+            src_h = int(float(parts[1])) or src_h
+    except (TypeError, ValueError, OSError):
+        pass
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-ss",
+                "0.3",
+                "-t",
+                "4",
+                "-i",
+                src_path,
+                "-vf",
+                "cropdetect=24:16:0",
+                "-f",
+                "null",
+                "-",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.warning("cropdetect failed: %s", exc)
+        return None
+    crop = parse_cropdetect_log((result.stderr or "") + (result.stdout or ""), src_w, src_h)
+    if crop:
+        logger.info("Letterbox crop for %s: %s (source %sx%s)", src_path, crop, src_w, src_h)
+    return crop
+
+
+def _transcode(src_path, dest_path, crf="23", maxrate="2500k", bufsize="5000k", crop=None):
+    # 720p H.264 for phones. Height cap 720 → 16:9 becomes 1280x720.
+    # Pad to multiples of 16 (404px failed on iOS). CRF 23 / ~2.5 Mbps keeps
+    # night scenes from blocking; 700k CRF 27 looked like 240p in the player.
+    vf = "fps=30,scale=-2:'min(720,ih)',pad=ceil(iw/16)*16:ceil(ih/16)*16:(ow-iw)/2:(oh-ih)/2,setsar=1"
+    if crop:
+        vf = f"{crop},{vf}"
     _run_ffmpeg(
         [
             "ffmpeg",
@@ -410,7 +505,7 @@ def _transcode(src_path, dest_path, crf="27", maxrate="700k", bufsize="1400k"):
             "-map",
             "0:a:0?",
             "-vf",
-            "fps=30,scale=-2:'min(720,ih)',pad=ceil(iw/16)*16:ceil(ih/16)*16:(ow-iw)/2:(oh-ih)/2,setsar=1",
+            vf,
             "-r",
             "30",
             "-video_track_timescale",
@@ -540,7 +635,8 @@ def optimize_video_url(admin_client, video_url, video_id=None, source_url=None, 
 
         logger.info("Optimizing video %s (%s) force=%s", video_id or "", rel, force)
         _download(source_url, tmp_in)
-        _transcode(tmp_in, tmp_out)
+        crop = _detect_letterbox_crop(tmp_in)
+        _transcode(tmp_in, tmp_out, crop=crop)
         probe = _probe(tmp_out)
         out_size = os.path.getsize(tmp_out) if os.path.exists(tmp_out) else 0
         if not playback_is_phone_safe(probe, out_size):
@@ -550,7 +646,7 @@ def optimize_video_url(admin_client, video_url, video_id=None, source_url=None, 
                 (probe or {}).get("fps"),
                 out_size,
             )
-            _transcode(tmp_in, tmp_out, crf="28", maxrate="500k", bufsize="1000k")
+            _transcode(tmp_in, tmp_out, crf="25", maxrate="1400k", bufsize="2800k", crop=crop)
             probe = _probe(tmp_out)
             out_size = os.path.getsize(tmp_out) if os.path.exists(tmp_out) else 0
         safe = playback_is_phone_safe(probe, out_size)

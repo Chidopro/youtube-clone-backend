@@ -9,6 +9,8 @@ import { getWhiteBlankGarmentTint, getPrintfulColorMockupUrl } from '../../utils
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlainText, cornerRadiusPx, featherPx } from '../../utils/editLog';
 import { roundedRectFeatherFactor } from '../../utils/bakeBrowsePreset';
+import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
+import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -1146,6 +1148,8 @@ function LiteOverlayArtwork({
   mockupSrc = '',
   productName = '',
   blackAndWhite = false,
+  bwIntensity = BW_INTENSITY_DEFAULT,
+  imageOpacity = IMAGE_OPACITY_DEFAULT,
   posX = 50,
   posY = 50,
   objectFit = 'cover',
@@ -1185,7 +1189,8 @@ function LiteOverlayArtwork({
             ctx.fillStyle = flattenFill;
             ctx.fillRect(0, 0, w, h);
           }
-          if (blackAndWhite) ctx.filter = 'grayscale(1)';
+          ctx.globalAlpha = imageOpacityCss(imageOpacity);
+          if (blackAndWhite) ctx.filter = blackAndWhiteCssFilter(true, bwIntensity);
           const iw = img.naturalWidth || img.width;
           const ih = img.naturalHeight || img.height;
           if (layout && Number(layout.width) > 0 && Number(layout.height) > 0) {
@@ -1212,6 +1217,7 @@ function LiteOverlayArtwork({
             ctx.drawImage(img, dx, dy, dw, dh);
           }
           ctx.filter = 'none';
+          ctx.globalAlpha = 1;
           const processed = applyRadiusFeatherFade(canvas, {
             cornerRadius,
             featherEdge,
@@ -1288,6 +1294,8 @@ function LiteOverlayArtwork({
     mockupSrc,
     productName,
     blackAndWhite,
+    bwIntensity,
+    imageOpacity,
     posX,
     posY,
     objectFit,
@@ -1372,9 +1380,25 @@ function coverVisibleRect(imgW, imgH, boxAspect, alignY = 'center') {
   return { x: 0, y, w, h: visH };
 }
 
+function normalizeFrameHex(value, fallback = '#FF0000') {
+  const raw = String(value || '').trim();
+  const six = raw.match(/^#([0-9A-Fa-f]{6})$/);
+  if (six) return `#${six[1]}`;
+  const three = raw.match(/^#([0-9A-Fa-f]{3})$/);
+  if (!three) return fallback;
+  const [a, b, c] = three[1];
+  return `#${a}${a}${b}${b}${c}${c}`;
+}
+
+function resolveInnerFrameColor(inner, outer) {
+  const outerColor = normalizeFrameHex(outer, '#FF0000');
+  return normalizeFrameHex(inner, outerColor);
+}
+
 function paintFrameRings(ctx, vis, {
   frameWidth,
   frameColor,
+  innerFrameColor,
   doubleFrame,
   cornerRadiusPercent,
   addRoundedRectPath,
@@ -1389,8 +1413,7 @@ function paintFrameRings(ctx, vis, {
   const isCircle = cornerRadiusPercent >= 100;
   const cornerR = isCircle ? maxR : Math.round(((Number(cornerRadiusPercent) || 0) / 100) * maxR);
 
-  ctx.fillStyle = frameColor || '#FF0000';
-  const paintRing = (inset, thickness, ringOuterRadius) => {
+  const paintRing = (inset, thickness, ringOuterRadius, color) => {
     const ow = w - inset * 2;
     const oh = h - inset * 2;
     if (ow < 2 || oh < 2 || !(thickness > 0)) return;
@@ -1403,6 +1426,7 @@ function paintFrameRings(ctx, vis, {
     const outerR = Math.min(Math.max(0, ringOuterRadius), maxOuterR);
     const maxHoleR = Math.min(Math.max(0, iw), Math.max(0, ih)) / 2;
     const innerR = Math.min(Math.max(0, outerR - thickness), maxHoleR);
+    ctx.fillStyle = color || '#FF0000';
     if (isCircle) {
       const cx = x + w / 2;
       const cy = y + h / 2;
@@ -1427,10 +1451,15 @@ function paintFrameRings(ctx, vis, {
     ctx.fillRect(ox, oy + oh - thickness, ow, thickness);
   };
 
-  paintRing(0, outer, cornerR);
+  paintRing(0, outer, cornerR, frameColor || '#FF0000');
   if (doubleFrame) {
     const { innerFrameWidth, innerOuter } = doubleFrameSpacing(outer);
-    paintRing(innerOuter, innerFrameWidth, Math.max(0, cornerR - innerOuter));
+    paintRing(
+      innerOuter,
+      innerFrameWidth,
+      Math.max(0, cornerR - innerOuter),
+      resolveInnerFrameColor(innerFrameColor, frameColor)
+    );
   }
 }
 
@@ -1506,7 +1535,10 @@ const EDITOR_SLOT_DEFAULTS = {
   frameColor: '#FF0000',
   frameWidth: 10,
   doubleFrame: false,
+  innerFrameColor: '#FF0000',
   blackAndWhite: false,
+  bwIntensity: BW_INTENSITY_DEFAULT,
+  imageOpacity: IMAGE_OPACITY_DEFAULT,
   textEnabled: false,
   textContent: '',
   textFont: 'Arial',
@@ -1865,6 +1897,7 @@ const ProductPreviewWithDrag = ({
   frameColor = '#FF0000',
   frameWidth = 10,
   doubleFrame = false,
+  innerFrameColor = '',
   sourceWidth = 0,
   sourceHeight = 0,
   printAreaFit,
@@ -1874,6 +1907,8 @@ const ProductPreviewWithDrag = ({
   imageOffsetY = 0,
   imageOrientation = 'portrait',
   blackAndWhite = false,
+  bwIntensity = BW_INTENSITY_DEFAULT,
+  imageOpacity = IMAGE_OPACITY_DEFAULT,
   featherFadeEnabled = false,
   featherFadeColor = 'white',
   onOverlayBoxChange,
@@ -2728,6 +2763,8 @@ const ProductPreviewWithDrag = ({
                         mockupSrc={productImage}
                         productName={placeName}
                         blackAndWhite={blackAndWhite}
+                        bwIntensity={bwIntensity}
+                        imageOpacity={imageOpacity}
                         posX={posX}
                         posY={posY}
                         objectFit={oriented.objectFit}
@@ -2751,7 +2788,8 @@ const ProductPreviewWithDrag = ({
                         WebkitUserSelect: 'none',
                         WebkitTouchCallout: 'none',
                         touchAction: 'none',
-                        filter: blackAndWhite ? 'grayscale(1)' : undefined
+                        filter: blackAndWhiteStyle(blackAndWhite, bwIntensity),
+                        opacity: imageOpacityCss(imageOpacity),
                       }}
                       draggable={false}
                     />
@@ -2765,7 +2803,7 @@ const ProductPreviewWithDrag = ({
                   >
                     <div style={overlayFrameRingStyle(0, previewFrame, clipRadius, frameColor)} />
                     {doubleFrame && (
-                      <div style={overlayFrameRingStyle(innerOuter, innerFrameWidth, innerRadius, frameColor)} />
+                      <div style={overlayFrameRingStyle(innerOuter, innerFrameWidth, innerRadius, resolveInnerFrameColor(innerFrameColor, frameColor))} />
                     )}
                   </div>
                 )}
@@ -2806,9 +2844,12 @@ function ScreenshotPreviewPane({
   frameColor = '#FF0000',
   frameWidth = 10,
   doubleFrame = false,
+  innerFrameColor = '',
   sourceWidth = 0,
   sourceHeight = 0,
   blackAndWhite = false,
+  bwIntensity = BW_INTENSITY_DEFAULT,
+  imageOpacity = IMAGE_OPACITY_DEFAULT,
   featherFadeEnabled = false,
   featherFadeColor = 'white',
   boxWidth = 176,
@@ -2927,7 +2968,8 @@ function ScreenshotPreviewPane({
                   objectPosition: `${posX}% ${posY}%`,
                 }),
                 display: 'block',
-                filter: blackAndWhite ? 'grayscale(1)' : undefined
+                filter: blackAndWhiteStyle(blackAndWhite, bwIntensity),
+                opacity: imageOpacityCss(imageOpacity),
               }}
             />
         </div>
@@ -2939,7 +2981,7 @@ function ScreenshotPreviewPane({
           >
             <div style={overlayFrameRingStyle(0, previewFrame, clipRadius, frameColor)} />
             {doubleFrame && (
-              <div style={overlayFrameRingStyle(innerOuter, innerFrameWidth, innerRadius, frameColor)} />
+              <div style={overlayFrameRingStyle(innerOuter, innerFrameWidth, innerRadius, resolveInnerFrameColor(innerFrameColor, frameColor))} />
             )}
           </div>
         )}
@@ -3141,7 +3183,12 @@ const ToolsPage = () => {
   const [frameColor, setFrameColor] = useState(() => initialEditorSlot.frameColor || '#FF0000');
   const [frameWidth, setFrameWidth] = useState(() => initialEditorSlot.frameWidth ?? 10);
   const [doubleFrame, setDoubleFrame] = useState(() => Boolean(initialEditorSlot.doubleFrame));
+  const [innerFrameColor, setInnerFrameColor] = useState(() => (
+    resolveInnerFrameColor(initialEditorSlot.innerFrameColor, initialEditorSlot.frameColor)
+  ));
   const [blackAndWhite, setBlackAndWhite] = useState(() => Boolean(initialEditorSlot.blackAndWhite));
+  const [bwIntensity, setBwIntensity] = useState(() => clampBwIntensity(initialEditorSlot.bwIntensity));
+  const [imageOpacity, setImageOpacity] = useState(() => clampImageOpacity(initialEditorSlot.imageOpacity));
   const [textEnabled, setTextEnabled] = useState(() => Boolean(initialEditorSlot.textEnabled));
   const [textContent, setTextContent] = useState(() => initialEditorSlot.textContent || '');
   const [textFont, setTextFont] = useState(() => initialEditorSlot.textFont || 'Arial');
@@ -3373,7 +3420,10 @@ const ToolsPage = () => {
       frameColor,
       frameWidth,
       doubleFrame,
+      innerFrameColor,
       blackAndWhite,
+      bwIntensity,
+      imageOpacity,
       featherFadeEnabled,
       featherFadeColor,
       textEnabled,
@@ -3407,7 +3457,10 @@ const ToolsPage = () => {
       frameColor,
       frameWidth,
       doubleFrame,
+      innerFrameColor,
       blackAndWhite,
+      bwIntensity,
+      imageOpacity,
       featherFadeEnabled,
       featherFadeColor,
       shirtFillColor: printBoxFillColor || '',
@@ -3446,7 +3499,10 @@ const ToolsPage = () => {
     if (saved.frameColor) setFrameColor(saved.frameColor);
     if (typeof saved.frameWidth === 'number') setFrameWidth(saved.frameWidth);
     if (typeof saved.doubleFrame === 'boolean') setDoubleFrame(saved.doubleFrame);
+    setInnerFrameColor(resolveInnerFrameColor(saved.innerFrameColor, saved.frameColor));
     setBlackAndWhite(Boolean(saved.blackAndWhite));
+    setBwIntensity(clampBwIntensity(saved.bwIntensity));
+    setImageOpacity(clampImageOpacity(saved.imageOpacity));
     const savedTransparent = isTransparentFeatherFade(saved.featherFadeEnabled, saved.featherFadeColor);
     setFeatherFadeEnabled(!savedTransparent);
     setFeatherFadeColor(savedTransparent ? 'transparent' : normalizeFeatherFadeColor(saved.featherFadeColor));
@@ -3485,7 +3541,10 @@ const ToolsPage = () => {
       frameColor: slot.frameColor,
       frameWidth: slot.frameWidth,
       doubleFrame: slot.doubleFrame,
+      innerFrameColor: resolveInnerFrameColor(slot.innerFrameColor, slot.frameColor),
       blackAndWhite: slot.blackAndWhite,
+      bwIntensity: clampBwIntensity(slot.bwIntensity),
+      imageOpacity: clampImageOpacity(slot.imageOpacity),
       featherFadeEnabled: Boolean(slot.featherFadeEnabled) && slot.featherFadeColor !== 'transparent',
       featherFadeColor: isTransparentFeatherFade(slot.featherFadeEnabled, slot.featherFadeColor)
         ? 'transparent'
@@ -3514,7 +3573,8 @@ const ToolsPage = () => {
         && !nextSettings.featherFadeEnabled
         && !nextSettings.textEnabled
         && !(nextSettings.featherEdge > 0)
-        && !(nextSettings.cornerRadius > 0);
+        && !(nextSettings.cornerRadius > 0)
+        && !imageOpacityHasEdit(nextSettings.imageOpacity);
       const prevHasEdits = prev && (
         prev.frameEnabled
         || prev.imageOrientation === 'landscape'
@@ -3523,6 +3583,7 @@ const ToolsPage = () => {
         || prev.textEnabled
         || prev.featherEdge > 0
         || prev.cornerRadius > 0
+        || imageOpacityHasEdit(prev.imageOpacity)
       );
       if (!opts.force && nextIsDefault && prevHasEdits) return;
       if (
@@ -3571,6 +3632,7 @@ const ToolsPage = () => {
     setFrameColor('#FF0000');
     setDoubleFrame(false);
     setBlackAndWhite(false);
+    setBwIntensity(BW_INTENSITY_DEFAULT);
     setTextEnabled(false);
     setTextContent('');
     setTextFont('Arial');
@@ -3642,7 +3704,7 @@ const ToolsPage = () => {
       selectedCartProductIndex,
     });
     syncLiveEditorToCartItem(idx);
-  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, searchParams]);
+  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, searchParams]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -4775,6 +4837,7 @@ const ToolsPage = () => {
       cornerRadius ||
       frameEnabled ||
       blackAndWhite ||
+      imageOpacityHasEdit(imageOpacity) ||
       (textEnabled && String(textContent || '').trim())
     );
     // Don't rasterize Original/uncropped while Product Specific is still pending.
@@ -4911,6 +4974,7 @@ const ToolsPage = () => {
         cornerRadius ||
         frameEnabled ||
         blackAndWhite ||
+        imageOpacityHasEdit(imageOpacity) ||
         (textEnabled && textContent && String(textContent).trim())
       );
       if (!didCrop && !hasPixelEdits && zoomPct === 100) {
@@ -4934,7 +4998,8 @@ const ToolsPage = () => {
         tempCtx.fillStyle = printBoxFillColor;
         tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
       }
-      tempCtx.filter = blackAndWhite ? 'grayscale(1)' : 'none';
+      tempCtx.filter = blackAndWhite ? blackAndWhiteCssFilter(true, bwIntensity) : 'none';
+      tempCtx.globalAlpha = imageOpacityCss(imageOpacity);
       if (artworkLayout) {
         tempCtx.drawImage(
           img,
@@ -4950,6 +5015,7 @@ const ToolsPage = () => {
       } else {
         tempCtx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
       }
+      tempCtx.globalAlpha = 1;
       tempCtx.filter = 'none';
 
       const artVis = visibleArtworkRect(canvas.width, canvas.height, artworkLayout);
@@ -5024,6 +5090,7 @@ const ToolsPage = () => {
         paintFrameRings(ctx, ringVis, {
           frameWidth,
           frameColor,
+          innerFrameColor,
           doubleFrame,
           cornerRadiusPercent: cornerRadius,
           addRoundedRectPath,
@@ -5081,7 +5148,7 @@ const ToolsPage = () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, blackAndWhite, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height]);
 
   const rotateScreenshotClockwise = () => {
     const src = (imageUrl || '').trim();
@@ -5372,7 +5439,10 @@ const ToolsPage = () => {
         frameColor,
         frameWidth,
         doubleFrame,
+        innerFrameColor,
         blackAndWhite,
+        bwIntensity,
+        imageOpacity,
         featherFadeEnabled,
         featherFadeColor,
         textEnabled,
@@ -5415,7 +5485,10 @@ const ToolsPage = () => {
         frameColor,
         frameWidth,
         doubleFrame,
+        innerFrameColor,
         blackAndWhite,
+        bwIntensity,
+        imageOpacity,
         featherFadeEnabled,
         featherFadeColor,
         shirtFillColor: printBoxFillColor || '',
@@ -5500,6 +5573,8 @@ const ToolsPage = () => {
           sourceScreenshot: slotSourceKey(bakedShot || imageUrl),
           imageOrientation,
           blackAndWhite,
+          bwIntensity,
+          imageOpacity,
           featherFadeEnabled,
           featherFadeColor,
           selectedProductName,
@@ -5520,6 +5595,7 @@ const ToolsPage = () => {
     cornerRadius ||
     frameEnabled ||
     blackAndWhite ||
+    imageOpacityHasEdit(imageOpacity) ||
     (textEnabled && String(textContent || '').trim())
   );
 
@@ -5818,7 +5894,10 @@ const ToolsPage = () => {
                                   frameColor={frameColor}
                                   frameWidth={frameWidth}
                                   doubleFrame={doubleFrame}
+                                  innerFrameColor={innerFrameColor}
                                   blackAndWhite={blackAndWhite}
+                                  bwIntensity={bwIntensity}
+                                  imageOpacity={imageOpacity}
                                   featherFadeEnabled={featherFadeEnabled}
                                   featherFadeColor={featherFadeColor}
                                   sourceWidth={currentImageDimensions.width}
@@ -5881,6 +5960,7 @@ const ToolsPage = () => {
                               frameColor={frameColor}
                               frameWidth={frameWidth}
                               doubleFrame={doubleFrame}
+                              innerFrameColor={innerFrameColor}
                               sourceWidth={currentImageDimensions.width}
                               sourceHeight={currentImageDimensions.height}
                               printAreaFit={printAreaFit}
@@ -5890,6 +5970,8 @@ const ToolsPage = () => {
                               imageOffsetY={imageOffsetY}
                               imageOrientation={imageOrientation}
                               blackAndWhite={blackAndWhite}
+                              bwIntensity={bwIntensity}
+                              imageOpacity={imageOpacity}
                               featherFadeEnabled={featherFadeEnabled}
                               featherFadeColor={featherFadeColor}
                               onOverlayBoxChange={handleOverlayBoxChange}
@@ -5971,6 +6053,7 @@ const ToolsPage = () => {
                             frameColor={frameColor}
                             frameWidth={frameWidth}
                             doubleFrame={doubleFrame}
+                            innerFrameColor={innerFrameColor}
                             sourceWidth={currentImageDimensions.width}
                             sourceHeight={currentImageDimensions.height}
                             printAreaFit={printAreaFit}
@@ -5980,6 +6063,8 @@ const ToolsPage = () => {
                             imageOffsetY={imageOffsetY}
                             imageOrientation={imageOrientation}
                             blackAndWhite={blackAndWhite}
+                            bwIntensity={bwIntensity}
+                            imageOpacity={imageOpacity}
                             featherFadeEnabled={featherFadeEnabled}
                             featherFadeColor={featherFadeColor}
                             onOverlayBoxChange={handleOverlayBoxChange}
@@ -6104,6 +6189,29 @@ const ToolsPage = () => {
                   <span>Black and white</span>
                 </label>
               </div>
+              {blackAndWhite ? (
+                <div className="slider-control bw-intensity-control">
+                  <label htmlFor="bw-intensity">Intensity</label>
+                  <input
+                    id="bw-intensity"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={clampBwIntensity(bwIntensity)}
+                    onChange={(e) => setBwIntensity(clampBwIntensity(e.target.value))}
+                    className="slider bw-intensity-slider"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={clampBwIntensity(bwIntensity)}
+                    aria-valuetext={bwIntensityLabel(bwIntensity)}
+                  />
+                  <div className="bw-intensity-ends">
+                    <span>White</span>
+                    <span className="slider-value">{bwIntensityLabel(bwIntensity)}</span>
+                    <span>Black</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
             
             <div className="select-control">
@@ -6151,6 +6259,24 @@ const ToolsPage = () => {
                     ? `Out ${100 - clampArtworkZoom(screenshotScale)}%`
                     : `In ${clampArtworkZoom(screenshotScale) - 100}%`}
               </span>
+            </div>
+
+            <div className="slider-control" style={{ marginTop: '1rem' }}>
+              <label htmlFor="image-opacity">Image Opacity:</label>
+              <input
+                id="image-opacity"
+                type="range"
+                min="0"
+                max="100"
+                value={clampImageOpacity(imageOpacity)}
+                onChange={(e) => setImageOpacity(clampImageOpacity(e.target.value))}
+                className="slider image-opacity-slider"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={clampImageOpacity(imageOpacity)}
+                aria-valuetext={`${clampImageOpacity(imageOpacity)} percent`}
+              />
+              <span className="slider-value">{clampImageOpacity(imageOpacity)}%</span>
             </div>
             
             {printAreaFit !== 'none' && !locksImageOffsetsInLandscape(
@@ -6462,15 +6588,27 @@ const ToolsPage = () => {
                             </label>
                           </div>
                           <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-                            <label style={{ minWidth: '100px' }}>Frame Color:</label>
+                            <label style={{ minWidth: '100px' }}>{doubleFrame ? 'Outer Frame Color:' : 'Frame Color:'}</label>
                             <input
                               type="color"
-                              value={frameColor}
+                              value={normalizeFrameHex(frameColor)}
                               onChange={(e) => setFrameColor(e.target.value)}
                               className="color-picker"
                             />
-                            <span className="color-value" style={{ wordBreak: 'break-all' }}>{frameColor}</span>
+                            <span className="color-value" style={{ wordBreak: 'break-all' }}>{normalizeFrameHex(frameColor)}</span>
                           </div>
+                          {doubleFrame && (
+                            <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+                              <label style={{ minWidth: '100px' }}>Inner Frame Color:</label>
+                              <input
+                                type="color"
+                                value={resolveInnerFrameColor(innerFrameColor, frameColor)}
+                                onChange={(e) => setInnerFrameColor(e.target.value)}
+                                className="color-picker"
+                              />
+                              <span className="color-value" style={{ wordBreak: 'break-all' }}>{resolveInnerFrameColor(innerFrameColor, frameColor)}</span>
+                            </div>
+                          )}
                           <div className="slider-control">
                             <label>Frame Width:</label>
                             <input
@@ -6513,7 +6651,10 @@ const ToolsPage = () => {
                             frameColor={frameColor}
                             frameWidth={frameWidth}
                             doubleFrame={doubleFrame}
+                            innerFrameColor={innerFrameColor}
                             blackAndWhite={blackAndWhite}
+                            bwIntensity={bwIntensity}
+                            imageOpacity={imageOpacity}
                             featherFadeEnabled={featherFadeEnabled}
                             featherFadeColor={featherFadeColor}
                             sourceWidth={currentImageDimensions.width}

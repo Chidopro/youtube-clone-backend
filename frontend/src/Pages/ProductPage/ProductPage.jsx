@@ -10,6 +10,7 @@ import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest, isVideoScreenshotMerch, readBrowseToolSettings, writeBrowseToolSettings, rememberArtworkOrientation } from '../../utils/merchSession';
 import { applyBrowsePresetToCartItem, featherEdgeMaskStyle } from '../../utils/bakeBrowsePreset';
+import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import {
@@ -40,6 +41,7 @@ import './ProductPage.css';
 
 const BROWSE_EDIT_ORIGINAL = {
   blackAndWhite: false,
+  bwIntensity: BW_INTENSITY_DEFAULT,
   cornerRadius: 0,
   featherEdge: 0,
   frameEnabled: false,
@@ -50,7 +52,7 @@ const BROWSE_EDIT_PRESETS = [
   {
     id: 'bw',
     label: 'Black and White',
-    settings: { ...BROWSE_EDIT_ORIGINAL, blackAndWhite: true },
+    settings: { ...BROWSE_EDIT_ORIGINAL, blackAndWhite: true, bwIntensity: BW_INTENSITY_DEFAULT },
   },
   {
     id: 'radius',
@@ -65,7 +67,7 @@ const BROWSE_EDIT_PRESETS = [
   {
     id: 'frame',
     label: 'Frame',
-    settings: { ...BROWSE_EDIT_ORIGINAL, frameEnabled: true, frameColor: '#111111', frameWidth: 6, doubleFrame: true },
+    settings: { ...BROWSE_EDIT_ORIGINAL, frameEnabled: true, frameColor: '#111111', innerFrameColor: '#111111', frameWidth: 6, doubleFrame: true },
   },
 ];
 
@@ -522,6 +524,7 @@ const ProductPage = ({ sidebar }) => {
   /** Actual URL/data of the selected screenshot (set on click). Used for add-to-cart so the exact chosen image is sent, not a fallback. */
   const [selectedScreenshotUrl, setSelectedScreenshotUrl] = useState(null);
   const [selectedEditPreset, setSelectedEditPreset] = useState('original');
+  const [bwIntensity, setBwIntensity] = useState(BW_INTENSITY_DEFAULT);
   const [browseLayoutOrientation, setBrowseLayoutOrientation] = useState(() => {
     try {
       const fromQuery = new URLSearchParams(window.location.search).get('category');
@@ -599,6 +602,7 @@ const ProductPage = ({ sidebar }) => {
   );
   useEffect(() => {
     setSelectedEditPreset('original');
+    setBwIntensity(BW_INTENSITY_DEFAULT);
     writeBrowseToolSettings(BROWSE_EDIT_ORIGINAL);
   }, [browseSourceUrl]);
   const [isCreator, setIsCreator] = useState(false);
@@ -675,13 +679,30 @@ const ProductPage = ({ sidebar }) => {
     setBrowseLayoutOrientation(nextOri);
     rememberArtworkOrientation(nextOri);
     setSelectedEditPreset('original');
+    setBwIntensity(BW_INTENSITY_DEFAULT);
     writeBrowseToolSettings(BROWSE_EDIT_ORIGINAL);
     if (creatorMode) setSelectedScreenshotForFavorite(key);
   };
 
   const applyBrowseEditPreset = (presetId, settings) => {
     setSelectedEditPreset(presetId);
-    writeBrowseToolSettings(settings || BROWSE_EDIT_ORIGINAL);
+    const next = settings || BROWSE_EDIT_ORIGINAL;
+    if (presetId === 'bw') {
+      setBwIntensity(clampBwIntensity(next.bwIntensity));
+    } else {
+      setBwIntensity(BW_INTENSITY_DEFAULT);
+    }
+    writeBrowseToolSettings(next);
+  };
+
+  const setBrowseBwIntensity = (value) => {
+    const next = clampBwIntensity(value);
+    setBwIntensity(next);
+    writeBrowseToolSettings({
+      ...(readBrowseToolSettings() || BROWSE_EDIT_ORIGINAL),
+      blackAndWhite: true,
+      bwIntensity: next,
+    });
   };
 
   const mergeBrowseToolSettings = (item) => {
@@ -2190,11 +2211,13 @@ const ProductPage = ({ sidebar }) => {
                         alt={preset.label}
                         className="screenshot-image"
                         style={
-                          preset.id === 'feather'
-                            ? featherPresetMaskStyle
-                            : (preset.id === 'radius' && radiusPreviewPx > 0
-                              ? { borderRadius: radiusPreviewPx }
-                              : undefined)
+                          preset.id === 'bw'
+                            ? { filter: blackAndWhiteCssFilter(true, selectedEditPreset === 'bw' ? bwIntensity : BW_INTENSITY_DEFAULT) }
+                            : (preset.id === 'feather'
+                              ? featherPresetMaskStyle
+                              : (preset.id === 'radius' && radiusPreviewPx > 0
+                                ? { borderRadius: radiusPreviewPx }
+                                : undefined))
                         }
                       />
                       {preset.id === 'frame' ? (
@@ -2205,6 +2228,29 @@ const ProductPage = ({ sidebar }) => {
                   </button>
                 )) : null}
               </div>
+              {showDesktopEditPresets && selectedEditPreset === 'bw' ? (
+                <div className="browse-bw-intensity">
+                  <label htmlFor="browse-bw-intensity">Black and white intensity</label>
+                  <input
+                    id="browse-bw-intensity"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={clampBwIntensity(bwIntensity)}
+                    onChange={(e) => setBrowseBwIntensity(e.target.value)}
+                    className="browse-bw-intensity-slider"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={clampBwIntensity(bwIntensity)}
+                    aria-valuetext={bwIntensityLabel(bwIntensity)}
+                  />
+                  <div className="browse-bw-intensity-ends">
+                    <span>White</span>
+                    <span>{bwIntensityLabel(bwIntensity)}</span>
+                    <span>Black</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
             {!creatorMode && !showVideoThumbLabel && (
               <div className={`selected-image-meta${showDesktopEditPresets ? ' selected-image-meta--mobile-only' : ''}`}>

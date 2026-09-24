@@ -121,6 +121,7 @@ const Admin = () => {
     frame_color: '#FF0000',
     frame_width: 10,
     double_frame: false,
+    inner_frame_color: '#FF0000',
     add_white_background: true,
     feather_fade_color: 'white'
   });
@@ -240,6 +241,7 @@ const Admin = () => {
     printQualitySettings.frame_enabled,
     printQualitySettings.frame_width,
     printQualitySettings.frame_color,
+    printQualitySettings.inner_frame_color,
     printQualitySettings.double_frame,
     printQualitySettings.add_white_background,
     printQualitySettings.feather_fade_color
@@ -815,6 +817,7 @@ const Admin = () => {
     const frameColor = settings.frame_color || '#FF0000';
     const frameWidth = settings.frame_width || 10;
     const doubleFrame = settings.double_frame || false;
+    const innerFrameColor = settings.inner_frame_color || settings.innerFrameColor || frameColor;
     
     console.log(`applyBothEffects: Using unified API (like email generator). Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}`);
 
@@ -843,6 +846,8 @@ const Admin = () => {
         frame_color: frameColor, // Pass frame color
         frame_width: frameWidth, // Pass frame width
         double_frame: doubleFrame, // Pass double frame flag
+        inner_frame_color: innerFrameColor,
+        image_opacity: Number.isFinite(Number(settings.image_opacity)) ? Math.max(0, Math.min(100, Math.round(Number(settings.image_opacity)))) : 100,
         add_white_background: Boolean(settings.add_white_background),
         feather_fade_color: settings.feather_fade_color === 'black' ? 'black' : 'white'
       };
@@ -2817,6 +2822,7 @@ const Admin = () => {
                                             frame_color: '#FF0000',
                                             frame_width: 10,
                                             double_frame: false,
+                                            inner_frame_color: '#FF0000',
                                             add_white_background: true,
                                             feather_fade_color: 'white'
                                           });
@@ -3676,6 +3682,7 @@ const Admin = () => {
                           frame_color: '#FF0000',
                           frame_width: 10,
                           double_frame: false,
+                          inner_frame_color: '#FF0000',
                           add_white_background: true,
                           feather_fade_color: 'white'
                         };
@@ -3697,6 +3704,8 @@ const Admin = () => {
                             frame_color: item.toolSettings.frameColor || '#FF0000',
                             frame_width: item.toolSettings.frameWidth || 10,
                             double_frame: item.toolSettings.doubleFrame || false,
+                            inner_frame_color: item.toolSettings.innerFrameColor || item.toolSettings.frameColor || '#FF0000',
+                            image_opacity: item.toolSettings.imageOpacity ?? 100,
                             add_white_background: fadeOn,
                             feather_fade_color: fadeOn && fadeColor === 'black' ? 'black' : 'white'
                           };

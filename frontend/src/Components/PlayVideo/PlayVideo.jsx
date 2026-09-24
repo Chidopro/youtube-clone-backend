@@ -5,10 +5,17 @@ import moment from 'moment'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
-import { isOptimizedPlaybackUrl, needsVideoOptimize, playbackUrlForVideo, candidateWebPlaybackUrls, requestVideoOptimize, screenshotSourceUrl } from '../../utils/videoOptimize'
+import { isOptimizedPlaybackUrl, needsVideoOptimize, playbackUrlForVideo, playerSrcForVideo, candidateWebPlaybackUrls, requestVideoOptimize, screenshotSourceUrl } from '../../utils/videoOptimize'
 import { useCreator } from '../../contexts/CreatorContext'
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession'
 import { artworkDisplayUrl, publicStorageCardUrl } from '../../utils/favoriteListsApi'
+import {
+    detectLetterboxFromVideo,
+    letterboxInsetCss,
+    letterboxSourceRect,
+    mergeLetterboxMin,
+    readLetterboxDataset,
+} from '../../utils/videoLetterbox'
 
 // Before 28 Jul 2026, mobile captured the on-screen player box (~small JPEG).
 // "screenshot/print fidelity" switched that to native videoWidth x videoHeight.
@@ -63,14 +70,23 @@ function captureVideoFrameJpeg(videoElement) {
     const srcW = videoElement.videoWidth;
     const srcH = videoElement.videoHeight;
     if (!srcW || !srcH) return null;
+    const detected = detectLetterboxFromVideo(videoElement);
+    const { sx, sy, sw, sh } = detected
+        ? {
+            sx: detected.left,
+            sy: detected.top,
+            sw: Math.max(1, srcW - detected.left - detected.right),
+            sh: Math.max(1, srcH - detected.top - detected.bottom),
+        }
+        : letterboxSourceRect(videoElement, srcW, srcH);
 
     try {
         const full = document.createElement('canvas');
-        full.width = srcW;
-        full.height = srcH;
+        full.width = sw;
+        full.height = sh;
         const ctx = full.getContext('2d');
         if (!ctx) return null;
-        ctx.drawImage(videoElement, 0, 0);
+        ctx.drawImage(videoElement, sx, sy, sw, sh, 0, 0, sw, sh);
         const jpeg = downsampleCanvasJpeg(full);
         if (jpeg) return jpeg;
     } catch {
@@ -93,18 +109,72 @@ function captureVideoFrameJpeg(videoElement) {
     }
 }
 
-/** Visible video pixels inside the player box (object-fit: contain letterboxing). */
+/** Visible video pixels inside the player box (object-fit contain or cover). */
 function getVideoContentBox(videoElement) {
     const rect = videoElement.getBoundingClientRect();
     const displayW = rect.width;
     const displayH = rect.height;
     const videoW = videoElement.videoWidth || 0;
     const videoH = videoElement.videoHeight || 0;
-    if (!videoW || !videoH || !displayW || !displayH) {
-        return { x: 0, y: 0, width: displayW, height: displayH, videoW, videoH, displayW, displayH };
+    let fit = 'contain';
+    try {
+        fit = (getComputedStyle(videoElement).objectFit || 'contain').toLowerCase();
+    } catch (_) {
+        /* jsdom / detached node */
     }
+    const empty = {
+        x: 0,
+        y: 0,
+        width: displayW,
+        height: displayH,
+        videoW,
+        videoH,
+        displayW,
+        displayH,
+        sourceX: 0,
+        sourceY: 0,
+        sourceW: videoW,
+        sourceH: videoH,
+        fit,
+    };
+    if (!videoW || !videoH || !displayW || !displayH) return empty;
+    const lb = readLetterboxDataset(videoElement, videoW, videoH);
+    const contentW = Math.max(1, videoW - lb.left - lb.right);
+    const contentH = Math.max(1, videoH - lb.top - lb.bottom);
     const displayAspect = displayW / displayH;
-    const videoAspect = videoW / videoH;
+    const videoAspect = contentW / contentH;
+    if (fit === 'cover') {
+        let sourceW;
+        let sourceH;
+        let sourceX;
+        let sourceY;
+        if (displayAspect > videoAspect) {
+            sourceW = contentW;
+            sourceH = contentW / displayAspect;
+            sourceX = lb.left;
+            sourceY = lb.top + (contentH - sourceH) / 2;
+        } else {
+            sourceH = contentH;
+            sourceW = contentH * displayAspect;
+            sourceX = lb.left + (contentW - sourceW) / 2;
+            sourceY = lb.top;
+        }
+        return {
+            x: 0,
+            y: 0,
+            width: displayW,
+            height: displayH,
+            videoW,
+            videoH,
+            displayW,
+            displayH,
+            sourceX,
+            sourceY,
+            sourceW,
+            sourceH,
+            fit,
+        };
+    }
     let width;
     let height;
     let x;
@@ -120,7 +190,21 @@ function getVideoContentBox(videoElement) {
         x = 0;
         y = (displayH - height) / 2;
     }
-    return { x, y, width, height, videoW, videoH, displayW, displayH };
+    return {
+        x,
+        y,
+        width,
+        height,
+        videoW,
+        videoH,
+        displayW,
+        displayH,
+        sourceX: lb.left,
+        sourceY: lb.top,
+        sourceW: contentW,
+        sourceH: contentH,
+        fit,
+    };
 }
 
 function clampCropToContent(crop, content) {
@@ -142,10 +226,14 @@ function cropAreaToSourceRect(cropArea, content, sourceWidth, sourceHeight) {
     const relY = (cropArea.y - content.y) / content.height;
     const relW = cropArea.width / content.width;
     const relH = cropArea.height / content.height;
-    let sx = Math.round(relX * sourceWidth);
-    let sy = Math.round(relY * sourceHeight);
-    let sw = Math.round(relW * sourceWidth);
-    let sh = Math.round(relH * sourceHeight);
+    const srcW = Number(content.sourceW) > 0 ? content.sourceW : sourceWidth;
+    const srcH = Number(content.sourceH) > 0 ? content.sourceH : sourceHeight;
+    const srcX0 = Number(content.sourceX) || 0;
+    const srcY0 = Number(content.sourceY) || 0;
+    let sx = Math.round(srcX0 + relX * srcW);
+    let sy = Math.round(srcY0 + relY * srcH);
+    let sw = Math.round(relW * srcW);
+    let sh = Math.round(relH * srcH);
     sx = Math.max(0, Math.min(sourceWidth - 1, sx));
     sy = Math.max(0, Math.min(sourceHeight - 1, sy));
     sw = Math.max(1, Math.min(sourceWidth - sx, sw));
@@ -298,6 +386,9 @@ const PlayVideo = ({
     const playbackFallbackRef = useRef([]);
     const playStartedAtRef = useRef(0);
     const pausedCanvasRef = useRef(null);
+    const [forcePlaybackFile, setForcePlaybackFile] = useState(false);
+    const [letterbox, setLetterbox] = useState(null);
+    const letterboxSamplesRef = useRef([]);
     
     // Video container ref
     const [videoContainerRef] = useState(useRef(null));
@@ -383,14 +474,27 @@ const PlayVideo = ({
         try {
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            // Match <video object-fit: contain> — do not stretch the frame to the 16:9 box.
-            ctx.drawImage(
-                video,
-                content.x * scale,
-                content.y * scale,
-                Math.max(1, content.width * scale),
-                Math.max(1, content.height * scale)
-            );
+            if (content.fit === 'cover') {
+                ctx.drawImage(
+                    video,
+                    content.sourceX,
+                    content.sourceY,
+                    Math.max(1, content.sourceW),
+                    Math.max(1, content.sourceH),
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+            } else {
+                ctx.drawImage(
+                    video,
+                    content.x * scale,
+                    content.y * scale,
+                    Math.max(1, content.width * scale),
+                    Math.max(1, content.height * scale)
+                );
+            }
             canvas.style.visibility = 'visible';
         } catch (_) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -457,7 +561,11 @@ const PlayVideo = ({
             optimizePendingRef.current = needsVideoOptimize(data);
             const originalPlayback = String(data.video_url || '');
             const playback = playbackUrlForVideo(data) || originalPlayback;
-            if (isOptimizedPlaybackUrl(playback)) {
+            const preferOriginal = !getUseCustomPlayer();
+            const playerSrc = playerSrcForVideo({ ...data, video_url: playback }, { preferOriginal });
+            if (preferOriginal && playerSrc && playerSrc !== playback) {
+                playbackFallbackRef.current = [...new Set([playback, originalPlayback])].filter((u) => u && u !== playerSrc);
+            } else if (isOptimizedPlaybackUrl(playback)) {
                 playbackFallbackRef.current = [];
             } else {
                 playbackFallbackRef.current = [...new Set([
@@ -468,13 +576,15 @@ const PlayVideo = ({
             if (optimizePendingRef.current) {
                 requestVideoOptimize({ videoId: data.id, videoUrl: originalPlayback }).then((result) => {
                     if (result?.video_url && isOptimizedPlaybackUrl(result.video_url)) {
-                        playbackUrlRef.current = result.video_url;
                         optimizePendingRef.current = false;
                         setVideo((prev) => prev ? { ...prev, video_url: result.video_url, source_video_url: result.source_video_url || prev.source_video_url } : prev);
+                        if (!preferOriginal) {
+                            playbackUrlRef.current = result.video_url;
+                        }
                     }
                 });
             }
-            playbackUrlRef.current = playback;
+            playbackUrlRef.current = playerSrc;
             setVideo({ ...data, video_url: playback });
             if (data.thumbnail || data.poster) {
                 const thumbnailUrl = data.thumbnail || data.poster;
@@ -536,13 +646,14 @@ const PlayVideo = ({
             if (cancelled || !data?.video_url) return;
             if (isOptimizedPlaybackUrl(data.video_url)) {
                 optimizePendingRef.current = false;
-                if (data.video_url !== playbackUrlRef.current) {
+                const preferOriginal = !getUseCustomPlayer();
+                setVideo((prev) => prev ? { ...prev, video_url: data.video_url, source_video_url: data.source_video_url || prev.source_video_url } : prev);
+                if (!preferOriginal && data.video_url !== playbackUrlRef.current) {
                     const el = videoRef.current;
                     if (el) {
                         pendingSeekRef.current = { time: el.currentTime || 0, play: !el.paused };
                     }
                     playbackUrlRef.current = data.video_url;
-                    setVideo((prev) => prev ? { ...prev, video_url: data.video_url, source_video_url: data.source_video_url || prev.source_video_url } : prev);
                 }
                 return;
             }
@@ -577,11 +688,47 @@ const PlayVideo = ({
         setMobilePlaying(false);
         setHideMediaChrome(false);
         setPlaybackRate(1);
+        setForcePlaybackFile(false);
+        setLetterbox(null);
+        letterboxSamplesRef.current = [];
         if (hideChromeTimerRef.current) {
             window.clearTimeout(hideChromeTimerRef.current);
             hideChromeTimerRef.current = null;
         }
     }, [videoId, setScreenshots]);
+
+    const considerLetterbox = useCallback((el) => {
+        const box = detectLetterboxFromVideo(el || videoRef.current);
+        if (!box) return;
+        letterboxSamplesRef.current = [...letterboxSamplesRef.current, box].slice(-6);
+        const merged = mergeLetterboxMin(letterboxSamplesRef.current);
+        if (!merged) return;
+        setLetterbox((prev) => {
+            if (
+                prev &&
+                prev.top === merged.top &&
+                prev.bottom === merged.bottom &&
+                prev.left === merged.left &&
+                prev.right === merged.right
+            ) {
+                return prev;
+            }
+            return merged;
+        });
+    }, [videoRef]);
+
+    useEffect(() => {
+        const el = videoRef.current;
+        if (!el) return;
+        const inset = letterboxInsetCss(letterbox);
+        if (inset) {
+            el.style.setProperty('object-view-box', inset);
+            el.dataset.letterbox = `${letterbox.top},${letterbox.bottom},${letterbox.left},${letterbox.right}`;
+        } else {
+            el.style.removeProperty('object-view-box');
+            delete el.dataset.letterbox;
+        }
+    }, [letterbox, videoId, videoRef]);
 
     // Keep the bottom control bar; never let WebKit re-enable native controls.
     const revealMediaChrome = useCallback((el) => {
@@ -1204,6 +1351,8 @@ const PlayVideo = ({
         }
     };
 
+    const playerSrc = video ? playerSrcForVideo(video, { preferOriginal: !isMobile && !forcePlaybackFile }) : '';
+
     if (loading) return (
         <div style={{
             padding: 24, 
@@ -1263,7 +1412,7 @@ const PlayVideo = ({
                     maxWidth: '100%'
                 }}>
                     <video 
-                        key={`${videoId}:${video.video_url || ''}`}
+                        key={`${videoId}:${playerSrc || ''}`}
                         ref={videoRef} 
                         className={isMobile ? 'mobile-inline-controls' : ''}
                         controls={!isMobile && !isCropMode && !hideMediaChrome}
@@ -1275,11 +1424,13 @@ const PlayVideo = ({
                             background: '#000', 
                             width: '100%',
                             height: isMobile ? '320px' : '360px',
-                            objectFit: 'contain',
+                            objectFit: isPortraitVideo ? 'contain' : 'cover',
+                            objectPosition: 'center center',
+                            ...(letterboxInsetCss(letterbox) ? { objectViewBox: letterboxInsetCss(letterbox) } : {}),
                             outline: 'none',
                             pointerEvents: (isCropMode || (isMobile && !mobilePlaying)) ? 'none' : 'auto'
                         }} 
-                        src={video.video_url}
+                        src={playerSrc}
                         crossOrigin="anonymous"
                         playsInline
                         webkit-playsinline="true"
@@ -1294,6 +1445,9 @@ const PlayVideo = ({
                             if (el.duration && Number.isFinite(el.duration)) {
                                 setPlayerDuration(el.duration);
                             }
+                            if (letterboxSamplesRef.current.length < 4) {
+                                considerLetterbox(el);
+                            }
                         }}
                         onLoadedMetadata={() => {
                             const el = videoRef.current;
@@ -1305,6 +1459,7 @@ const PlayVideo = ({
                             }
                             setPlayerTime(el.currentTime || 0);
                             if (isMobile && el.paused) requestAnimationFrame(() => drawPausedFrame());
+                            requestAnimationFrame(() => considerLetterbox(el));
                         }}
                         onClick={(e) => {
                             if (isCropMode) return;
@@ -1344,6 +1499,7 @@ const PlayVideo = ({
                                 }
                             }
                             if (isMobile && el?.paused) requestAnimationFrame(() => drawPausedFrame());
+                            requestAnimationFrame(() => considerLetterbox(el));
                         }}
                         onWaiting={() => {
                             setIsBuffering(true);
@@ -1377,6 +1533,7 @@ const PlayVideo = ({
                             const videoElement = e.target;
                             const next = playbackFallbackRef.current.shift();
                             if (next) {
+                                setForcePlaybackFile(true);
                                 playbackUrlRef.current = next;
                                 setVideo((prev) => prev ? { ...prev, video_url: next } : prev);
                                 return;

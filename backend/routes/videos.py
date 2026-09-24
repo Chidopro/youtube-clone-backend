@@ -661,6 +661,12 @@ def process_thumbnail_print_quality():
         frame_color = data.get("frame_color", "#FF0000")
         frame_width = int(data.get("frame_width", 10))
         double_frame = data.get("double_frame", False)
+        inner_frame_color = data.get("inner_frame_color") or data.get("innerFrameColor") or frame_color
+        try:
+            image_opacity = int(round(float(data.get("image_opacity") if data.get("image_opacity") is not None else data.get("imageOpacity", 100))))
+        except (TypeError, ValueError):
+            image_opacity = 100
+        image_opacity = max(0, min(100, image_opacity))
         text_enabled = data.get("text_enabled", False)
         text_content = (data.get("text_content") or "").strip()
         text_font = data.get("text_font", "Arial")
@@ -732,6 +738,8 @@ def process_thumbnail_print_quality():
             frame_color=frame_color,
             frame_width=frame_width,
             double_frame=double_frame,
+            inner_frame_color=inner_frame_color,
+            image_opacity=image_opacity,
             text_enabled=text_enabled and bool(text_content),
             text_content=text_content,
             text_font=text_font,
