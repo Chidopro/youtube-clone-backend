@@ -8,12 +8,12 @@ import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { favoriteListsJson, artworkDisplayUrl } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
-import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, peekToolsPreviewNewest, isVideoScreenshotMerch, readBrowseToolSettings, writeBrowseToolSettings, rememberArtworkOrientation } from '../../utils/merchSession';
+import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, applyCroppedScreenshot, rememberToolsProductName, peekToolsPreviewNewest, isVideoScreenshotMerch, readBrowseToolSettings, writeBrowseToolSettings, rememberArtworkOrientation } from '../../utils/merchSession';
 import { applyBrowsePresetToCartItem, featherEdgeMaskStyle } from '../../utils/bakeBrowsePreset';
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
-import { cartItemMatchesBrowseScreenshot, isPrintfulWrapProduct, screenshotUrlKey } from '../../utils/mugMockup';
+import { cartItemMatchesBrowseScreenshot, isCurvedBagProduct, isPrintfulWrapProduct, screenshotUrlKey, stripCurvedBagRectEdits } from '../../utils/mugMockup';
 import {
   getPrintfulColorCode,
   getPrintfulColorMockupUrl,
@@ -38,6 +38,7 @@ import {
   unitPriceForCountry,
 } from '../../utils/regionalAvailability';
 import { peekDisplaySrc, prepareDisplaySrc } from '../../utils/displaySrc';
+import InlineStillCrop from '../../Components/InlineStillCrop/InlineStillCrop';
 import './ProductPage.css';
 
 const BROWSE_EDIT_ORIGINAL = {
@@ -82,25 +83,26 @@ function defaultBrowseOrientation(cat) {
   return isHatsCategory(cat) ? 'landscape' : 'portrait';
 }
 
-function BrowseLayoutPicker({ value, onChange }) {
+function BrowseLayoutPicker({ value, onChange, groupName = 'browse-image-layout' }) {
+  const isLandscape = value === 'landscape';
   return (
     <div className="browse-layout-picker" role="radiogroup" aria-label="Image layout">
-      <label className="browse-layout-picker-option">
+      <label className={`browse-layout-picker-option${isLandscape ? '' : ' is-selected'}`}>
         <input
           type="radio"
-          name="browse-image-layout"
+          name={groupName}
           value="portrait"
-          checked={value !== 'landscape'}
+          checked={!isLandscape}
           onChange={() => onChange('portrait')}
         />
         Portrait
       </label>
-      <label className="browse-layout-picker-option">
+      <label className={`browse-layout-picker-option${isLandscape ? ' is-selected' : ''}`}>
         <input
           type="radio"
-          name="browse-image-layout"
+          name={groupName}
           value="landscape"
-          checked={value === 'landscape'}
+          checked={isLandscape}
           onChange={() => onChange('landscape')}
         />
         Landscape
@@ -624,6 +626,8 @@ const ProductPage = ({ sidebar }) => {
   const [highlightedProductIndex, setHighlightedProductIndex] = useState(null);
   const [browseReload, setBrowseReload] = useState(0);
   const productCardRefs = useRef([]);
+  const selectedImageRef = useRef(null);
+  const [browseCropping, setBrowseCropping] = useState(false);
   const editPrefillKeyRef = useRef('');
   const lastTouchedCartIndexRef = useRef(null);
   const lastPickedProductRef = useRef(null);
@@ -697,6 +701,17 @@ const ProductPage = ({ sidebar }) => {
     if (creatorMode) setSelectedScreenshotForFavorite(key);
   };
 
+  const handleBrowseCrop = useCallback((croppedUrl) => {
+    const next = String(croppedUrl || '').trim();
+    if (!next) return;
+    setSelectedScreenshotUrl(next);
+    applyCroppedScreenshot(next);
+    setSelectedEditPreset('original');
+    setBwIntensity(BW_INTENSITY_DEFAULT);
+    writeBrowseToolSettings(BROWSE_EDIT_ORIGINAL);
+    setBrowseCropping(false);
+  }, []);
+
   const applyBrowseEditPreset = (presetId, settings) => {
     setSelectedEditPreset(presetId);
     const next = settings || BROWSE_EDIT_ORIGINAL;
@@ -721,11 +736,14 @@ const ProductPage = ({ sidebar }) => {
   const mergeBrowseToolSettings = (item) => {
     const browseTools = readBrowseToolSettings();
     if (!browseTools || !item) return item;
+    const tools = isCurvedBagProduct(item.name)
+      ? stripCurvedBagRectEdits(browseTools)
+      : browseTools;
     return {
       ...item,
       toolSettings: {
         ...(item.toolSettings || {}),
-        ...browseTools,
+        ...tools,
       },
     };
   };
@@ -2094,7 +2112,7 @@ const ProductPage = ({ sidebar }) => {
                   const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
                   return thumbnailUrl ? (
                   <div
-                    className={`screenshot-item${showDesktopEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${browseLayoutIsLandscape ? ' screenshot-item--landscape' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}`}
+                    className={`screenshot-item${showDesktopEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${browseLayoutIsLandscape ? ' screenshot-item--landscape' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}${browseCropping ? ' screenshot-item--cropping' : ''}`}
                   >
                     <div
                       role="button"
@@ -2102,10 +2120,12 @@ const ProductPage = ({ sidebar }) => {
                       aria-label={showVideoThumbLabel ? 'Thumbnail' : 'Selected image'}
                       aria-current={selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? 'true' : undefined}
                       onClick={() => {
+                        if (browseCropping) return;
                         selectScreenshot('thumbnail', thumbnailUrl);
                         applyBrowseEditPreset('original', BROWSE_EDIT_ORIGINAL);
                       }}
                       onKeyDown={(e) => {
+                        if (browseCropping) return;
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
                           selectScreenshot('thumbnail', thumbnailUrl);
@@ -2114,12 +2134,21 @@ const ProductPage = ({ sidebar }) => {
                       }}
                     >
                       <img 
+                        ref={selectedImageRef}
                         src={showVideoThumbLabel ? thumbnailUrl : (presetImageSrc || thumbnailUrl)} 
                         alt={showVideoThumbLabel ? 'Thumbnail' : 'Selected image'} 
                         className="screenshot-image"
                         fetchPriority="high"
                         decoding="async"
                       />
+                      {showAutoEditPresets ? (
+                        <InlineStillCrop
+                          sourceUrl={browseSourceUrl || thumbnailUrl}
+                          imgRef={selectedImageRef}
+                          onApply={handleBrowseCrop}
+                          onCropModeChange={setBrowseCropping}
+                        />
+                      ) : null}
                       {showVideoThumbLabel ? <div className="screenshot-label">Thumbnail</div> : null}
                     </div>
                     {showDesktopEditPresets && !creatorMode ? (
@@ -2136,7 +2165,11 @@ const ProductPage = ({ sidebar }) => {
                           >
                             Change Image
                           </button>
-                          <BrowseLayoutPicker value={browseLayoutOrientation} onChange={chooseBrowseLayout} />
+                          <BrowseLayoutPicker
+                            value={browseLayoutOrientation}
+                            onChange={chooseBrowseLayout}
+                            groupName="browse-layout-original"
+                          />
                         </div>
                       </>
                     ) : null}
@@ -2156,7 +2189,7 @@ const ProductPage = ({ sidebar }) => {
                     return (
                       <div
                         key={`shot-${index}`}
-                        className={`screenshot-item${showDesktopEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--original' : ''}${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${browseLayoutIsLandscape ? ' screenshot-item--landscape' : ''}${selectedScreenshot === index && selectedEditPreset === 'original' ? ' selected' : ''}`}
+                        className={`screenshot-item${showDesktopEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--original' : ''}${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${browseLayoutIsLandscape ? ' screenshot-item--landscape' : ''}${selectedScreenshot === index && selectedEditPreset === 'original' ? ' selected' : ''}${browseCropping && showAutoEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--cropping' : ''}`}
                       >
                         <div
                           role="button"
@@ -2164,10 +2197,12 @@ const ProductPage = ({ sidebar }) => {
                           aria-label={label || 'Selected image'}
                           aria-current={selectedScreenshot === index && selectedEditPreset === 'original' ? 'true' : undefined}
                           onClick={() => {
+                            if (browseCropping) return;
                             selectScreenshot(index, screenshot);
                             applyBrowseEditPreset('original', BROWSE_EDIT_ORIGINAL);
                           }}
                           onKeyDown={(e) => {
+                            if (browseCropping) return;
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault();
                               selectScreenshot(index, screenshot);
@@ -2176,12 +2211,21 @@ const ProductPage = ({ sidebar }) => {
                           }}
                         >
                           <img 
+                            ref={showAutoEditPresets && index === 0 && !thumbnailUrl ? selectedImageRef : undefined}
                             src={(!showVideoThumbLabel && presetImageSrc) ? presetImageSrc : screenshot} 
                             alt={label || `Image ${index + 1}`} 
                             className="screenshot-image"
                             fetchPriority={selectedScreenshot === index ? 'high' : 'auto'}
                             decoding="async"
                           />
+                          {showAutoEditPresets && index === 0 && !thumbnailUrl ? (
+                            <InlineStillCrop
+                              sourceUrl={browseSourceUrl || screenshot}
+                              imgRef={selectedImageRef}
+                              onApply={handleBrowseCrop}
+                              onCropModeChange={setBrowseCropping}
+                            />
+                          ) : null}
                           {label ? <div className="screenshot-label">{label}</div> : null}
                         </div>
                         {showDesktopEditPresets && !creatorMode && !thumbnailUrl && index === 0 ? (
@@ -2198,7 +2242,11 @@ const ProductPage = ({ sidebar }) => {
                               >
                                 Change Image
                               </button>
-                              <BrowseLayoutPicker value={browseLayoutOrientation} onChange={chooseBrowseLayout} />
+                              <BrowseLayoutPicker
+                                value={browseLayoutOrientation}
+                                onChange={chooseBrowseLayout}
+                                groupName="browse-layout-shot"
+                              />
                             </div>
                           </>
                         ) : null}
@@ -2270,8 +2318,12 @@ const ProductPage = ({ sidebar }) => {
                 <button type="button" className="change-image-link" onClick={handleChangeImage}>
                   Change Image
                 </button>
-                {showAutoEditPresets ? (
-                  <BrowseLayoutPicker value={browseLayoutOrientation} onChange={chooseBrowseLayout} />
+                {showAutoEditPresets && !showDesktopEditPresets ? (
+                  <BrowseLayoutPicker
+                    value={browseLayoutOrientation}
+                    onChange={chooseBrowseLayout}
+                    groupName="browse-layout-meta"
+                  />
                 ) : null}
               </div>
             )}

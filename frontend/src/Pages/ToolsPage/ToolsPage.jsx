@@ -11,7 +11,7 @@ import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlain
 import { roundedRectFeatherFactor } from '../../utils/bakeBrowsePreset';
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
-import { isBagProduct, isMugProduct, isPrintfulWrapProduct, isTotePocketProduct, mugMockupDebounceMs, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
+import { isCurvedBagProduct, isPrintfulWrapProduct, isTotePocketProduct, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -3275,8 +3275,8 @@ const ToolsPage = () => {
   const [mugMockupUrls, setMugMockupUrls] = useState([]);
   const [mugMockupLoading, setMugMockupLoading] = useState(false);
   const [mugMockupError, setMugMockupError] = useState('');
-  const [mugWrapRequested, setMugWrapRequested] = useState(false);
-  const mugWrappedEditKeyRef = useRef('');
+  const [wrapRequested, setWrapRequested] = useState(false);
+  const wrapEditKeyRef = useRef('');
   const persistMugMockupUrl = useCallback((cartIndex, url, urls, sourceUrl, printfileUrl) => {
     const wrap = String(url || '').trim();
     const views = (Array.isArray(urls) ? urls : [])
@@ -3537,9 +3537,20 @@ const ToolsPage = () => {
 
   const applySavedEditorFields = (saved) => {
     if (!saved || typeof saved !== 'object') return;
-    if (typeof saved.featherEdge === 'number') setFeatherEdge(saved.featherEdge);
-    if (typeof saved.cornerRadius === 'number') setCornerRadius(saved.cornerRadius);
-    if (typeof saved.frameEnabled === 'boolean') setFrameEnabled(saved.frameEnabled);
+    const skipRectEdits = isCurvedBagProduct(saved.selectedProductName || mugPreviewName || selectedProductName);
+    if (skipRectEdits) {
+      setFeatherEdge(0);
+      setCornerRadius(0);
+      setFrameEnabled(false);
+      setFeatherFadeEnabled(false);
+    } else {
+      if (typeof saved.featherEdge === 'number') setFeatherEdge(saved.featherEdge);
+      if (typeof saved.cornerRadius === 'number') setCornerRadius(saved.cornerRadius);
+      if (typeof saved.frameEnabled === 'boolean') setFrameEnabled(saved.frameEnabled);
+      const savedTransparent = isTransparentFeatherFade(saved.featherFadeEnabled, saved.featherFadeColor);
+      setFeatherFadeEnabled(!savedTransparent);
+      setFeatherFadeColor(savedTransparent ? 'transparent' : normalizeFeatherFadeColor(saved.featherFadeColor));
+    }
     if (saved.frameColor) setFrameColor(saved.frameColor);
     if (typeof saved.frameWidth === 'number') setFrameWidth(saved.frameWidth);
     if (typeof saved.doubleFrame === 'boolean') setDoubleFrame(saved.doubleFrame);
@@ -3547,9 +3558,7 @@ const ToolsPage = () => {
     setBlackAndWhite(Boolean(saved.blackAndWhite));
     setBwIntensity(clampBwIntensity(saved.bwIntensity));
     setImageOpacity(clampImageOpacity(saved.imageOpacity));
-    const savedTransparent = isTransparentFeatherFade(saved.featherFadeEnabled, saved.featherFadeColor);
-    setFeatherFadeEnabled(!savedTransparent);
-    setFeatherFadeColor(savedTransparent ? 'transparent' : normalizeFeatherFadeColor(saved.featherFadeColor));
+    if (skipRectEdits) setFeatherFadeColor('transparent');
     if (typeof saved.textEnabled === 'boolean') setTextEnabled(saved.textEnabled);
     if (typeof saved.textContent === 'string') setTextContent(saved.textContent);
     if (saved.textFont) setTextFont(saved.textFont);
@@ -5201,21 +5210,27 @@ const ToolsPage = () => {
   const mugPreviewColor = mugPreviewProduct?.color || '';
   const mugPreviewSize = mugPreviewProduct?.size || '';
   const mugPreviewSlotKey = `${selectedCartProductIndex}|${mugPreviewName}|${mugPreviewColor}|${mugPreviewSize}`;
+  const skipRectEdgeEdits = isCurvedBagProduct(mugPreviewName);
+
+  useEffect(() => {
+    if (!skipRectEdgeEdits) return;
+    setFeatherEdge(0);
+    setCornerRadius(0);
+    setFrameEnabled(false);
+    setFeatherFadeEnabled(false);
+  }, [mugPreviewSlotKey, skipRectEdgeEdits]);
 
   useEffect(() => {
     const product = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
-    const uniqueViews = uniqueMugWrapViews(product?.printfulMugMockupUrls);
-    const storedWrap = String(product?.printfulMugMockupUrl || '').trim();
-    const wrapStillShown = uniqueViews.some((view) => view.url === storedWrap);
-    const mugSlot = isMugProduct(product?.name || selectedProductName, product?.category);
-    if (mugSlot) {
+    const wrapSlot = isPrintfulWrapProduct(product?.name || selectedProductName, product?.category);
+    if (wrapSlot) {
       setMugMockupUrl('');
       setMugMockupUrls([]);
-      setMugWrapRequested(false);
-      mugWrappedEditKeyRef.current = '';
+      setWrapRequested(false);
+      wrapEditKeyRef.current = '';
     } else {
-      setMugMockupUrl(wrapStillShown ? storedWrap : (uniqueViews[0]?.url || storedWrap));
-      setMugMockupUrls(uniqueViews);
+      setMugMockupUrl('');
+      setMugMockupUrls([]);
     }
     setMugMockupError('');
   }, [mugPreviewSlotKey, selectedCartProductIndex, selectedProductName]);
@@ -5226,7 +5241,6 @@ const ToolsPage = () => {
       setMugMockupLoading(false);
       return undefined;
     }
-    const wrapIsBag = isBagProduct(product.name || selectedProductName);
     const wrapSrc = String(imageUrl || '');
     const wrapEditKey = [
       `${wrapSrc.length}:${wrapSrc.slice(0, 48)}:${wrapSrc.slice(-24)}`,
@@ -5244,21 +5258,18 @@ const ToolsPage = () => {
       textEnabled ? 1 : 0,
       String(textContent || ''),
     ].join('|');
-    if (!wrapIsBag && !mugWrapRequested) {
-      if (mugWrappedEditKeyRef.current && mugWrappedEditKeyRef.current !== wrapEditKey) {
+    if (!wrapRequested) {
+      if (wrapEditKeyRef.current && wrapEditKeyRef.current !== wrapEditKey) {
         setMugMockupUrl('');
         setMugMockupUrls([]);
-        mugWrappedEditKeyRef.current = '';
+        wrapEditKeyRef.current = '';
       }
       setMugMockupLoading(false);
       return undefined;
     }
     const hasPixelEdits = Boolean(
-      featherEdge ||
-      cornerRadius ||
-      frameEnabled ||
+      (!skipRectEdgeEdits && (featherEdge || cornerRadius || frameEnabled || featherFadeEnabled)) ||
       blackAndWhite ||
-      featherFadeEnabled ||
       imageOpacityHasEdit(imageOpacity) ||
       (textEnabled && String(textContent || '').trim())
     );
@@ -5272,7 +5283,7 @@ const ToolsPage = () => {
       : String(editedImageUrl || imageUrl || '').trim();
     if (!artwork) {
       setMugMockupLoading(false);
-      if (!wrapIsBag) setMugWrapRequested(false);
+      setWrapRequested(false);
       return undefined;
     }
     const usingBaked = Boolean(hasPixelEdits && editedImageUrl);
@@ -5301,10 +5312,10 @@ const ToolsPage = () => {
           signal: controller.signal,
         });
         if (controller.signal.aborted || !wrap?.mockupUrl) return;
-        mugWrappedEditKeyRef.current = wrapEditKey;
+        wrapEditKeyRef.current = wrapEditKey;
         setMugMockupUrl(wrap.mockupUrl);
         setMugMockupUrls(wrap.mockupUrls || []);
-        if (!wrapIsBag) setMugWrapRequested(false);
+        setWrapRequested(false);
         persistMugMockupUrl(
           product.originalCartIndex,
           wrap.mockupUrl,
@@ -5314,12 +5325,12 @@ const ToolsPage = () => {
         );
       } catch (err) {
         if (err?.name === 'AbortError') return;
-        if (!wrapIsBag) setMugWrapRequested(false);
+        setWrapRequested(false);
         setMugMockupError('Wrap preview is taking a moment. Your screenshot is still saved.');
       } finally {
         if (!controller.signal.aborted) setMugMockupLoading(false);
       }
-    }, wrapIsBag ? mugMockupDebounceMs() : 0);
+    }, 0);
     return () => {
       controller.abort();
       window.clearTimeout(timer);
@@ -5331,7 +5342,7 @@ const ToolsPage = () => {
     selectedCartProductIndex,
     selectedProductName,
     persistMugMockupUrl,
-    mugWrapRequested,
+    wrapRequested,
     featherEdge,
     cornerRadius,
     frameEnabled,
@@ -6013,7 +6024,9 @@ const ToolsPage = () => {
                 // Live preview always uses the unbaked screenshot plus CSS
                 // feather/frames. Feeding the bake back in (needed for text)
                 // re-feathered the outer ring and washed the frame color out.
-                const paintCssFrames = Boolean(frameEnabled);
+                const paintCssFrames = Boolean(frameEnabled) && !skipRectEdgeEdits;
+                const overlayFeather = skipRectEdgeEdits ? 0 : featherEdge;
+                const overlayCorner = skipRectEdgeEdits ? 0 : cornerRadius;
                 const overlayScreenshot = imageUrl || currentImage;
                 const showingFitOverride = Boolean(fitPreviewImageUrl);
                 const displayName = showingFitOverride ? selectedProductName : product.name;
@@ -6092,15 +6105,16 @@ const ToolsPage = () => {
                       }
 
                       if (isPrintfulWrapProduct(product.name || productName, product.category)) {
-                        const wrapKind = isBagProduct(product.name || productName) ? 'bag' : 'mug';
+                        const wrapKind = printfulWrapKind(product.name || productName, product.category);
                         const wrapNote = mugMockupLoading
                           ? `Wrapping your design on the ${wrapKind}…`
                           : mugMockupError;
-                        const showMugWrapNow = wrapKind === 'mug' && !mugMockupLoading && !mugMockupUrl;
+                        const showWrapNow = !mugMockupLoading && !mugMockupUrl;
                         const mugViews = uniqueMugWrapViews(mugMockupUrls);
+                        const wrapAngleNoun = wrapKind === 'mug' ? 'Mug' : wrapKind.charAt(0).toUpperCase() + wrapKind.slice(1);
                         return (
                           <div>
-                            <div className={`mug-product-preview-image${mugMockupUrl ? ' mug-product-preview-image--wrap' : ''}${wrapKind === 'mug' ? ' mug-product-preview-image--mug' : ''}`}>
+                            <div className={`mug-product-preview-image${mugMockupUrl ? ' mug-product-preview-image--wrap' : ''}${wrapKind === 'mug' || wrapKind === 'bowl' ? ' mug-product-preview-image--mug' : ''}`}>
                               {mugMockupUrl ? (
                                 <>
                                   <div className="mug-wrap-mockup-clip">
@@ -6113,13 +6127,13 @@ const ToolsPage = () => {
                                     />
                                   </div>
                                   {mugViews.length > 1 ? (
-                                    <div className="mug-wrap-angles" role="tablist" aria-label={`${wrapKind === 'bag' ? 'Bag' : 'Mug'} preview angles`}>
+                                    <div className="mug-wrap-angles" role="tablist" aria-label={`${wrapAngleNoun} preview angles`}>
                                       {mugViews.map((view) => (
                                         <button
                                           key={view.url}
                                           type="button"
                                           className={`mug-wrap-angle${view.url === mugMockupUrl ? ' is-selected' : ''}`}
-                                          aria-label={view.title || `${wrapKind === 'bag' ? 'Bag' : 'Mug'} angle`}
+                                          aria-label={view.title || `${wrapAngleNoun} angle`}
                                           aria-pressed={view.url === mugMockupUrl}
                                           onClick={() => {
                                             setMugMockupUrl(view.url);
@@ -6149,8 +6163,8 @@ const ToolsPage = () => {
                                   printAreaFit={printAreaFit}
                                   imageOffsetX={imageOffsetX}
                                   imageOffsetY={imageOffsetY}
-                                  featherEdge={featherEdge}
-                                  cornerRadius={cornerRadius}
+                                  featherEdge={overlayFeather}
+                                  cornerRadius={overlayCorner}
                                   frameEnabled={paintCssFrames}
                                   frameColor={frameColor}
                                   frameWidth={frameWidth}
@@ -6184,7 +6198,7 @@ const ToolsPage = () => {
                                 </div>
                               ) : null}
                             </div>
-                            {showMugWrapNow ? (
+                            {showWrapNow ? (
                               <div className="product-preview-unavailable-note">
                                 {mugMockupError ? (
                                   <div className="product-preview-unavailable-note-text">{mugMockupError}</div>
@@ -6195,16 +6209,13 @@ const ToolsPage = () => {
                                   onClick={() => {
                                     setMugMockupError('');
                                     const needsBake = Boolean(
-                                      featherEdge ||
-                                      cornerRadius ||
-                                      frameEnabled ||
+                                      (!skipRectEdgeEdits && (featherEdge || cornerRadius || frameEnabled || featherFadeEnabled)) ||
                                       blackAndWhite ||
-                                      featherFadeEnabled ||
                                       imageOpacityHasEdit(imageOpacity) ||
                                       (textEnabled && String(textContent || '').trim())
                                     );
                                     if (needsBake) setEditedImageUrl('');
-                                    setMugWrapRequested(true);
+                                    setWrapRequested(true);
                                   }}
                                 >
                                   Wrap now
@@ -6219,7 +6230,7 @@ const ToolsPage = () => {
                         );
                       }
                       
-                      // Pets and accessories: edited screenshot only (no product mockup)
+                      // Bags/pets/accessories that are not wrap-capable still skip mockup overlay.
                       if (noMockupPreview) {
                         const previewNotice = (
                           <div className="product-preview-unavailable-note">
@@ -6241,8 +6252,8 @@ const ToolsPage = () => {
                                   printAreaFit={printAreaFit}
                                   imageOffsetX={imageOffsetX}
                                   imageOffsetY={imageOffsetY}
-                                  featherEdge={featherEdge}
-                                  cornerRadius={cornerRadius}
+                                  featherEdge={overlayFeather}
+                                  cornerRadius={overlayCorner}
                                   frameEnabled={paintCssFrames}
                                   frameColor={frameColor}
                                   frameWidth={frameWidth}
@@ -6307,8 +6318,8 @@ const ToolsPage = () => {
                               textOffsetY={textOffsetY}
                               textDirection={textDirection}
                               onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
-                              featherEdge={featherEdge}
-                              cornerRadius={cornerRadius}
+                              featherEdge={overlayFeather}
+                              cornerRadius={overlayCorner}
                               frameEnabled={paintCssFrames}
                               frameColor={frameColor}
                               frameWidth={frameWidth}
@@ -6400,8 +6411,8 @@ const ToolsPage = () => {
                             textOffsetY={textOffsetY}
                             textDirection={textDirection}
                             onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
-                            featherEdge={featherEdge}
-                            cornerRadius={cornerRadius}
+                            featherEdge={overlayFeather}
+                            cornerRadius={overlayCorner}
                             frameEnabled={paintCssFrames}
                             frameColor={frameColor}
                             frameWidth={frameWidth}
@@ -6688,6 +6699,14 @@ const ToolsPage = () => {
             
             return (
               <>
+                {skipRectEdgeEdits ? (
+                  <div className="tool-control-group">
+                    <p className="tool-description">
+                      Frame, feather, and rounded corners are not available on this bag — the print sits on a curved surface.
+                    </p>
+                  </div>
+                ) : (
+                  <>
                 <div className="tool-control-group">
                   <h3>Feather Edge</h3>
                   <p className="tool-description">Softens the edges of your screenshot</p>
@@ -6771,6 +6790,8 @@ const ToolsPage = () => {
                     </span>
                   </div>
                 </div>
+                  </>
+                )}
 
                 <div className="tool-control-group">
                   <h3>Text</h3>
@@ -6920,6 +6941,7 @@ const ToolsPage = () => {
 
                 <div className="tool-control-group">
                   <div className="framed-border-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {skipRectEdgeEdits ? null : (
                     <div style={{ width: '100%' }}>
                       <h3>Framed Border</h3>
                       <p className="tool-description">Add a colored frame around your screenshot</p>
@@ -6982,13 +7004,14 @@ const ToolsPage = () => {
                         </>
                       )}
                     </div>
+                    )}
                     {/* Screenshot Preview — same print-box crop as Product Preview */}
                     <div className="screenshot-preview-card">
                       <h4 className="screenshot-preview-title">
                         Screenshot Preview
                       </h4>
                       {(() => {
-                        const paintCssFrames = Boolean(frameEnabled);
+                        const paintCssFrames = Boolean(frameEnabled) && !skipRectEdgeEdits;
                         const previewSrc = imageUrl || editedImageUrl;
                         const cartProduct = selectedCartProductIndex != null
                           ? cartProducts[selectedCartProductIndex]
@@ -7003,8 +7026,8 @@ const ToolsPage = () => {
                             printAreaFit={printAreaFit}
                             imageOffsetX={imageOffsetX}
                             imageOffsetY={imageOffsetY}
-                            featherEdge={featherEdge}
-                            cornerRadius={cornerRadius}
+                            featherEdge={skipRectEdgeEdits ? 0 : featherEdge}
+                            cornerRadius={skipRectEdgeEdits ? 0 : cornerRadius}
                             frameEnabled={paintCssFrames}
                             frameColor={frameColor}
                             frameWidth={frameWidth}

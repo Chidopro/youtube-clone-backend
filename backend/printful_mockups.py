@@ -1,4 +1,4 @@
-"""Printful mockup-generator helpers for mug and bag wrap previews.
+"""Printful mockup-generator helpers for mug, bag, pet, and accessory wrap previews.
 
 POST /mockup-generator/create-task/{product_id} then poll
 GET /mockup-generator/task?task_key= until a wrap photo is ready.
@@ -38,11 +38,33 @@ CACHE_TTL_SEC = 30 * 60
 CACHE_MAX_ENTRIES = 64
 MUG_PREVIEW_BUCKET = "thumbnails"
 BAG_CATALOG_PRODUCT_IDS = frozenset({262, 274, 394})
+PET_BOWL_CATALOG_ID = 678
+PET_BANDANA_CATALOG_ID = 902
+PET_CATALOG_PRODUCT_IDS = frozenset({PET_BOWL_CATALOG_ID, PET_BANDANA_CATALOG_ID})
+GREETING_CARD_CATALOG_ID = 568
+NOTEBOOK_CATALOG_ID = 682
+APRON_CATALOG_ID = 894
+JIGSAW_CATALOG_ID = 906
+ACCESSORY_CATALOG_PRODUCT_IDS = frozenset({
+    GREETING_CARD_CATALOG_ID,
+    NOTEBOOK_CATALOG_ID,
+    APRON_CATALOG_ID,
+    JIGSAW_CATALOG_ID,
+})
 TOTE_WRAP_CATALOG_ID = 274
-# Laptop sleeve is all-over: fill the printfile (crop). Drawstring stays contain.
-# Tote 274 is one tall wrap (front + bottom + back). Covering it with a photo
-# prints the bottom of the image upside-down on the back.
-COVER_PRINT_AREA_CATALOG_IDS = frozenset({394})
+# Laptop sleeve, pets, and accessories fill the printfile (crop). Bowl
+# printfile is the 21.66" × 2.68" wrap strip. Drawstring stays contain.
+# Tote 274 is one tall wrap (front + bottom + back); covering it prints
+# the back upside-down.
+COVER_PRINT_AREA_CATALOG_IDS = frozenset({
+    394,
+    PET_BOWL_CATALOG_ID,
+    PET_BANDANA_CATALOG_ID,
+    GREETING_CARD_CATALOG_ID,
+    NOTEBOOK_CATALOG_ID,
+    APRON_CATALOG_ID,
+    JIGSAW_CATALOG_ID,
+})
 # Top of the unrolled tote printfile is the front face; bottom is the back
 # (sewn inverted). Keep a small gusset between the two panels.
 TOTE_FRONT_PANEL_FRAC = 0.48
@@ -76,6 +98,26 @@ DEFAULT_BAG_COLOR_BY_CATALOG = {
     274: "Black",
     394: "White",
 }
+DEFAULT_PET_SIZE_BY_CATALOG = {
+    PET_BOWL_CATALOG_ID: "18 oz",
+    PET_BANDANA_CATALOG_ID: "S",
+}
+DEFAULT_PET_COLOR_BY_CATALOG = {
+    PET_BOWL_CATALOG_ID: "White",
+    PET_BANDANA_CATALOG_ID: "Black",
+}
+DEFAULT_ACCESSORY_SIZE_BY_CATALOG = {
+    GREETING_CARD_CATALOG_ID: '4"x6"',
+    NOTEBOOK_CATALOG_ID: '5.5"x8.5"',
+    APRON_CATALOG_ID: "One Size",
+    JIGSAW_CATALOG_ID: "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)",
+}
+DEFAULT_ACCESSORY_COLOR_BY_CATALOG = {
+    GREETING_CARD_CATALOG_ID: "White",
+    NOTEBOOK_CATALOG_ID: "Black",
+    APRON_CATALOG_ID: "White",
+    JIGSAW_CATALOG_ID: "White",
+}
 # Used only if GET /mockup-generator/printfiles fails.
 FALLBACK_PRINT_AREA_BY_CATALOG = {
     19: (520, 202),
@@ -85,11 +127,23 @@ FALLBACK_PRINT_AREA_BY_CATALOG = {
     262: (2400, 2850),
     274: (3150, 5550),
     394: (2250, 1725),
+    PET_BOWL_CATALOG_ID: (6496, 803),
+    PET_BANDANA_CATALOG_ID: (3060, 1875),
+    GREETING_CARD_CATALOG_ID: (1842, 1240),
+    NOTEBOOK_CATALOG_ID: (900, 1500),
+    APRON_CATALOG_ID: (4350, 4783),
+    JIGSAW_CATALOG_ID: (2953, 2350),
 }
 PREFERRED_PLACEMENTS_BY_CATALOG = {
     274: ("default", "front"),
     262: ("default", "front"),
     394: ("default", "front"),
+    PET_BOWL_CATALOG_ID: ("default", "front"),
+    PET_BANDANA_CATALOG_ID: ("front", "default"),
+    GREETING_CARD_CATALOG_ID: ("front", "default"),
+    NOTEBOOK_CATALOG_ID: ("front", "default"),
+    APRON_CATALOG_ID: ("front", "default"),
+    JIGSAW_CATALOG_ID: ("front", "default"),
 }
 # Printful option names for one front + both sides. White glossy uses handle extras instead.
 MUG_ANGLE_OPTIONS_BY_CATALOG = {
@@ -101,6 +155,16 @@ BAG_ANGLE_OPTIONS_BY_CATALOG = {
     262: ("Front", "Back"),
     274: ("Front", "Back"),
     394: ("Front",),
+}
+PET_ANGLE_OPTIONS_BY_CATALOG = {
+    PET_BOWL_CATALOG_ID: ("Front", "Left", "Right"),
+    PET_BANDANA_CATALOG_ID: ("Front",),
+}
+ACCESSORY_ANGLE_OPTIONS_BY_CATALOG = {
+    GREETING_CARD_CATALOG_ID: ("Front",),
+    NOTEBOOK_CATALOG_ID: ("Front",),
+    APRON_CATALOG_ID: ("Front",),
+    JIGSAW_CATALOG_ID: ("Front",),
 }
 
 _printfile_lock = threading.Lock()
@@ -180,15 +244,93 @@ def resolve_bag_catalog_id(product_name: str) -> Optional[int]:
     return None
 
 
+def is_pet_product_name(name: str, category: str = "") -> bool:
+    n = str(name or "").strip().lower()
+    if "pet bowl" in n or "bandana collar" in n:
+        return True
+    cat = str(category or "").strip().lower()
+    return cat == "pets" and bool(n) and resolve_pet_catalog_id(n) is not None
+
+
+def resolve_pet_catalog_id(product_name: str) -> Optional[int]:
+    name = str(product_name or "").strip()
+    if not name:
+        return None
+    cid = catalog_product_id_for_product_name(name)
+    if cid in PET_CATALOG_PRODUCT_IDS:
+        return int(cid)
+    lower = name.lower()
+    for pname, pid in PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME.items():
+        if pid not in PET_CATALOG_PRODUCT_IDS:
+            continue
+        if pname.lower() in lower or lower in pname.lower():
+            return int(pid)
+    if "pet bowl" in lower:
+        return PET_BOWL_CATALOG_ID
+    if "bandana collar" in lower or ("pet" in lower and "bandana" in lower):
+        return PET_BANDANA_CATALOG_ID
+    return None
+
+
+def is_accessory_product_name(name: str, category: str = "") -> bool:
+    n = str(name or "").strip().lower()
+    if any(
+        token in n
+        for token in (
+            "greeting card",
+            "hardcover bound notebook",
+            "jigsaw puzzle",
+        )
+    ) or (n == "apron" or (n.endswith(" apron") or n.startswith("apron "))):
+        return True
+    if "apron" in n and "all-over" in n:
+        return True
+    cat = str(category or "").strip().lower()
+    return cat == "misc" and bool(n) and resolve_accessory_catalog_id(n) is not None
+
+
+def resolve_accessory_catalog_id(product_name: str) -> Optional[int]:
+    name = str(product_name or "").strip()
+    if not name:
+        return None
+    cid = catalog_product_id_for_product_name(name)
+    if cid in ACCESSORY_CATALOG_PRODUCT_IDS:
+        return int(cid)
+    lower = name.lower()
+    for pname, pid in PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME.items():
+        if pid not in ACCESSORY_CATALOG_PRODUCT_IDS:
+            continue
+        if pname.lower() in lower or lower in pname.lower():
+            return int(pid)
+    if "greeting card" in lower:
+        return GREETING_CARD_CATALOG_ID
+    if "notebook" in lower:
+        return NOTEBOOK_CATALOG_ID
+    if "apron" in lower:
+        return APRON_CATALOG_ID
+    if "jigsaw" in lower or "puzzle" in lower:
+        return JIGSAW_CATALOG_ID
+    return None
+
+
 def resolve_wrap_catalog_id(product_name: str) -> Optional[int]:
     name = str(product_name or "").strip()
     if not name:
         return None
     cid = catalog_product_id_for_product_name(name)
-    if cid in MUG_OZ_CATALOG_PRODUCT_IDS or cid in BAG_CATALOG_PRODUCT_IDS:
+    if (
+        cid in MUG_OZ_CATALOG_PRODUCT_IDS
+        or cid in BAG_CATALOG_PRODUCT_IDS
+        or cid in PET_CATALOG_PRODUCT_IDS
+        or cid in ACCESSORY_CATALOG_PRODUCT_IDS
+    ):
         return int(cid)
     if is_mug_product_name(name):
         return resolve_mug_catalog_id(name)
+    if is_pet_product_name(name):
+        return resolve_pet_catalog_id(name)
+    if is_accessory_product_name(name):
+        return resolve_accessory_catalog_id(name)
     return resolve_bag_catalog_id(name)
 
 
@@ -196,9 +338,15 @@ def _default_size(catalog_id: int, size: str) -> str:
     sz = str(size or "").strip()
     cid = int(catalog_id)
     if sz and sz.lower() not in ("n/a", "na", "default"):
-        if sz.lower() != "one size" or cid in BAG_CATALOG_PRODUCT_IDS:
+        if sz.lower() != "one size" or cid in BAG_CATALOG_PRODUCT_IDS or cid in ACCESSORY_CATALOG_PRODUCT_IDS:
             return sz
-    return DEFAULT_MUG_SIZE_BY_CATALOG.get(cid) or DEFAULT_BAG_SIZE_BY_CATALOG.get(cid, "11 oz")
+    return (
+        DEFAULT_MUG_SIZE_BY_CATALOG.get(cid)
+        or DEFAULT_BAG_SIZE_BY_CATALOG.get(cid)
+        or DEFAULT_PET_SIZE_BY_CATALOG.get(cid)
+        or DEFAULT_ACCESSORY_SIZE_BY_CATALOG.get(cid)
+        or "11 oz"
+    )
 
 
 def _default_color(catalog_id: int, color: str) -> str:
@@ -206,7 +354,13 @@ def _default_color(catalog_id: int, color: str) -> str:
     if c and c.lower() not in ("n/a", "na", "default"):
         return c
     cid = int(catalog_id)
-    return DEFAULT_MUG_COLOR_BY_CATALOG.get(cid) or DEFAULT_BAG_COLOR_BY_CATALOG.get(cid, "White")
+    return (
+        DEFAULT_MUG_COLOR_BY_CATALOG.get(cid)
+        or DEFAULT_BAG_COLOR_BY_CATALOG.get(cid)
+        or DEFAULT_PET_COLOR_BY_CATALOG.get(cid)
+        or DEFAULT_ACCESSORY_COLOR_BY_CATALOG.get(cid)
+        or "White"
+    )
 
 
 def resolve_mug_variant_id(catalog_id: int, color: str, size: str) -> Optional[int]:
@@ -517,7 +671,7 @@ def cache_key_for(catalog_id: int, variant_id: int, image: str, back_image: str 
         if back
         else "noback"
     )
-    return f"{int(catalog_id)}:{int(variant_id)}:{digest}:{back_digest}:a10"
+    return f"{int(catalog_id)}:{int(variant_id)}:{digest}:{back_digest}:a11"
 
 
 def image_pixel_size(image: str = "", blob: Optional[bytes] = None) -> Tuple[int, int]:
@@ -1026,6 +1180,18 @@ def mockup_task_payloads(catalog_id: int) -> List[Optional[Dict[str, Any]]]:
     if bag_options:
         named = {"options": list(bag_options)}
         if len(bag_options) <= 1:
+            return [named]
+        return [{}, named]
+    pet_options = PET_ANGLE_OPTIONS_BY_CATALOG.get(cid)
+    if pet_options:
+        named = {"options": list(pet_options)}
+        if len(pet_options) <= 1:
+            return [named]
+        return [{}, named]
+    accessory_options = ACCESSORY_ANGLE_OPTIONS_BY_CATALOG.get(cid)
+    if accessory_options:
+        named = {"options": list(accessory_options)}
+        if len(accessory_options) <= 1:
             return [named]
         return [{}, named]
     return [{}, {"option_groups": ["Flat"]}]

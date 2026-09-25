@@ -68,8 +68,61 @@ export const SHOP_CATEGORIES = [
 export function shopCategoryThumbUrl(previewFile) {
   const file = String(previewFile || '').trim();
   if (!file) return '';
-  if (/^https?:\/\//i.test(file)) return file;
+  if (/^https?:\/\//i.test(file) || file.startsWith('/')) return file;
   return `${shopImgBase()}/${file}`;
+}
+
+/** Deluzion Shop only — eight premade products, not the shared category hubs. */
+export const DELUZION_SHOP_PRODUCTS = [
+  { id: 'apron', name: 'Apron', catalogName: 'Apron', category: 'misc', preview: '/shop/deluzion/apron.png', color: 'White', emoji: '🧺' },
+  { id: 'mug', name: 'Mug', catalogName: 'Colored Mug', category: 'mugs', preview: '/shop/deluzion/mug.png', color: 'Black', emoji: '☕', hasSizes: true },
+  { id: 'tote', name: 'Tote Bag', catalogName: 'All Over Print Tote Pocket', category: 'bags', preview: '/shop/deluzion/tote.png', color: 'Black', emoji: '👜' },
+  { id: 'tshirt', name: 'T Shirt', catalogName: 'T-Shirt', category: 'mens', preview: '/shop/deluzion/tshirt.png', color: 'Black', emoji: '👕', hasSizes: true },
+  { id: 'tanktop', name: 'Tank Top', catalogName: "Men's Tank Top", category: 'mens', preview: '/shop/deluzion/tanktop.png', color: 'Black', emoji: '🎽', hasSizes: true },
+  { id: 'hat', name: 'Hat', catalogName: 'Five Panel Baseball Cap', category: 'hats', preview: '/shop/deluzion/hat.png', color: 'Black', emoji: '🧢' },
+  { id: 'notebook', name: 'Notebook', catalogName: 'Hardcover Bound Notebook', category: 'misc', preview: '/shop/deluzion/notebook.png', color: 'Silver', emoji: '📓' },
+  { id: 'puzzle', name: 'Puzzle', catalogName: 'Jigsaw Puzzle with Tin', category: 'misc', preview: '/shop/deluzion/puzzle.jpg', color: 'White', emoji: '🧩', hasSizes: true },
+];
+
+export function isPremadeShopfront(subdomain) {
+  return String(subdomain || '').trim().toLowerCase() === 'deluzion';
+}
+
+export function applyShopCatalogOverrides(products, overrides) {
+  const map = overrides && typeof overrides === 'object' ? overrides : {};
+  return (products || []).map((product) => {
+    const patch = map[product.id];
+    if (!patch || typeof patch !== 'object') return product;
+    const preview = String(patch.preview || '').trim();
+    const color = String(patch.color || '').trim();
+    const size = String(patch.size || '').trim();
+    return {
+      ...product,
+      preview: preview || product.preview,
+      color: color || product.color,
+      size: size || product.size || '',
+    };
+  });
+}
+
+export function deluzionShopArtworkUrl(preview) {
+  const path = shopCategoryThumbUrl(preview);
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  if (typeof window === 'undefined') return path;
+  return `${window.location.origin}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+/** Short size labels for shop tiles (puzzle piece counts stay readable). */
+export function shopperSizeLabel(size) {
+  const s = String(size || '').trim();
+  const pcs = s.match(/^(\d+)\s*pcs/i);
+  if (pcs) return `${pcs[1]} pcs`;
+  return s;
+}
+
+export function shopperChoosesSize(sizes) {
+  return (Array.isArray(sizes) ? sizes : []).filter(Boolean).length > 1;
 }
 
 /** Forced mockups when browse cache or API still point at an older file. */

@@ -17,6 +17,9 @@ import { channelFriendsJson } from '../../utils/channelFriendsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
 import { DEMO_DASHBOARD_PATH, DEMO_STOREFRONT_SUBDOMAIN, isDemoStorefront, isDemoStorefrontVisitor, isRealStorefrontUser, readStoredUser, endDemoPreviewSession } from '../../utils/demoStorefront';
+import { DELUZION_SHOP_PRODUCTS, isPremadeShopfront } from '../../utils/shopCategories';
+import { patchShopCatalog } from '../../utils/shopCatalogApi';
+import StoreShopEditor from './StoreShopEditor';
 import { collaboratorPayoutHeading } from '../../utils/favoriteListLabels';
 import '../DemoDashboard/DemoDashboard.css';
 // Force Netlify rebuild
@@ -830,6 +833,10 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     const [umbrellaOwnerName, setUmbrellaOwnerName] = useState('');
     const [savingFavoritePage, setSavingFavoritePage] = useState(false);
     const [movingFavoriteId, setMovingFavoriteId] = useState(null);
+    const [shopCatalogTick, setShopCatalogTick] = useState(0);
+    const [shopOverrides, setShopOverrides] = useState({});
+    const [assigningStoreSku, setAssigningStoreSku] = useState('');
+    const [shopUploadOpen, setShopUploadOpen] = useState(false);
     const selectedFavoriteListIdRef = useRef(null);
     const [uploadingFavorite, setUploadingFavorite] = useState(false);
     const [showFavoriteModal, setShowFavoriteModal] = useState(false);
@@ -1442,6 +1449,40 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             alert(e.message || 'Could not move item');
         } finally {
             setMovingFavoriteId(null);
+        }
+    };
+
+    const storefrontSubForShop = String(
+        userProfile?.subdomain || user?.subdomain || currentCreator?.subdomain || getSubdomain() || ''
+    ).toLowerCase();
+    const showStoreEditor = Boolean(
+        !umbrellaOnly && !demoPreview && isPremadeShopfront(storefrontSubForShop)
+    );
+
+    const handleAssignFavoriteToStore = async (favorite, sku) => {
+        if (demoPreview || !sku) return;
+        const preview = String(favorite?.image_url || favorite?.thumbnail_url || '').trim();
+        if (!preview) return;
+        setAssigningStoreSku(favorite.id);
+        try {
+            const auth = await getFavoriteAuthHeaders();
+            if (auth.error) {
+                alert(auth.error);
+                return;
+            }
+            const next = await patchShopCatalog({
+                headers: auth.headers,
+                userId: auth.userId,
+                email: auth.accountEmail,
+                sessionToken: auth.sessionToken,
+                products: { [sku]: { preview } },
+            });
+            setShopOverrides(next);
+            setShopCatalogTick((n) => n + 1);
+        } catch (e) {
+            alert(e.message || 'Could not assign image');
+        } finally {
+            setAssigningStoreSku('');
         }
     };
 
@@ -2793,6 +2834,17 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                     >
                                         Image Upload
                                     </button>
+                                    {showStoreEditor && (
+                                    <button
+                                        type="button"
+                                        id="dashboard-shop-upload-btn"
+                                        className="add-favorite-btn favorites-upload-btn favorite-pages-ctrl"
+                                        onClick={() => setShopUploadOpen(true)}
+                                        disabled={demoPreview}
+                                    >
+                                        Shop Upload
+                                    </button>
+                                    )}
                                     {favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_primary === false
                                         && !favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_collaborator_page && (
                                         <button
@@ -2969,6 +3021,32 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                     </select>
                                                 </div>
                                             )}
+                                            {showStoreEditor && (
+                                                <div className="favorite-card-page-row">
+                                                    <label htmlFor={`fav-store-${favorite.id}`}>Use on store</label>
+                                                    <select
+                                                        id={`fav-store-${favorite.id}`}
+                                                        className="favorite-card-list-select"
+                                                        value={
+                                                            Object.entries(shopOverrides).find(([, patch]) => (
+                                                                String(patch?.preview || '') === String(favorite.image_url || favorite.thumbnail_url || '')
+                                                            ))?.[0] || ''
+                                                        }
+                                                        disabled={demoPreview || assigningStoreSku === favorite.id}
+                                                        onChange={(e) => {
+                                                            const sku = e.target.value;
+                                                            if (sku) handleAssignFavoriteToStore(favorite, sku);
+                                                        }}
+                                                    >
+                                                        <option value="">Choose product</option>
+                                                        {DELUZION_SHOP_PRODUCTS.map((product) => (
+                                                            <option key={product.id} value={product.id}>
+                                                                {product.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
                                             <button
                                                 className="make-merch-btn-favorite-dashboard"
                                                 onClick={(e) => {
@@ -3014,6 +3092,19 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                 </p>
                             )}
                         </section>
+
+                        {showStoreEditor && (
+                            <StoreShopEditor
+                                getAuthHeaders={getFavoriteAuthHeaders}
+                                pageImages={favorites}
+                                disabled={demoPreview}
+                                reloadToken={shopCatalogTick}
+                                onCatalogChange={setShopOverrides}
+                                uploadOpen={shopUploadOpen}
+                                onUploadOpen={() => setShopUploadOpen(true)}
+                                onUploadClose={() => setShopUploadOpen(false)}
+                            />
+                        )}
 
                         {/* FrameSnag — storefront owners only */}
                         {!umbrellaOnly && (

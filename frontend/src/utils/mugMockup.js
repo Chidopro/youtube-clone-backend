@@ -22,6 +22,58 @@ export function isTotePocketProduct(productName) {
   return String(productName || '').toLowerCase().includes('tote pocket');
 }
 
+/** Laptop sleeve and drawstring print on a curved body; rectangular frame/feather look wrong. */
+export function isCurvedBagProduct(productName) {
+  const n = String(productName || '').toLowerCase();
+  return n.includes('laptop sleeve') || n.includes('drawstring');
+}
+
+export function stripCurvedBagRectEdits(settings) {
+  if (!settings || typeof settings !== 'object') return settings;
+  return {
+    ...settings,
+    featherEdge: 0,
+    cornerRadius: 0,
+    frameEnabled: false,
+    featherFadeEnabled: false,
+  };
+}
+
+export function isPetBowlProduct(productName) {
+  return String(productName || '').toLowerCase().includes('pet bowl');
+}
+
+export function isPetBandanaProduct(productName) {
+  const n = String(productName || '').toLowerCase();
+  return n.includes('bandana collar') || (n.includes('pet') && n.includes('bandana'));
+}
+
+export function isPetWrapProduct(productName) {
+  return isPetBowlProduct(productName) || isPetBandanaProduct(productName);
+}
+
+export function isAccessoryWrapProduct(productName) {
+  const n = String(productName || '').toLowerCase();
+  return (
+    n.includes('greeting card')
+    || (n.includes('hardcover') && n.includes('notebook'))
+    || n.includes('apron')
+    || n.includes('jigsaw puzzle')
+  );
+}
+
+export function printfulWrapKind(productName, category) {
+  if (isBagProduct(productName)) return 'bag';
+  if (isPetBowlProduct(productName)) return 'bowl';
+  if (isPetBandanaProduct(productName)) return 'bandana';
+  if (String(productName || '').toLowerCase().includes('greeting card')) return 'card';
+  if (String(productName || '').toLowerCase().includes('notebook')) return 'notebook';
+  if (String(productName || '').toLowerCase().includes('apron')) return 'apron';
+  if (String(productName || '').toLowerCase().includes('jigsaw') || String(productName || '').toLowerCase().includes('puzzle')) return 'puzzle';
+  if (isMugProduct(productName, category)) return 'mug';
+  return 'product';
+}
+
 export function merchHttpsScreenshots(merch) {
   const urls = [];
   const add = (value) => {
@@ -39,7 +91,12 @@ export function merchHttpsScreenshots(merch) {
 }
 
 export function isPrintfulWrapProduct(productName, category) {
-  return isMugProduct(productName, category) || isBagProduct(productName);
+  return (
+    isMugProduct(productName, category)
+    || isBagProduct(productName)
+    || isPetWrapProduct(productName)
+    || isAccessoryWrapProduct(productName)
+  );
 }
 
 export function screenshotUrlKey(url) {
@@ -99,7 +156,7 @@ function cacheKey(productName, color, size, image, backImage) {
   const backFinger = back
     ? `${back.length}:${back.slice(0, 24)}:${back.slice(-24)}`
     : 'noback';
-  return `${String(productName || '')}|${String(color || '')}|${String(size || '')}|${finger}|${backFinger}|a10`;
+  return `${String(productName || '')}|${String(color || '')}|${String(size || '')}|${finger}|${backFinger}|a11`;
 }
 
 function viewBucket(title, url) {

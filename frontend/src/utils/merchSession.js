@@ -622,6 +622,64 @@ export function applySelectedScreenshot(url) {
   }
 }
 
+function merchShotKey(url) {
+  return String(url || '').trim().split('?')[0];
+}
+
+function cartItemUsesShot(item, oldShot) {
+  const oldKey = merchShotKey(oldShot);
+  if (!oldKey) return false;
+  const candidates = [
+    item?.screenshot,
+    item?.selected_screenshot,
+    item?.originalScreenshot,
+    item?.displayScreenshot,
+    item?.toolSettings?.screenshot,
+    item?.toolSettings?.editedImageUrl,
+  ];
+  return candidates.some((candidate) => {
+    const key = merchShotKey(candidate);
+    return key && (key === oldKey || String(candidate || '').trim() === String(oldShot || '').trim());
+  });
+}
+
+/** Crop on Selected Image replaces the working shot, including cart copies of that same photo. */
+export function applyCroppedScreenshot(url) {
+  if (!url || typeof url !== 'string') return;
+  const prev = readPendingMerchData() || {};
+  const oldShot = prev.selected_screenshot || prev.edited_screenshot || prev.print_quality_screenshot || '';
+  clearToolsPageState();
+  const next = { ...prev, selected_screenshot: url };
+  if (prev.print_quality_screenshot && merchShotKey(prev.print_quality_screenshot) === merchShotKey(oldShot)) {
+    next.print_quality_screenshot = url;
+  }
+  delete next.edited_screenshot;
+  orientationDetectUrl = '';
+  savePendingMerchData(next);
+
+  try {
+    const cart = readCartItems();
+    if (!Array.isArray(cart) || cart.length === 0) return;
+    const nextCart = cart.map((item) => {
+      if (!cartItemUsesShot(item, oldShot) && !cartItemUsesShot(item, prev.selected_screenshot)) {
+        return item;
+      }
+      const updated = { ...item, screenshot: url, selected_screenshot: url };
+      delete updated.printfulMugMockupUrl;
+      delete updated.printfulMugMockupUrls;
+      delete updated.printfulMugMockupSource;
+      delete updated.printfulMugMockupStale;
+      if (updated.toolSettings) {
+        updated.toolSettings = { ...updated.toolSettings, editedImageUrl: '', screenshot: url };
+      }
+      return updated;
+    });
+    writeCartItems(nextCart);
+  } catch {
+    /* ignore */
+  }
+}
+
 export const CART_UPDATED_EVENT = 'screenmerch-cart-updated';
 
 /** Session-only: cart chrome stays after Make Merch until the tab closes or checkout. */

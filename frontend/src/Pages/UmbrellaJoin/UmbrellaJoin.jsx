@@ -129,8 +129,8 @@ const UmbrellaJoin = () => {
           <>
             <h1>Join {invite?.owner_name}&apos;s network</h1>
             <p className="umbrella-join-lead">
-              You&apos;ve been invited to this storefront. Use the email below to create an account
-              or sign in.
+              You&apos;ve been invited to open a co-creator page on this storefront. Use the email
+              below to create an account or sign in.
             </p>
 
             <p className="umbrella-join-email">{invite?.invited_email}</p>

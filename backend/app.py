@@ -8473,6 +8473,296 @@ def _authenticate_upload_user():
     )
 
 
+SHOP_CATALOG_SKUS = (
+    "apron",
+    "mug",
+    "tote",
+    "tshirt",
+    "tanktop",
+    "hat",
+    "notebook",
+    "puzzle",
+)
+SHOP_CATALOG_PNG_KEY = "shop_catalog"
+
+
+def _shop_catalog_path(user_id):
+    return f"{user_id}/shop/catalog.png"
+
+
+def _shop_text(value, maxlen=80):
+    text = " ".join(str(value or "").split())
+    return text[:maxlen]
+
+
+def _sanitize_shop_preview(url):
+    raw = str(url or "").strip()
+    if not raw or len(raw) > 2000 or any(ch in raw for ch in ("\n", "\r", " ")):
+        return ""
+    if raw.startswith("/shop/"):
+        return raw.split("?", 1)[0]
+    parsed = urlparse(raw)
+    if parsed.scheme != "https" or not parsed.netloc:
+        return ""
+    host = parsed.netloc.lower()
+    allowed = (
+        host.endswith("supabase.co")
+        or host.endswith("screenmerch.com")
+        or host.endswith("screenmerch.fly.dev")
+        or host.endswith("printful.com")
+        or "cdn.printful.com" in host
+    )
+    if not allowed:
+        return ""
+    return raw
+
+
+def _normalize_shop_catalog(raw):
+    src = raw if isinstance(raw, dict) else {}
+    products = src.get("products") if isinstance(src.get("products"), dict) else src
+    out = {}
+    if not isinstance(products, dict):
+        return out
+    for sku in SHOP_CATALOG_SKUS:
+        patch = products.get(sku)
+        if not isinstance(patch, dict):
+            continue
+        item = {}
+        preview = _sanitize_shop_preview(patch.get("preview"))
+        color = _shop_text(patch.get("color"))
+        size = _shop_text(patch.get("size"), 120)
+        if preview:
+            item["preview"] = preview
+        if color:
+            item["color"] = color
+        if size:
+            item["size"] = size
+        if item:
+            out[sku] = item
+    return out
+
+
+def _shop_catalog_png_bytes(catalog):
+    from io import BytesIO
+    from PIL import Image, PngImagePlugin
+
+    payload = json.dumps({"products": catalog}, separators=(",", ":"))
+    img = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    meta = PngImagePlugin.PngInfo()
+    try:
+        meta.add_itxt(SHOP_CATALOG_PNG_KEY, payload)
+    except Exception:
+        meta.add_text(SHOP_CATALOG_PNG_KEY, payload)
+    buf = BytesIO()
+    img.save(buf, format="PNG", pnginfo=meta)
+    return buf.getvalue()
+
+
+def _shop_catalog_from_png(file_bytes):
+    from io import BytesIO
+    from PIL import Image
+
+    img = Image.open(BytesIO(file_bytes))
+    raw = (img.info or {}).get(SHOP_CATALOG_PNG_KEY) or (getattr(img, "text", None) or {}).get(SHOP_CATALOG_PNG_KEY)
+    if not raw:
+        return {}
+    parsed = json.loads(raw)
+    return _normalize_shop_catalog(parsed)
+
+
+def _read_shop_catalog(user_id):
+    if not supabase_admin or not user_id:
+        return {}
+    path = _shop_catalog_path(user_id)
+    try:
+        data = supabase_admin.storage.from_(FAVORITES_BUCKET).download(path)
+        if not data:
+            return {}
+        return _shop_catalog_from_png(data)
+    except Exception as err:
+        logger.warning("read shop catalog failed for %s: %s", user_id, err)
+        return {}
+
+
+def _write_shop_catalog(user_id, catalog):
+    if not supabase_admin or not user_id:
+        return False
+    path = _shop_catalog_path(user_id)
+    payload = _shop_catalog_png_bytes(catalog)
+    try:
+        supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
+            path=path,
+            file=payload,
+            file_options={"content-type": "image/png", "upsert": "true"},
+        )
+        return True
+    except Exception as upload_err:
+        try:
+            supabase_admin.storage.from_(FAVORITES_BUCKET).remove([path])
+        except Exception:
+            pass
+        try:
+            supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
+                path=path,
+                file=payload,
+                file_options={"content-type": "image/png", "upsert": "true"},
+            )
+            return True
+        except Exception as retry_err:
+            logger.warning("write shop catalog failed for %s: %s / %s", user_id, upload_err, retry_err)
+            return False
+
+
+def _shop_catalog_owner_id(subdomain=None, user_id=None):
+    if user_id:
+        return str(user_id).strip() or None
+    sub = str(subdomain or "").strip().lower()
+    if not sub and request:
+        origin = (request.headers.get("Origin") or request.headers.get("Referer") or "").strip()
+        host = (urlparse(origin).hostname or "").lower()
+        if host.endswith(".screenmerch.com"):
+            sub = host.split(".")[0]
+            if sub in ("www", "api"):
+                sub = ""
+    if not sub or not supabase_admin:
+        return None
+    row = supabase_admin.table("users").select("id").eq("subdomain", sub).limit(1).execute()
+    if row.data:
+        return str(row.data[0]["id"])
+    return None
+
+
+@app.route("/api/shop-catalog", methods=["GET", "POST", "OPTIONS"])
+def shop_catalog():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        if request.method == "GET":
+            owner_id = None
+            header_uid = (request.headers.get("X-User-Id") or "").strip()
+            if header_uid:
+                uid, err = _authenticated_users_id()
+                if err is None:
+                    owner_id = uid
+            if not owner_id:
+                owner_id = _shop_catalog_owner_id(request.args.get("subdomain"))
+            if not owner_id:
+                return jsonify({"success": True, "products": {}}), 200
+            return jsonify({"success": True, "products": _read_shop_catalog(owner_id)}), 200
+
+        user_id, err = _authenticated_users_id()
+        if err is not None:
+            form_uid, form_err = _authenticate_upload_user()
+            if form_err is None:
+                user_id = form_uid
+            else:
+                data_pre = request.get_json(silent=True) or {}
+                tok = str(data_pre.get("session_token") or "").strip()
+                email = str(data_pre.get("email") or "").strip().lower()
+                tok_uid = _resolve_session_token(tok) if tok else None
+                if not tok_uid:
+                    return err[0], err[1]
+                if email and supabase_admin:
+                    by_email = supabase_admin.table("users").select("id").eq("email", email).limit(1).execute()
+                    if by_email.data:
+                        user_id = str(by_email.data[0]["id"])
+                    else:
+                        user_id = _resolve_users_table_user_id(tok_uid) or tok_uid
+                else:
+                    user_id = _resolve_users_table_user_id(tok_uid) or tok_uid
+        me = _cf_user_row(user_id) if supabase_admin else None
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only the storefront owner can edit Shop"}), 403
+        data = request.get_json(silent=True) or {}
+        incoming = data.get("products") if isinstance(data.get("products"), dict) else {}
+        current = _read_shop_catalog(user_id)
+        merged = dict(current)
+        for sku in SHOP_CATALOG_SKUS:
+            patch = incoming.get(sku)
+            if not isinstance(patch, dict):
+                continue
+            item = dict(merged.get(sku) or {})
+            if "preview" in patch:
+                preview = _sanitize_shop_preview(patch.get("preview"))
+                if preview:
+                    item["preview"] = preview
+                else:
+                    item.pop("preview", None)
+            if "color" in patch:
+                color = _shop_text(patch.get("color"))
+                if color:
+                    item["color"] = color
+                else:
+                    item.pop("color", None)
+            if "size" in patch:
+                size = _shop_text(patch.get("size"), 120)
+                if size:
+                    item["size"] = size
+                else:
+                    item.pop("size", None)
+            if item:
+                merged[sku] = item
+            else:
+                merged.pop(sku, None)
+        if not _write_shop_catalog(user_id, merged):
+            return jsonify({"success": False, "error": "Could not save store images"}), 500
+        return jsonify({"success": True, "products": merged}), 200
+    except Exception as e:
+        logger.exception("shop_catalog: %s", e)
+        return jsonify({"success": False, "error": "Could not load store images"}), 500
+
+
+@app.route("/api/shop-catalog/upload", methods=["POST", "OPTIONS"])
+def shop_catalog_upload():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _authenticate_upload_user()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server upload not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only the storefront owner can edit Shop"}), 403
+        sku = str(request.form.get("sku") or "").strip().lower()
+        if sku not in SHOP_CATALOG_SKUS:
+            return jsonify({"success": False, "error": "Unknown store product"}), 400
+        file = request.files.get("file")
+        if not file or file.filename == "":
+            return jsonify({"success": False, "error": "No file provided"}), 400
+        if not file.content_type or not file.content_type.startswith("image/"):
+            return jsonify({"success": False, "error": "File must be an image"}), 400
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(0)
+        if size > MAX_FAVORITE_IMAGE_SIZE:
+            return jsonify({"success": False, "error": "Image must be under 5MB"}), 400
+        ext = _safe_upload_ext(file.filename, "png")
+        if ext not in ("png", "jpg", "jpeg", "gif", "webp"):
+            ext = "png"
+        path = f"{user_id}/shop/{sku}-{int(time.time() * 1000)}.{ext}"
+        file_bytes = file.read()
+        supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
+            path=path,
+            file=file_bytes,
+            file_options={"content-type": file.content_type or "image/png", "upsert": "false"},
+        )
+        public_url = (
+            f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{path}"
+        )
+        current = _read_shop_catalog(user_id)
+        item = dict(current.get(sku) or {})
+        item["preview"] = public_url
+        current[sku] = item
+        if not _write_shop_catalog(user_id, current):
+            return jsonify({"success": False, "error": "Image uploaded but catalog could not be saved"}), 500
+        return jsonify({"success": True, "preview": public_url, "products": current}), 200
+    except Exception as e:
+        logger.exception("shop_catalog_upload: %s", e)
+        return jsonify({"success": False, "error": "Upload failed. Please try again."}), 500
+
+
 def _safe_upload_ext(name, fallback):
     ext = ""
     if name and "." in str(name):
@@ -9101,6 +9391,13 @@ def _umbrella_build_join_url(owner_id, token):
     return f"https://{sub}.screenmerch.com/join?token={quote(token)}"
 
 
+def _resend_from_header():
+    raw = (RESEND_FROM or "").strip() or "noreply@screenmerch.com"
+    if "<" in raw:
+        return raw
+    return f"ScreenMerch <{raw}>"
+
+
 def _umbrella_send_invite_email(to_email, invite_url, owner_name, owner_subdomain=None):
     """Email the collaborator the join link (automatic invite)."""
     if not RESEND_API_KEY:
@@ -9114,9 +9411,8 @@ def _umbrella_send_invite_email(to_email, invite_url, owner_name, owner_subdomai
     html = f"""
     <!DOCTYPE html>
     <html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h2>You're invited to collaborate on ScreenMerch</h2>
-      <p><strong>{owner_label}</strong> invited you to join their umbrella storefront at <strong>{store_label}</strong>.</p>
-      <p>You'll get your own Favorites page on their storefront where fans can make merch from your images.</p>
+      <h2>You&apos;ve been invited to open a co-creator page on this storefront.</h2>
+      <p><strong>{owner_label}</strong> invited you to <strong>{store_label}</strong>.</p>
       <p style="margin: 28px 0;">
         <a href="{link_escaped}" style="background: #2563eb; color: #fff; padding: 12px 22px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
           Accept invite
@@ -9128,20 +9424,33 @@ def _umbrella_send_invite_email(to_email, invite_url, owner_name, owner_subdomai
       <p style="color: #666; font-size: 14px;">— ScreenMerch</p>
     </body></html>
     """
+    text = (
+        f"You've been invited to open a co-creator page on this storefront.\n\n"
+        f"{owner_label} invited you to {store_label}.\n\n"
+        f"Accept invite:\n{invite_url}\n\n"
+        f"This link expires in 14 days. Sign in with {to_email} on the join page if you already have an account.\n"
+    )
     try:
         r = requests.post(
             "https://api.resend.com/emails",
             headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
             json={
-                "from": RESEND_FROM,
+                "from": _resend_from_header(),
                 "to": [to_email],
-                "subject": f"{owner_label} invited you to join their ScreenMerch storefront",
+                "reply_to": "support@screenmerch.com",
+                "subject": f"You've been invited to open a co-creator page on this storefront",
                 "html": html,
+                "text": text,
             },
             timeout=30,
         )
         if r.status_code in (200, 201, 202):
-            logger.info("[umbrella invite-email] sent to %s", to_email)
+            msg_id = ""
+            try:
+                msg_id = (r.json() or {}).get("id") or ""
+            except Exception:
+                msg_id = ""
+            logger.info("[umbrella invite-email] sent to %s id=%s", to_email, msg_id)
             return True
         logger.warning(
             "[umbrella invite-email] Resend failed status=%s body=%s",
@@ -10234,22 +10543,30 @@ def _umbrella_send_verification_email(to_email, verification_link, owner_name):
     html = f"""
     <!DOCTYPE html>
     <html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h2>Accept your ScreenMerch collaborator invite</h2>
-      <p>You were invited to upload favorites on {owner_label}&apos;s storefront.</p>
+      <h2>You&apos;ve been invited to open a co-creator page on this storefront.</h2>
+      <p>{owner_label} invited you to ScreenMerch.</p>
       <p><a href="{link_escaped}" style="color: #2563eb; font-weight: bold;">Set your password and accept the invite</a></p>
       <p style="font-size: 12px; word-break: break-all;"><a href="{link_escaped}">{verification_link}</a></p>
       <p style="font-size: 12px; color: #666;">This link expires in 72 hours.</p>
     </body></html>
     """
+    text = (
+        f"You've been invited to open a co-creator page on this storefront.\n\n"
+        f"{owner_label} invited you to ScreenMerch.\n\n"
+        f"Set your password and accept the invite:\n{verification_link}\n\n"
+        f"This link expires in 72 hours.\n"
+    )
     try:
         r = requests.post(
             "https://api.resend.com/emails",
             headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
             json={
-                "from": RESEND_FROM,
+                "from": _resend_from_header(),
                 "to": to_email,
-                "subject": f"Set your password — join {owner_label} on ScreenMerch",
+                "reply_to": "support@screenmerch.com",
+                "subject": f"You've been invited to open a co-creator page on this storefront",
                 "html": html,
+                "text": text,
             },
             timeout=30,
         )

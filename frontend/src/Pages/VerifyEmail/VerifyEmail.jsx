@@ -244,7 +244,7 @@ const VerifyEmail = () => {
           <h1 className="verify-email-title">Set Your Password</h1>
           <p className="verify-email-subtitle">
             {inviteToken
-              ? 'Create a password to accept your collaborator invite.'
+              ? "Create a password to open your co-creator page."
               : 'Create a password to finish setting up your ScreenMerch account.'}
           </p>
         </div>

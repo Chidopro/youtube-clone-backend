@@ -668,7 +668,7 @@ def simple_merchandise_page(product_id):
 
 @products_bp.route("/api/printful/mug-mockup", methods=["GET", "POST", "OPTIONS"])
 def printful_mug_mockup():
-    """Create or poll a Printful wrap mockup for a mug or bag."""
+    """Create or poll a Printful wrap mockup for a mug, bag, pet, or accessory product."""
     if request.method == "OPTIONS":
         return _handle_cors_preflight()
 

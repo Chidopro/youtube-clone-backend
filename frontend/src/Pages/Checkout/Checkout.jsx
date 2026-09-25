@@ -1009,6 +1009,10 @@ const Checkout = () => {
       if (shot) applySelectedScreenshot(shot);
     } catch {}
     setShowDesignModal(false);
+    if (item.premade) {
+      navigate('/shop');
+      return;
+    }
     const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
     const userEmail = localStorage.getItem('user_email') || '';
     navigate(

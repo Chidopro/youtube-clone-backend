@@ -1,0 +1,136 @@
+.playvideo-crop-toggle {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  width: auto;
+  min-width: 44px;
+  height: 36px;
+  margin: 0;
+  padding: 4px 8px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #D4D4D8;
+  border-radius: 8px;
+  color: #18181B;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.playvideo-crop-toggle:hover,
+.playvideo-crop-toggle:focus,
+.playvideo-crop-toggle:focus-visible,
+.playvideo-crop-toggle:active {
+  background: #fff;
+  border: 1px solid #D4D4D8;
+  color: #18181B;
+  outline: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+  transform: none;
+}
+
+.playvideo-crop-toggle.is-active {
+  background: rgba(24, 24, 27, 0.08);
+}
+
+.playvideo-crop-toggle-icon,
+.playvideo-crop-toggle-label {
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.playvideo-crop-toggle-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.playvideo-crop-toggle-label {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+.inline-crop-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 80;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.62);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  pointer-events: auto;
+}
+
+.inline-crop-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  touch-action: manipulation;
+  min-height: 36px;
+  min-width: 88px;
+}
+
+.inline-crop-btn--cancel {
+  background: #A1A1AA;
+}
+
+.inline-crop-btn--apply {
+  background: #18181B;
+}
+
+.inline-crop-btn:disabled {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+@media (max-width: 768px) {
+  .playvideo-crop-toggle {
+    min-width: 40px;
+    height: 34px;
+    padding: 3px 7px 4px;
+  }
+
+  .playvideo-crop-toggle-icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .inline-crop-controls {
+    bottom: 8px;
+    gap: 8px;
+    padding: 6px 8px;
+  }
+
+  .inline-crop-btn {
+    min-width: 72px;
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}

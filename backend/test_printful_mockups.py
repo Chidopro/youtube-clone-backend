@@ -12,6 +12,8 @@ from printful_mockups import (
     image_pixel_size,
     is_bag_product_name,
     is_mug_product_name,
+    is_accessory_product_name,
+    is_pet_product_name,
     is_public_https_url,
     mockup_task_payloads,
     mug_preview_object_path,
@@ -19,6 +21,8 @@ from printful_mockups import (
     public_image_url_for_printful,
     resolve_bag_catalog_id,
     resolve_mug_catalog_id,
+    resolve_accessory_catalog_id,
+    resolve_pet_catalog_id,
     resolve_wrap_catalog_id,
     tote_front_artwork_position,
     tote_wrap_panels,
@@ -46,6 +50,26 @@ class TestMugMockupHelpers(unittest.TestCase):
         self.assertIsNone(resolve_bag_catalog_id("T-Shirt"))
         self.assertEqual(resolve_wrap_catalog_id("Laptop Sleeve"), 394)
         self.assertEqual(resolve_wrap_catalog_id("White Glossy Mug"), 19)
+        self.assertEqual(resolve_pet_catalog_id("Pet Bowl All-Over Print"), 678)
+        self.assertEqual(resolve_pet_catalog_id("Pet Bandana Collar"), 902)
+        self.assertEqual(resolve_wrap_catalog_id("Pet Bowl All-Over Print"), 678)
+        self.assertEqual(resolve_wrap_catalog_id("Pet Bandana Collar"), 902)
+        self.assertTrue(is_pet_product_name("Pet Bowl All-Over Print", "pets"))
+        self.assertTrue(is_pet_product_name("Pet Bandana Collar", "mens"))
+        self.assertFalse(is_pet_product_name("T-Shirt", "pets"))
+        self.assertEqual(resolve_accessory_catalog_id("Greeting Card"), 568)
+        self.assertEqual(resolve_accessory_catalog_id("Hardcover Bound Notebook"), 682)
+        self.assertEqual(resolve_accessory_catalog_id("Apron"), 894)
+        self.assertEqual(resolve_accessory_catalog_id("Jigsaw Puzzle with Tin"), 906)
+        self.assertEqual(resolve_wrap_catalog_id("Greeting Card"), 568)
+        self.assertEqual(resolve_wrap_catalog_id("Hardcover Bound Notebook"), 682)
+        self.assertEqual(resolve_wrap_catalog_id("Apron"), 894)
+        self.assertEqual(resolve_wrap_catalog_id("Jigsaw Puzzle with Tin"), 906)
+        self.assertTrue(is_accessory_product_name("Greeting Card", "misc"))
+        self.assertTrue(is_accessory_product_name("Hardcover Bound Notebook", "misc"))
+        self.assertTrue(is_accessory_product_name("Apron", "hats"))
+        self.assertTrue(is_accessory_product_name("Jigsaw Puzzle with Tin", "misc"))
+        self.assertFalse(is_accessory_product_name("T-Shirt", "misc"))
         self.assertTrue(is_bag_product_name("Laptop Sleeve", "bags"))
         self.assertFalse(is_bag_product_name("All-Over Print Utility Bag", "bags"))
         self.assertFalse(is_bag_product_name("Canvas Tote", "bags"))
@@ -61,6 +85,30 @@ class TestMugMockupHelpers(unittest.TestCase):
         )
         self.assertEqual(
             mockup_task_payloads(394),
+            [{"options": ["Front"]}],
+        )
+        self.assertEqual(
+            mockup_task_payloads(678),
+            [{}, {"options": ["Front", "Left", "Right"]}],
+        )
+        self.assertEqual(
+            mockup_task_payloads(902),
+            [{"options": ["Front"]}],
+        )
+        self.assertEqual(
+            mockup_task_payloads(568),
+            [{"options": ["Front"]}],
+        )
+        self.assertEqual(
+            mockup_task_payloads(682),
+            [{"options": ["Front"]}],
+        )
+        self.assertEqual(
+            mockup_task_payloads(894),
+            [{"options": ["Front"]}],
+        )
+        self.assertEqual(
+            mockup_task_payloads(906),
             [{"options": ["Front"]}],
         )
         self.assertEqual(
@@ -199,6 +247,28 @@ class TestMugMockupHelpers(unittest.TestCase):
         contain = artwork_position_for_catalog(262, 2400, 2850, 3000, 4000)
         self.assertEqual(cover["width"], 2250)
         self.assertLess(contain["width"], 2400)
+        bandana = artwork_position_for_catalog(902, 3060, 1875, 3000, 4000)
+        bowl = artwork_position_for_catalog(678, 6496, 803, 3000, 4000)
+        self.assertEqual(bandana["width"], 3060)
+        self.assertEqual(bowl["width"], 6496)
+        self.assertGreater(bowl["height"], 803)
+        self.assertLess(bowl["top"], 0)
+        notebook = artwork_position_for_catalog(682, 900, 1500, 3000, 4000)
+        apron = artwork_position_for_catalog(894, 4350, 4783, 3000, 4000)
+        card = artwork_position_for_catalog(568, 1842, 1240, 3000, 4000)
+        puzzle = artwork_position_for_catalog(906, 2953, 2350, 3000, 4000)
+        self.assertEqual(notebook["height"], 1500)
+        self.assertGreater(notebook["width"], 900)
+        self.assertLess(notebook["left"], 0)
+        self.assertEqual(apron["width"], 4350)
+        self.assertGreater(apron["height"], 4783)
+        self.assertLess(apron["top"], 0)
+        self.assertEqual(card["width"], 1842)
+        self.assertGreater(card["height"], 1240)
+        self.assertLess(card["top"], 0)
+        self.assertEqual(puzzle["width"], 2953)
+        self.assertGreater(puzzle["height"], 2350)
+        self.assertLess(puzzle["top"], 0)
 
     def test_contain_portrait_keeps_aspect_in_wide_wrap(self):
         pos = contain_in_print_area(520, 202, 3000, 4000)
