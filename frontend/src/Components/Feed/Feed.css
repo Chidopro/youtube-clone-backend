@@ -55,6 +55,7 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
+  object-position: var(--thumb-face-position, center 20%);
   border-radius: 5px 5px 0 0;
 }
 
@@ -127,6 +128,11 @@
   flex: 0 0 auto;
   width: 100%;
   aspect-ratio: 16 / 9;
+}
+
+.hub-card > img {
+  object-fit: cover;
+  object-position: var(--thumb-face-position, center 20%);
 }
 
 .hub-shop-thumb {

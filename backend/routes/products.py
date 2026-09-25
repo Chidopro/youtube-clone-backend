@@ -666,6 +666,75 @@ def simple_merchandise_page(product_id):
         return "Server error", 500
 
 
+@products_bp.route("/api/printful/mug-mockup", methods=["GET", "POST", "OPTIONS"])
+def printful_mug_mockup():
+    """Create or poll a Printful wrap mockup for a mug or bag."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+
+    from printful_mockups import generate_mug_mockup, poll_existing_mug_task
+
+    if request.method == "GET":
+        task_key = (request.args.get("task_key") or "").strip()
+        if not task_key:
+            response = jsonify(success=False, error="task_key is required")
+            return _allow_origin(response), 400
+        try:
+            result = poll_existing_mug_task(task_key)
+        except Exception as e:
+            logger.warning("Mug mockup poll failed: %s", e)
+            response = jsonify(success=False, error="Could not poll mug mockup")
+            return _allow_origin(response), 500
+        status = 202 if result.get("pending") else (200 if result.get("success") else 502)
+        return _allow_origin(jsonify(result)), status
+
+    data = request.get_json(silent=True) or {}
+    product_name = (data.get("product_name") or data.get("productName") or "").strip()
+    color = data.get("color") or ""
+    size = data.get("size") or ""
+    image = data.get("image") or data.get("image_url") or ""
+    back_image = (
+        data.get("back_image")
+        or data.get("backImage")
+        or data.get("back_image_url")
+        or ""
+    )
+    try:
+        image_width = int(data.get("image_width") or data.get("imageWidth") or 0) or None
+    except (TypeError, ValueError):
+        image_width = None
+    try:
+        image_height = int(data.get("image_height") or data.get("imageHeight") or 0) or None
+    except (TypeError, ValueError):
+        image_height = None
+    if not product_name:
+        response = jsonify(success=False, error="product_name is required")
+        return _allow_origin(response), 400
+    if not image:
+        response = jsonify(success=False, error="image is required")
+        return _allow_origin(response), 400
+    try:
+        result = generate_mug_mockup(
+            product_name,
+            color,
+            size,
+            image,
+            image_width=image_width,
+            image_height=image_height,
+            back_image=str(back_image or "").strip(),
+            wait=True,
+        )
+    except Exception as e:
+        logger.warning("Mug mockup failed: %s", e)
+        response = jsonify(success=False, error="Could not generate mug mockup")
+        return _allow_origin(response), 500
+    if result.get("pending"):
+        return _allow_origin(jsonify(result)), 202
+    if not result.get("success"):
+        return _allow_origin(jsonify(result)), 502
+    return _allow_origin(jsonify(result)), 200
+
+
 @products_bp.route("/checkout/<product_id>")
 def checkout_page(product_id):
     """Checkout page"""

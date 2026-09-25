@@ -679,6 +679,7 @@ tr:hover {
   width: 60px;
   height: 40px;
   object-fit: cover;
+  object-position: var(--thumb-face-position, center 20%);
   border-radius: 4px;
 }
 

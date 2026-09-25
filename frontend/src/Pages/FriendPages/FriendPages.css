@@ -190,6 +190,7 @@
   height: 100%;
   min-height: 320px;
   object-fit: cover;
+  object-position: var(--thumb-face-position, center 20%);
   display: block;
   background: #f0f2f5;
 }

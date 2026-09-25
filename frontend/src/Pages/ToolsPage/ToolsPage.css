@@ -305,6 +305,97 @@ body.tools-page-active .site-footer {
   width: 100%;
   max-width: var(--preview-max-side);
   margin: 0 auto;
+  position: relative;
+}
+
+.mug-product-preview-image--wrap {
+  --preview-max-side: 280px;
+}
+
+.mug-wrap-mockup-clip {
+  width: 100%;
+  max-width: var(--preview-max-side);
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.mug-wrap-mockup {
+  display: block;
+  width: 100%;
+  max-width: var(--preview-max-side);
+  max-height: 280px;
+  height: auto;
+  margin: 0 auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.mug-wrap-angles {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mug-wrap-angle {
+  width: 52px;
+  height: auto;
+  padding: 0;
+  border: 2px solid #d0d7de;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  cursor: pointer;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.mug-wrap-angle img {
+  display: block;
+  width: 100%;
+  height: 52px;
+  object-fit: cover;
+}
+
+.mug-wrap-angle-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 3px 2px 4px;
+  color: #333;
+  text-align: center;
+}
+
+.mug-wrap-angle.is-selected {
+  border-color: #111;
+  box-shadow: 0 0 0 1px #111;
+}
+
+.tote-wrap-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #666;
+}
+
+.mug-wrap-loading {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 6px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .mug-product-preview-image .screenshot-preview-stage {
@@ -336,6 +427,29 @@ body.tools-page-active .site-footer {
 .product-preview-unavailable-note-text {
   font-size: 12px;
   line-height: 1.35;
+}
+
+.product-preview-unavailable-note .mug-wrap-now-btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #007bff;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.product-preview-unavailable-note .product-preview-unavailable-note-text + .mug-wrap-now-btn {
+  margin-top: 8px;
+}
+
+.product-preview-unavailable-note .mug-wrap-now-btn:hover {
+  background: #0069d9;
 }
 
 .edit-tools-under-preview {
@@ -1379,6 +1493,45 @@ body.tools-page-active .site-footer {
   .mug-product-preview-image {
     --preview-max-side: 180px;
   }
+
+  .mug-product-preview-image--wrap {
+    overflow: visible;
+  }
+
+  .mug-wrap-mockup {
+    transform: scale(1.25);
+  }
+
+  .mug-product-preview-image--wrap.mug-product-preview-image--mug {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    max-width: none;
+  }
+
+  .mug-product-preview-image--mug .mug-wrap-mockup-clip {
+    flex: 0 0 var(--preview-max-side);
+    width: var(--preview-max-side);
+    margin: 0;
+  }
+
+  .mug-product-preview-image--mug .mug-wrap-angles {
+    flex-direction: column;
+    justify-content: center;
+    margin-top: 0;
+    gap: 6px;
+  }
+
+  .mug-product-preview-image--mug .mug-wrap-angle {
+    width: 44px;
+    height: auto;
+  }
+
+  .mug-product-preview-image--mug .mug-wrap-angle img {
+    height: 44px;
+  }
   
   .tools-page-header {
     display: block;
@@ -1786,6 +1939,45 @@ body.tools-page-active .site-footer {
 
   body.tools-page-active .mug-product-preview-image {
     --preview-max-side: 180px;
+  }
+
+  body.tools-page-active .mug-product-preview-image--wrap {
+    overflow: visible;
+  }
+
+  body.tools-page-active .mug-wrap-mockup {
+    transform: scale(1.25);
+  }
+
+  body.tools-page-active .mug-product-preview-image--wrap.mug-product-preview-image--mug {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    max-width: none;
+  }
+
+  body.tools-page-active .mug-product-preview-image--mug .mug-wrap-mockup-clip {
+    flex: 0 0 var(--preview-max-side);
+    width: var(--preview-max-side);
+    margin: 0;
+  }
+
+  body.tools-page-active .mug-product-preview-image--mug .mug-wrap-angles {
+    flex-direction: column;
+    justify-content: center;
+    margin-top: 0;
+    gap: 6px;
+  }
+
+  body.tools-page-active .mug-product-preview-image--mug .mug-wrap-angle {
+    width: 44px;
+    height: auto;
+  }
+
+  body.tools-page-active .mug-product-preview-image--mug .mug-wrap-angle img {
+    height: 44px;
   }
 
   /* Same stage as desktop: 200px cap, height:auto. Do not squash or

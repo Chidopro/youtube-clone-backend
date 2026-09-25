@@ -5,6 +5,7 @@ import { publicStorageCardUrl, fetchPublicFavoriteLists } from '../../utils/favo
 import { getSubdomain } from '../../utils/subdomainService'
 import { prefetchVideoPlayback } from '../../utils/videoOptimize'
 import { hashIsNearSet, hashesTooClose, loadAverageHash } from '../../utils/imageVisualHash'
+import { isDemoStorefront } from '../../utils/demoStorefront'
 
 export const HUB_ROTATE_MS = 12000;
 
@@ -295,7 +296,10 @@ const Feed = ({
   );
   const shopUrls = useMemo(() => {
     const pageUrls = (Array.isArray(shopPreview) ? shopPreview : []).map((u) => publicStorageCardUrl(u, 800));
-    const videoUrls = (videos || []).map((v) => v.thumbnail || v.thumbnail_url).filter(Boolean);
+    // Real storefronts shuffle stills only. Clip thumbs mix in strangers from View Clip.
+    const videoUrls = isDemoStorefront()
+      ? (videos || []).map((v) => v.thumbnail || v.thumbnail_url).filter(Boolean)
+      : [];
     return uniqueByIdentity([...pageUrls, ...favoriteUrls, ...friendUrls, ...videoUrls]);
   }, [shopPreview, videos, favoriteUrls, friendUrls]);
 

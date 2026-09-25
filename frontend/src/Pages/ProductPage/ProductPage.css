@@ -377,7 +377,7 @@
     height: 100%;
     aspect-ratio: auto;
     object-fit: cover;
-    object-position: center center;
+    object-position: var(--thumb-face-position, center 20%);
     background: #f7f7f8;
     pointer-events: none;
   }
@@ -535,7 +535,7 @@
     max-height: none;
     aspect-ratio: auto;
     object-fit: cover;
-    object-position: center center;
+    object-position: var(--thumb-face-position, center 20%);
   }
 
   .product-page.product-page--choose:not(.product-page--shop-catalog) .screenshots-section--landscape:not(.screenshots-section--with-edits) .screenshot-item,
@@ -564,7 +564,7 @@
     max-height: none;
     aspect-ratio: auto;
     object-fit: cover;
-    object-position: center center;
+    object-position: var(--thumb-face-position, center 20%);
   }
 
   .product-page--choose .screenshots-section--with-edits .screenshot-item--original > div:not(.selected-image-actions) {
@@ -1108,7 +1108,7 @@
   height: 100%;
   aspect-ratio: auto;
   object-fit: cover;
-  object-position: center center;
+  object-position: var(--thumb-face-position, center 20%);
 }
 
 .screenshots-section--single .screenshot-image {
@@ -1117,7 +1117,7 @@
   height: 100%;
   max-height: none;
   object-fit: cover;
-  object-position: center center;
+  object-position: var(--thumb-face-position, center 20%);
 }
 
 .screenshot-label {
@@ -1494,7 +1494,7 @@
     aspect-ratio: auto;
     max-height: none;
     object-fit: cover;
-    object-position: center center;
+    object-position: var(--thumb-face-position, center 20%);
   }
 
   .screenshot-image {
@@ -1511,6 +1511,7 @@
     height: 100%;
     max-height: none;
     object-fit: cover;
+    object-position: var(--thumb-face-position, center 20%);
   }
 
   .screenshot-label {
@@ -2343,6 +2344,7 @@
   width: 90px;
   height: 72px;
   object-fit: cover;
+  object-position: var(--thumb-face-position, center 20%);
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
@@ -2593,6 +2595,18 @@
   .product-image {
     height: 150px;
     margin-bottom: 20px;
+  }
+
+  .product-page--mugs .product-image {
+    overflow: hidden;
+  }
+
+  .product-page--mugs .product-image img {
+    object-fit: contain;
+    width: auto;
+    height: 100%;
+    max-width: none;
+    transform: scale(1.25);
   }
   
   .info-table-header,

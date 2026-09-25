@@ -11,6 +11,7 @@ import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlain
 import { roundedRectFeatherFactor } from '../../utils/bakeBrowsePreset';
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
+import { isBagProduct, isMugProduct, isPrintfulWrapProduct, isTotePocketProduct, mugMockupDebounceMs, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -3027,11 +3028,6 @@ const isHatProduct = (productName) => {
 };
 
 const NO_MOCKUP_PREVIEW_CATEGORIES = {
-  mugs: {
-    products: ['White Glossy Mug', 'Travel Mug', 'Enamel Mug', 'Colored Mug'],
-    message:
-      'Mug preview is not available due to the curved surface, but you can still use the editing tools to customize your screenshot.',
-  },
   bags: {
     products: [
       'Laptop Sleeve',
@@ -3275,6 +3271,54 @@ const ToolsPage = () => {
     initialEditorSlot.imageOrientation === 'landscape' || initialEditorSlot.imageOrientation === 'portrait'
   );
   const [slotSwitchTick, setSlotSwitchTick] = useState(0);
+  const [mugMockupUrl, setMugMockupUrl] = useState('');
+  const [mugMockupUrls, setMugMockupUrls] = useState([]);
+  const [mugMockupLoading, setMugMockupLoading] = useState(false);
+  const [mugMockupError, setMugMockupError] = useState('');
+  const [mugWrapRequested, setMugWrapRequested] = useState(false);
+  const mugWrappedEditKeyRef = useRef('');
+  const persistMugMockupUrl = useCallback((cartIndex, url, urls, sourceUrl, printfileUrl) => {
+    const wrap = String(url || '').trim();
+    const views = (Array.isArray(urls) ? urls : [])
+      .map((row) => ({
+        url: String(row?.url || '').trim(),
+        title: String(row?.title || 'View').trim() || 'View',
+      }))
+      .filter((row) => row.url);
+    if (!wrap || !Number.isInteger(cartIndex) || cartIndex < 0) return;
+    try {
+      const items = readCartItems();
+      if (!items[cartIndex]) return;
+      const source = String(sourceUrl || items[cartIndex].printfulMugMockupSource || '').trim();
+      const sameUrl = items[cartIndex].printfulMugMockupUrl === wrap;
+      const sameViews = JSON.stringify(items[cartIndex].printfulMugMockupUrls || []) === JSON.stringify(views);
+      const sameSource = String(items[cartIndex].printfulMugMockupSource || '') === source;
+      const sameFresh = !items[cartIndex].printfulMugMockupStale;
+      const printfile = String(printfileUrl || '').trim();
+      const samePrintfile = String(items[cartIndex].printfulTotePrintfileUrl || '') === printfile;
+      if (sameUrl && sameViews && sameSource && sameFresh && samePrintfile) return;
+      const next = items.map((item, index) => {
+        if (index !== cartIndex) return item;
+        const updated = {
+          ...item,
+          printfulMugMockupUrl: wrap,
+          printfulMugMockupUrls: views,
+        };
+        delete updated.printfulMugMockupStale;
+        if (source) updated.printfulMugMockupSource = source;
+        const printfile = String(printfileUrl || '').trim();
+        if (printfile) updated.printfulTotePrintfileUrl = printfile;
+        return updated;
+      });
+      writeCartItems(next);
+    } catch (_) {}
+    try {
+      const data = { ...readPendingMerchData() };
+      data.printful_mug_mockup_url = wrap;
+      data.printful_mug_mockup_urls = views;
+      savePendingMerchData(data);
+    } catch (_) {}
+  }, []);
   const [printQualityImageUrl, setPrintQualityImageUrl] = useState(''); // 300 DPI image from API (parked for download)
   const [printQualityMeta, setPrintQualityMeta] = useState(null); // { dimensions: { width, height, dpi }, file_size, format, quality }
   const [generating300Dpi, setGenerating300Dpi] = useState(false);
@@ -4837,6 +4881,7 @@ const ToolsPage = () => {
       cornerRadius ||
       frameEnabled ||
       blackAndWhite ||
+      featherFadeEnabled ||
       imageOpacityHasEdit(imageOpacity) ||
       (textEnabled && String(textContent || '').trim())
     );
@@ -4974,6 +5019,7 @@ const ToolsPage = () => {
         cornerRadius ||
         frameEnabled ||
         blackAndWhite ||
+        featherFadeEnabled ||
         imageOpacityHasEdit(imageOpacity) ||
         (textEnabled && textContent && String(textContent).trim())
       );
@@ -5149,6 +5195,161 @@ const ToolsPage = () => {
       window.clearTimeout(timer);
     };
   }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height]);
+
+  const mugPreviewProduct = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
+  const mugPreviewName = mugPreviewProduct?.name || selectedProductName || '';
+  const mugPreviewColor = mugPreviewProduct?.color || '';
+  const mugPreviewSize = mugPreviewProduct?.size || '';
+  const mugPreviewSlotKey = `${selectedCartProductIndex}|${mugPreviewName}|${mugPreviewColor}|${mugPreviewSize}`;
+
+  useEffect(() => {
+    const product = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
+    const uniqueViews = uniqueMugWrapViews(product?.printfulMugMockupUrls);
+    const storedWrap = String(product?.printfulMugMockupUrl || '').trim();
+    const wrapStillShown = uniqueViews.some((view) => view.url === storedWrap);
+    const mugSlot = isMugProduct(product?.name || selectedProductName, product?.category);
+    if (mugSlot) {
+      setMugMockupUrl('');
+      setMugMockupUrls([]);
+      setMugWrapRequested(false);
+      mugWrappedEditKeyRef.current = '';
+    } else {
+      setMugMockupUrl(wrapStillShown ? storedWrap : (uniqueViews[0]?.url || storedWrap));
+      setMugMockupUrls(uniqueViews);
+    }
+    setMugMockupError('');
+  }, [mugPreviewSlotKey, selectedCartProductIndex, selectedProductName]);
+
+  useEffect(() => {
+    const product = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
+    if (!product || !isPrintfulWrapProduct(product.name || selectedProductName, product.category)) {
+      setMugMockupLoading(false);
+      return undefined;
+    }
+    const wrapIsBag = isBagProduct(product.name || selectedProductName);
+    const wrapSrc = String(imageUrl || '');
+    const wrapEditKey = [
+      `${wrapSrc.length}:${wrapSrc.slice(0, 48)}:${wrapSrc.slice(-24)}`,
+      Number(featherEdge) || 0,
+      Number(cornerRadius) || 0,
+      frameEnabled ? 1 : 0,
+      String(frameColor || ''),
+      Number(frameWidth) || 0,
+      doubleFrame ? 1 : 0,
+      String(innerFrameColor || ''),
+      blackAndWhite ? 1 : 0,
+      Number(bwIntensity) || 0,
+      featherFadeEnabled ? 1 : 0,
+      String(imageOpacity ?? ''),
+      textEnabled ? 1 : 0,
+      String(textContent || ''),
+    ].join('|');
+    if (!wrapIsBag && !mugWrapRequested) {
+      if (mugWrappedEditKeyRef.current && mugWrappedEditKeyRef.current !== wrapEditKey) {
+        setMugMockupUrl('');
+        setMugMockupUrls([]);
+        mugWrappedEditKeyRef.current = '';
+      }
+      setMugMockupLoading(false);
+      return undefined;
+    }
+    const hasPixelEdits = Boolean(
+      featherEdge ||
+      cornerRadius ||
+      frameEnabled ||
+      blackAndWhite ||
+      featherFadeEnabled ||
+      imageOpacityHasEdit(imageOpacity) ||
+      (textEnabled && String(textContent || '').trim())
+    );
+    const httpsSource = /^https?:\/\//i.test(String(imageUrl || '')) ? String(imageUrl).trim() : '';
+    if (hasPixelEdits && imageUrl && !editedImageUrl) {
+      setMugMockupLoading(true);
+      return undefined;
+    }
+    const artwork = (!hasPixelEdits && httpsSource)
+      ? httpsSource
+      : String(editedImageUrl || imageUrl || '').trim();
+    if (!artwork) {
+      setMugMockupLoading(false);
+      if (!wrapIsBag) setMugWrapRequested(false);
+      return undefined;
+    }
+    const usingBaked = Boolean(hasPixelEdits && editedImageUrl);
+    const imageWidth = usingBaked
+      ? (bakedImageSize.width || currentImageDimensions.width)
+      : (currentImageDimensions.width || bakedImageSize.width);
+    const imageHeight = usingBaked
+      ? (bakedImageSize.height || currentImageDimensions.height)
+      : (currentImageDimensions.height || bakedImageSize.height);
+    if (!(Number(imageWidth) > 0 && Number(imageHeight) > 0)) {
+      setMugMockupLoading(true);
+      return undefined;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setMugMockupLoading(true);
+      setMugMockupError('');
+      try {
+        const wrap = await requestMugWrapMockup({
+          productName: product.name || selectedProductName,
+          color: product.color,
+          size: product.size,
+          image: artwork,
+          imageWidth,
+          imageHeight,
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted || !wrap?.mockupUrl) return;
+        mugWrappedEditKeyRef.current = wrapEditKey;
+        setMugMockupUrl(wrap.mockupUrl);
+        setMugMockupUrls(wrap.mockupUrls || []);
+        if (!wrapIsBag) setMugWrapRequested(false);
+        persistMugMockupUrl(
+          product.originalCartIndex,
+          wrap.mockupUrl,
+          wrap.mockupUrls,
+          httpsSource || (/^https?:\/\//i.test(String(imageUrl || '')) ? String(imageUrl).trim() : ''),
+          wrap.printfileUrl,
+        );
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        if (!wrapIsBag) setMugWrapRequested(false);
+        setMugMockupError('Wrap preview is taking a moment. Your screenshot is still saved.');
+      } finally {
+        if (!controller.signal.aborted) setMugMockupLoading(false);
+      }
+    }, wrapIsBag ? mugMockupDebounceMs() : 0);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [
+    editedImageUrl,
+    imageUrl,
+    mugPreviewSlotKey,
+    selectedCartProductIndex,
+    selectedProductName,
+    persistMugMockupUrl,
+    mugWrapRequested,
+    featherEdge,
+    cornerRadius,
+    frameEnabled,
+    frameColor,
+    frameWidth,
+    doubleFrame,
+    innerFrameColor,
+    blackAndWhite,
+    bwIntensity,
+    featherFadeEnabled,
+    imageOpacity,
+    textEnabled,
+    textContent,
+    currentImageDimensions.width,
+    currentImageDimensions.height,
+    bakedImageSize.width,
+    bakedImageSize.height,
+  ]);
 
   const rotateScreenshotClockwise = () => {
     const src = (imageUrl || '').trim();
@@ -5518,6 +5719,28 @@ const ToolsPage = () => {
             imageOrientation,
             toolSettings: nextToolSettings,
           };
+          if (mugMockupUrl) next.printfulMugMockupUrl = mugMockupUrl;
+          if (mugMockupUrls.length) next.printfulMugMockupUrls = mugMockupUrls;
+          if (mugMockupUrl) {
+            delete next.printfulMugMockupStale;
+            const wrapSource = String(
+              item.originalScreenshot
+              || (/^https?:\/\//i.test(String(imageUrl || '')) ? imageUrl : '')
+              || item.printfulMugMockupSource
+              || ''
+            ).trim();
+            if (wrapSource) next.printfulMugMockupSource = wrapSource;
+          }
+          if (mugMockupUrl) {
+            delete next.printfulMugMockupStale;
+            const wrapSource = String(
+              item.originalScreenshot
+              || (/^https?:\/\//i.test(String(imageUrl || '')) ? imageUrl : '')
+              || item.printfulMugMockupSource
+              || ''
+            ).trim();
+            if (wrapSource) next.printfulMugMockupSource = wrapSource;
+          }
           if (bakedShot) {
             next.screenshot = bakedShot;
             next.selected_screenshot = bakedShot;
@@ -5546,6 +5769,8 @@ const ToolsPage = () => {
             edited: true,
             tools_acknowledged: true,
             toolSettings: nextToolSettings,
+            ...(mugMockupUrl ? { printfulMugMockupUrl: mugMockupUrl } : {}),
+            ...(mugMockupUrls.length ? { printfulMugMockupUrls: mugMockupUrls } : {}),
           }
         ];
         console.log(`💾 Added tools product to cart: ${selectedProduct.name}`);
@@ -5865,8 +6090,136 @@ const ToolsPage = () => {
                       if (toolsUnavailable) {
                         return <ToolsUnavailableNotice info={toolsUnavailable} />;
                       }
+
+                      if (isPrintfulWrapProduct(product.name || productName, product.category)) {
+                        const wrapKind = isBagProduct(product.name || productName) ? 'bag' : 'mug';
+                        const wrapNote = mugMockupLoading
+                          ? `Wrapping your design on the ${wrapKind}…`
+                          : mugMockupError;
+                        const showMugWrapNow = wrapKind === 'mug' && !mugMockupLoading && !mugMockupUrl;
+                        const mugViews = uniqueMugWrapViews(mugMockupUrls);
+                        return (
+                          <div>
+                            <div className={`mug-product-preview-image${mugMockupUrl ? ' mug-product-preview-image--wrap' : ''}${wrapKind === 'mug' ? ' mug-product-preview-image--mug' : ''}`}>
+                              {mugMockupUrl ? (
+                                <>
+                                  <div className="mug-wrap-mockup-clip">
+                                    <img
+                                      className="mug-wrap-mockup"
+                                      src={mugMockupUrl}
+                                      alt={`${productName} wrap preview`}
+                                      decoding="async"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  </div>
+                                  {mugViews.length > 1 ? (
+                                    <div className="mug-wrap-angles" role="tablist" aria-label={`${wrapKind === 'bag' ? 'Bag' : 'Mug'} preview angles`}>
+                                      {mugViews.map((view) => (
+                                        <button
+                                          key={view.url}
+                                          type="button"
+                                          className={`mug-wrap-angle${view.url === mugMockupUrl ? ' is-selected' : ''}`}
+                                          aria-label={view.title || `${wrapKind === 'bag' ? 'Bag' : 'Mug'} angle`}
+                                          aria-pressed={view.url === mugMockupUrl}
+                                          onClick={() => {
+                                            setMugMockupUrl(view.url);
+                                            persistMugMockupUrl(product.originalCartIndex, view.url, mugViews);
+                                          }}
+                                        >
+                                          <img
+                                            src={view.url}
+                                            alt=""
+                                            decoding="async"
+                                            referrerPolicy="no-referrer"
+                                          />
+                                          {view.title ? (
+                                            <span className="mug-wrap-angle-label">{view.title}</span>
+                                          ) : null}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </>
+                              ) : currentImage ? (
+                                <ScreenshotPreviewPane
+                                  src={overlayScreenshot}
+                                  productName={productName}
+                                  productSize={product.size}
+                                  imageOrientation={imageOrientation}
+                                  printAreaFit={printAreaFit}
+                                  imageOffsetX={imageOffsetX}
+                                  imageOffsetY={imageOffsetY}
+                                  featherEdge={featherEdge}
+                                  cornerRadius={cornerRadius}
+                                  frameEnabled={paintCssFrames}
+                                  frameColor={frameColor}
+                                  frameWidth={frameWidth}
+                                  doubleFrame={doubleFrame}
+                                  innerFrameColor={innerFrameColor}
+                                  blackAndWhite={blackAndWhite}
+                                  bwIntensity={bwIntensity}
+                                  imageOpacity={imageOpacity}
+                                  featherFadeEnabled={featherFadeEnabled}
+                                  featherFadeColor={featherFadeColor}
+                                  sourceWidth={currentImageDimensions.width}
+                                  sourceHeight={currentImageDimensions.height}
+                                  overlayBoxWidth={overlayBoxSize.width}
+                                  overlayBoxHeight={overlayBoxSize.height}
+                                  screenshotScale={screenshotScale}
+                                  printBoxFillColor={printBoxFillColor}
+                                  boxWidth={240}
+                                  textEnabled={textEnabled}
+                                  textContent={textContent}
+                                  textFont={textFont}
+                                  textColor={textColor}
+                                  textSize={textSize}
+                                  textOffsetX={textOffsetX}
+                                  textOffsetY={textOffsetY}
+                                  textDirection={textDirection}
+                                />
+                              ) : null}
+                              {mugMockupLoading ? (
+                                <div className="mug-wrap-loading" aria-live="polite">
+                                  {`Wrapping design on ${wrapKind}…`}
+                                </div>
+                              ) : null}
+                            </div>
+                            {showMugWrapNow ? (
+                              <div className="product-preview-unavailable-note">
+                                {mugMockupError ? (
+                                  <div className="product-preview-unavailable-note-text">{mugMockupError}</div>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="mug-wrap-now-btn"
+                                  onClick={() => {
+                                    setMugMockupError('');
+                                    const needsBake = Boolean(
+                                      featherEdge ||
+                                      cornerRadius ||
+                                      frameEnabled ||
+                                      blackAndWhite ||
+                                      featherFadeEnabled ||
+                                      imageOpacityHasEdit(imageOpacity) ||
+                                      (textEnabled && String(textContent || '').trim())
+                                    );
+                                    if (needsBake) setEditedImageUrl('');
+                                    setMugWrapRequested(true);
+                                  }}
+                                >
+                                  Wrap now
+                                </button>
+                              </div>
+                            ) : wrapNote && !mugMockupUrl ? (
+                              <div className="product-preview-unavailable-note">
+                                <div className="product-preview-unavailable-note-text">{wrapNote}</div>
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      }
                       
-                      // Mugs, bags, pets, and accessories: edited screenshot only (no product mockup)
+                      // Pets and accessories: edited screenshot only (no product mockup)
                       if (noMockupPreview) {
                         const previewNotice = (
                           <div className="product-preview-unavailable-note">
@@ -6237,6 +6590,11 @@ const ToolsPage = () => {
                 <option value="square">Square (1:1 - for mugs, square items)</option>
                 <option value="vertical">Vertical (Tall - for tank tops, vertical shirts)</option>
               </select>
+              {isTotePocketProduct(selectedProductName || selectedCartProduct?.name || '') ? (
+                <p className="tote-wrap-note">
+                  Same photo on the back, reversed.
+                </p>
+              ) : null}
             </div>
 
             <div className="slider-control" style={{ marginTop: '1rem' }}>

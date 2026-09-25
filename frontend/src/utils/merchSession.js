@@ -345,6 +345,18 @@ export function savePendingMerchData(merchData) {
     if (sourceChanged) {
       delete clean.imageOrientation;
       orientationDetectUrl = '';
+      try {
+        const cartNow = readCartItems();
+        if (Array.isArray(cartNow) && cartNow.some((item) => item?.printfulMugMockupUrl)) {
+          writeCartItems(cartNow.map((item) => (
+            item?.printfulMugMockupUrl
+              ? { ...item, printfulMugMockupStale: true }
+              : item
+          )));
+        }
+      } catch {
+        /* ignore */
+      }
     }
 
     if (videoChanged) {
@@ -594,6 +606,10 @@ export function applySelectedScreenshot(url) {
     const nextCart = cart.map((item, i) => {
       if (i !== idx) return item;
       const updated = { ...item, screenshot: url, selected_screenshot: url };
+      delete updated.printfulMugMockupUrl;
+      delete updated.printfulMugMockupUrls;
+      delete updated.printfulMugMockupSource;
+      delete updated.printfulMugMockupStale;
       if (updated.toolSettings) {
         updated.toolSettings = { ...updated.toolSettings, editedImageUrl: '', screenshot: url };
       }

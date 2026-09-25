@@ -144,6 +144,7 @@
   height: 100%;
   display: block;
   object-fit: cover;
+  object-position: var(--thumb-face-position, center 20%);
   aspect-ratio: 16 / 9;
   border-radius: 5px 5px 0 0;
 }
@@ -374,7 +375,7 @@
 
 .card .reserve-slot-shuffle img {
   object-fit: cover;
-  object-position: center;
+  object-position: var(--thumb-face-position, center 20%);
   animation: reserve-slot-img-in 0.45s ease;
 }
 

@@ -388,6 +388,7 @@
 .item-screenshot {
   flex-shrink: 0;
   object-fit: cover;
+  object-position: var(--thumb-face-position, center 20%);
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
@@ -1511,7 +1512,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
+  object-position: var(--thumb-face-position, center 20%);
   border: none;
   border-radius: 0;
   background: transparent;

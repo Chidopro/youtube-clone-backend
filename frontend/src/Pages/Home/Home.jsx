@@ -63,6 +63,14 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         return;
       }
 
+      // Client storefronts: homepage hubs are stills only. Clip thumbs stay off the grid.
+      if (!isDemoStorefront()) {
+        setVideos([]);
+        setError('');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError('');
 
@@ -212,7 +220,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
               if (!extra.length && L.owner_user_id) {
                 extra.push(...(await memberFavoritePreviewUrls(L.owner_user_id)));
               }
-              if (!extra.length && L.owner_user_id) {
+              if (!extra.length && L.owner_user_id && isDemoStorefront()) {
                 try {
                   const vRes = await fetch(
                     `${apiJoin('/api/videos')}?user_id=${encodeURIComponent(L.owner_user_id)}&limit=8`

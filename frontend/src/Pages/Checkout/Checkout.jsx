@@ -168,6 +168,8 @@ function isConfirmPrintOverlayProduct(item) {
 }
 
 function confirmPrintfulPhotoUrl(item) {
+  const wrap = String(item?.printfulMugMockupUrl || '').trim();
+  if (wrap) return wrap;
   const product = {
     name: item?.name || item?.product,
     printful_catalog_product_id: item?.printful_catalog_product_id,
@@ -852,6 +854,10 @@ const Checkout = () => {
       if (it.originalScreenshot && String(it.originalScreenshot).trim()) {
         cleanItem.original_screenshot = it.originalScreenshot;
       }
+      const totePrintfile = String(it.printfulTotePrintfileUrl || it.toolSettings?.printfulTotePrintfileUrl || '').trim();
+      if (totePrintfile) cleanItem.printful_tote_printfile_url = totePrintfile;
+      const toteBack = String(it.toteBackScreenshot || it.toolSettings?.toteBackScreenshot || '').trim();
+      if (toteBack) cleanItem.tote_back_screenshot = toteBack;
       if (it.edited) {
         cleanItem.edited = true;
       }

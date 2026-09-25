@@ -138,6 +138,7 @@
   width: 120px;
   height: 80px;
   object-fit: cover;
+  object-position: var(--thumb-face-position, center 20%);
   display: block;
 }
 

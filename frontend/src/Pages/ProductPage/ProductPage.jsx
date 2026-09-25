@@ -13,6 +13,7 @@ import { applyBrowsePresetToCartItem, featherEdgeMaskStyle } from '../../utils/b
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
+import { cartItemMatchesBrowseScreenshot, isPrintfulWrapProduct, screenshotUrlKey } from '../../utils/mugMockup';
 import {
   getPrintfulColorCode,
   getPrintfulColorMockupUrl,
@@ -204,10 +205,22 @@ function PrintfulColorMockupImg({
   sizes,
   onError,
   tintColor,
+  isWrapPreview = false,
 }) {
   const [shownSrc, setShownSrc] = useState(src);
+  const wasWrapRef = useRef(Boolean(isWrapPreview));
   useEffect(() => {
-    if (!src || src === shownSrc) return undefined;
+    const droppedWrap = wasWrapRef.current && !isWrapPreview;
+    wasWrapRef.current = Boolean(isWrapPreview);
+    if (!src) {
+      setShownSrc('');
+      return undefined;
+    }
+    if (droppedWrap) {
+      setShownSrc(src);
+      return undefined;
+    }
+    if (src === shownSrc) return undefined;
     let cancelled = false;
     const img = new Image();
     img.decoding = 'async';
@@ -221,7 +234,7 @@ function PrintfulColorMockupImg({
     return () => {
       cancelled = true;
     };
-  }, [src, shownSrc]);
+  }, [src, shownSrc, isWrapPreview]);
   const image = (
     <img
       className={className}
@@ -1875,7 +1888,7 @@ const ProductPage = ({ sidebar }) => {
   const presetImageSrc = browsePreviewSrc || browseSourceUrl;
 
   return (
-    <div className={`container product-page${isShopCatalog ? ' product-page--shop-catalog' : ''}${!creatorMode && !isShopCatalog ? ' product-page--choose' : ''}${sidebar ? '' : ' large-container'}`}>
+    <div className={`container product-page${isShopCatalog ? ' product-page--shop-catalog' : ''}${!creatorMode && !isShopCatalog ? ' product-page--choose' : ''}${sidebar ? '' : ' large-container'}${category ? ` product-page--${String(category).trim().toLowerCase()}` : ''}`}>
       {/* User Flow Section - Step 3 Only - Hide for All Products; storefronts hide via CSS */}
       {(() => {
         const categoryNormalized = (category || '').trim().toLowerCase();
@@ -2416,8 +2429,28 @@ const ProductPage = ({ sidebar }) => {
                   && (!swatchColors.length || swatchColors.includes(hoverColor))
                 ) ? hoverColor : displayColor;
                 const colorMockupUrl = colorMockupPreview ? getPrintfulColorMockupUrl(product, mockupColor) : '';
+                const browseShot = selectedScreenshotUrl || browseSourceUrl;
+                const wrapFromMatchingCart = (it) => (
+                  it?.printfulMugMockupUrl
+                  && cartItemMatchesBrowseScreenshot(it, browseShot)
+                  ? String(it.printfulMugMockupUrl).trim()
+                  : ''
+                );
+                const wrapMockupUrl = isPrintfulWrapProduct(product?.name, category)
+                  ? String(
+                    (editingCartItem?.name === product?.name && wrapFromMatchingCart(editingCartItem))
+                    || (cartItems || []).find((it) => (
+                      it?.name === product?.name
+                      && (!mockupColor || it?.color === mockupColor)
+                      && wrapFromMatchingCart(it)
+                    ))?.printfulMugMockupUrl
+                    || ''
+                  ).trim()
+                  : '';
                 const colorMockupTint = (
-                  colorMockupUrl && usesPrintfulVariantColorTint(colorMockupUrl)
+                  !wrapMockupUrl
+                  && colorMockupUrl
+                  && usesPrintfulVariantColorTint(colorMockupUrl)
                     ? getPrintfulColorCode(product, mockupColor)
                     : ''
                 );
@@ -2436,13 +2469,14 @@ const ProductPage = ({ sidebar }) => {
                   {/* Product Image - always show; stable URL so images load despite re-renders */}
                   {(() => {
                     const isApparelCategory = category === 'womens' || category === 'mens' || category === 'kids';
-                    const imgUrl = colorMockupUrl || getProductImageUrl(product, true);
+                    const imgUrl = wrapMockupUrl || colorMockupUrl || getProductImageUrl(product, true);
                     const safeUrl = (imgUrl && typeof imgUrl === 'string') ? imgUrl : `${getImgBase()}/placeholder.png`;
                     const loadHints = browseImageLoadHints(index);
                     return (
                       <div className={`product-image${colorMockupUrl ? ' product-image--color-mockup' : ''}`}>
                         <div className="product-image-wrapper">
                           <PrintfulColorMockupImg
+                            key={`${product?.name || index}-${screenshotUrlKey(browseShot)}-${wrapMockupUrl ? 'wrap' : 'blank'}`}
                             className={(isApparelCategory || colorMockupUrl) ? "product-image-clear" : "product-image-normal"}
                             src={safeUrl}
                             alt={`${product.name}${mockupColor ? ` ${mockupColor}` : ''}`}
@@ -2450,6 +2484,7 @@ const ProductPage = ({ sidebar }) => {
                             fetchPriority={loadHints.fetchPriority}
                             sizes="(max-width: 768px) 46vw, 240px"
                             tintColor={colorMockupTint}
+                            isWrapPreview={Boolean(wrapMockupUrl)}
                             onError={(e) => handleProductImageError(e, product)}
                           />
                         </div>
