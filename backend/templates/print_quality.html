@@ -1293,6 +1293,26 @@
                 alert('No 300 DPI image yet. Generate 300 DPI first.');
                 return;
             }
+            if (isPetBowlOrder()) {
+                var wide = currentImageDimensions && currentImageDimensions.width > currentImageDimensions.height * 4;
+                if (!wide) {
+                    alert('Generate 300 DPI again for the pet bowl. The download must be the wide strip of 11 images, not one photo.');
+                    return;
+                }
+                triggerPngDownload(original300DpiImage, 'pet-bowl-11-images.jpg');
+                return;
+            }
+            if (isPetBandanaOrder()) {
+                var bw = currentImageDimensions && currentImageDimensions.width;
+                var bh = currentImageDimensions && currentImageDimensions.height;
+                var bandanaFile = bw && bh && (bw / bh) > 2.1 && (bw / bh) < 2.8 && bw >= 2800;
+                if (!bandanaFile) {
+                    alert('Generate 300 DPI again for the pet bandana. The download must be the cropped bandana file, not the full photo.');
+                    return;
+                }
+                triggerPngDownload(original300DpiImage, 'pet-bandana-print.jpg');
+                return;
+            }
             if (!hasAnyLiveEffects()) {
                 triggerPngDownload(base, 'print_quality_' + Date.now() + '.png');
                 return;
@@ -1926,6 +1946,40 @@
             });
         }
 
+        function orderProductName() {
+            var name = '';
+            if (allProducts && allProducts[selectedQueueIndex]) {
+                name = String(allProducts[selectedQueueIndex].product || allProducts[selectedQueueIndex].name || '').trim();
+            }
+            if (!name || name === '-' || name === 'N/A') {
+                var el = document.getElementById('productName');
+                name = el && el.textContent ? el.textContent.trim() : '';
+            }
+            if (!name || name === '-' || name === 'N/A') {
+                var fit = document.getElementById('fitProductSelect');
+                name = fit && fit.value ? fit.value : '';
+            }
+            return name;
+        }
+
+        function isPetBowlOrder() {
+            var fit = document.getElementById('fitProductSelect');
+            var fitName = fit && fit.value ? fit.value : '';
+            return (String(orderProductName() || '') + ' ' + fitName).toLowerCase().indexOf('pet bowl') !== -1;
+        }
+
+        function isPetBandanaOrder() {
+            var fit = document.getElementById('fitProductSelect');
+            var fitName = fit && fit.value ? fit.value : '';
+            var name = (String(orderProductName() || '') + ' ' + fitName).toLowerCase();
+            return name.indexOf('pet bandana') !== -1 || name.indexOf('bandana collar') !== -1;
+        }
+
+        function savedBandanaCrop() {
+            var product = allProducts && allProducts[selectedQueueIndex];
+            return itemEditedScreenshot(product);
+        }
+
         // STEP 1: Generate 300 DPI Image (Standalone)
         document.getElementById('generate300dpiBtn').addEventListener('click', async function() {
             const generateBtn = this;
@@ -1947,8 +2001,14 @@
                 const editedShot = String(orderScreenshot || '').trim();
                 // Always generate from the unedited original when we have it.
                 // Passing the edited preview through 300 DPI changes feather/corners/frame.
-                const sourceFor300 = originalShot || editedShot;
+                const petBowlStrip = isPetBowlOrder();
+                const petBandana = isPetBandanaOrder();
+                const savedCrop = petBandana ? String(savedBandanaCrop() || '').trim() : '';
+                const sourceFor300 = petBandana
+                    ? (originalShot || savedCrop || editedShot)
+                    : (originalShot || editedShot);
                 const payload = {
+                    product_name: orderProductName(),
                     thumbnail_data: sourceFor300,
                     print_dpi: dpi,
                     preserve_edits: false,
@@ -1974,6 +2034,24 @@
                     delete payload.image_orientation;
                     delete payload.print_area_width;
                     delete payload.print_area_height;
+                }
+                if (petBowlStrip) {
+                    payload.pet_bowl_strip = true;
+                    payload.preserve_edits = true;
+                    payload.fit_mode = 'preserve';
+                    delete payload.print_area_width;
+                    delete payload.print_area_height;
+                }
+                if (petBandana) {
+                    payload.pet_bandana_print = true;
+                    payload.preserve_edits = true;
+                    payload.fit_mode = 'preserve';
+                    delete payload.image_orientation;
+                    delete payload.print_area_width;
+                    delete payload.print_area_height;
+                    if (savedCrop && savedCrop !== sourceFor300) {
+                        payload.bandana_crop_image = savedCrop;
+                    }
                 }
                 
                 const response = await fetch('/api/process-thumbnail-print-quality', {
@@ -2483,8 +2561,14 @@
             if (result.format) specParts.push(result.format);
             if (result.quality) specParts.push(result.quality);
             var specTitle = specParts.join(' · ');
+            var stripNote = (dims.width > dims.height * 4)
+                ? '<p style="margin:0 0 8px 0; font-weight:700;">Pet bowl file: ' + dims.width + ' × ' + dims.height + ' px. Eleven copies of the photo, side by side.</p>'
+                : ((dims.width && dims.height && (dims.width / dims.height) > 2.1 && (dims.width / dims.height) < 2.8 && dims.width >= 2800)
+                    ? '<p style="margin:0 0 8px 0; font-weight:700;">Pet bandana file: ' + dims.width + ' × ' + dims.height + ' px. This is the Wrap now window.</p>'
+                    : '');
             resultDiv.innerHTML = `
                 <h3 style="margin:0 0 8px 0;" title="${escapeHtml(specTitle)}">✅ Print Quality Image Generated!</h3>
+                ${stripNote}
                 <p style="margin:0 0 8px 0; font-size:13px; color:#155724;">Optional Tools update this preview live. Download bakes the print file.</p>
                 
                 <div class="image-preview-wrap">

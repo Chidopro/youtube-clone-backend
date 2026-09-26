@@ -52,6 +52,11 @@ export const PET_BOWL_WINDOW = { width: 590, height: 803 };
 /** Wider than this, a photo cannot fill a portrait window without becoming a slice. */
 export const PET_BOWL_MAX_PHOTO_ASPECT = 1.45;
 export const PET_BOWL_PRINT = { width: 6496, height: 803 };
+/** Eleven exact windows. 11 × 590 = 6490, the file Printful should receive. */
+export const PET_BOWL_PRINT_FILE = {
+  width: PET_BOWL_WINDOW.width * PET_BOWL_PANEL_COUNT,
+  height: PET_BOWL_WINDOW.height,
+};
 /** Half-size strip: 11 × 295 by 401, same ratio as the print band. */
 const PET_BOWL_COMPOSE = { width: 3245, height: 401 };
 
@@ -75,11 +80,12 @@ function drawBowlPanel(ctx, img, tileX, tileW, height) {
   ctx.drawImage(img, dx, dy, dw, dh);
 }
 
-export async function composePetBowlBand(sources) {
+export async function composePetBowlBand(sources, target = PET_BOWL_COMPOSE) {
   const count = PET_BOWL_PANEL_COUNT;
   const panels = Array.from({ length: count }, (_, index) => String(sources?.[index] || '').trim());
   if (panels.some((src) => !src)) return null;
-  const { width, height } = PET_BOWL_COMPOSE;
+  const width = Number(target?.width) || PET_BOWL_COMPOSE.width;
+  const height = Number(target?.height) || PET_BOWL_COMPOSE.height;
   const tileW = width / count;
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -97,6 +103,38 @@ export async function composePetBowlBand(sources) {
     width,
     height,
   };
+}
+
+/**
+ * Print file for the pet bowl. A normal photo is repeated across eleven windows.
+ * A file that is already the wide strip is scaled onto that strip and not tiled again.
+ */
+export async function petBowlPrintStrip(src) {
+  const img = await loadHtmlImage(src, 'Could not load the bowl photo');
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const stripAspect = PET_BOWL_PRINT_FILE.width / PET_BOWL_PRINT_FILE.height;
+  if (iw > 0 && ih > 0 && iw / ih > stripAspect * 0.7) {
+    const { width, height } = PET_BOWL_PRINT_FILE;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const scale = Math.max(width / iw, height / ih);
+    const dw = iw * scale;
+    const dh = ih * scale;
+    ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh);
+    return {
+      dataUrl: canvas.toDataURL('image/jpeg', 0.9),
+      width,
+      height,
+    };
+  }
+  return composePetBowlBand(
+    Array(PET_BOWL_PANEL_COUNT).fill(src),
+    PET_BOWL_PRINT_FILE
+  );
 }
 
 /** Printful pet bandana collar printfile. */
@@ -136,40 +174,44 @@ export function bandanaCropWindow(imageWidth, imageHeight, offset = 0.5) {
   return { axis: 'x', x: max * t, y: 0, cropW, cropH, max };
 }
 
-export async function composePetBandanaCrop(src, offset = 0.5) {
+export async function composePetBandanaCrop(src, offset = 0.5, target = PET_BANDANA_COMPOSE) {
   const img = await loadHtmlImage(src, 'Could not crop this photo');
   const iw = img.naturalWidth || img.width;
   const ih = img.naturalHeight || img.height;
   const win = bandanaCropWindow(iw, ih, offset);
   if (!win) return null;
-  const { width, height } = PET_BANDANA_COMPOSE;
+  const width = target?.width || PET_BANDANA_COMPOSE.width;
+  const height = target?.height || PET_BANDANA_COMPOSE.height;
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
   const visibleH = Math.max(1, Math.round(width / bandanaWindowAspect()));
-  ctx.drawImage(img, win.x, win.y, win.cropW, win.cropH, 0, 0, width, visibleH);
-  const tipH = height - visibleH;
-  if (tipH > 0) {
-    const tipSrc = Math.max(1, win.cropH * 0.25);
-    ctx.drawImage(
-      img,
-      win.x,
-      win.y + win.cropH - tipSrc,
-      win.cropW,
-      tipSrc,
-      0,
-      visibleH,
-      width,
-      tipH
-    );
+  if (height <= visibleH + 1) {
+    ctx.drawImage(img, win.x, win.y, win.cropW, win.cropH, 0, 0, width, height);
+  } else {
+    const scale = visibleH / win.cropH;
+    const tipH = Math.max(0, height - visibleH);
+    const take = Math.min(Math.max(0, ih - (win.y + win.cropH)), tipH / scale);
+    const srcH = Math.max(1, win.cropH + take);
+    const destH = Math.min(height, Math.max(1, Math.round(visibleH + take * scale)));
+    ctx.drawImage(img, win.x, win.y, win.cropW, srcH, 0, 0, width, destH);
+    if (destH < height) {
+      ctx.drawImage(canvas, 0, destH - 1, width, 1, 0, destH, width, height - destH);
+    }
   }
   return {
     dataUrl: canvas.toDataURL('image/jpeg', 0.9),
     width,
     height,
   };
+}
+
+/** Print file is the Wrap now window only: 3060×1250, the top two-thirds of the bandana area. */
+export async function petBandanaPrintFile(src, offset = 0.5) {
+  const height = Math.round(PET_BANDANA_PRINT.width / bandanaWindowAspect());
+  return composePetBandanaCrop(src, offset, { width: PET_BANDANA_PRINT.width, height });
 }
 
 export function isPetBandanaProduct(productName) {

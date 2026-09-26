@@ -67,7 +67,7 @@ PRINT_AREA_PRODUCTS = [
     {"name": "All-Over Print Crossbody Bag", "description": "Crossbody Bag", "width": 10, "height": 12},
     {"name": "All-Over Print Utility Bag", "description": "Utility Bag", "width": 12, "height": 14},
     # Pets
-    {"name": "Pet Bowl All-Over Print", "description": "Pet Bowl (Square)", "width": 6, "height": 6},
+    {"name": "Pet Bowl All-Over Print", "description": "Pet Bowl strip, 11 images", "width": 21.63, "height": 2.68},
     {"name": "Pet Bandana Collar", "description": "Bandana (Square)", "width": 12, "height": 12},
     # Misc
     {"name": "Hardcover Bound Notebook", "description": "Hardcover Bound Notebook (3\" × 5\")", "width": 3, "height": 5},

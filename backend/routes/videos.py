@@ -691,6 +691,15 @@ def process_thumbnail_print_quality():
         image_orientation = data.get("image_orientation") or data.get("imageOrientation")
         fit_mode = data.get("fit_mode") or data.get("fitMode")
         preserve_edits = bool(data.get("preserve_edits"))
+        pet_bowl_strip = bool(data.get("pet_bowl_strip") or data.get("petBowlStrip"))
+        pet_bandana_print = bool(data.get("pet_bandana_print") or data.get("petBandanaPrint"))
+        product_name = str(data.get("product_name") or data.get("productName") or "")
+        product_key = product_name.lower()
+        if "pet bowl" in product_key:
+            pet_bowl_strip = True
+        if "pet bandana" in product_key or "bandana collar" in product_key:
+            pet_bandana_print = True
+        bandana_crop_image = data.get("bandana_crop_image") or data.get("bandanaCropImage") or ""
         try:
             frame_source_width = int(round(float(data.get("frame_source_width") or data.get("frameSourceWidth") or 0)))
         except (TypeError, ValueError):
@@ -757,6 +766,9 @@ def process_thumbnail_print_quality():
             feather_fade_color=feather_fade_color,
             frame_source_width=frame_source_width,
             frame_source_height=frame_source_height,
+            pet_bowl_strip=pet_bowl_strip,
+            pet_bandana_print=pet_bandana_print,
+            bandana_crop_image=bandana_crop_image,
         )
         
         if result.get('success'):
@@ -909,6 +921,7 @@ def print_quality_page():
         printful_dashboard_urls=printful_dashboard_urls_by_product_name(),
         printful_catalog_titles=printful_catalog_titles_by_product_name(),
     ))
+    response.headers['Cache-Control'] = 'no-store'
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "

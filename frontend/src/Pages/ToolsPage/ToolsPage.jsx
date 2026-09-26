@@ -13,7 +13,7 @@ import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlain
 import { roundedRectFeatherFactor } from '../../utils/bakeBrowsePreset';
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
-import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
+import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petBandanaPrintFile, petBowlPrintStrip, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -5721,6 +5721,55 @@ const ToolsPage = () => {
       alert('No image to use. Please load a screenshot first.');
       return;
     }
+    const productLabel = selectedProduct?.name || selectedProductName || '';
+    if (isPetBowlProduct(productLabel)) {
+      setGenerating300Dpi(true);
+      setPrintQualityImageUrl('');
+      setPrintQualityMeta(null);
+      try {
+        const strip = await petBowlPrintStrip(imageToUse);
+        if (!strip?.dataUrl) {
+          alert('Could not build the pet bowl image strip.');
+          return;
+        }
+        setPrintQualityImageUrl(strip.dataUrl);
+        setPrintQualityMeta({
+          dimensions: { width: strip.width, height: strip.height, dpi: 300 },
+          format: 'JPEG',
+          quality: 'Print Ready',
+        });
+      } catch (e) {
+        console.error(e);
+        alert('Could not build the pet bowl image strip.');
+      } finally {
+        setGenerating300Dpi(false);
+      }
+      return;
+    }
+    if (isPetBandanaProduct(productLabel)) {
+      setGenerating300Dpi(true);
+      setPrintQualityImageUrl('');
+      setPrintQualityMeta(null);
+      try {
+        const file = await petBandanaPrintFile(imageToUse, bandanaCropOffset);
+        if (!file?.dataUrl) {
+          alert('Could not build the pet bandana print.');
+          return;
+        }
+        setPrintQualityImageUrl(file.dataUrl);
+        setPrintQualityMeta({
+          dimensions: { width: file.width, height: file.height, dpi: 300 },
+          format: 'JPEG',
+          quality: 'Print Ready',
+        });
+      } catch (e) {
+        console.error(e);
+        alert('Could not build the pet bandana print.');
+      } finally {
+        setGenerating300Dpi(false);
+      }
+      return;
+    }
     setGenerating300Dpi(true);
     setPrintQualityImageUrl('');
     setPrintQualityMeta(null);
@@ -6072,14 +6121,32 @@ const ToolsPage = () => {
     }
     persistToolsBeforeLeave();
     const currentWrapProduct = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
-    if (mugMockupUrl && Number.isInteger(currentWrapProduct?.originalCartIndex)) {
-      persistMugMockupUrl(
-        currentWrapProduct.originalCartIndex,
-        mugMockupUrl,
-        mugMockupUrls,
-      );
+    const currentWrapName = currentWrapProduct?.name || selectedProductName || '';
+    const visibleWrap = String(mugMockupUrl || '').trim();
+    let visibleCartIndex = Number.isInteger(currentWrapProduct?.originalCartIndex)
+      ? currentWrapProduct.originalCartIndex
+      : -1;
+    if (visibleWrap && (isPetBowlProduct(currentWrapName) || isPetBandanaProduct(currentWrapName))) {
+      const items = readCartItems();
+      if (!items[visibleCartIndex]) {
+        visibleCartIndex = items.findIndex((item) => (item?.name || item?.product) === currentWrapName);
+      }
+      if (visibleCartIndex >= 0) {
+        const savedPrint = String(items[visibleCartIndex]?.printfulTotePrintfileUrl || '').trim();
+        const printfile = isPetBandanaProduct(currentWrapName)
+          ? String(bandanaCrop?.dataUrl || savedPrint).trim()
+          : String(bowlBand?.dataUrl || savedPrint).trim();
+        persistMugMockupUrl(
+          visibleCartIndex,
+          visibleWrap,
+          mugMockupUrls,
+          undefined,
+          printfile || undefined,
+        );
+      }
     }
-    const missingWrap = petWrapItemsNeedingPreview(readCartItems());
+    const missingWrap = petWrapItemsNeedingPreview(readCartItems())
+      .filter(({ index }) => !(visibleWrap && index === visibleCartIndex));
     if (missingWrap.length) {
       const target = missingWrap[0];
       const slot = cartProducts.findIndex((product) => product.originalCartIndex === target.index);
@@ -6087,7 +6154,11 @@ const ToolsPage = () => {
         switchToCartSlot(slot);
       }
       const name = String(target.item?.name || target.item?.product || 'this product').trim();
-      alert(`Click Wrap now on ${name} before checkout.`);
+      const detail = [target.item?.color, target.item?.size]
+        .map((part) => String(part || '').trim())
+        .filter((part) => part && part !== 'N/A' && part !== 'Default')
+        .join(', ');
+      alert(`Click Wrap now on ${name}${detail ? ` (${detail})` : ''} before checkout.`);
       return;
     }
     const selectedProduct =

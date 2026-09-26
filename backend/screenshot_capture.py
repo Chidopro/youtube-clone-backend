@@ -1032,7 +1032,175 @@ def _draw_print_overlay_text(draw, text, font, fill, center_x, center_y, font_px
         )
 
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, inner_frame_color=None, image_opacity=100, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0):
+def _as_bgr(image):
+    if image is None:
+        return None
+    if len(image.shape) == 2:
+        return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    if image.shape[2] == 4:
+        return cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+    return image
+
+
+def _paste_cover(canvas, image):
+    canvas_h, canvas_w = canvas.shape[:2]
+    image_h, image_w = image.shape[:2]
+    scale = max(canvas_w / max(image_w, 1), canvas_h / max(image_h, 1))
+    draw_w = max(1, int(round(image_w * scale)))
+    draw_h = max(1, int(round(image_h * scale)))
+    resized = cv2.resize(image, (draw_w, draw_h), interpolation=cv2.INTER_AREA)
+    origin_x = (canvas_w - draw_w) // 2
+    origin_y = (canvas_h - draw_h) // 2
+    src_x = max(0, -origin_x)
+    src_y = max(0, -origin_y)
+    dst_x = max(0, origin_x)
+    dst_y = max(0, origin_y)
+    copy_w = min(draw_w - src_x, canvas_w - dst_x)
+    copy_h = min(draw_h - src_y, canvas_h - dst_y)
+    canvas[dst_y:dst_y + copy_h, dst_x:dst_x + copy_w] = resized[src_y:src_y + copy_h, src_x:src_x + copy_w]
+
+
+def _encode_print_jpeg(canvas, print_dpi, width, height):
+    import base64
+    ok, buffer = cv2.imencode('.jpg', canvas, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    if not ok:
+        return {"success": False, "error": "Could not encode the print image"}
+    encoded = base64.b64encode(buffer).decode('utf-8')
+    return {
+        "success": True,
+        "screenshot": f"data:image/jpeg;base64,{encoded}",
+        "dimensions": {"width": width, "height": height, "dpi": print_dpi},
+        "file_size": len(encoded),
+        "format": "JPEG",
+        "quality": "Print Ready",
+    }
+
+
+def _decode_print_image(image_data):
+    if not image_data or not isinstance(image_data, str):
+        return None
+    import base64
+    import requests
+    try:
+        if image_data.startswith("http://") or image_data.startswith("https://"):
+            response = requests.get(image_data, timeout=30)
+            response.raise_for_status()
+            image_bytes = response.content
+        elif image_data.startswith("data:image"):
+            image_bytes = base64.b64decode(image_data.split(",", 1)[1], validate=True)
+        else:
+            image_bytes = base64.b64decode(image_data, validate=True)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        return cv2.imdecode(nparr, cv2.IMREAD_UNCHANGED)
+    except Exception:
+        return None
+
+
+def _bandana_window_size(image_w, image_h):
+    """The shopper's window: top two-thirds of the 3060×1875 print."""
+    window_aspect = 3060 / (1875 * (2.0 / 3.0))
+    if image_h < 1 or image_w < 1:
+        return 1, 1
+    if (image_w / image_h) <= window_aspect:
+        crop_w = float(image_w)
+        crop_h = min(float(image_h), image_w / window_aspect)
+    else:
+        crop_h = float(image_h)
+        crop_w = min(float(image_w), image_h * window_aspect)
+    return max(1, int(round(crop_w))), max(1, int(round(crop_h)))
+
+
+def _locate_bandana_window(photo, reference):
+    """Find the saved Wrap now window inside the original photo."""
+    ref = _as_bgr(reference)
+    if ref is None:
+        return None
+    image_h, image_w = photo.shape[:2]
+    ref_h, ref_w = ref.shape[:2]
+    if ref_w < 2 or ref_h < 2:
+        return None
+    print_aspect = 3060 / 1875
+    src_aspect = ref_w / ref_h
+    if abs(src_aspect - print_aspect) / print_aspect < 0.08:
+        visible_h = max(1, min(ref_h, int(round(ref_w / (3060 / (1875 * (2.0 / 3.0)))))))
+        template_src = ref[0:visible_h, :]
+    else:
+        template_src = ref
+    crop_w, crop_h = _bandana_window_size(image_w, image_h)
+    crop_w = min(crop_w, image_w)
+    crop_h = min(crop_h, image_h)
+    template = cv2.resize(template_src, (crop_w, crop_h), interpolation=cv2.INTER_AREA)
+    if template.shape[0] > image_h or template.shape[1] > image_w:
+        return None
+    score_map = cv2.matchTemplate(photo, template, cv2.TM_CCOEFF_NORMED)
+    _, score, _, loc = cv2.minMaxLoc(score_map)
+    if score < 0.35:
+        return None
+    return int(loc[0]), int(loc[1]), crop_w, crop_h
+
+
+def _paint_bandana_print(photo, origin_x, origin_y, crop_w, crop_h):
+    """The Wrap now window only. The bandana print is that slice, not the taller full photo."""
+    width = 3060
+    height = 1250
+    image_h, image_w = photo.shape[:2]
+    x = max(0, min(int(origin_x), image_w - 1))
+    y = max(0, min(int(origin_y), image_h - 1))
+    crop_w = max(1, min(int(crop_w), image_w - x))
+    crop_h = max(1, min(int(crop_h), image_h - y))
+    crop = photo[y:y + crop_h, x:x + crop_w]
+    return cv2.resize(crop, (width, height), interpolation=cv2.INTER_LANCZOS4)
+
+
+def _pet_bandana_print(image, print_dpi=300, reference=None):
+    """Full pet-bandana print file, as one photo instead of a crop pasted over a second strip."""
+    photo = _as_bgr(image)
+    if photo is None:
+        return {"success": False, "error": "Could not read the bandana photo"}
+    image_h, image_w = photo.shape[:2]
+    if image_w < 1 or image_h < 1:
+        return {"success": False, "error": "Could not read the bandana photo"}
+    located = _locate_bandana_window(photo, reference) if reference is not None else None
+    if located:
+        origin_x, origin_y, crop_w, crop_h = located
+    else:
+        crop_w, crop_h = _bandana_window_size(image_w, image_h)
+        crop_w = min(crop_w, image_w)
+        crop_h = min(crop_h, image_h)
+        origin_x = max(0, (image_w - crop_w) // 2)
+        origin_y = max(0, (image_h - crop_h) // 2)
+    canvas = _paint_bandana_print(photo, origin_x, origin_y, crop_w, crop_h)
+    return _encode_print_jpeg(canvas, print_dpi, canvas.shape[1], canvas.shape[0])
+
+
+def _pet_bowl_print_strip(image, print_dpi=300):
+    """Eleven fitted copies of one photo, side by side, for the pet bowl print file."""
+    import base64
+    panel_count = 11
+    tile_w = 590
+    height = 803
+    width = tile_w * panel_count
+    photo = _as_bgr(image)
+    if photo is None:
+        return {"success": False, "error": "Could not read the bowl photo"}
+    image_h, image_w = photo.shape[:2]
+    canvas = np.full((height, width, 3), 17, dtype=np.uint8)
+    strip_aspect = width / height
+    if image_w > 0 and image_h > 0 and (image_w / image_h) > strip_aspect * 0.7:
+        _paste_cover(canvas, photo)
+    else:
+        scale = min(tile_w / max(image_w, 1), height / max(image_h, 1))
+        draw_w = max(1, int(round(image_w * scale)))
+        draw_h = max(1, int(round(image_h * scale)))
+        panel = cv2.resize(photo, (draw_w, draw_h), interpolation=cv2.INTER_AREA)
+        top = (height - draw_h) // 2
+        for index in range(panel_count):
+            left = int(round(index * tile_w + (tile_w - draw_w) / 2))
+            canvas[top:top + draw_h, left:left + draw_w] = panel
+    return _encode_print_jpeg(canvas, print_dpi, width, height)
+
+
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, inner_frame_color=None, image_opacity=100, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0, pet_bowl_strip=False, pet_bandana_print=False, bandana_crop_image=None):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -1089,6 +1257,12 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             logger.error(f"❌ [PRINT_QUALITY] cv2.imdecode returned None - invalid image format or corrupted data")
             logger.error(f"❌ [PRINT_QUALITY] Image bytes length: {len(image_bytes)}, first 20 bytes: {image_bytes[:20]}")
             return {"success": False, "error": "Failed to decode image - invalid format or corrupted data"}
+
+        if pet_bowl_strip:
+            return _pet_bowl_print_strip(image, print_dpi)
+        if pet_bandana_print:
+            reference = _decode_print_image(bandana_crop_image) if bandana_crop_image else None
+            return _pet_bandana_print(image, print_dpi, reference)
         
         need_alpha = _needs_alpha_pipeline(
             soft_corners=soft_corners,
