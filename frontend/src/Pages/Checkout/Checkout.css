@@ -424,6 +424,32 @@
   z-index: 1;
 }
 
+.checkout-wrap-notice {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.item-preview-design-btn {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #18181b;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.item-preview-design-btn:hover {
+  background: #3f3f46;
+}
+
 .item-edit-btn,
 .item-delete-btn {
   flex-shrink: 0;

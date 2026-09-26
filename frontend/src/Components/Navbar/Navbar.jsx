@@ -13,8 +13,7 @@ import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from 
 import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
 import { isCreatorStorefrontHostname, peekCachedStorefrontBrand, rememberStorefrontBrand } from '../../utils/subdomainService'
-import { CART_UPDATED_EVENT, getCartItemCount, readCartItems } from '../../utils/merchSession'
-import { petWrapCheckoutMessage } from '../../utils/mugMockup'
+import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
 import { DEMO_DASHBOARD_PATH, endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
 import { cropCustomLogoFromUrl } from '../../utils/logoBackground'
@@ -1456,11 +1455,6 @@ const Navbar = ({ resetCategory }) => {
                                     category = localStorage.getItem('last_selected_category') || 'mens';
                                 } catch (_) {}
                                 navigate(`/product/browse?category=${encodeURIComponent(category)}&openCart=true`);
-                                return;
-                            }
-                            const previewMessage = petWrapCheckoutMessage(readCartItems());
-                            if (previewMessage) {
-                                alert(previewMessage);
                                 return;
                             }
                             navigate('/checkout');

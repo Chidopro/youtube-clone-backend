@@ -13,7 +13,7 @@ import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlain
 import { roundedRectFeatherFactor } from '../../utils/bakeBrowsePreset';
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
-import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petWrapCheckoutMessage, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
+import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -4037,16 +4037,17 @@ const ToolsPage = () => {
             const showNewest = previewNewestFlag
               || addedWhileOpen
               || (newProductAdded && focusOriginal == null);
+            if (focusOriginal != null) {
+              queueMicrotask(() => consumeToolsFocusCartIndex());
+            }
 
             let nextIndex = lastIndex;
             if (showNewest) {
               const matched = focusOriginal != null
                 ? productsWithScreenshots.findIndex((p) => p.originalCartIndex === focusOriginal)
                 : -1;
-              if (focusOriginal != null) consumeToolsFocusCartIndex();
               nextIndex = matched >= 0 ? matched : lastIndex;
             } else if (focusOriginal != null) {
-              consumeToolsFocusCartIndex();
               const matched = productsWithScreenshots.findIndex(
                 (p) => p.originalCartIndex === focusOriginal
               );
@@ -5326,8 +5327,13 @@ const ToolsPage = () => {
     const product = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
     const wrapSlot = isPrintfulWrapProduct(product?.name || selectedProductName, product?.category);
     if (wrapSlot) {
-      setMugMockupUrl('');
-      setMugMockupUrls([]);
+      const cartItem = Number.isInteger(product?.originalCartIndex)
+        ? readCartItems()[product.originalCartIndex]
+        : null;
+      const saved = String(cartItem?.printfulMugMockupUrl || '').trim();
+      const savedViews = Array.isArray(cartItem?.printfulMugMockupUrls) ? cartItem.printfulMugMockupUrls : [];
+      setMugMockupUrl(saved);
+      setMugMockupUrls(saved ? savedViews : []);
       setWrapRequested(false);
       setBowlBand(null);
       setBowlPanels(Array(PET_BOWL_PANEL_COUNT).fill(''));
@@ -5441,7 +5447,9 @@ const ToolsPage = () => {
       String(imageOrientation || ''),
     ].join('|');
     if (!wrapRequested) {
-      if (wrapEditKeyRef.current && wrapEditKeyRef.current !== wrapEditKey) {
+      if (!wrapEditKeyRef.current && mugMockupUrl) {
+        wrapEditKeyRef.current = wrapEditKey;
+      } else if (wrapEditKeyRef.current && wrapEditKeyRef.current !== wrapEditKey) {
         setMugMockupUrl('');
         setMugMockupUrls([]);
         wrapEditKeyRef.current = '';
@@ -5547,6 +5555,7 @@ const ToolsPage = () => {
     selectedProductName,
     persistMugMockupUrl,
     wrapRequested,
+    mugMockupUrl,
     featherEdge,
     cornerRadius,
     frameEnabled,
@@ -6062,9 +6071,23 @@ const ToolsPage = () => {
       }
     }
     persistToolsBeforeLeave();
-    const previewMessage = petWrapCheckoutMessage(readCartItems());
-    if (previewMessage) {
-      alert(previewMessage);
+    const currentWrapProduct = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
+    if (mugMockupUrl && Number.isInteger(currentWrapProduct?.originalCartIndex)) {
+      persistMugMockupUrl(
+        currentWrapProduct.originalCartIndex,
+        mugMockupUrl,
+        mugMockupUrls,
+      );
+    }
+    const missingWrap = petWrapItemsNeedingPreview(readCartItems());
+    if (missingWrap.length) {
+      const target = missingWrap[0];
+      const slot = cartProducts.findIndex((product) => product.originalCartIndex === target.index);
+      if (slot >= 0 && slot !== selectedCartProductIndex) {
+        switchToCartSlot(slot);
+      }
+      const name = String(target.item?.name || target.item?.product || 'this product').trim();
+      alert(`Click Wrap now on ${name} before checkout.`);
       return;
     }
     const selectedProduct =

@@ -13,7 +13,7 @@ import { applyBrowsePresetToCartItem, featherEdgeMaskStyle } from '../../utils/b
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
-import { isCurvedBagProduct, petWrapCheckoutMessage, stripCurvedBagRectEdits } from '../../utils/mugMockup';
+import { isCurvedBagProduct, stripCurvedBagRectEdits } from '../../utils/mugMockup';
 import {
   getPrintfulColorCode,
   getPrintfulColorMockupUrl,
@@ -1037,11 +1037,6 @@ const ProductPage = ({ sidebar }) => {
   const cartHasUnavailableItems = (cartItems || []).some(cartItemUnavailable);
 
   const goToCheckout = () => {
-    const previewMessage = petWrapCheckoutMessage(cartItems);
-    if (previewMessage) {
-      alert(previewMessage);
-      return;
-    }
     if (cartHasUnavailableItems) {
       alert(`One or more cart items are out of stock for shipping to ${shipToCountryName(shipToCountry)}. Choose a different size or color.`);
       return;

@@ -7,7 +7,7 @@ import { ProductPreviewWithDrag } from '../ToolsPage/ToolsPage';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
-import { isPetBandanaProduct, isPetBowlProduct, petWrapCheckoutMessage } from '../../utils/mugMockup';
+import { isPetBandanaProduct, isPetBowlProduct, petWrapCheckoutMessage, petWrapItemsNeedingPreview } from '../../utils/mugMockup';
 import { shopperSizeLabel, toolsPreviewMockupUrl } from '../../utils/shopCategories';
 import { getPrintfulColorMockupUrl, getWhiteBlankGarmentTint } from '../../utils/printfulColorMockups';
 import { matchPrintAreaProductName } from '../../config/printAreaConfig';
@@ -335,6 +335,10 @@ const Checkout = () => {
   useEffect(() => {
     if ((!signedIn && !isDemoStorefront()) || items.length === 0 || designModalShownOnLoadRef.current) return;
     designModalShownOnLoadRef.current = true;
+    if (petWrapItemsNeedingPreview(items).length) {
+      setShowDesignModal(false);
+      return;
+    }
     if (cartNeedsDesignModal(items)) {
       setShowDesignModal(true);
     } else {
@@ -1044,6 +1048,15 @@ const Checkout = () => {
     );
   };
 
+  const openPreviewDesign = (index) => {
+    setToolsFocusCartIndex(index);
+    setToolsPreviewNewest(false);
+    setShowDesignModal(false);
+    navigate('/tools');
+  };
+
+  const wrapPreviewIndexes = new Set(petWrapItemsNeedingPreview(items).map(({ index }) => index));
+
   return (
     <div className={`checkout-container${(signedIn || isDemoStorefront()) && items.length === 0 ? ' checkout-container--empty' : ''}`}>
       <AuthModal
@@ -1107,9 +1120,13 @@ const Checkout = () => {
                   <span className="back-to-cart-text">BACK TO CART</span>
                 </button>
               </div>
+              {wrapPreviewIndexes.size > 0 ? (
+                <p className="checkout-wrap-notice">{petWrapCheckoutMessage(items)}</p>
+              ) : null}
               <div className="items-list">
                 {items.map((ci, i) => {
                   const screenshot = itemShotUrl(ci);
+                  const needsWrapPreview = wrapPreviewIndexes.has(i);
                   return (
                     <div key={i} className="item-card">
                       <div className="item-info">
@@ -1120,6 +1137,15 @@ const Checkout = () => {
                           </div>
                         ) : null}
                         <div className="item-price">${(ci.price || 0).toFixed(2)}</div>
+                        {needsWrapPreview ? (
+                          <button
+                            type="button"
+                            className="item-preview-design-btn"
+                            onClick={() => openPreviewDesign(i)}
+                          >
+                            Preview Design
+                          </button>
+                        ) : null}
                       </div>
                       {screenshot ? (
                         <OrderItemShot

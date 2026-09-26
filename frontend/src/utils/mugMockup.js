@@ -177,18 +177,25 @@ export function isPetBandanaProduct(productName) {
   return n.includes('bandana collar') || (n.includes('pet') && n.includes('bandana'));
 }
 
+/** Custom pet bowl and bandana lines that still need a saved Wrap now preview. */
+export function petWrapItemsNeedingPreview(items) {
+  return (Array.isArray(items) ? items : [])
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => {
+      if (item?.premade) return false;
+      const name = item?.name || item?.product || '';
+      if (!isPetBowlProduct(name) && !isPetBandanaProduct(name)) return false;
+      const url = String(item?.printfulMugMockupUrl || item?.printfulTotePrintfileUrl || '').trim();
+      return !url;
+    });
+}
+
 /** Custom pet bowl and bandana orders need a saved Wrap now preview. */
 export function petWrapCheckoutMessage(items) {
-  const missing = (Array.isArray(items) ? items : []).filter((item) => {
-    if (item?.premade) return false;
-    const name = item?.name || item?.product || '';
-    if (!isPetBowlProduct(name) && !isPetBandanaProduct(name)) return false;
-    const url = String(item?.printfulMugMockupUrl || '').trim();
-    return !url || item?.printfulMugMockupStale;
-  });
+  const missing = petWrapItemsNeedingPreview(items);
   if (!missing.length) return '';
-  const names = [...new Set(missing.map((item) => String(item?.name || item?.product || 'this product').trim()))];
-  return `Apply Preview Design before checkout. Open Preview Design for ${names.join(' and ')} and click Wrap now.`;
+  const names = [...new Set(missing.map(({ item }) => String(item?.name || item?.product || 'this product').trim()))];
+  return `Click Preview Design on ${names.join(' and ')}, then Wrap now, before placing the order.`;
 }
 
 export function isPetWrapProduct(productName) {
