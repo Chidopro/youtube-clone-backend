@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import './Feed.css'
 import { useNavigate } from 'react-router-dom'
 import { publicStorageCardUrl, fetchPublicFavoriteLists } from '../../utils/favoriteListsApi'
@@ -6,6 +6,7 @@ import { getSubdomain } from '../../utils/subdomainService'
 import { prefetchVideoPlayback } from '../../utils/videoOptimize'
 import { hashIsNearSet, hashesTooClose, loadAverageHash } from '../../utils/imageVisualHash'
 import { isDemoStorefront } from '../../utils/demoStorefront'
+import { applyCoverFrame } from '../../utils/coverFrame'
 
 export const HUB_ROTATE_MS = 12000;
 
@@ -89,20 +90,34 @@ export function rotatingUrl(urls, hubKey, tick) {
   return pickRotatingUrl(urls, hubKey, tick);
 }
 
-/** Homepage hubs: never show the same photo on two cards when another unused image exists. */
+/** Homepage hubs: never show the same photo on two cards when another unused image exists.
+ * When a co-creator photo is available, it goes in the Creator window and
+ * Co-Creators takes a different photo. Shop stays on its own pick.
+ */
 export function distinctHubThumbs({ favoriteUrls, friendUrls, shopPreferredUrls, shopUrls }, tick, hashByUrl = {}) {
   const used = new Set();
   const usedHashes = new Set();
   const visual = { hashByUrl, usedHashes };
   const pick = (urls, key) => pickRotatingUrl(urls, key, tick, used, visual);
+  const creatorImage = pick(favoriteUrls, 'favorites');
+  const coCreatorImage = pick(friendUrls, 'friend');
+  if (!coCreatorImage) {
+    return {
+      favorites: creatorImage,
+      friend: pick(favoriteUrls, 'friend-fill') || pick(shopUrls, 'friend-shop'),
+      shop: pick(shopPreferredUrls, 'shop') || pick(shopUrls, 'shop-more'),
+    };
+  }
+  const shop = pick(shopPreferredUrls, 'shop') || pick(shopUrls, 'shop-more');
+  const replacement =
+    pick(friendUrls, 'friend-next') ||
+    pick(favoriteUrls, 'friend-own') ||
+    pick(shopUrls, 'friend-shop-left') ||
+    creatorImage;
   return {
-    favorites: pick(favoriteUrls, 'favorites'),
-    // No co-creators: still fill the hub with other storefront photos so the grid is not blank.
-    friend:
-      pick(friendUrls, 'friend') ||
-      pick(favoriteUrls, 'friend-fill') ||
-      pick(shopUrls, 'friend-shop'),
-    shop: pick(shopPreferredUrls, 'shop') || pick(shopUrls, 'shop-more'),
+    favorites: coCreatorImage,
+    friend: replacement,
+    shop,
   };
 }
 
@@ -159,6 +174,66 @@ function hubHashSet(thumbs, hashByUrl = {}) {
       .map((url) => hashByUrl[url])
       .filter(Boolean)
   );
+}
+
+/** These Deluzion top-row photos stay fixed across login, logout, new uploads, and reloads. */
+const LOCKED_HUB_TOP = {
+  deluzion: {
+    favorites: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/8a6b0ae8-19ed-46ca-857a-a56366e780e1/favorites/thumbs/1790336768390-2ff0c6.jpg',
+    friend: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/1c382c92-00b1-4ccd-b2c1-a1b4b973dca9/favorites/thumbs/1790337127610-ef0976.jpg',
+    shop: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/1c382c92-00b1-4ccd-b2c1-a1b4b973dca9/favorites/thumbs/1790337010649-511c88.jpg',
+  },
+};
+
+function hubTopStorageKey(subdomain) {
+  return `sm_hub_top_v1:${String(subdomain || '').trim().toLowerCase()}`;
+}
+
+function readHubTopPin(subdomain) {
+  if (typeof window === 'undefined') return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(hubTopStorageKey(subdomain)) || 'null');
+    if (!parsed || typeof parsed !== 'object') return null;
+    const favorites = String(parsed.favorites || '').trim();
+    const friend = String(parsed.friend || '').trim();
+    const shop = String(parsed.shop || '').trim();
+    if (!favorites || !friend || !shop) return null;
+    return { favorites, friend, shop };
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeHubTopPin(subdomain, thumbs) {
+  if (typeof window === 'undefined') return;
+  const favorites = String(thumbs?.favorites || '').trim();
+  const friend = String(thumbs?.friend || '').trim();
+  const shop = String(thumbs?.shop || '').trim();
+  if (!favorites || !friend || !shop) return;
+  try {
+    window.localStorage.setItem(
+      hubTopStorageKey(subdomain),
+      JSON.stringify({ favorites, friend, shop })
+    );
+  } catch (_) { /* private mode */ }
+}
+
+/** Top row sticks once chosen. New uploads and sign-in changes do not replace it. */
+export function lockedHubThumbs(subdomain, computed) {
+  const saved = readHubTopPin(subdomain);
+  if (saved) return saved;
+  const seed = LOCKED_HUB_TOP[String(subdomain || '').trim().toLowerCase()];
+  if (seed?.favorites && seed?.friend && seed?.shop) {
+    writeHubTopPin(subdomain, seed);
+    return seed;
+  }
+  const next = {
+    favorites: computed?.favorites || null,
+    friend: computed?.friend || null,
+    shop: computed?.shop || null,
+  };
+  writeHubTopPin(subdomain, next);
+  return next;
 }
 
 /** Keep the first chosen top-row photos so a growing pool cannot move them into the shuffle. */
@@ -246,6 +321,8 @@ export function HubThumb({ src, emptyLabel }) {
       loading={emptyLabel ? 'eager' : 'lazy'}
       decoding="async"
       fetchPriority={emptyLabel ? 'high' : 'auto'}
+      ref={applyCoverFrame}
+      onLoad={(e) => applyCoverFrame(e.currentTarget)}
       onError={(e) => {
         try {
           const u = new URL(e.currentTarget.src);
@@ -336,19 +413,10 @@ const Feed = ({
     };
   }, [showHubs, favoriteUrls, friendUrls, shopUrls]);
 
-  const pinnedHubsRef = useRef({ favorites: null, friend: null, shop: null });
-
   const hubThumbs = useMemo(() => {
     const next = stagnantHubThumbs(hubPools, hashByUrl);
-    const pinned = pinStagnantHubThumbs(
-      pinnedHubsRef.current,
-      next,
-      [...favoriteUrls, ...friendUrls, ...shopUrls],
-      hashByUrl
-    );
-    pinnedHubsRef.current = pinned;
-    return pinned;
-  }, [hubPools, favoriteUrls, friendUrls, shopUrls, hashByUrl]);
+    return lockedHubThumbs(getSubdomain(), next);
+  }, [hubPools, hashByUrl]);
 
   const shuffleThumbs = useMemo(() => {
     const picked = shuffleHubThumbs(hubPools, tick, hubThumbs, hashByUrl);

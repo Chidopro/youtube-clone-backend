@@ -244,9 +244,21 @@ class TestMugMockupHelpers(unittest.TestCase):
 
     def test_catalog_cover_vs_contain(self):
         cover = artwork_position_for_catalog(394, 2250, 1725, 3000, 4000)
-        contain = artwork_position_for_catalog(262, 2400, 2850, 3000, 4000)
+        drawstring = artwork_position_for_catalog(262, 2400, 2850, 4000, 3000)
         self.assertEqual(cover["width"], 2250)
-        self.assertLess(contain["width"], 2400)
+        self.assertEqual(drawstring["height"], 2850)
+        self.assertGreater(drawstring["width"], 2400)
+        self.assertLess(drawstring["left"], 0)
+        landscape = artwork_position_for_catalog(
+            262, 2400, 2850, 4000, 3000, orientation="landscape"
+        )
+        self.assertEqual(landscape["width"], 2400)
+        self.assertLess(landscape["height"], 2850)
+        tall = artwork_position_for_catalog(262, 2400, 2850, 3000, 4000)
+        self.assertEqual(tall["width"], 2400)
+        self.assertGreater(tall["height"], 2850)
+        self.assertLess(tall["top"], 0)
+        self.assertGreater(tall["top"], int(round((2850 - tall["height"]) / 2)))
         bandana = artwork_position_for_catalog(902, 3060, 1875, 3000, 4000)
         bowl = artwork_position_for_catalog(678, 6496, 803, 3000, 4000)
         self.assertEqual(bandana["width"], 3060)

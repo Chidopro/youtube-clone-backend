@@ -52,8 +52,12 @@ ACCESSORY_CATALOG_PRODUCT_IDS = frozenset({
     JIGSAW_CATALOG_ID,
 })
 TOTE_WRAP_CATALOG_ID = 274
+DRAWSTRING_CATALOG_ID = 262
+# Portrait tools crop keeps the top of a tall photo (object-position y 26%).
+DRAWSTRING_PORTRAIT_FOCAL_Y = 0.26
 # Laptop sleeve, pets, and accessories fill the printfile (crop). Bowl
-# printfile is the 21.66" × 2.68" wrap strip. Drawstring stays contain.
+# printfile is the 21.66" × 2.68" wrap strip. Drawstring portrait also
+# covers its tall printfile; an explicit landscape orientation stays contain.
 # Tote 274 is one tall wrap (front + bottom + back); covering it prints
 # the back upside-down.
 COVER_PRINT_AREA_CATALOG_IDS = frozenset({
@@ -419,8 +423,10 @@ def cover_in_print_area(
     area_height: int,
     image_width: Optional[int] = None,
     image_height: Optional[int] = None,
+    focal_x: float = 0.5,
+    focal_y: float = 0.5,
 ) -> Dict[str, int]:
-    """Fill the printfile (cover/crop). Used for all-over laptop sleeve."""
+    """Fill the printfile (cover/crop). Focal 0 keeps the start of that axis."""
     aw = max(1, int(area_width))
     ah = max(1, int(area_height))
     iw = int(image_width or 0)
@@ -437,13 +443,15 @@ def cover_in_print_area(
     scale = max(aw / float(iw), ah / float(ih))
     width = max(1, int(round(iw * scale)))
     height = max(1, int(round(ih * scale)))
+    fx = min(1.0, max(0.0, float(focal_x)))
+    fy = min(1.0, max(0.0, float(focal_y)))
     return {
         "area_width": aw,
         "area_height": ah,
         "width": width,
         "height": height,
-        "left": int(round((aw - width) / 2)),
-        "top": int(round((ah - height) / 2)),
+        "left": int(round((aw - width) * fx)),
+        "top": int(round((ah - height) * fy)),
     }
 
 
@@ -495,9 +503,19 @@ def artwork_position_for_catalog(
     area_height: int,
     image_width: Optional[int] = None,
     image_height: Optional[int] = None,
+    orientation: Optional[str] = None,
 ) -> Dict[str, int]:
     if int(catalog_id) == TOTE_WRAP_CATALOG_ID:
         return tote_front_artwork_position(area_width, area_height, image_width, image_height)
+    ori = str(orientation or "").strip().lower()
+    if int(catalog_id) == DRAWSTRING_CATALOG_ID and ori != "landscape":
+        return cover_in_print_area(
+            area_width,
+            area_height,
+            image_width,
+            image_height,
+            focal_y=DRAWSTRING_PORTRAIT_FOCAL_Y,
+        )
     if int(catalog_id) in COVER_PRINT_AREA_CATALOG_IDS:
         return cover_in_print_area(area_width, area_height, image_width, image_height)
     return contain_in_print_area(area_width, area_height, image_width, image_height)
@@ -662,7 +680,13 @@ def _cache_put(key: str, payload: Dict[str, Any]) -> None:
         _mockup_cache[key] = (now, payload)
 
 
-def cache_key_for(catalog_id: int, variant_id: int, image: str, back_image: str = "") -> str:
+def cache_key_for(
+    catalog_id: int,
+    variant_id: int,
+    image: str,
+    back_image: str = "",
+    orientation: str = "",
+) -> str:
     src = str(image or "")
     digest = hashlib.sha256(src.encode("utf-8", errors="ignore")).hexdigest()[:40]
     back = str(back_image or "").strip()
@@ -671,7 +695,13 @@ def cache_key_for(catalog_id: int, variant_id: int, image: str, back_image: str 
         if back
         else "noback"
     )
-    return f"{int(catalog_id)}:{int(variant_id)}:{digest}:{back_digest}:a11"
+    base = f"{int(catalog_id)}:{int(variant_id)}:{digest}:{back_digest}:a11"
+    if int(catalog_id) == DRAWSTRING_CATALOG_ID:
+        ori = str(orientation or "").strip().lower()
+        if ori not in ("portrait", "landscape"):
+            ori = "portrait"
+        return f"{base}:{ori}"
+    return base
 
 
 def image_pixel_size(image: str = "", blob: Optional[bytes] = None) -> Tuple[int, int]:
@@ -1103,13 +1133,19 @@ def create_mockup_task(
     image_height: Optional[int] = None,
     extra_payload: Optional[Dict[str, Any]] = None,
     prepared_printfile: bool = False,
+    image_orientation: str = "",
 ) -> str:
     placement, area_w, area_h = print_area_for_variant(catalog_id, variant_id, api_key)
     if prepared_printfile:
         position = cover_in_print_area(area_w, area_h, image_width, image_height)
     else:
         position = artwork_position_for_catalog(
-            catalog_id, area_w, area_h, image_width, image_height
+            catalog_id,
+            area_w,
+            area_h,
+            image_width,
+            image_height,
+            orientation=image_orientation,
         )
     payload: Dict[str, Any] = {
         "variant_ids": [int(variant_id)],
@@ -1258,6 +1294,7 @@ def generate_mug_mockup(
     image_width: Optional[int] = None,
     image_height: Optional[int] = None,
     back_image: str = "",
+    image_orientation: str = "",
     wait: bool = True,
 ) -> Dict[str, Any]:
     api_key = _api_key()
@@ -1285,7 +1322,7 @@ def generate_mug_mockup(
         probed_w, probed_h = image_pixel_size(src, blob)
         if probed_w > 0 and probed_h > 0:
             iw, ih = probed_w, probed_h
-    key = cache_key_for(catalog_id, variant_id, src, back_src)
+    key = cache_key_for(catalog_id, variant_id, src, back_src, image_orientation)
     hosted_key = key
     cached = _cache_get(key)
     if cached:
@@ -1310,7 +1347,7 @@ def generate_mug_mockup(
                 image_url, iw, ih = prepared
                 prepared_printfile = True
                 printfile_url = image_url
-        hosted_key = cache_key_for(catalog_id, variant_id, image_url, back_src)
+        hosted_key = cache_key_for(catalog_id, variant_id, image_url, back_src, image_orientation)
         if hosted_key != key:
             cached_hosted = _cache_get(hosted_key)
             if cached_hosted:
@@ -1335,6 +1372,7 @@ def generate_mug_mockup(
                     image_height=ih or None,
                     extra_payload=extra_payload,
                     prepared_printfile=prepared_printfile,
+                    image_orientation=image_orientation,
                 )
                 return poll_mockup_task(task_key, api_key, wait=wait)
             except Exception as e:

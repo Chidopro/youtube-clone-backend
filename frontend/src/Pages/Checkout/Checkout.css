@@ -1025,6 +1025,9 @@
   flex-wrap: wrap;
   gap: 0 8px;
   margin: 0 0 6px;
+  min-height: 2.6em;
+  max-height: 2.6em;
+  overflow: hidden;
   text-align: center;
   flex-shrink: 0;
 }
@@ -1048,15 +1051,16 @@
 
 .design-modal-preview-visual {
   width: 100%;
-  height: auto;
-  max-height: none;
-  flex: 0 0 auto;
+  height: 300px;
+  min-height: 300px;
+  max-height: 300px;
+  flex: 0 0 300px;
   margin: 0 auto 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   isolation: auto;
 }
 
@@ -1073,10 +1077,10 @@
   width: fit-content;
   max-width: min(280px, 100%);
   height: auto;
-  max-height: calc(100dvh - 300px);
+  max-height: 300px;
   display: block;
   margin: 0 auto;
-  overflow: visible;
+  overflow: hidden;
   contain: none;
   isolation: auto;
 }
@@ -1094,7 +1098,7 @@
   width: auto !important;
   height: auto !important;
   max-width: min(280px, 100%);
-  max-height: calc(100dvh - 300px);
+  max-height: 300px;
   object-fit: contain;
   display: block;
   margin: 0 auto;
@@ -1163,29 +1167,29 @@
 
   .design-modal-preview-visual,
   .design-modal-preview-visual--product-only {
-    flex: 0 0 auto;
+    flex: 0 0 240px;
     width: 100%;
-    height: auto;
-    max-height: none;
-    min-height: 0;
+    height: 240px;
+    max-height: 240px;
+    min-height: 240px;
     margin: 0 auto 4px;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .design-modal--preview .product-preview-stage {
     width: fit-content;
-    max-width: min(280px, 100%);
+    max-width: min(240px, 100%);
     height: auto;
-    max-height: calc(100dvh - 280px);
+    max-height: 240px;
     margin: 0 auto;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .design-modal--preview .product-preview-mockup {
     width: auto !important;
-    max-width: min(280px, 100%);
+    max-width: min(240px, 100%);
     height: auto !important;
-    max-height: calc(100dvh - 280px);
+    max-height: 240px;
     object-fit: contain;
     margin: 0 auto;
   }
@@ -1197,9 +1201,9 @@
   .design-modal-preview-product-only,
   .design-modal-preview-fallback-shot {
     width: auto !important;
-    max-width: min(280px, 100%);
+    max-width: 100%;
     height: auto !important;
-    max-height: min(360px, 48dvh);
+    max-height: 240px;
     object-fit: contain !important;
     margin: 0 auto;
   }
@@ -1238,16 +1242,17 @@
 .design-modal-preview-fallback-shot,
 .design-modal-preview-product-only {
   display: block;
-  width: 100%;
-  max-width: 280px;
+  width: auto;
+  max-width: 100%;
   height: auto;
+  max-height: 300px;
   object-fit: contain;
   margin: 0 auto;
   border-radius: 8px;
 }
 
 .design-modal-preview-visual--product-only {
-  overflow: visible;
+  overflow: hidden;
 }
 
 .design-modal-remove-under-note {

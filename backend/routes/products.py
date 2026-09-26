@@ -707,6 +707,9 @@ def printful_mug_mockup():
         image_height = int(data.get("image_height") or data.get("imageHeight") or 0) or None
     except (TypeError, ValueError):
         image_height = None
+    image_orientation = (
+        data.get("image_orientation") or data.get("imageOrientation") or ""
+    )
     if not product_name:
         response = jsonify(success=False, error="product_name is required")
         return _allow_origin(response), 400
@@ -722,6 +725,7 @@ def printful_mug_mockup():
             image_width=image_width,
             image_height=image_height,
             back_image=str(back_image or "").strip(),
+            image_orientation=str(image_orientation or "").strip(),
             wait=True,
         )
     except Exception as e:

@@ -476,3 +476,13 @@
     padding: 10px 8px 12px;
   }
 }
+
+.collaborator-shop {
+  margin: 8px 0 28px;
+}
+
+.collaborator-shop-title {
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 700;
+}

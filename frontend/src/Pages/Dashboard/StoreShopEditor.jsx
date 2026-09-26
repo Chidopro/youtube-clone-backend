@@ -11,6 +11,7 @@ import {
 import {
   DELUZION_SHOP_PRODUCTS,
   applyShopCatalogOverrides,
+  orderedShopProducts,
   shopCategoryThumbUrl,
   shopperSizeLabel,
 } from '../../utils/shopCategories';
@@ -80,6 +81,7 @@ const StoreShopEditor = ({
   uploadOpen,
   onUploadOpen,
   onUploadClose,
+  ownCatalog = false,
 }) => {
   const [overrides, setOverrides] = useState({});
   const [catalogByCategory, setCatalogByCategory] = useState({});
@@ -92,24 +94,40 @@ const StoreShopEditor = ({
   const [uploadSize, setUploadSize] = useState('');
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [editOpen, setEditOpen] = useState(false);
+  const [draggingId, setDraggingId] = useState('');
   const fileRefs = useRef({});
+  const dragFrom = useRef(-1);
 
-  const products = useMemo(
+  const catalogTiles = useMemo(
     () => applyShopCatalogOverrides(DELUZION_SHOP_PRODUCTS, overrides),
     [overrides]
+  );
+  const products = useMemo(
+    () => orderedShopProducts(catalogTiles, { collaborator: ownCatalog }),
+    [catalogTiles, ownCatalog]
   );
 
   useEffect(() => {
     let cancelled = false;
-    fetchShopCatalog({ subdomain: 'deluzion' })
-      .then((data) => {
+    const load = async () => {
+      try {
+        if (ownCatalog) {
+          const auth = await getAuthHeaders();
+          if (auth?.error || cancelled) return;
+          const data = await fetchShopCatalog({ headers: auth.headers });
+          if (!cancelled) setOverrides(data.products || {});
+          return;
+        }
+        const data = await fetchShopCatalog({ subdomain: 'deluzion' });
         if (!cancelled) setOverrides(data.products || {});
-      })
-      .catch(() => {});
+      } catch (_) {}
+    };
+    load();
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [reloadToken, ownCatalog]);
 
   useEffect(() => {
     onCatalogChange?.(overrides);
@@ -211,7 +229,11 @@ const StoreShopEditor = ({
     }
   };
 
-  const selectedUploadTile = products.find((tile) => tile.id === uploadSku) || null;
+  const selectedUploadTile = catalogTiles.find((tile) => tile.id === uploadSku) || null;
+  const savedUploadPreview = String(overrides[uploadSku]?.preview || '').trim();
+  const modalPreview = uploadPreview
+    || (savedUploadPreview && !savedUploadPreview.startsWith('/shop/') ? shopCategoryThumbUrl(savedUploadPreview) : '')
+    || (!ownCatalog && selectedUploadTile?.preview ? shopCategoryThumbUrl(selectedUploadTile.preview) : '');
   const uploadProduct = selectedUploadTile
     ? matchCatalogProduct(catalogByCategory[selectedUploadTile.category] || [], selectedUploadTile.catalogName)
     : null;
@@ -226,6 +248,7 @@ const StoreShopEditor = ({
     : uploadSizes;
 
   const resetUploadModal = () => {
+    setEditOpen(false);
     setUploadSku('');
     setUploadFile(null);
     setUploadPreview('');
@@ -238,6 +261,7 @@ const StoreShopEditor = ({
 
   useEffect(() => {
     if (!uploadOpen) return undefined;
+    setEditOpen(false);
     setUploadSku('');
     setUploadFile(null);
     setUploadPreview('');
@@ -245,19 +269,79 @@ const StoreShopEditor = ({
     setUploadSize('');
     setUploadBusy(false);
     setUploadError('');
+    return undefined;
+  }, [uploadOpen]);
+
+  useEffect(() => {
+    if (!uploadOpen && !editOpen) return undefined;
     const onKey = (event) => {
       if (event.key === 'Escape' && !uploadBusy) resetUploadModal();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [uploadOpen]);
+  }, [uploadOpen, editOpen, uploadBusy]);
 
   const handleUploadSkuChange = (sku) => {
     setUploadSku(sku);
-    const tile = products.find((item) => item.id === sku);
+    const tile = catalogTiles.find((item) => item.id === sku);
     setUploadColor(tile?.color || '');
     setUploadSize(tile?.size || '');
     setUploadError('');
+  };
+
+  const openEdit = (tile) => {
+    setEditOpen(true);
+    setUploadSku(tile.id);
+    setUploadFile(null);
+    setUploadPreview('');
+    setUploadColor(tile.color || '');
+    setUploadSize(tile.size || '');
+    setUploadBusy(false);
+    setUploadError('');
+  };
+
+  const handleDelete = async (tile) => {
+    if (disabled || !tile?.id) return;
+    const ok = window.confirm(`Delete ${tile.name} from your shop?`);
+    if (!ok) return;
+    setBusySku(tile.id);
+    setStatus(tile.id, 'Deleting…');
+    try {
+      await savePatch(tile.id, ownCatalog ? { remove: true } : { hidden: true });
+      setStatus(tile.id, '');
+    } catch (err) {
+      setStatus(tile.id, err.message || 'Could not delete');
+    } finally {
+      setBusySku('');
+    }
+  };
+
+  const commitOrder = async (fromIndex, toIndex) => {
+    if (disabled || fromIndex < 0 || fromIndex === toIndex) return;
+    const next = [...products];
+    const [moved] = next.splice(fromIndex, 1);
+    if (!moved) return;
+    next.splice(toIndex, 0, moved);
+    const patch = {};
+    const optimistic = { ...overrides };
+    next.forEach((tile, index) => {
+      patch[tile.id] = { order: index };
+      optimistic[tile.id] = { ...(optimistic[tile.id] || {}), order: index };
+    });
+    setOverrides(optimistic);
+    try {
+      const auth = await withAuth();
+      const saved = await patchShopCatalog({
+        headers: auth.headers,
+        userId: auth.userId,
+        email: auth.accountEmail,
+        sessionToken: auth.sessionToken,
+        products: patch,
+      });
+      setOverrides(saved);
+    } catch (err) {
+      setStatus(moved.id, err.message || 'Could not reorder');
+    }
   };
 
   const handleUploadFileChange = (file) => {
@@ -279,7 +363,7 @@ const StoreShopEditor = ({
       setUploadError('Choose a shop product.');
       return;
     }
-    if (!uploadFile) {
+    if (!uploadFile && !editOpen) {
       setUploadError('Choose an image.');
       return;
     }
@@ -287,27 +371,29 @@ const StoreShopEditor = ({
     setUploadError('');
     try {
       const auth = await withAuth();
-      const data = await uploadShopCatalogImage({
-        headers: auth.headers,
-        userId: auth.userId,
-        email: auth.accountEmail,
-        sessionToken: auth.sessionToken,
-        sku: uploadSku,
-        file: uploadFile,
-      });
-      let next = data.products || {};
-      const patch = {};
-      if (uploadColor) patch.color = uploadColor;
-      if (uploadSize) patch.size = uploadSize;
-      if (Object.keys(patch).length) {
-        next = await patchShopCatalog({
+      let next = overrides;
+      if (uploadFile) {
+        const data = await uploadShopCatalogImage({
           headers: auth.headers,
           userId: auth.userId,
           email: auth.accountEmail,
           sessionToken: auth.sessionToken,
-          products: { [uploadSku]: patch },
+          sku: uploadSku,
+          file: uploadFile,
         });
+        next = data.products || {};
       }
+      const patch = { hidden: false };
+      if (!products.some((item) => item.id === uploadSku)) patch.order = products.length;
+      if (uploadColor) patch.color = uploadColor;
+      if (uploadSize) patch.size = uploadSize;
+      next = await patchShopCatalog({
+        headers: auth.headers,
+        userId: auth.userId,
+        email: auth.accountEmail,
+        sessionToken: auth.sessionToken,
+        products: { [uploadSku]: patch },
+      });
       setOverrides(next);
       setStatus(uploadSku, 'Saved');
       resetUploadModal();
@@ -320,7 +406,7 @@ const StoreShopEditor = ({
   return (
     <section className="page-media-section store-shop-section" aria-label="Store images">
       <div className="store-shop-heading">
-        <h3>Store images</h3>
+        <h3>{ownCatalog ? 'Shop images' : 'Store images'}</h3>
         <button
           type="button"
           className="add-favorite-btn favorites-upload-btn"
@@ -331,11 +417,15 @@ const StoreShopEditor = ({
         </button>
       </div>
       <p className="store-shop-help">
-        These photos appear on Shop. Replace a photo, set the default color and size shoppers see first,
-        or assign an image from this page.
+        {ownCatalog
+          ? 'Upload your own merchandise. Drag a product to change the order shoppers see, or use edit and delete on each one. Shoppers can buy these from your page.'
+          : 'These photos appear on Shop. Drag a product to change the order, or edit and delete each one. Replace a photo, set the default color and size shoppers see first, or assign an image from this page.'}
       </p>
+      {ownCatalog && !products.length ? (
+        <p className="store-shop-empty">No shop products yet. Use Shop Upload to add your own merchandise.</p>
+      ) : null}
       <div className="store-shop-grid">
-        {products.map((tile) => {
+        {products.map((tile, index) => {
           const product = matchCatalogProduct(catalogByCategory[tile.category] || [], tile.catalogName);
           const stockPending = !product || catalogStockPending(product);
           const colors = product ? shopColorList(product, tile.size, EDITOR_COUNTRY) : [];
@@ -347,10 +437,64 @@ const StoreShopEditor = ({
           const assignedUrl = String(tile.preview || '');
           const busy = busySku === tile.id;
           const pageOptions = (pageImages || []).filter((fav) => favoriteImageUrl(fav));
+          const savedPreview = String(overrides[tile.id]?.preview || '').trim();
+          const thumbSrc = ownCatalog
+            ? shopCategoryThumbUrl(savedPreview)
+            : shopCategoryThumbUrl(tile.preview);
           return (
-            <article key={tile.id} className="store-shop-card">
+            <article
+              key={tile.id}
+              className={`store-shop-card${draggingId === tile.id ? ' store-shop-card--dragging' : ''}`}
+              onDragOver={(event) => {
+                if (disabled || busy) return;
+                event.preventDefault();
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const from = dragFrom.current;
+                dragFrom.current = -1;
+                setDraggingId('');
+                commitOrder(from, index);
+              }}
+            >
               <span className="store-shop-thumb">
-                <img src={shopCategoryThumbUrl(tile.preview)} alt="" />
+                {thumbSrc ? <img src={thumbSrc} alt="" /> : <span className="store-shop-thumb-empty">No photo</span>}
+                <button
+                  type="button"
+                  className="store-shop-drag"
+                  draggable={!disabled && !busy}
+                  title="Drag to reorder"
+                  onDragStart={(event) => {
+                    dragFrom.current = index;
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', tile.id);
+                    setDraggingId(tile.id);
+                  }}
+                  onDragEnd={() => {
+                    dragFrom.current = -1;
+                    setDraggingId('');
+                  }}
+                >
+                  Drag
+                </button>
+                <button
+                  type="button"
+                  className="edit-video-btn"
+                  title={`Edit ${tile.name}`}
+                  disabled={disabled || busy}
+                  onClick={() => openEdit(tile)}
+                >
+                  ✏️
+                </button>
+                <button
+                  type="button"
+                  className="delete-video-btn"
+                  title={`Delete ${tile.name}`}
+                  disabled={disabled || busy}
+                  onClick={() => handleDelete(tile)}
+                >
+                  🗑️
+                </button>
               </span>
               <h4>{tile.name}</h4>
               <div className="store-shop-fields">
@@ -434,7 +578,7 @@ const StoreShopEditor = ({
           );
         })}
       </div>
-      {uploadOpen && createPortal(
+      {(uploadOpen || editOpen) && createPortal(
         <div
           className="favorite-modal-overlay"
           onClick={() => {
@@ -450,17 +594,19 @@ const StoreShopEditor = ({
             >
               &times;
             </span>
-            <h2>Upload Shop Product</h2>
+            <h2>{editOpen ? `Edit ${selectedUploadTile?.name || 'product'}` : 'Upload Shop Product'}</h2>
             <div className="upload-form">
               <p className="edit-video-tip">
-                Choose a premade Shop product, then upload the photo shoppers will see. You can also set the default color and size.
+                {editOpen
+                  ? 'Change the photo, color, or size shoppers see for this product.'
+                  : 'Choose a shop product, then upload the photo shoppers will see. You can also set the default color and size.'}
               </p>
               <div className="form-group">
                 <label htmlFor="shop-upload-product">Product *</label>
                 <select
                   id="shop-upload-product"
                   value={uploadSku}
-                  disabled={uploadBusy}
+                  disabled={uploadBusy || editOpen}
                   onChange={(e) => handleUploadSkuChange(e.target.value)}
                 >
                   <option value="">Choose product</option>
@@ -478,13 +624,13 @@ const StoreShopEditor = ({
                   disabled={uploadBusy}
                   onChange={(e) => handleUploadFileChange(e.target.files?.[0])}
                 />
-                {(uploadPreview || selectedUploadTile?.preview) && (
+                {modalPreview ? (
                   <img
-                    src={uploadPreview || shopCategoryThumbUrl(selectedUploadTile.preview)}
+                    src={modalPreview}
                     alt=""
                     className="favorite-upload-preview shop-upload-preview"
                   />
-                )}
+                ) : null}
               </div>
               <div className="form-group">
                 <label htmlFor="shop-upload-color">Default color</label>
@@ -525,10 +671,10 @@ const StoreShopEditor = ({
                 <button
                   type="button"
                   className="save-btn"
-                  disabled={uploadBusy || !uploadSku || !uploadFile}
+                  disabled={uploadBusy || !uploadSku || (!editOpen && !uploadFile)}
                   onClick={handleModalUpload}
                 >
-                  {uploadBusy ? 'Uploading...' : 'Upload Shop Product'}
+                  {uploadBusy ? 'Saving...' : (editOpen ? 'Save' : 'Upload Shop Product')}
                 </button>
                 <button
                   type="button"

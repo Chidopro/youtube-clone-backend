@@ -4,9 +4,10 @@ function backendUrl(path) {
   return `${getBackendUrl().replace(/\/$/, '')}${path}`;
 }
 
-export async function fetchShopCatalog({ subdomain, headers } = {}) {
+export async function fetchShopCatalog({ subdomain, collaboratorId, headers } = {}) {
   const params = new URLSearchParams();
   if (subdomain) params.set('subdomain', String(subdomain).trim().toLowerCase());
+  if (collaboratorId) params.set('collaborator_id', String(collaboratorId).trim());
   const qs = params.toString();
   const res = await fetch(backendUrl(`/api/shop-catalog${qs ? `?${qs}` : ''}`), {
     method: 'GET',

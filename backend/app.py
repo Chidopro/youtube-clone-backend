@@ -8517,6 +8517,16 @@ def _sanitize_shop_preview(url):
     return raw
 
 
+def _shop_order(value):
+    try:
+        order = int(value)
+    except (TypeError, ValueError):
+        return None
+    if order < 0 or order > 100:
+        return None
+    return order
+
+
 def _normalize_shop_catalog(raw):
     src = raw if isinstance(raw, dict) else {}
     products = src.get("products") if isinstance(src.get("products"), dict) else src
@@ -8531,12 +8541,17 @@ def _normalize_shop_catalog(raw):
         preview = _sanitize_shop_preview(patch.get("preview"))
         color = _shop_text(patch.get("color"))
         size = _shop_text(patch.get("size"), 120)
+        order = _shop_order(patch.get("order"))
         if preview:
             item["preview"] = preview
         if color:
             item["color"] = color
         if size:
             item["size"] = size
+        if order is not None:
+            item["order"] = order
+        if patch.get("hidden") is True:
+            item["hidden"] = True
         if item:
             out[sku] = item
     return out
@@ -8644,6 +8659,12 @@ def shop_catalog():
                 uid, err = _authenticated_users_id()
                 if err is None:
                     owner_id = uid
+            collab_id = (request.args.get("collaborator_id") or "").strip()
+            sub = (request.args.get("subdomain") or "").strip().lower()
+            if not owner_id and collab_id and sub:
+                storefront_id = _shop_catalog_owner_id(sub)
+                if storefront_id and _cf_approved_umbrella_membership(collab_id, storefront_id):
+                    owner_id = collab_id
             if not owner_id:
                 owner_id = _shop_catalog_owner_id(request.args.get("subdomain"))
             if not owner_id:
@@ -8681,6 +8702,9 @@ def shop_catalog():
             patch = incoming.get(sku)
             if not isinstance(patch, dict):
                 continue
+            if patch.get("remove") is True:
+                merged.pop(sku, None)
+                continue
             item = dict(merged.get(sku) or {})
             if "preview" in patch:
                 preview = _sanitize_shop_preview(patch.get("preview"))
@@ -8700,6 +8724,17 @@ def shop_catalog():
                     item["size"] = size
                 else:
                     item.pop("size", None)
+            if "order" in patch:
+                order = _shop_order(patch.get("order"))
+                if order is not None:
+                    item["order"] = order
+                else:
+                    item.pop("order", None)
+            if "hidden" in patch:
+                if patch.get("hidden") is True:
+                    item["hidden"] = True
+                else:
+                    item.pop("hidden", None)
             if item:
                 merged[sku] = item
             else:

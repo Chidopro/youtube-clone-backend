@@ -99,7 +99,7 @@
   margin: 10px 8px 12px 8px;
   font-size: 16px;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
 }
 
 .hub-card-empty {
@@ -132,7 +132,7 @@
 
 .hub-card > img {
   object-fit: cover;
-  object-position: var(--thumb-face-position, center 20%);
+  object-position: center top;
 }
 
 .hub-shop-thumb {

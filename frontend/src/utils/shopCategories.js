@@ -90,9 +90,13 @@ export function isPremadeShopfront(subdomain) {
 
 export function applyShopCatalogOverrides(products, overrides) {
   const map = overrides && typeof overrides === 'object' ? overrides : {};
-  return (products || []).map((product) => {
+  return (products || []).map((product, index) => {
     const patch = map[product.id];
-    if (!patch || typeof patch !== 'object') return product;
+    const order = patch && Number.isFinite(Number(patch.order)) ? Number(patch.order) : index;
+    const hidden = Boolean(patch && patch.hidden);
+    if (!patch || typeof patch !== 'object') {
+      return { ...product, order, hidden: false };
+    }
     const preview = String(patch.preview || '').trim();
     const color = String(patch.color || '').trim();
     const size = String(patch.size || '').trim();
@@ -101,8 +105,29 @@ export function applyShopCatalogOverrides(products, overrides) {
       preview: preview || product.preview,
       color: color || product.color,
       size: size || product.size || '',
+      order,
+      hidden,
     };
   });
+}
+
+/** Shopper-facing order. Collaborator shops only include photos that shop saved. */
+export function orderedShopProducts(products, { collaborator = false } = {}) {
+  return [...(products || [])]
+    .map((tile, index) => ({ tile, index }))
+    .filter(({ tile }) => {
+      if (tile?.hidden) return false;
+      if (!collaborator) return true;
+      const preview = String(tile?.preview || '').trim();
+      return Boolean(preview) && !preview.startsWith('/shop/');
+    })
+    .sort((a, b) => {
+      const ao = Number.isFinite(Number(a.tile?.order)) ? Number(a.tile.order) : a.index;
+      const bo = Number.isFinite(Number(b.tile?.order)) ? Number(b.tile.order) : b.index;
+      if (ao !== bo) return ao - bo;
+      return a.index - b.index;
+    })
+    .map(({ tile }) => tile);
 }
 
 export function deluzionShopArtworkUrl(preview) {

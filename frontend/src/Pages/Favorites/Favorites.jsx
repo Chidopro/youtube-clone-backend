@@ -2,16 +2,25 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
-import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, favoriteMerchImagePayload, publicStorageCardUrl, withMemberPublicIdentity, fetchMemberFavorites, peekPublicFavoriteLists } from '../../utils/favoriteListsApi';
-import { favoriteListPageHeading, friendPageLabel } from '../../utils/favoriteListLabels';
+import { fetchPublicFavoritesByList, favoriteImageUrl, favoriteCardThumbUrl, favoriteMerchImagePayload, publicStorageCardUrl, withMemberPublicIdentity, fetchMemberFavorites, peekPublicFavoriteLists } from '../../utils/favoriteListsApi';
+import { friendPageLabel } from '../../utils/favoriteListLabels';
+import { applyCoverFrame } from '../../utils/coverFrame';
 import { apiJoin } from '../../config/apiConfig';
 import { savePendingMerchData, markMerchIntentStarted } from '../../utils/merchSession';
 import {
   browseShopCategoryPath,
   readShopAddIntent,
   clearShopAddIntent,
+  DELUZION_SHOP_PRODUCTS,
+  applyShopCatalogOverrides,
+  orderedShopProducts,
+  deluzionShopArtworkUrl,
 } from '../../utils/shopCategories';
+import { fetchShopCatalog } from '../../utils/shopCatalogApi';
+import { HubThumb } from '../../Components/Feed/Feed';
+import '../../Components/Feed/Feed.css';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
+import { CollaboratorShop } from '../Shop/Shop';
 import { ChevronLeft, ChevronRight } from '../../Components/Chevrons/Chevrons';
 import { sortVideosForPlay } from '../../utils/videoPlayOrder';
 import { prefetchVideoPlayback } from '../../utils/videoOptimize';
@@ -113,6 +122,8 @@ function FavoriteThumb({ src, fallback = '', eager = false }) {
       loading={eager ? 'eager' : 'lazy'}
       decoding="async"
       fetchPriority={eager ? 'high' : 'auto'}
+      ref={applyCoverFrame}
+      onLoad={(e) => applyCoverFrame(e.currentTarget)}
       onError={(e) => {
         if (fallback && e.currentTarget.src !== fallback) {
           setCurrent(fallback);
@@ -344,7 +355,6 @@ const Favorites = ({ sidebar }) => {
   const [clipsLoading, setClipsLoading] = useState(true);
   const [mediaSlug, setMediaSlug] = useState(null);
   const [error, setError] = useState('');
-  const [extraPages, setExtraPages] = useState([]);
   const images = pageMedia.images;
   const videos = pageMedia.videos;
 
@@ -380,12 +390,12 @@ const Favorites = ({ sidebar }) => {
     };
 
     const run = async () => {
+      setCollabShopReady(false);
       const sub = getSubdomain();
       if (!sub) {
         setLoading(false);
         setPageMedia(EMPTY_PAGE_MEDIA);
         setMediaSlug(effectiveSlug);
-        setExtraPages([]);
         setError('');
         setClipsLoading(false);
         return;
@@ -393,7 +403,6 @@ const Favorites = ({ sidebar }) => {
 
       setLoading(true);
       setClipsLoading(true);
-      setExtraPages([]);
       setError('');
       const peeked = peekPublicFavoriteLists(sub) || [];
       const peekedList =
@@ -412,7 +421,6 @@ const Favorites = ({ sidebar }) => {
           setError(data?.error || 'Could not load this page');
           setPageMedia(EMPTY_PAGE_MEDIA);
           setListMeta(null);
-          setExtraPages([]);
           setMediaSlug(effectiveSlug);
           setLoading(false);
           setClipsLoading(false);
@@ -464,36 +472,11 @@ const Favorites = ({ sidebar }) => {
         if (cancelled) return;
         setPageMedia((prev) => ({ images: prev.images, videos: listVideos }));
         setClipsLoading(false);
-
-        if (!isOwnerPage) {
-          setExtraPages([]);
-          return;
-        }
-        const ownerId = currentCreator?.id || rawList?.owner_user_id;
-        if (!ownerId) return;
-        try {
-          const extras = await fetchOwnerExtraPages(sub, ownerId);
-          if (cancelled) return;
-          const pages = await Promise.all(
-            extras.map(async (extraList) => ({
-              list: extraList,
-              images: await fetchFavoritesForList(
-                sub,
-                extraList,
-                extraList.owner_user_id || ownerId
-              ),
-            }))
-          );
-          if (!cancelled) setExtraPages(pages);
-        } catch (_) {
-          if (!cancelled) setExtraPages([]);
-        }
       } catch (e) {
         if (cancelled) return;
         setError(e.message || 'Network error');
         setPageMedia(EMPTY_PAGE_MEDIA);
         setMediaSlug(effectiveSlug);
-        setExtraPages([]);
         setLoading(false);
         setClipsLoading(false);
       }
@@ -519,22 +502,13 @@ const Favorites = ({ sidebar }) => {
     [videos]
   );
 
-  const extraPageItems = useMemo(
-    () =>
-      extraPages.map((page) => ({
-        list: page.list,
-        title: favoriteListPageHeading(page.list, currentCreator?.id),
-        images: mapFavoriteImages(page.images),
-      })),
-    [extraPages, currentCreator?.id]
-  );
-
-  const visibleExtraPages = extraPageItems;
+  const [collabShopReady, setCollabShopReady] = useState(false);
+  const [collabSection, setCollabSection] = useState('');
+  const [shopThumb, setShopThumb] = useState('');
   const hasVisibleItems =
     imageItems.length > 0 ||
     videoItems.length > 0 ||
-    clipsLoading ||
-    visibleExtraPages.some((page) => page.images.length > 0);
+    clipsLoading;
   const onFriendPage = isOnFriendPage();
 
   const handleMakeMerch = (favorite, pageList = listMeta) => {
@@ -578,13 +552,45 @@ const Favorites = ({ sidebar }) => {
     navigate(`/video/${video.categoryId || 0}/${video.id}`, { state: { video } });
   };
 
+  useEffect(() => {
+    setCollabSection('');
+    setShopThumb('');
+    setCollabShopReady(false);
+  }, [effectiveSlug]);
+
+  const isCollabPage = Boolean(listMeta?.is_collaborator_page);
+
+  useEffect(() => {
+    if (!isCollabPage || !listMeta?.owner_user_id) return undefined;
+    let cancelled = false;
+    fetchShopCatalog({
+      subdomain: getSubdomain() || 'deluzion',
+      collaboratorId: listMeta.owner_user_id,
+    })
+      .then((data) => {
+        if (cancelled) return;
+        const products = orderedShopProducts(
+          applyShopCatalogOverrides(DELUZION_SHOP_PRODUCTS, data.products || {}),
+          { collaborator: true }
+        );
+        const custom = products[0];
+        setShopThumb(custom ? deluzionShopArtworkUrl(custom.preview) : '');
+      })
+      .catch(() => {
+        if (!cancelled) setShopThumb('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isCollabPage, listMeta?.owner_user_id]);
+
   const creatorHeading = onFriendPage
     ? friendPageLabel(listMeta, currentCreator?.id)
     : '';
   const pageReady = !loading && mediaSlug === effectiveSlug;
 
   return (
-    <div className={`container favorites-root ${sidebar ? '' : ' large-container'}`}>
+    <div className={`container favorites-root${isCollabPage ? ' favorites-root--collab' : ''}${sidebar ? '' : ' large-container'}`}>
       <StorefrontFlowBanner />
 
       <div className="favorites-page favorites-page--in-container">
@@ -611,14 +617,14 @@ const Favorites = ({ sidebar }) => {
           </div>
         ) : null}
 
-        {pageReady && !hasVisibleItems && extraPageItems.length === 0 && !error && !clipsLoading ? (
+        {pageReady && !isCollabPage && !hasVisibleItems && !error && !clipsLoading && !collabShopReady ? (
           <div className="favorites-empty">
             <h2>Nothing here yet</h2>
             <p>This page has no videos or images yet. Check back later!</p>
           </div>
         ) : null}
 
-        {pageReady && (hasVisibleItems || extraPageItems.length > 0) ? (
+        {pageReady && !isCollabPage && hasVisibleItems ? (
           <div className="favorites-shelves">
             {videoItems.length > 0 ? (
               <FavoritesMediaSection
@@ -691,36 +697,102 @@ const Favorites = ({ sidebar }) => {
                 ))}
               </FavoritesMediaSection>
             ) : null}
-
-            {visibleExtraPages.map((page) => (
-              page.images.length > 0 ? (
+          </div>
+        ) : null}
+        {pageReady && isCollabPage && !collabSection ? (
+          <div className="collab-hub-page">
+          <h1 className="collab-page-name">{creatorHeading}</h1>
+          <div className="feed-hubs collab-hub" aria-label="Co-creator sections">
+            <button type="button" className="card hub-card" onClick={() => setCollabSection('clips')}>
+              <HubThumb src={videoItems[0]?.thumb || ''} emptyLabel="No Clips Yet" />
+              <h2>Clips</h2>
+            </button>
+            <button type="button" className="card hub-card" onClick={() => setCollabSection('images')}>
+              <HubThumb src={imageItems[0]?.thumb || ''} emptyLabel="No Images Yet" />
+              <h2>Images</h2>
+            </button>
+            <button type="button" className="card hub-card" onClick={() => setCollabSection('shop')}>
+              <HubThumb src={shopThumb} emptyLabel="Shop" />
+              <h2>Shop</h2>
+            </button>
+          </div>
+          </div>
+        ) : null}
+        {pageReady && isCollabPage && collabSection ? (
+          <div className="collab-section">
+            <button type="button" className="collab-section-back" onClick={() => setCollabSection('')}>
+              <ChevronLeft />
+              <span>Back</span>
+            </button>
+            {collabSection === 'clips' ? (
+              videoItems.length > 0 ? (
                 <FavoritesMediaSection
-                  key={page.list.id || page.list.slug}
-                  id={`page-${page.list.slug || page.list.id}`}
-                  title={page.title}
-                  ariaLabel={page.title}
-                  itemCount={page.images.length}
-                  className="favorites-extra-page"
+                  id="videos"
+                  title="Clips"
+                  ariaLabel="Clips"
+                  itemCount={videoItems.length}
+                  className="favorites-shelf--videos"
+                  alwaysShowArrows
                 >
-                  {page.images.map((item) => (
+                  {videoItems.map((item, index) => (
+                    <div className="favorites-card favorites-card--video" key={item.id}>
+                      <button
+                        type="button"
+                        className="favorites-card-image favorites-card-image--clickable"
+                        onClick={() => openVideo(item.raw)}
+                        aria-label={`Watch ${item.title}`}
+                      >
+                        <FavoriteThumb src={item.thumb} eager={index < 3} />
+                      </button>
+                      <div className="favorites-card-content">
+                        <h3>{item.title}</h3>
+                        <button
+                          type="button"
+                          className="favorites-make-merch-btn"
+                          onClick={() => openVideo(item.raw)}
+                        >
+                          Watch
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </FavoritesMediaSection>
+              ) : (
+                <p className="favorites-empty-note">No clips yet.</p>
+              )
+            ) : null}
+            {collabSection === 'images' ? (
+              imageItems.length > 0 ? (
+                <FavoritesMediaSection
+                  id="images"
+                  title="Images"
+                  ariaLabel="Images"
+                  itemCount={imageItems.length}
+                  className="favorites-shelf--images"
+                >
+                  {imageItems.map((item, index) => (
                     <FavoriteImageCard
                       key={item.id}
                       item={item}
-                      onMakeMerch={(fav) => handleMakeMerch(fav, page.list)}
+                      eager={index < 3}
+                      onMakeMerch={handleMakeMerch}
                     />
                   ))}
                 </FavoritesMediaSection>
               ) : (
-                <section
-                  className="favorites-extra-page"
-                  key={page.list.id || page.list.slug}
-                  aria-label={page.title}
-                >
-                  <FavoritesSectionHeader title={page.title} />
-                  <p className="favorites-extra-empty">No images on this page yet.</p>
-                </section>
+                <p className="favorites-empty-note">No images yet.</p>
               )
-            ))}
+            ) : null}
+            {collabSection === 'shop' ? (
+              <>
+                <CollaboratorShop
+                  userId={listMeta.owner_user_id}
+                  listId={listMeta.id}
+                  onAvailability={setCollabShopReady}
+                />
+                {!collabShopReady ? <p className="favorites-empty-note">No shop products yet.</p> : null}
+              </>
+            ) : null}
           </div>
         ) : null}
       </div>

@@ -149,14 +149,18 @@ function sleep(ms, signal) {
   });
 }
 
-function cacheKey(productName, color, size, image, backImage) {
+function cacheKey(productName, color, size, image, backImage, orientation) {
   const src = String(image || '');
   const finger = `${src.length}:${src.slice(0, 48)}:${src.slice(-48)}`;
   const back = String(backImage || '');
   const backFinger = back
     ? `${back.length}:${back.slice(0, 24)}:${back.slice(-24)}`
     : 'noback';
-  return `${String(productName || '')}|${String(color || '')}|${String(size || '')}|${finger}|${backFinger}|a11`;
+  const name = String(productName || '');
+  const oriBit = name.toLowerCase().includes('drawstring')
+    ? `|${String(orientation || '').trim().toLowerCase() === 'landscape' ? 'landscape' : 'portrait'}`
+    : '';
+  return `${name}|${String(color || '')}|${String(size || '')}|${finger}|${backFinger}|a11${oriBit}`;
 }
 
 function viewBucket(title, url) {
@@ -246,12 +250,13 @@ export async function requestMugWrapMockup({
   imageWidth,
   imageHeight,
   backImage,
+  imageOrientation,
   signal,
 } = {}) {
   const src = String(image || '').trim();
   if (!src) throw new Error('image is required');
   const backSrc = String(backImage || '').trim();
-  const key = cacheKey(productName, color, size, src, backSrc);
+  const key = cacheKey(productName, color, size, src, backSrc, imageOrientation);
   if (clientCache.has(key)) return clientCache.get(key);
 
   const res = await fetch(apiJoin('/api/printful/mug-mockup'), {
@@ -265,6 +270,7 @@ export async function requestMugWrapMockup({
       image_width: imageWidth || undefined,
       image_height: imageHeight || undefined,
       back_image: backSrc || undefined,
+      image_orientation: imageOrientation || undefined,
     }),
     signal,
   });
@@ -295,7 +301,7 @@ export async function requestMugWrapMockup({
   throw new Error(data?.error || 'Wrap preview is not ready yet');
 }
 
-export function rememberMugWrapMockup(productName, color, size, image, wrap, backImage) {
+export function rememberMugWrapMockup(productName, color, size, image, wrap, backImage, orientation) {
   if (!wrap?.mockupUrl) return;
-  clientCache.set(cacheKey(productName, color, size, image, backImage), wrap);
+  clientCache.set(cacheKey(productName, color, size, image, backImage, orientation), wrap);
 }

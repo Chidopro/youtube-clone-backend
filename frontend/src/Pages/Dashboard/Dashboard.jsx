@@ -1453,10 +1453,15 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     };
 
     const storefrontSubForShop = String(
-        userProfile?.subdomain || user?.subdomain || currentCreator?.subdomain || getSubdomain() || ''
+        umbrellaStorefrontSub
+        || getSubdomain()
+        || userProfile?.subdomain
+        || user?.subdomain
+        || currentCreator?.subdomain
+        || ''
     ).toLowerCase();
     const showStoreEditor = Boolean(
-        !umbrellaOnly && !demoPreview && isPremadeShopfront(storefrontSubForShop)
+        !demoPreview && (umbrellaOnly || isPremadeShopfront(storefrontSubForShop))
     );
 
     const handleAssignFavoriteToStore = async (favorite, sku) => {
@@ -2867,7 +2872,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                     className="add-favorite-btn favorites-upload-btn"
                                     onClick={() => navigate('/upload')}
                                 >
-                                    Upload video
+                                    Upload clip
                                 </button>
                                 <button
                                     type="button"
@@ -2876,6 +2881,15 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                 >
                                     Upload image
                                 </button>
+                                {showStoreEditor && (
+                                <button
+                                    type="button"
+                                    className="add-favorite-btn favorites-upload-btn"
+                                    onClick={() => setShopUploadOpen(true)}
+                                >
+                                    Shop Upload
+                                </button>
+                                )}
                             </div>
                         )}
 
@@ -2974,7 +2988,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                         onClick={() => navigate('/upload')}
                                         disabled={demoPreview}
                                     >
-                                        Upload a video
+                                        Upload a clip
                                     </button>
                                 </p>
                             )}
@@ -3103,6 +3117,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                 uploadOpen={shopUploadOpen}
                                 onUploadOpen={() => setShopUploadOpen(true)}
                                 onUploadClose={() => setShopUploadOpen(false)}
+                                ownCatalog={umbrellaOnly}
                             />
                         )}
 

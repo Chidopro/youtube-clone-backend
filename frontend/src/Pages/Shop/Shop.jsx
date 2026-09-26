@@ -22,6 +22,7 @@ import {
   DELUZION_SHOP_PRODUCTS,
   SHOP_CATEGORIES,
   applyShopCatalogOverrides,
+  orderedShopProducts,
   browseShopCategoryPath,
   deluzionShopArtworkUrl,
   isPremadeShopfront,
@@ -181,7 +182,13 @@ function ShopTileSelect({ label, ariaLabel, value, options, disabled, pending, o
   );
 }
 
-const PremadeShop = ({ sidebar }) => {
+const PremadeShop = ({
+  sidebar,
+  catalogUserId = '',
+  favoriteListId = '',
+  embedded = false,
+  onAvailability,
+}) => {
   const navigate = useNavigate();
   const addingLockRef = useRef(new Set());
   const [shipToCountry, setShipToCountry] = useState(readShipToCountry);
@@ -195,7 +202,11 @@ const PremadeShop = ({ sidebar }) => {
 
   useEffect(() => {
     let cancelled = false;
-    fetchShopCatalog({ subdomain: getSubdomain() || 'deluzion' })
+    const sub = getSubdomain() || 'deluzion';
+    const req = catalogUserId
+      ? fetchShopCatalog({ subdomain: sub, collaboratorId: catalogUserId })
+      : fetchShopCatalog({ subdomain: sub });
+    req
       .then((data) => {
         if (cancelled) return;
         setShopProducts(applyShopCatalogOverrides(DELUZION_SHOP_PRODUCTS, data.products));
@@ -206,7 +217,14 @@ const PremadeShop = ({ sidebar }) => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogUserId]);
+
+  const tiles = orderedShopProducts(shopProducts, { collaborator: Boolean(catalogUserId) });
+
+  useEffect(() => {
+    if (!embedded || !onAvailability) return;
+    onAvailability(tiles.length > 0);
+  }, [embedded, onAvailability, tiles.length]);
 
   useEffect(() => {
     const sync = () => setShipToCountry(readShipToCountry());
@@ -378,7 +396,8 @@ const PremadeShop = ({ sidebar }) => {
         regional_base_prices: product?.regional_base_prices || undefined,
         size_pricing: product?.size_pricing || undefined,
         premade: true,
-        premadeId: tile.id,
+        premadeId: catalogUserId ? `${catalogUserId}:${tile.id}` : tile.id,
+        favorite_list_id: favoriteListId || undefined,
       };
       const next = [...(readCartItems() || [])];
       const existing = next.findIndex((it) => (
@@ -404,16 +423,11 @@ const PremadeShop = ({ sidebar }) => {
     }
   };
 
-  return (
-    <div className={`container shop-root ${sidebar ? '' : ' large-container'}`}>
-      <StorefrontFlowBanner />
+  if (embedded && !tiles.length) return null;
 
-      <div className="shop-page shop-page--in-container">
-        <ShopToolbar title="Shop" onBack={() => navigate('/')} />
-
-        <div className="shop-body">
+  const grid = (
           <div className="shop-category-grid shop-category-grid--premade">
-            {shopProducts.map((tile) => {
+            {tiles.map((tile) => {
               const product = productForTile(tile);
               const stockPending = !product || catalogStockPending(product);
               const sizeHint = selectedSizes[tile.id];
@@ -500,9 +514,9 @@ const PremadeShop = ({ sidebar }) => {
               );
             })}
           </div>
-        </div>
-      </div>
-      {addedConfirm && createPortal(
+  );
+
+  const addedModal = addedConfirm && createPortal(
         <div
           className="shop-added-overlay"
           onClick={() => setAddedConfirm(null)}
@@ -555,10 +569,45 @@ const PremadeShop = ({ sidebar }) => {
           </div>
         </div>,
         document.body
-      )}
+      );
+
+  if (embedded) {
+    return (
+      <section className="collaborator-shop" aria-label="Shop">
+        <h2 className="collaborator-shop-title">Shop</h2>
+        {grid}
+        {addedModal}
+      </section>
+    );
+  }
+
+  return (
+    <div className={`container shop-root ${sidebar ? '' : ' large-container'}`}>
+      <StorefrontFlowBanner />
+
+      <div className="shop-page shop-page--in-container">
+        <ShopToolbar title="Shop" onBack={() => navigate('/')} />
+
+        <div className="shop-body">
+          {grid}
+        </div>
+      </div>
+      {addedModal}
     </div>
   );
 };
+
+export function CollaboratorShop({ userId, listId, onAvailability }) {
+  if (!userId) return null;
+  return (
+    <PremadeShop
+      embedded
+      catalogUserId={userId}
+      favoriteListId={listId || ''}
+      onAvailability={onAvailability}
+    />
+  );
+}
 
 const Shop = ({ sidebar }) => {
   const navigate = useNavigate();

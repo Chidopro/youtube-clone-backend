@@ -5257,6 +5257,7 @@ const ToolsPage = () => {
       String(imageOpacity ?? ''),
       textEnabled ? 1 : 0,
       String(textContent || ''),
+      String(imageOrientation || ''),
     ].join('|');
     if (!wrapRequested) {
       if (wrapEditKeyRef.current && wrapEditKeyRef.current !== wrapEditKey) {
@@ -5309,6 +5310,7 @@ const ToolsPage = () => {
           image: artwork,
           imageWidth,
           imageHeight,
+          imageOrientation,
           signal: controller.signal,
         });
         if (controller.signal.aborted || !wrap?.mockupUrl) return;
@@ -5360,6 +5362,7 @@ const ToolsPage = () => {
     currentImageDimensions.height,
     bakedImageSize.width,
     bakedImageSize.height,
+    imageOrientation,
   ]);
 
   const rotateScreenshotClockwise = () => {

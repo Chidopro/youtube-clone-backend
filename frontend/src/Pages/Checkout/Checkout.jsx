@@ -7,7 +7,7 @@ import { ProductPreviewWithDrag } from '../ToolsPage/ToolsPage';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
-import { toolsPreviewMockupUrl } from '../../utils/shopCategories';
+import { shopperSizeLabel, toolsPreviewMockupUrl } from '../../utils/shopCategories';
 import { getPrintfulColorMockupUrl, getWhiteBlankGarmentTint } from '../../utils/printfulColorMockups';
 import { matchPrintAreaProductName } from '../../config/printAreaConfig';
 import {
@@ -165,6 +165,18 @@ function isConfirmPrintOverlayProduct(item) {
     || n.includes('body suit')
     || n.includes('crop')
   );
+}
+
+function premadeFinishedPhoto(item) {
+  if (!item?.premade) return '';
+  return String(
+    item.image
+    || item.displayScreenshot
+    || item.selected_screenshot
+    || item.screenshot
+    || item.img
+    || ''
+  ).trim();
 }
 
 function confirmPrintfulPhotoUrl(item) {
@@ -1452,16 +1464,17 @@ const Checkout = () => {
               const previewCartIndex = confirmIndexes[previewIndex];
               const item = items[previewCartIndex];
               const itemName = item?.name || item?.product || `Item ${previewCartIndex + 1}`;
-              const itemSize = (item?.size || '').trim();
+              const itemSize = shopperSizeLabel((item?.size || '').trim());
               const printProductName = matchPrintAreaProductName(itemName) || itemName;
-              const mockupUrl = toolsPreviewMockupUrl(
+              const finishedPhoto = premadeFinishedPhoto(item);
+              const mockupUrl = finishedPhoto || toolsPreviewMockupUrl(
                 itemName,
                 item?.image || item?.img || previewMockups[previewCartIndex] || ''
               );
-              const overlayProduct = isConfirmPrintOverlayProduct(item);
+              const overlayProduct = !finishedPhoto && isConfirmPrintOverlayProduct(item);
               const printfulPhotoUrl = overlayProduct ? '' : confirmPrintfulPhotoUrl(item);
-              const productOnlyUrl = printfulPhotoUrl || mockupUrl;
-              const productOnly = !overlayProduct;
+              const productOnlyUrl = finishedPhoto || printfulPhotoUrl || mockupUrl;
+              const productOnly = Boolean(finishedPhoto) || !overlayProduct;
               const ts = item?.toolSettings && typeof item.toolSettings === 'object' ? item.toolSettings : {};
               const previewOrientation = (designPreferences[previewCartIndex]?.orientation === 'landscape')
                 ? 'landscape'
@@ -1689,6 +1702,7 @@ const Checkout = () => {
                 navigate('/tools');
               };
               const previewIndex = Math.min(Math.max(0, designPreviewIndex), Math.max(0, confirmIndexes.length - 1));
+              const previewIsPremade = Boolean(items[confirmIndexes[previewIndex]]?.premade);
               const confirmedSet = new Set(confirmedCartIndexes);
               const othersUnconfirmed = confirmIndexes.some((idx, i) => (
                 i !== previewIndex && !confirmedSet.has(idx)
@@ -1703,9 +1717,11 @@ const Checkout = () => {
                     <button type="button" className="btn-outline" onClick={() => setShowDesignModal(false)}>
                       Back
                     </button>
-                    <button type="button" className="btn-primary" onClick={handleGoToTools}>
-                      Preview Design
-                    </button>
+                    {previewIsPremade ? null : (
+                      <button type="button" className="btn-primary" onClick={handleGoToTools}>
+                        Preview Design
+                      </button>
+                    )}
                   </div>
                 </div>
               );
