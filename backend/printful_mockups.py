@@ -1338,6 +1338,8 @@ def generate_mug_mockup(
     printfile_url = ""
     try:
         image_url = public_image_url_for_printful(src, api_key)
+        if int(catalog_id) in (PET_BOWL_CATALOG_ID, PET_BANDANA_CATALOG_ID):
+            printfile_url = image_url
         if int(catalog_id) == TOTE_WRAP_CATALOG_ID:
             _placement, area_w, area_h = print_area_for_variant(catalog_id, variant_id, api_key)
             prepared = prepare_tote_wrap_printfile(

@@ -13,7 +13,7 @@ import { applyBrowsePresetToCartItem, featherEdgeMaskStyle } from '../../utils/b
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
-import { cartItemMatchesBrowseScreenshot, isCurvedBagProduct, isPrintfulWrapProduct, screenshotUrlKey, stripCurvedBagRectEdits } from '../../utils/mugMockup';
+import { isCurvedBagProduct, petWrapCheckoutMessage, stripCurvedBagRectEdits } from '../../utils/mugMockup';
 import {
   getPrintfulColorCode,
   getPrintfulColorMockupUrl,
@@ -1037,6 +1037,11 @@ const ProductPage = ({ sidebar }) => {
   const cartHasUnavailableItems = (cartItems || []).some(cartItemUnavailable);
 
   const goToCheckout = () => {
+    const previewMessage = petWrapCheckoutMessage(cartItems);
+    if (previewMessage) {
+      alert(previewMessage);
+      return;
+    }
     if (cartHasUnavailableItems) {
       alert(`One or more cart items are out of stock for shipping to ${shipToCountryName(shipToCountry)}. Choose a different size or color.`);
       return;
@@ -2481,27 +2486,8 @@ const ProductPage = ({ sidebar }) => {
                   && (!swatchColors.length || swatchColors.includes(hoverColor))
                 ) ? hoverColor : displayColor;
                 const colorMockupUrl = colorMockupPreview ? getPrintfulColorMockupUrl(product, mockupColor) : '';
-                const browseShot = selectedScreenshotUrl || browseSourceUrl;
-                const wrapFromMatchingCart = (it) => (
-                  it?.printfulMugMockupUrl
-                  && cartItemMatchesBrowseScreenshot(it, browseShot)
-                  ? String(it.printfulMugMockupUrl).trim()
-                  : ''
-                );
-                const wrapMockupUrl = isPrintfulWrapProduct(product?.name, category)
-                  ? String(
-                    (editingCartItem?.name === product?.name && wrapFromMatchingCart(editingCartItem))
-                    || (cartItems || []).find((it) => (
-                      it?.name === product?.name
-                      && (!mockupColor || it?.color === mockupColor)
-                      && wrapFromMatchingCart(it)
-                    ))?.printfulMugMockupUrl
-                    || ''
-                  ).trim()
-                  : '';
                 const colorMockupTint = (
-                  !wrapMockupUrl
-                  && colorMockupUrl
+                  colorMockupUrl
                   && usesPrintfulVariantColorTint(colorMockupUrl)
                     ? getPrintfulColorCode(product, mockupColor)
                     : ''
@@ -2521,14 +2507,14 @@ const ProductPage = ({ sidebar }) => {
                   {/* Product Image - always show; stable URL so images load despite re-renders */}
                   {(() => {
                     const isApparelCategory = category === 'womens' || category === 'mens' || category === 'kids';
-                    const imgUrl = wrapMockupUrl || colorMockupUrl || getProductImageUrl(product, true);
+                    const imgUrl = colorMockupUrl || getProductImageUrl(product, true);
                     const safeUrl = (imgUrl && typeof imgUrl === 'string') ? imgUrl : `${getImgBase()}/placeholder.png`;
                     const loadHints = browseImageLoadHints(index);
                     return (
                       <div className={`product-image${colorMockupUrl ? ' product-image--color-mockup' : ''}`}>
                         <div className="product-image-wrapper">
                           <PrintfulColorMockupImg
-                            key={`${product?.name || index}-${screenshotUrlKey(browseShot)}-${wrapMockupUrl ? 'wrap' : 'blank'}`}
+                            key={`${product?.name || index}-${mockupColor || 'blank'}`}
                             className={(isApparelCategory || colorMockupUrl) ? "product-image-clear" : "product-image-normal"}
                             src={safeUrl}
                             alt={`${product.name}${mockupColor ? ` ${mockupColor}` : ''}`}
@@ -2536,7 +2522,6 @@ const ProductPage = ({ sidebar }) => {
                             fetchPriority={loadHints.fetchPriority}
                             sizes="(max-width: 768px) 46vw, 240px"
                             tintColor={colorMockupTint}
-                            isWrapPreview={Boolean(wrapMockupUrl)}
                             onError={(e) => handleProductImageError(e, product)}
                           />
                         </div>

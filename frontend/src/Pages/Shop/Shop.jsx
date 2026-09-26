@@ -7,6 +7,7 @@ import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { getSubdomain } from '../../utils/subdomainService';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import { readCartItems, writeCartItems } from '../../utils/merchSession';
+import { petWrapCheckoutMessage } from '../../utils/mugMockup';
 import { readShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
 import {
   catalogStockPending,
@@ -552,6 +553,11 @@ const PremadeShop = ({
                 type="button"
                 className="shop-added-checkout"
                 onClick={() => {
+                  const previewMessage = petWrapCheckoutMessage(readCartItems());
+                  if (previewMessage) {
+                    alert(previewMessage);
+                    return;
+                  }
                   setAddedConfirm(null);
                   navigate('/checkout');
                 }}

@@ -7,6 +7,7 @@ import { ProductPreviewWithDrag } from '../ToolsPage/ToolsPage';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
+import { isPetBandanaProduct, isPetBowlProduct, petWrapCheckoutMessage } from '../../utils/mugMockup';
 import { shopperSizeLabel, toolsPreviewMockupUrl } from '../../utils/shopCategories';
 import { getPrintfulColorMockupUrl, getWhiteBlankGarmentTint } from '../../utils/printfulColorMockups';
 import { matchPrintAreaProductName } from '../../config/printAreaConfig';
@@ -792,6 +793,11 @@ const Checkout = () => {
       return;
     }
     const cartToUse = Array.isArray(cartOverride) ? cartOverride : items;
+    const previewMessage = petWrapCheckoutMessage(cartToUse);
+    if (previewMessage) {
+      alert(previewMessage);
+      return;
+    }
     const zipValue = String(address.zip || '').trim();
     const countryValue = String(address.country_code || 'US').trim();
     const stateTrim = String(address.state_code || '').trim();
@@ -808,10 +814,16 @@ const Checkout = () => {
     const shippingCost = currentShipping.cost || 0;
     const fulfillmentTax = currentShipping.tax || 0;
 
+    const orderScreenshotForItem = (it) => {
+      const band = String(it?.printfulTotePrintfileUrl || it?.toolSettings?.printfulTotePrintfileUrl || '').trim();
+      const petName = it?.product || it?.name;
+      if ((isPetBowlProduct(petName) || isPetBandanaProduct(petName)) && band) return band;
+      return it?.screenshot || it?.selected_screenshot || it?.thumbnail || it?.img || '';
+    };
     let selectedScreenshot = null;
     for (const it of cartToUse) {
-      selectedScreenshot = it.screenshot || it.selected_screenshot || it.thumbnail || it.img;
-      if (selectedScreenshot && selectedScreenshot.trim()) break;
+      selectedScreenshot = orderScreenshotForItem(it);
+      if (selectedScreenshot && String(selectedScreenshot).trim()) break;
     }
     let screenshotTimestampFromStorage = null;
     try {
@@ -828,7 +840,7 @@ const Checkout = () => {
     } catch (e) { /* ignore */ }
 
     const stripeCart = cartToUse.map(it => {
-      const itemScreenshot = it.screenshot || it.selected_screenshot || it.thumbnail || it.img;
+      const itemScreenshot = orderScreenshotForItem(it);
       const finalScreenshot = itemScreenshot || selectedScreenshot || null;
       const cleanItem = {
         product: it.product || it.name,
@@ -1401,6 +1413,11 @@ const Checkout = () => {
                   ? 'Calculate shipping before checkout'
                   : 'Ready to checkout'}
                 onClick={() => {
+                const previewMessage = petWrapCheckoutMessage(items);
+                if (previewMessage) {
+                  alert(previewMessage);
+                  return;
+                }
                 // Require design preferences for shirts, hoodies, and hats. Other categories skip modal.
                 if (!designConfirmed) {
                   if (cartNeedsDesignModal(items)) {
@@ -1657,6 +1674,11 @@ const Checkout = () => {
               };
               const handleConfirm = () => {
                 if (confirmClickLockRef.current) return;
+                const previewMessage = petWrapCheckoutMessage(items);
+                if (previewMessage) {
+                  alert(previewMessage);
+                  return;
+                }
                 const previewIndex = Math.min(Math.max(0, designPreviewIndex), confirmIndexes.length - 1);
                 const cartIdx = confirmIndexes[previewIndex];
                 const nextConfirmed = confirmedCartIndexes.includes(cartIdx)

@@ -312,6 +312,142 @@ body.tools-page-active .site-footer {
   --preview-max-side: 280px;
 }
 
+.mug-product-preview-image.mug-product-preview-image--bowl {
+  --preview-max-side: 100%;
+  max-width: 100%;
+}
+
+.mug-product-preview-image.mug-product-preview-image--bandana {
+  --preview-max-side: 66.67%;
+  max-width: 66.67%;
+}
+
+.bandana-preview-still {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.bandana-crop {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  background: #111;
+}
+
+.bandana-crop img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.bandana-crop-window {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.48);
+  cursor: ns-resize;
+}
+
+.bandana-crop-window.is-x {
+  cursor: ew-resize;
+}
+
+.bandana-crop-window.is-locked {
+  cursor: default;
+}
+
+.bowl-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  width: 100%;
+}
+
+.bowl-panel {
+  position: relative;
+  aspect-ratio: 590 / 803;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #c5ced6;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #111;
+  cursor: pointer;
+}
+
+.bowl-panel--blank {
+  cursor: default;
+  pointer-events: none;
+  background: #1a1a1a;
+}
+
+.bowl-panel img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center top;
+}
+
+.bowl-panel-index {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.bowl-panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #667;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.bowl-panel-file {
+  display: none;
+}
+
+.product-preview-unavailable-note .bowl-panel-same-btn {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 1px solid #007bff;
+  border-radius: 6px;
+  background: #fff;
+  color: #007bff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.product-preview-unavailable-note .bowl-panel-same-btn:hover {
+  background: #f3f8ff;
+}
+
+.product-preview-unavailable-note .bowl-panel-same-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .mug-wrap-mockup-clip {
   width: 100%;
   max-width: var(--preview-max-side);

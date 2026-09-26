@@ -43,9 +43,152 @@ export function isPetBowlProduct(productName) {
   return String(productName || '').toLowerCase().includes('pet bowl');
 }
 
+/**
+ * Bowl print is 6496×803. Eleven windows of 590×803 (about 3:4) tile that band exactly.
+ * Each photo is fitted inside its window. Windows sit back to back.
+ */
+export const PET_BOWL_PANEL_COUNT = 11;
+export const PET_BOWL_WINDOW = { width: 590, height: 803 };
+/** Wider than this, a photo cannot fill a portrait window without becoming a slice. */
+export const PET_BOWL_MAX_PHOTO_ASPECT = 1.45;
+export const PET_BOWL_PRINT = { width: 6496, height: 803 };
+/** Half-size strip: 11 × 295 by 401, same ratio as the print band. */
+const PET_BOWL_COMPOSE = { width: 3245, height: 401 };
+
+function loadHtmlImage(src, failMessage = 'Could not load image') {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    if (!String(src).startsWith('data:')) img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(failMessage));
+    img.src = src;
+  });
+}
+
+/** Fit the whole photo inside one print window. Neighboring windows share an edge. */
+function drawBowlPanel(ctx, img, tileX, tileW, height) {
+  const scale = Math.min(tileW / img.width, height / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  const dx = tileX + (tileW - dw) / 2;
+  const dy = (height - dh) / 2;
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
+
+export async function composePetBowlBand(sources) {
+  const count = PET_BOWL_PANEL_COUNT;
+  const panels = Array.from({ length: count }, (_, index) => String(sources?.[index] || '').trim());
+  if (panels.some((src) => !src)) return null;
+  const { width, height } = PET_BOWL_COMPOSE;
+  const tileW = width / count;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.fillStyle = '#111111';
+  ctx.fillRect(0, 0, width, height);
+  for (let index = 0; index < count; index += 1) {
+    const img = await loadHtmlImage(panels[index], 'Could not load a bowl panel');
+    drawBowlPanel(ctx, img, index * tileW, tileW, height);
+  }
+  return {
+    dataUrl: canvas.toDataURL('image/jpeg', 0.85),
+    width,
+    height,
+  };
+}
+
+/** Printful pet bandana collar printfile. */
+export const PET_BANDANA_PRINT = { width: 3060, height: 1875 };
+/**
+ * The hanging triangle hides the bottom third of that rectangle.
+ * The crop window is the top two-thirds, which is what shows on the bandana.
+ */
+const PET_BANDANA_VISIBLE = 2 / 3;
+/** Full printfile ratio, small enough to upload with the wrap. */
+const PET_BANDANA_COMPOSE = { width: 2040, height: 1250 };
+
+function bandanaWindowAspect() {
+  return PET_BANDANA_PRINT.width / (PET_BANDANA_PRINT.height * PET_BANDANA_VISIBLE);
+}
+
+/**
+ * The slice of a photo that shows on the bandana.
+ * A tall photo moves up and down. A wide photo moves left and right.
+ * offset 0 keeps the start of that axis, 1 keeps the end.
+ */
+export function bandanaCropWindow(imageWidth, imageHeight, offset = 0.5) {
+  const iw = Number(imageWidth) || 0;
+  const ih = Number(imageHeight) || 0;
+  if (iw < 1 || ih < 1) return null;
+  const aspect = bandanaWindowAspect();
+  const t = Math.min(1, Math.max(0, Number(offset) || 0));
+  if (iw / ih <= aspect) {
+    const cropW = iw;
+    const cropH = Math.min(ih, iw / aspect);
+    const max = Math.max(0, ih - cropH);
+    return { axis: 'y', x: 0, y: max * t, cropW, cropH, max };
+  }
+  const cropH = ih;
+  const cropW = Math.min(iw, ih * aspect);
+  const max = Math.max(0, iw - cropW);
+  return { axis: 'x', x: max * t, y: 0, cropW, cropH, max };
+}
+
+export async function composePetBandanaCrop(src, offset = 0.5) {
+  const img = await loadHtmlImage(src, 'Could not crop this photo');
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const win = bandanaCropWindow(iw, ih, offset);
+  if (!win) return null;
+  const { width, height } = PET_BANDANA_COMPOSE;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const visibleH = Math.max(1, Math.round(width / bandanaWindowAspect()));
+  ctx.drawImage(img, win.x, win.y, win.cropW, win.cropH, 0, 0, width, visibleH);
+  const tipH = height - visibleH;
+  if (tipH > 0) {
+    const tipSrc = Math.max(1, win.cropH * 0.25);
+    ctx.drawImage(
+      img,
+      win.x,
+      win.y + win.cropH - tipSrc,
+      win.cropW,
+      tipSrc,
+      0,
+      visibleH,
+      width,
+      tipH
+    );
+  }
+  return {
+    dataUrl: canvas.toDataURL('image/jpeg', 0.9),
+    width,
+    height,
+  };
+}
+
 export function isPetBandanaProduct(productName) {
   const n = String(productName || '').toLowerCase();
   return n.includes('bandana collar') || (n.includes('pet') && n.includes('bandana'));
+}
+
+/** Custom pet bowl and bandana orders need a saved Wrap now preview. */
+export function petWrapCheckoutMessage(items) {
+  const missing = (Array.isArray(items) ? items : []).filter((item) => {
+    if (item?.premade) return false;
+    const name = item?.name || item?.product || '';
+    if (!isPetBowlProduct(name) && !isPetBandanaProduct(name)) return false;
+    const url = String(item?.printfulMugMockupUrl || '').trim();
+    return !url || item?.printfulMugMockupStale;
+  });
+  if (!missing.length) return '';
+  const names = [...new Set(missing.map((item) => String(item?.name || item?.product || 'this product').trim()))];
+  return `Apply Preview Design before checkout. Open Preview Design for ${names.join(' and ')} and click Wrap now.`;
 }
 
 export function isPetWrapProduct(productName) {
