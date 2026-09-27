@@ -1174,7 +1174,7 @@ def _pet_bandana_print(image, print_dpi=300, reference=None):
 
 
 def _pet_bowl_print_strip(image, print_dpi=300):
-    """Eleven fitted copies of one photo, side by side, for the pet bowl print file."""
+    """Eleven copies of one photo. Each window is covered so the band is one height."""
     import base64
     panel_count = 11
     tile_w = 590
@@ -1189,14 +1189,11 @@ def _pet_bowl_print_strip(image, print_dpi=300):
     if image_w > 0 and image_h > 0 and (image_w / image_h) > strip_aspect * 0.7:
         _paste_cover(canvas, photo)
     else:
-        scale = min(tile_w / max(image_w, 1), height / max(image_h, 1))
-        draw_w = max(1, int(round(image_w * scale)))
-        draw_h = max(1, int(round(image_h * scale)))
-        panel = cv2.resize(photo, (draw_w, draw_h), interpolation=cv2.INTER_AREA)
-        top = (height - draw_h) // 2
+        panel = np.full((height, tile_w, 3), 17, dtype=np.uint8)
+        _paste_cover(panel, photo)
         for index in range(panel_count):
-            left = int(round(index * tile_w + (tile_w - draw_w) / 2))
-            canvas[top:top + draw_h, left:left + draw_w] = panel
+            left = index * tile_w
+            canvas[:, left:left + tile_w] = panel
     return _encode_print_jpeg(canvas, print_dpi, width, height)
 
 

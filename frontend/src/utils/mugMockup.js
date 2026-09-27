@@ -45,7 +45,7 @@ export function isPetBowlProduct(productName) {
 
 /**
  * Bowl print is 6496×803. Eleven windows of 590×803 (about 3:4) tile that band exactly.
- * Each photo is fitted inside its window. Windows sit back to back.
+ * Each photo covers its window. Extra edges are cropped so every panel is the same height.
  */
 export const PET_BOWL_PANEL_COUNT = 11;
 export const PET_BOWL_WINDOW = { width: 590, height: 803 };
@@ -70,14 +70,19 @@ function loadHtmlImage(src, failMessage = 'Could not load image') {
   });
 }
 
-/** Fit the whole photo inside one print window. Neighboring windows share an edge. */
+/** Fill one print window. Crop the overflow so the photo meets the top and bottom edges. */
 function drawBowlPanel(ctx, img, tileX, tileW, height) {
-  const scale = Math.min(tileW / img.width, height / img.height);
+  const scale = Math.max(tileW / img.width, height / img.height);
   const dw = img.width * scale;
   const dh = img.height * scale;
   const dx = tileX + (tileW - dw) / 2;
   const dy = (height - dh) / 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(tileX, 0, tileW, height);
+  ctx.clip();
   ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.restore();
 }
 
 export async function composePetBowlBand(sources, target = PET_BOWL_COMPOSE) {
