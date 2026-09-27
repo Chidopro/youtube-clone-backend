@@ -726,6 +726,8 @@ def printful_mug_mockup():
             image_height=image_height,
             back_image=str(back_image or "").strip(),
             image_orientation=str(image_orientation or "").strip(),
+            focal_x=float(data.get("focal_x") if data.get("focal_x") is not None else data.get("focalX") if data.get("focalX") is not None else 0.5),
+            focal_y=float(data.get("focal_y") if data.get("focal_y") is not None else data.get("focalY") if data.get("focalY") is not None else 0.5),
             wait=True,
         )
     except Exception as e:

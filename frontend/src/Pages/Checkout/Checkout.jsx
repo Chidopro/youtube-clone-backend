@@ -7,7 +7,7 @@ import { ProductPreviewWithDrag } from '../ToolsPage/ToolsPage';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
-import { isPetBandanaProduct, isPetBowlProduct, petWrapCheckoutMessage, petWrapItemsNeedingPreview } from '../../utils/mugMockup';
+import { isGreetingCardProduct, isJigsawPuzzleProduct, isPetBandanaProduct, isPetBowlProduct, petWrapCheckoutMessage, petWrapItemsNeedingPreview } from '../../utils/mugMockup';
 import { shopperSizeLabel, toolsPreviewMockupUrl } from '../../utils/shopCategories';
 import { getPrintfulColorMockupUrl, getWhiteBlankGarmentTint } from '../../utils/printfulColorMockups';
 import { matchPrintAreaProductName } from '../../config/printAreaConfig';
@@ -821,7 +821,7 @@ const Checkout = () => {
     const orderScreenshotForItem = (it) => {
       const band = String(it?.printfulTotePrintfileUrl || it?.toolSettings?.printfulTotePrintfileUrl || '').trim();
       const petName = it?.product || it?.name;
-      if ((isPetBowlProduct(petName) || isPetBandanaProduct(petName)) && band) return band;
+      if ((isPetBowlProduct(petName) || isPetBandanaProduct(petName) || isJigsawPuzzleProduct(petName) || isGreetingCardProduct(petName)) && band) return band;
       return it?.screenshot || it?.selected_screenshot || it?.thumbnail || it?.img || '';
     };
     let selectedScreenshot = null;

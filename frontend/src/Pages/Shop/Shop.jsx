@@ -32,10 +32,11 @@ import {
 import { fetchShopCatalog } from '../../utils/shopCatalogApi';
 import './Shop.css';
 
-function ShopTileThumb({ preview, emoji, thumbFit }) {
+function ShopTileThumb({ preview, emoji, thumbFit, nudge }) {
   const [failed, setFailed] = useState(false);
   const src = shopCategoryThumbUrl(preview);
   const isModel = thumbFit === 'model';
+  const nudgeClass = nudge === 'right' ? ' shop-tile-img--nudge-right' : '';
 
   if (!src || failed) {
     return (
@@ -47,7 +48,7 @@ function ShopTileThumb({ preview, emoji, thumbFit }) {
 
   return (
     <img
-      className={`shop-tile-img${isModel ? ' shop-tile-img--model' : ''}`}
+      className={`shop-tile-img${isModel ? ' shop-tile-img--model' : ''}${nudgeClass}`}
       src={src}
       alt=""
       loading="lazy"
@@ -103,7 +104,7 @@ function sizesForShopProduct(product, color, country) {
 }
 
 async function fetchCategoryCatalog(category) {
-  const cacheKey = `sm_browse_v8_${String(category || '').trim().toLowerCase()}`;
+  const cacheKey = `sm_browse_v9_${String(category || '').trim().toLowerCase()}`;
   try {
     const raw = sessionStorage.getItem(cacheKey);
     if (raw) {
@@ -456,7 +457,7 @@ const PremadeShop = ({
               return (
                 <div key={tile.id} className="shop-tile shop-tile--premade">
                   <span className="shop-tile-thumb">
-                    <ShopTileThumb preview={tile.preview} emoji={tile.emoji} />
+                    <ShopTileThumb preview={tile.preview} emoji={tile.emoji} nudge={tile.id === 'notebook' ? 'right' : ''} />
                   </span>
                   <span className="shop-tile-name">{tile.name}</span>
                   <span className="shop-tile-price">

@@ -244,6 +244,15 @@ export function isPetWrapProduct(productName) {
   return isPetBowlProduct(productName) || isPetBandanaProduct(productName);
 }
 
+export function isGreetingCardProduct(productName) {
+  return String(productName || '').toLowerCase().includes('greeting card');
+}
+
+export function isJigsawPuzzleProduct(productName) {
+  const n = String(productName || '').toLowerCase();
+  return n.includes('jigsaw') || n.includes('puzzle');
+}
+
 export function isAccessoryWrapProduct(productName) {
   const n = String(productName || '').toLowerCase();
   return (
@@ -341,7 +350,7 @@ function sleep(ms, signal) {
   });
 }
 
-function cacheKey(productName, color, size, image, backImage, orientation) {
+function cacheKey(productName, color, size, image, backImage, orientation, focalX, focalY) {
   const src = String(image || '');
   const finger = `${src.length}:${src.slice(0, 48)}:${src.slice(-48)}`;
   const back = String(backImage || '');
@@ -352,7 +361,11 @@ function cacheKey(productName, color, size, image, backImage, orientation) {
   const oriBit = name.toLowerCase().includes('drawstring')
     ? `|${String(orientation || '').trim().toLowerCase() === 'landscape' ? 'landscape' : 'portrait'}`
     : '';
-  return `${name}|${String(color || '')}|${String(size || '')}|${finger}|${backFinger}|a11${oriBit}`;
+  const focalBit = name.toLowerCase().includes('jigsaw') || name.toLowerCase().includes('puzzle')
+    ? `|${Number(focalX ?? 0.5).toFixed(3)}|${Number(focalY ?? 0.5).toFixed(3)}`
+    : '';
+  const cardBit = name.toLowerCase().includes('greeting card') ? '|cardopenright' : '';
+  return `${name}|${String(color || '')}|${String(size || '')}|${finger}|${backFinger}|a11${oriBit}${focalBit}${cardBit}`;
 }
 
 function viewBucket(title, url) {
@@ -443,12 +456,14 @@ export async function requestMugWrapMockup({
   imageHeight,
   backImage,
   imageOrientation,
+  focalX,
+  focalY,
   signal,
 } = {}) {
   const src = String(image || '').trim();
   if (!src) throw new Error('image is required');
   const backSrc = String(backImage || '').trim();
-  const key = cacheKey(productName, color, size, src, backSrc, imageOrientation);
+  const key = cacheKey(productName, color, size, src, backSrc, imageOrientation, focalX, focalY);
   if (clientCache.has(key)) return clientCache.get(key);
 
   const res = await fetch(apiJoin('/api/printful/mug-mockup'), {
@@ -463,6 +478,8 @@ export async function requestMugWrapMockup({
       image_height: imageHeight || undefined,
       back_image: backSrc || undefined,
       image_orientation: imageOrientation || undefined,
+      focal_x: focalX,
+      focal_y: focalY,
     }),
     signal,
   });

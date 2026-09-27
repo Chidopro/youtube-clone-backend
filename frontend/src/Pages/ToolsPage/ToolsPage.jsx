@@ -13,7 +13,7 @@ import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlain
 import { roundedRectFeatherFactor } from '../../utils/bakeBrowsePreset';
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
-import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petBandanaPrintFile, petBowlPrintStrip, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
+import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isGreetingCardProduct, isJigsawPuzzleProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petBandanaPrintFile, petBowlPrintStrip, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -92,7 +92,7 @@ function clampArtworkZoom(value) {
  * Place artwork in a print box. 100% = cover (fill). Below 100% shrinks
  * inside the box so the shirt shows through. Above 100% crops tighter.
  */
-function artworkLayoutInBox(boxW, boxH, imgW, imgH, zoomPercent, posX, posY) {
+function artworkLayoutInBox(boxW, boxH, imgW, imgH, zoomPercent, posX, posY, fit = 'cover') {
   const bw = Number(boxW) || 0;
   const bh = Number(boxH) || 0;
   const iw = Number(imgW) || 0;
@@ -101,14 +101,15 @@ function artworkLayoutInBox(boxW, boxH, imgW, imgH, zoomPercent, posX, posY) {
   const zoom = clampArtworkZoom(zoomPercent) / 100;
   const boxAspect = bw / bh;
   const imgAspect = iw / ih;
+  const contain = fit === 'contain';
   let coverW;
   let coverH;
-  if (imgAspect > boxAspect) {
-    coverH = bh;
-    coverW = bh * imgAspect;
-  } else {
+  if (contain ? imgAspect > boxAspect : imgAspect <= boxAspect) {
     coverW = bw;
     coverH = bw / imgAspect;
+  } else {
+    coverH = bh;
+    coverW = bh * imgAspect;
   }
   const drawW = coverW * zoom;
   const drawH = coverH * zoom;
@@ -120,6 +121,66 @@ function artworkLayoutInBox(boxW, boxH, imgW, imgH, zoomPercent, posX, posY) {
     left: (px / 100) * (bw - drawW),
     top: (py / 100) * (bh - drawH),
   };
+}
+
+function jigsawArtworkLayout(boxW, boxH, imgW, imgH, zoomPercent, posX, posY) {
+  const layout = artworkLayoutInBox(boxW, boxH, imgH, imgW, zoomPercent, posX, posY, 'cover');
+  if (!layout) return null;
+  return { ...layout, rotate: 90 };
+}
+
+function artworkLayoutForProduct(productName, boxW, boxH, imgW, imgH, zoomPercent, posX, posY) {
+  if (isJigsawPuzzleProduct(productName)) {
+    return jigsawArtworkLayout(boxW, boxH, imgW, imgH, zoomPercent, posX, posY);
+  }
+  if (isGreetingCardProduct(productName)) {
+    return artworkLayoutInBox(boxW, boxH, imgW, imgH, zoomPercent, posX, posY, 'contain');
+  }
+  return artworkLayoutInBox(boxW, boxH, imgW, imgH, zoomPercent, posX, posY, 'cover');
+}
+
+function rotatedCssBox(layout) {
+  if (!layout?.rotate) return layout;
+  const visW = Number(layout.width) || 0;
+  const visH = Number(layout.height) || 0;
+  const cssW = visH;
+  const cssH = visW;
+  const cx = (Number(layout.left) || 0) + visW / 2;
+  const cy = (Number(layout.top) || 0) + visH / 2;
+  return {
+    width: cssW,
+    height: cssH,
+    left: cx - cssW / 2,
+    top: cy - cssH / 2,
+  };
+}
+
+function drawLayoutImage(ctx, img, layout, originLeft = 0, originTop = 0) {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (layout?.rotate) {
+    const visW = Number(layout.width) || 0;
+    const visH = Number(layout.height) || 0;
+    const cx = (Number(layout.left) || 0) - originLeft + visW / 2;
+    const cy = (Number(layout.top) || 0) - originTop + visH / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-Math.PI / 2);
+    ctx.drawImage(img, 0, 0, iw, ih, -visH / 2, -visW / 2, visH, visW);
+    ctx.restore();
+    return;
+  }
+  ctx.drawImage(
+    img,
+    0,
+    0,
+    iw,
+    ih,
+    (Number(layout.left) || 0) - originLeft,
+    (Number(layout.top) || 0) - originTop,
+    Number(layout.width) || 0,
+    Number(layout.height) || 0
+  );
 }
 
 /**
@@ -749,6 +810,11 @@ function overlaySizeForOrientation(width, height, orientation, productName) {
 }
 
 function applyArtworkOrientation(product, _screenshotUrl, userSetRef, setImageOrientation) {
+  if (isJigsawPuzzleProduct(product?.name)) {
+    rememberArtworkOrientation('landscape');
+    setImageOrientation('landscape');
+    return;
+  }
   if (userSetRef.current) return;
   const fromItem = (product?.toolSettings?.imageOrientation || product?.imageOrientation || product?.image_orientation || '');
   const ori = fromItem === 'landscape' || fromItem === 'portrait' ? fromItem : 'portrait';
@@ -760,7 +826,7 @@ function applyArtworkOrientation(product, _screenshotUrl, userSetRef, setImageOr
 }
 
 /** Fill the print box. Portrait stays the shirt-sized box and crops from the feet. */
-function overlayBoxForArtwork(printBox) {
+function overlayBoxForArtwork(printBox, productName) {
   const width = Number(printBox?.width) || 0;
   const height = Number(printBox?.height) || 0;
   const rightShift = printBox?.rightShift || 0;
@@ -849,14 +915,17 @@ function artworkImageOffsetStyle(layout, vis) {
   if (!layout || !(Number(vis?.width) > 0) || !(Number(vis?.height) > 0)) return null;
   const vw = Number(vis.width);
   const vh = Number(vis.height);
+  const box = layout.rotate ? rotatedCssBox(layout) : layout;
   return {
     position: 'absolute',
-    width: `${((Number(layout.width) || 0) / vw) * 100}%`,
-    height: `${((Number(layout.height) || 0) / vh) * 100}%`,
-    left: `${(((Number(layout.left) || 0) - (Number(vis.left) || 0)) / vw) * 100}%`,
-    top: `${(((Number(layout.top) || 0) - (Number(vis.top) || 0)) / vh) * 100}%`,
+    width: `${((Number(box.width) || 0) / vw) * 100}%`,
+    height: `${((Number(box.height) || 0) / vh) * 100}%`,
+    left: `${(((Number(box.left) || 0) - (Number(vis.left) || 0)) / vw) * 100}%`,
+    top: `${(((Number(box.top) || 0) - (Number(vis.top) || 0)) / vh) * 100}%`,
     maxWidth: 'none',
     maxHeight: 'none',
+    objectFit: 'fill',
+    ...(layout.rotate ? { transform: 'rotate(-90deg)', transformOrigin: 'center center' } : {}),
   };
 }
 
@@ -1197,17 +1266,7 @@ function LiteOverlayArtwork({
           const iw = img.naturalWidth || img.width;
           const ih = img.naturalHeight || img.height;
           if (layout && Number(layout.width) > 0 && Number(layout.height) > 0) {
-            ctx.drawImage(
-              img,
-              0,
-              0,
-              iw,
-              ih,
-              (Number(layout.left) || 0) - (Number(vis?.left) || 0),
-              (Number(layout.top) || 0) - (Number(vis?.top) || 0),
-              Number(layout.width) || w,
-              Number(layout.height) || h
-            );
+            drawLayoutImage(ctx, img, layout, Number(vis?.left) || 0, Number(vis?.top) || 0);
           } else if (iw > 0 && ih > 0) {
             const cover = objectFit !== 'contain';
             const scale = cover
@@ -1867,6 +1926,7 @@ function printBoxPreviewAspect(productName, productSize, orientation, printAreaF
   const width = dims?.width > 0 ? dims.width : 11.5;
   const height = dims?.height > 0 ? dims.height : 13.8;
 
+  if (isJigsawPuzzleProduct(name)) return width / height;
   if (orientation === 'landscape') {
     const sized = overlaySizeForOrientation(width, height, 'landscape', name);
     if (sized.width > 0 && sized.height > 0) return sized.width / sized.height;
@@ -2326,7 +2386,7 @@ const ProductPreviewWithDrag = ({
       imageOrientation,
       selectedProductName || productName
     );
-    const oriented = overlayBoxForArtwork(printBox);
+    const oriented = overlayBoxForArtwork(printBox, selectedProductName || productName);
     if (oriented.width > 0 && oriented.height > 0) {
       onOverlayBoxChange({ width: oriented.width, height: oriented.height });
     }
@@ -2669,7 +2729,7 @@ const ProductPreviewWithDrag = ({
         >
           {(() => {
             const scaleFactor = 1;
-            const oriented = overlayBoxForArtwork(printBox);
+            const oriented = overlayBoxForArtwork(printBox, selectedProductName || productName);
             const scaledWidth = oriented.width * scaleFactor;
             const scaledHeight = oriented.height * scaleFactor;
             const objectPos = printBoxObjectPosition(placeName, imageOrientation, imageOffsetX, imageOffsetY);
@@ -2677,7 +2737,8 @@ const ProductPreviewWithDrag = ({
             const posY = objectPos.y;
             const artworkSrcW = sourceWidth > 0 ? sourceWidth : overlayNaturalSize.width;
             const artworkSrcH = sourceHeight > 0 ? sourceHeight : overlayNaturalSize.height;
-            const artworkLayout = artworkLayoutInBox(
+            const artworkLayout = artworkLayoutForProduct(
+              selectedProductName || productName,
               scaledWidth,
               scaledHeight,
               artworkSrcW,
@@ -2868,6 +2929,8 @@ function ScreenshotPreviewPane({
   textOffsetX = 50,
   textOffsetY = 50,
   textDirection = 'horizontal',
+  nudgeEnabled = false,
+  onImageOffsetChange,
 }) {
   if (!src) {
     return (
@@ -2891,7 +2954,8 @@ function ScreenshotPreviewPane({
   const objectPos = printBoxObjectPosition(productName, imageOrientation, imageOffsetX, imageOffsetY);
   const posX = objectPos.x;
   const posY = objectPos.y;
-  const artworkLayout = artworkLayoutInBox(
+  const artworkLayout = artworkLayoutForProduct(
+    productName,
     boxW,
     boxH,
     sourceWidth,
@@ -2924,12 +2988,46 @@ function ScreenshotPreviewPane({
   const visStyle = overlayVisBoxStyle(vis, boxW, boxH);
   const zoomImgStyle = artworkImageOffsetStyle(artworkLayout, vis);
   const fill = { position: 'absolute', inset: 0 };
+  const nudgePuzzle = nudgeEnabled && typeof onImageOffsetChange === 'function';
+  const onNudgePointerDown = (event) => {
+    if (!nudgePuzzle) return;
+    if (event.button != null && event.button !== 0) return;
+    event.preventDefault();
+    const overflowX = Math.max(0, (Number(artworkLayout?.width) || 0) - boxW);
+    const overflowY = Math.max(0, (Number(artworkLayout?.height) || 0) - boxH);
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const originX = Number(imageOffsetX) || 0;
+    const originY = Number(imageOffsetY) || 0;
+    const move = (ev) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      let nextX = originX;
+      let nextY = originY;
+      if (overflowX > 1) {
+        nextX = Math.max(-100, Math.min(100, originX + ((-dx * 100) / overflowX) * 2));
+      }
+      if (overflowY > 1) {
+        nextY = Math.max(-100, Math.min(100, originY + ((-dy * 100) / overflowY) * 2));
+      }
+      onImageOffsetChange(Math.round(nextX), Math.round(nextY));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
   return (
     <div
-      className={`screenshot-preview-stage${imageOrientation === 'landscape' ? ' is-landscape' : ' is-portrait'}`}
+      className={`screenshot-preview-stage${imageOrientation === 'landscape' ? ' is-landscape' : ' is-portrait'}${nudgePuzzle ? ' is-nudge' : ''}`}
+      onPointerDown={nudgePuzzle ? onNudgePointerDown : undefined}
       style={{
         aspectRatio: String(safeAspect),
         '--preview-aspect': String(safeAspect),
+        cursor: nudgePuzzle ? 'grab' : undefined,
+        touchAction: nudgePuzzle ? 'none' : undefined,
       }}
     >
       <div
@@ -3367,6 +3465,7 @@ const ToolsPage = () => {
   const [slotSwitchTick, setSlotSwitchTick] = useState(0);
   const [mugMockupUrl, setMugMockupUrl] = useState('');
   const [mugMockupUrls, setMugMockupUrls] = useState([]);
+  const [puzzleViewTurns, setPuzzleViewTurns] = useState(0);
   const [mugMockupLoading, setMugMockupLoading] = useState(false);
   const [mugMockupError, setMugMockupError] = useState('');
   const [wrapRequested, setWrapRequested] = useState(false);
@@ -5108,7 +5207,8 @@ const ToolsPage = () => {
           sourceWidth = imgW;
           sourceHeight = imgW / targetAspect;
         }
-        artworkLayout = artworkLayoutInBox(
+        artworkLayout = artworkLayoutForProduct(
+          previewName,
           sourceWidth,
           sourceHeight,
           imgW,
@@ -5159,17 +5259,7 @@ const ToolsPage = () => {
       tempCtx.filter = blackAndWhite ? blackAndWhiteCssFilter(true, bwIntensity) : 'none';
       tempCtx.globalAlpha = imageOpacityCss(imageOpacity);
       if (artworkLayout) {
-        tempCtx.drawImage(
-          img,
-          0,
-          0,
-          img.width,
-          img.height,
-          artworkLayout.left,
-          artworkLayout.top,
-          artworkLayout.width,
-          artworkLayout.height
-        );
+        drawLayoutImage(tempCtx, img, artworkLayout);
       } else {
         tempCtx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
       }
@@ -5313,6 +5403,25 @@ const ToolsPage = () => {
   const mugPreviewColor = mugPreviewProduct?.color || '';
   const mugPreviewSize = mugPreviewProduct?.size || '';
   const mugPreviewSlotKey = `${selectedCartProductIndex}|${mugPreviewName}|${mugPreviewColor}|${mugPreviewSize}`;
+
+  useEffect(() => {
+    setPuzzleViewTurns(0);
+  }, [mugPreviewSlotKey]);
+
+  useEffect(() => {
+    const name = mugPreviewName || selectedProductName;
+    if (!isJigsawPuzzleProduct(name)) return;
+    setImageOrientation('landscape');
+    rememberArtworkOrientation('landscape');
+    setFrameEnabled(false);
+    setDoubleFrame(false);
+    setFeatherEdge(0);
+    setCornerRadius(0);
+    setFeatherFadeEnabled(false);
+    setTextEnabled(false);
+    setBlackAndWhite(false);
+    setEditedImageUrl('');
+  }, [mugPreviewSlotKey, selectedProductName]);
   const skipRectEdgeEdits = isCurvedBagProduct(mugPreviewName);
 
   useEffect(() => {
@@ -5459,8 +5568,9 @@ const ToolsPage = () => {
     }
     const bowlWrap = isPetBowlProduct(product.name || selectedProductName);
     const bandanaWrap = isPetBandanaProduct(product.name || selectedProductName);
+    const puzzleWrap = isJigsawPuzzleProduct(product.name || selectedProductName);
     const hasPixelEdits = Boolean(
-      !bowlWrap && !bandanaWrap && (
+      !bowlWrap && !bandanaWrap && !puzzleWrap && (
         (!skipRectEdgeEdits && (featherEdge || cornerRadius || frameEnabled || featherFadeEnabled)) ||
         blackAndWhite ||
         imageOpacityHasEdit(imageOpacity) ||
@@ -5521,10 +5631,17 @@ const ToolsPage = () => {
           imageWidth,
           imageHeight,
           imageOrientation: (bowlWrap || bandanaWrap) ? 'landscape' : imageOrientation,
+          focalX: isJigsawPuzzleProduct(product.name || selectedProductName)
+            ? printBoxObjectPosition(product.name || selectedProductName, imageOrientation, imageOffsetX, imageOffsetY).x / 100
+            : undefined,
+          focalY: isJigsawPuzzleProduct(product.name || selectedProductName)
+            ? printBoxObjectPosition(product.name || selectedProductName, imageOrientation, imageOffsetX, imageOffsetY).y / 100
+            : undefined,
           signal: controller.signal,
         });
         if (controller.signal.aborted || !wrap?.mockupUrl) return;
         wrapEditKeyRef.current = wrapEditKey;
+        setPuzzleViewTurns(0);
         setMugMockupUrl(wrap.mockupUrl);
         setMugMockupUrls(wrap.mockupUrls || []);
         setWrapRequested(false);
@@ -5538,7 +5655,7 @@ const ToolsPage = () => {
       } catch (err) {
         if (err?.name === 'AbortError') return;
         setWrapRequested(false);
-        setMugMockupError('Wrap preview is taking a moment. Your screenshot is still saved.');
+        setMugMockupError('Wrap did not finish. Click Wrap now again.');
       } finally {
         if (!controller.signal.aborted) setMugMockupLoading(false);
       }
@@ -6423,13 +6540,16 @@ const ToolsPage = () => {
                             <div className={`mug-product-preview-image${mugMockupUrl ? ' mug-product-preview-image--wrap' : ''}${wrapKind === 'mug' || (wrapKind === 'bowl' && mugMockupUrl) ? ' mug-product-preview-image--mug' : ''}${wrapKind === 'bowl' && !mugMockupUrl ? ' mug-product-preview-image--bowl' : ''}${wrapKind === 'bandana' && !mugMockupUrl ? ' mug-product-preview-image--bandana' : ''}`}>
                               {mugMockupUrl ? (
                                 <>
-                                  <div className="mug-wrap-mockup-clip">
+                                  <div className={`mug-wrap-mockup-clip${wrapKind === 'puzzle' && puzzleViewTurns % 2 === 1 ? ' is-view-turned-side' : ''}${wrapKind === 'card' ? ' is-card-portrait' : ''}`}>
                                     <img
                                       className="mug-wrap-mockup"
                                       src={mugMockupUrl}
                                       alt={`${productName} wrap preview`}
                                       decoding="async"
                                       referrerPolicy="no-referrer"
+                                      style={wrapKind === 'puzzle' && puzzleViewTurns
+                                        ? { transform: `rotate(${puzzleViewTurns * 90}deg)` }
+                                        : undefined}
                                     />
                                   </div>
                                   {mugViews.length > 1 ? (
@@ -6557,6 +6677,11 @@ const ToolsPage = () => {
                                   textOffsetX={textOffsetX}
                                   textOffsetY={textOffsetY}
                                   textDirection={textDirection}
+                                  nudgeEnabled={wrapKind === 'puzzle'}
+                                  onImageOffsetChange={wrapKind === 'puzzle' ? (x, y) => {
+                                    setImageOffsetX(x);
+                                    setImageOffsetY(y);
+                                  } : undefined}
                                 />
                               ) : null}
                               {mugMockupLoading ? (
@@ -6567,7 +6692,11 @@ const ToolsPage = () => {
                             </div>
                             {showWrapNow ? (
                               <div className="product-preview-unavailable-note">
-                                {wrapKind === 'bowl' ? (
+                                {wrapKind === 'puzzle' ? (
+                                  <div className="product-preview-unavailable-note-text">
+                                    This is the puzzle print area. Drag the photo to choose what stays in the picture, then click Wrap now.
+                                  </div>
+                                ) : wrapKind === 'bowl' ? (
                                   <div className="product-preview-unavailable-note-text">
                                     Eleven photos wrap around the bowl. Wrap now uses this image in every window, unless you choose random dashboard photos.
                                   </div>
@@ -6654,10 +6783,12 @@ const ToolsPage = () => {
                                       return;
                                     }
                                     const needsBake = Boolean(
-                                      (!skipRectEdgeEdits && (featherEdge || cornerRadius || frameEnabled || featherFadeEnabled)) ||
-                                      blackAndWhite ||
-                                      imageOpacityHasEdit(imageOpacity) ||
-                                      (textEnabled && String(textContent || '').trim())
+                                      wrapKind !== 'puzzle' && (
+                                        (!skipRectEdgeEdits && (featherEdge || cornerRadius || frameEnabled || featherFadeEnabled)) ||
+                                        blackAndWhite ||
+                                        imageOpacityHasEdit(imageOpacity) ||
+                                        (textEnabled && String(textContent || '').trim())
+                                      )
                                     );
                                     if (needsBake) setEditedImageUrl('');
                                     setWrapRequested(true);
@@ -6665,6 +6796,33 @@ const ToolsPage = () => {
                                 >
                                   Wrap now
                                 </button>
+                              </div>
+                            ) : wrapKind === 'puzzle' && mugMockupUrl ? (
+                              <div className="product-preview-unavailable-note">
+                                <button
+                                  type="button"
+                                  className="bowl-panel-same-btn"
+                                  onClick={() => setPuzzleViewTurns((turns) => (turns + 1) % 4)}
+                                >
+                                  Turn view
+                                </button>
+                                <button
+                                  type="button"
+                                  className="bowl-panel-same-btn"
+                                  onClick={() => {
+                                    setPuzzleViewTurns(0);
+                                    setMugMockupUrl('');
+                                    setMugMockupUrls([]);
+                                    setWrapRequested(false);
+                                    wrapEditKeyRef.current = '';
+                                    setMugMockupError('');
+                                  }}
+                                >
+                                  Move photo
+                                </button>
+                                <div className="product-preview-unavailable-note-text">
+                                  Turn view only changes how you look at the wrap. The print stays as wrapped.
+                                </div>
                               </div>
                             ) : wrapKind === 'bowl' && mugMockupUrl ? (
                               <div className="product-preview-unavailable-note">
@@ -6953,14 +7111,30 @@ const ToolsPage = () => {
             </div>
           )}
           
-          {isPetBandanaProduct((selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex]?.name : '') || selectedProductName) ? (
-            <div className="tool-control-group">
-              <ToolsUnavailableNotice info={{
-                title: 'No Tools for Pet Bandana',
-                message: 'Editing tools are not available for the pet bandana collar. Click Wrap now in the preview. Checkout opens after that preview is applied.',
-              }} />
-            </div>
-          ) : (
+          {(() => {
+            const toolsName = (selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex]?.name : '') || selectedProductName;
+            if (isPetBandanaProduct(toolsName)) {
+              return (
+                <div className="tool-control-group">
+                  <ToolsUnavailableNotice info={{
+                    title: 'No Tools for Pet Bandana',
+                    message: 'Editing tools are not available for the pet bandana collar. Click Wrap now in the preview. Checkout opens after that preview is applied.',
+                  }} />
+                </div>
+              );
+            }
+            if (isJigsawPuzzleProduct(toolsName)) {
+              return (
+                <div className="tool-control-group">
+                  <ToolsUnavailableNotice info={{
+                    title: 'No Tools for Jigsaw Puzzle',
+                    message: 'Editing tools are not available for the jigsaw puzzle. Drag the photo in the preview, then click Wrap now.',
+                  }} />
+                </div>
+              );
+            }
+            return null;
+          })() || (
           <>
           <div className="tool-control-group tools-orientation-group">
             {/* Portrait = tuned print box. Landscape = same box, wide on the chest. */}

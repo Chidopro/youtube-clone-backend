@@ -1857,9 +1857,11 @@ PRODUCTS = [
         "main_image": "greetingcard.png",
         "preview_image": "miscellaneousgreetingcardpreview.png",
         "description": "A well-designed greeting card has the power to help people express gratitude or sympathy, as well as inform attendees and set the mood for any given occasion. Coming in three different sizes, the greeting cards are customizable from top to bottom, and they can be designed to stand both horizontally and vertically. Create your own greeting cards tailored to any circumstance, be it a seasonal one or a once-in-a-lifetime event. Cardboard paper. Sizes: Small: 4″ × 6″ (101 × 152 mm), Medium: 5″ × 7″ (127 × 178 mm), Large: 5.83″ × 8.27″ (148 × 210 mm). Product weight: Small: 0.39 oz (11 g), Medium: 0.6 oz (17 g), Large: 0.85 oz (24 g). Toner-based printing. Vibrant colors. Comes with a complimentary envelope. Blank product materials sourced from Sweden. Disclaimer: Greeting cards shipped from Europe have a matte outside and a thicker envelope (120 g/m²). Greeting cards shipped from the US have a glossy outside and a thinner envelope (60#). Due to the different coatings on the inside and outside of the card, identical colors will look slightly different on the respective surfaces. Small cracks are likely to appear in the fold area over time. A small QR code is printed on the lower left corner of the back of the postcard. This is intended only for the production team's use. In case of low card stock, we might use comparable paper to fulfill the order. The substitute will be as close to the original as possible. This product is made on demand. No minimums.",
-        "options": {"color": ["White"], "size": ["4\"x6\""]},
+        "options": {"color": ["White"], "size": ["4\"x6\"", "5\"x7\"", "5.83\"x8.27\""]},
         "size_pricing": {
-            "4\"x6\"": 0
+            "4\"x6\"": 0,
+            "5\"x7\"": 0,
+            "5.83\"x8.27\"": 0
         }
     },
     {

@@ -13,7 +13,7 @@ import { applyBrowsePresetToCartItem, featherEdgeMaskStyle } from '../../utils/b
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
-import { isCurvedBagProduct, stripCurvedBagRectEdits } from '../../utils/mugMockup';
+import { isCurvedBagProduct, isJigsawPuzzleProduct, stripCurvedBagRectEdits } from '../../utils/mugMockup';
 import {
   getPrintfulColorCode,
   getPrintfulColorMockupUrl,
@@ -259,7 +259,7 @@ function PrintfulColorMockupImg({
 }
 
 const categoryBrowseCache = new Map();
-const BROWSE_CACHE_KEY = (category) => `sm_browse_v8_${String(category || '').trim().toLowerCase()}`;
+const BROWSE_CACHE_KEY = (category) => `sm_browse_v9_${String(category || '').trim().toLowerCase()}`;
 
 function readBrowseCache(category) {
   const mem = categoryBrowseCache.get(category);
@@ -1067,6 +1067,10 @@ const ProductPage = ({ sidebar }) => {
     if (!product) return;
     lastPickedProductRef.current = { product, index };
     rememberToolsProductName(product?.name);
+    if (isJigsawPuzzleProduct(product?.name)) {
+      setBrowseLayoutOrientation('landscape');
+      rememberArtworkOrientation('landscape');
+    }
   };
 
   const clearVariantAvailability = (index) => {
@@ -1247,7 +1251,7 @@ const ProductPage = ({ sidebar }) => {
 
     // Get video metadata from merch session (including screenshot_timestamp for email/order)
     let videoMetadata = {};
-    const pendingOrientation = isHatsCategory(category)
+    const pendingOrientation = isHatsCategory(category) || isJigsawPuzzleProduct(product?.name)
       ? 'landscape'
       : (browseLayoutOrientation === 'landscape' ? 'landscape' : 'portrait');
     try {

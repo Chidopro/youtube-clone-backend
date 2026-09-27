@@ -1302,6 +1302,16 @@
                 triggerPngDownload(original300DpiImage, 'pet-bowl-11-images.jpg');
                 return;
             }
+            if (isJigsawOrder()) {
+                var pw = currentImageDimensions && currentImageDimensions.width;
+                var ph = currentImageDimensions && currentImageDimensions.height;
+                if (!(pw > ph)) {
+                    alert('Generate 300 DPI again for the puzzle. The download must be the wrapped landscape file, not the original photo.');
+                    return;
+                }
+                triggerPngDownload(original300DpiImage, 'puzzle-print.jpg');
+                return;
+            }
             if (isPetBandanaOrder()) {
                 var bw = currentImageDimensions && currentImageDimensions.width;
                 var bh = currentImageDimensions && currentImageDimensions.height;
@@ -1763,7 +1773,10 @@
             }
             applyFitProductForOrderItem(selectedProduct);
             renderEditLogPanel(selectedProduct);
-            var cleanShot = itemCleanScreenshot(selectedProduct);
+            var itemName = selectedProduct.product || selectedProduct.name;
+            var cleanShot = (isJigsawName(itemName) || isGreetingCardName(itemName))
+                ? savedPuzzlePrint(selectedProduct)
+                : itemCleanScreenshot(selectedProduct);
             if (cleanShot) {
                 orderScreenshot = cleanShot;
                 originalScreenshot = cleanShot;
@@ -1873,9 +1886,7 @@
                         console.log(`📦 Loaded ${allProducts.length} screenshot(s) from order (same as email)`);
                         loadedCustomer = data.customer || null;
                         setLoadedOrderId(data.order_id || currentOrderId);
-                        if (!customerLooksReady(loadedCustomer)) {
-                            prefetchOrderCustomer(data.order_id || currentOrderId);
-                        }
+                        prefetchOrderCustomer(data.order_id || currentOrderId);
                         renderScreenshotQueue();
                         selectQueueIndex(0);
                     } else {
@@ -1968,6 +1979,34 @@
             return (String(orderProductName() || '') + ' ' + fitName).toLowerCase().indexOf('pet bowl') !== -1;
         }
 
+        function isGreetingCardName(name) {
+            return String(name || '').toLowerCase().indexOf('greeting card') !== -1;
+        }
+
+        function isGreetingCardOrder() {
+            var fit = document.getElementById('fitProductSelect');
+            var fitName = fit && fit.value ? fit.value : '';
+            return isGreetingCardName(orderProductName()) || isGreetingCardName(fitName);
+        }
+
+        function isJigsawName(name) {
+            var n = String(name || '').toLowerCase();
+            return n.indexOf('jigsaw') !== -1 || n.indexOf('puzzle') !== -1;
+        }
+
+        function isJigsawOrder() {
+            var fit = document.getElementById('fitProductSelect');
+            var fitName = fit && fit.value ? fit.value : '';
+            return isJigsawName(orderProductName()) || isJigsawName(fitName);
+        }
+
+        function savedPuzzlePrint(product) {
+            if (!product) return '';
+            var file = String(product.printful_tote_printfile_url || product.printfulTotePrintfileUrl || '').trim();
+            if (file) return file;
+            return itemEditedScreenshot(product);
+        }
+
         function isPetBandanaOrder() {
             var fit = document.getElementById('fitProductSelect');
             var fitName = fit && fit.value ? fit.value : '';
@@ -2052,6 +2091,16 @@
                     if (savedCrop && savedCrop !== sourceFor300) {
                         payload.bandana_crop_image = savedCrop;
                     }
+                }
+                if (isJigsawOrder() || isGreetingCardOrder()) {
+                    var puzzleFile = savedPuzzlePrint(allProducts && allProducts[selectedQueueIndex]);
+                    if (puzzleFile) payload.thumbnail_data = puzzleFile;
+                    payload.preserve_edits = true;
+                    payload.fit_mode = 'preserve';
+                    delete payload.image_orientation;
+                    delete payload.print_area_width;
+                    delete payload.print_area_height;
+                    delete payload.crop_area;
                 }
                 
                 const response = await fetch('/api/process-thumbnail-print-quality', {
@@ -2751,12 +2800,9 @@
                 return;
             }
             try {
-                var customer = customerLooksReady(loadedCustomer) ? loadedCustomer : null;
-                if (!customer) {
-                    setCustomerCopyStatus('Loading shipping info…', false);
-                    customer = await fetchOrderCustomer(currentOrderId);
-                    loadedCustomer = customer;
-                }
+                setCustomerCopyStatus('Loading shipping info…', false);
+                var customer = await fetchOrderCustomer(currentOrderId);
+                loadedCustomer = customer;
                 showCustomerInfoInPanel(customer);
                 var text = (customer && customer.paste_text) ? String(customer.paste_text).trim() : '';
                 if (!text) {

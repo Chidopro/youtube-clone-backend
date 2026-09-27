@@ -456,6 +456,41 @@ body.tools-page-active .site-footer {
   border-radius: 8px;
 }
 
+.mug-wrap-mockup-clip.is-view-turned-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--preview-max-side);
+  overflow: visible;
+}
+
+.mug-wrap-mockup-clip.is-view-turned-side .mug-wrap-mockup {
+  width: 100%;
+  max-width: var(--preview-max-side);
+  max-height: 280px;
+}
+
+.mug-wrap-mockup-clip.is-card-portrait {
+  position: relative;
+  width: 100%;
+  max-width: 210px;
+  height: 300px;
+  overflow: hidden;
+}
+
+.mug-wrap-mockup-clip.is-card-portrait .mug-wrap-mockup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  max-width: none;
+  max-height: none;
+  height: auto;
+  margin: 0;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
 .mug-wrap-mockup {
   display: block;
   width: 100%;

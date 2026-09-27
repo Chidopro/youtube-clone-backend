@@ -141,6 +141,10 @@
   display: block;
 }
 
+.shop-tile-img--nudge-right {
+  transform: translateX(10%);
+}
+
 .shop-tile-emoji {
   font-size: 1.75rem;
   line-height: 1;

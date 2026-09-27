@@ -1312,7 +1312,11 @@ export const products = {
     "preview": "/static/images/greetingcardpreview.png",
     "category": "stationery",
     "variables": {
-      "sizes": [],
+      "sizes": [
+        "4\"x6\"",
+        "5\"x7\"",
+        "5.83\"x8.27\""
+      ],
       "colors": [
         "White",
         "Cream"

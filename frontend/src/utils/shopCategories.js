@@ -61,7 +61,7 @@ export const SHOP_CATEGORIES = [
     name: 'Accessories',
     emoji: '📦',
     category: 'misc',
-    preview: 'https://files.cdn.printful.com/products/682/16957_1683889996.jpg',
+    preview: '/category/apron.png',
   },
 ];
 

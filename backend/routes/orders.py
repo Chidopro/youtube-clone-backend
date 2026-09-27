@@ -1763,52 +1763,77 @@ def success():
     return render_template('success.html')
 
 
+def _customer_detail_count(order_data):
+    info = customer_info_from_order(order_data)
+    keys = ("name", "line1", "line2", "city", "state", "zip", "country", "email", "phone")
+    return sum(1 for key in keys if str(info.get(key) or "").strip())
+
+
+def _order_row_from_db(client, id_list):
+    if not client:
+        return None
+    for c in id_list:
+        for col in ("order_id", "order_number", "id"):
+            try:
+                result = client.table("orders").select("*").eq(col, c).limit(1).execute()
+                if result.data:
+                    return result.data[0]
+            except Exception as lookup_err:
+                logger.warning("Order lookup %s=%s: %s", col, c, lookup_err)
+    return None
+
+
+def _resolve_order_for_tools(order_store, client, id_list):
+    """Use the saved order that has the full shipping address, not a thin in-memory copy."""
+    memory = None
+    for c in id_list:
+        if c in order_store:
+            memory = dict(order_store[c])
+            break
+    db_row = _order_row_from_db(client, id_list)
+    if db_row and (not memory or _customer_detail_count(db_row) > _customer_detail_count(memory)):
+        if not memory:
+            return db_row
+        merged = dict(db_row)
+        for key in ("selected_screenshot", "thumbnail", "screenshot"):
+            if not merged.get(key) and memory.get(key):
+                merged[key] = memory[key]
+        if not merged.get("cart") and memory.get("cart"):
+            merged["cart"] = memory["cart"]
+        return merged
+    return memory or db_row
+
+
+def _order_id_candidates(order_id):
+    candidates = []
+    raw = (order_id or "").strip()
+    if raw:
+        candidates.append(raw)
+        upper = raw.upper()
+        if upper.startswith("ORD-"):
+            bare = raw[4:]
+            if bare:
+                candidates.append(bare)
+                candidates.append("ORD-" + bare.upper())
+        else:
+            candidates.append("ORD-" + upper)
+    seen = set()
+    id_list = []
+    for c in candidates:
+        if c and c not in seen:
+            seen.add(c)
+            id_list.append(c)
+    return id_list
+
+
 @orders_bp.route("/api/get-order-screenshot/<order_id>")
 def get_order_screenshot(order_id):
     """Get screenshot data for a specific order (admin client + ID variants; works across Fly machines)."""
     try:
         client = _get_supabase_admin() or _get_supabase_client()
         order_store = _get_order_store()
-        candidates = []
-        raw = (order_id or "").strip()
-        if raw:
-            candidates.append(raw)
-            upper = raw.upper()
-            if upper.startswith("ORD-"):
-                bare = raw[4:]
-                if bare:
-                    candidates.append(bare)
-                    candidates.append("ORD-" + bare.upper())
-            else:
-                candidates.append("ORD-" + upper)
-        # de-dupe
-        seen = set()
-        id_list = []
-        for c in candidates:
-            if c and c not in seen:
-                seen.add(c)
-                id_list.append(c)
-
-        order_data = None
-        # Prefer in-memory store (same machine that took the order)
-        for c in id_list:
-            if c in order_store:
-                order_data = dict(order_store[c])
-                break
-
-        # Then DB with service role when available (anon RLS often blocks order reads)
-        if not order_data and client:
-            for c in id_list:
-                for col in ("order_id", "order_number", "id"):
-                    try:
-                        result = client.table("orders").select("*").eq(col, c).limit(1).execute()
-                        if result.data:
-                            order_data = result.data[0]
-                            break
-                    except Exception as lookup_err:
-                        logger.warning(f"Order lookup {col}={c}: {lookup_err}")
-                if order_data:
-                    break
+        id_list = _order_id_candidates(order_id)
+        order_data = _resolve_order_for_tools(order_store, client, id_list)
         
         if not order_data:
             response = jsonify({
@@ -1857,6 +1882,7 @@ def get_order_screenshot(order_id):
                 "product": product_name,
                 "screenshot": screenshot_data or "",
                 "original_screenshot": item.get("original_screenshot") or item.get("originalScreenshot") or "",
+                "printful_tote_printfile_url": item.get("printful_tote_printfile_url") or item.get("printfulTotePrintfileUrl") or "",
                 "color": color,
                 "size": size,
                 "image_orientation": get_item_image_orientation(item),
@@ -1893,42 +1919,8 @@ def get_order_customer(order_id):
     try:
         client = _get_supabase_admin() or _get_supabase_client()
         order_store = _get_order_store()
-        candidates = []
-        raw = (order_id or "").strip()
-        if raw:
-            candidates.append(raw)
-            upper = raw.upper()
-            if upper.startswith("ORD-"):
-                bare = raw[4:]
-                if bare:
-                    candidates.append(bare)
-                    candidates.append("ORD-" + bare.upper())
-            else:
-                candidates.append("ORD-" + upper)
-        seen = set()
-        id_list = []
-        for c in candidates:
-            if c and c not in seen:
-                seen.add(c)
-                id_list.append(c)
-
-        order_data = None
-        for c in id_list:
-            if c in order_store:
-                order_data = dict(order_store[c])
-                break
-        if not order_data and client:
-            for c in id_list:
-                for col in ("order_id", "order_number", "id"):
-                    try:
-                        result = client.table("orders").select("*").eq(col, c).limit(1).execute()
-                        if result.data:
-                            order_data = result.data[0]
-                            break
-                    except Exception as lookup_err:
-                        logger.warning("Order customer lookup %s=%s: %s", col, c, lookup_err)
-                if order_data:
-                    break
+        id_list = _order_id_candidates(order_id)
+        order_data = _resolve_order_for_tools(order_store, client, id_list)
         if not order_data:
             return _allow_origin(jsonify({"success": False, "error": "Order not found"})), 404
         info = customer_info_from_order(order_data)

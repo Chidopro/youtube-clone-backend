@@ -252,6 +252,7 @@ CATALOG_COLOR_ALIASES: Dict[int, Dict[str, str]] = {
 }
 
 JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID = 906
+GREETING_CARD_CATALOG_ID = 568
 
 # Printful caps / hats fulfilled as embroidery (not DTG). Wrong technique breaks v2/shipping-rates
 # and legacy /shipping/rates often returns a misleading "out of stock" for valid variants.
@@ -482,6 +483,38 @@ def _lookup_mug_variant_by_oz_any_color(
         vid = _match_mug_oz_size(size, by_size)
         if vid is not None:
             return int(vid)
+    return None
+
+
+def _card_size_bucket(size: str) -> str:
+    raw = str(size or "").lower()
+    raw = (
+        raw.replace("″", "")
+        .replace("”", "")
+        .replace('"', "")
+        .replace("×", "x")
+        .replace(" ", "")
+    )
+    if "5.83" in raw or "8.27" in raw:
+        return "a5"
+    if "5x7" in raw or "7x5" in raw:
+        return "5x7"
+    if "4x6" in raw or "6x4" in raw:
+        return "4x6"
+    return ""
+
+
+def _greeting_card_variant_id_for_store_size(store_size: str, by_color: Dict[str, int]) -> Optional[int]:
+    """Match 4x6 / 5x7 / 5.83x8.27 even when Printful uses × and ″."""
+    want = _card_size_bucket(store_size)
+    if not want or not by_color:
+        return None
+    for sk, vid in by_color.items():
+        if _card_size_bucket(sk) == want:
+            return int(vid)
+    fallback = {"4x6": 14457, "5x7": 14458, "a5": 14460}.get(want)
+    if fallback is not None and int(fallback) in {int(v) for v in by_color.values()}:
+        return int(fallback)
     return None
 
 
@@ -725,6 +758,10 @@ def lookup_catalog_variant_id(
         if mug_any is not None:
             return mug_any
 
+    if catalog_product_id == GREETING_CARD_CATALOG_ID:
+        card_vid = _greeting_card_variant_id_for_store_size(size, by_color)
+        if card_vid is not None:
+            return card_vid
     if catalog_product_id == JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID:
         jvid = _jigsaw_tin_variant_id_for_store_size(size, by_color)
         if jvid is not None:

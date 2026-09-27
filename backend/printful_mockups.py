@@ -64,10 +64,8 @@ COVER_PRINT_AREA_CATALOG_IDS = frozenset({
     394,
     PET_BOWL_CATALOG_ID,
     PET_BANDANA_CATALOG_ID,
-    GREETING_CARD_CATALOG_ID,
     NOTEBOOK_CATALOG_ID,
     APRON_CATALOG_ID,
-    JIGSAW_CATALOG_ID,
 })
 # Top of the unrolled tote printfile is the front face; bottom is the back
 # (sewn inverted). Keep a small gusset between the two panels.
@@ -595,6 +593,112 @@ def _load_pil_image(image: str):
         return None
 
 
+def compose_jigsaw_printfile_bytes(
+    src_im,
+    area_width: int,
+    area_height: int,
+    focal_x: float = 0.5,
+    focal_y: float = 0.5,
+) -> bytes:
+    """Turn the photo 90° counter-clockwise and cover the landscape puzzle print area."""
+    from PIL import Image
+
+    aw = max(1, int(area_width))
+    ah = max(1, int(area_height))
+    turned = src_im.transpose(Image.ROTATE_90)
+    canvas = Image.new("RGB", (aw, ah), (255, 255, 255))
+    rgba = turned.convert("RGBA")
+    pos = cover_in_print_area(
+        aw,
+        ah,
+        rgba.size[0],
+        rgba.size[1],
+        focal_x=focal_x,
+        focal_y=focal_y,
+    )
+    resized = rgba.resize((pos["width"], pos["height"]), _pil_resample()).convert("RGB")
+    canvas.paste(resized, (pos["left"], pos["top"]))
+    out = io.BytesIO()
+    canvas.save(out, format="JPEG", quality=90, optimize=True)
+    return out.getvalue()
+
+
+def compose_card_printfile_bytes(src_im, area_width: int, area_height: int) -> bytes:
+    """Fit the whole photo for a tall card, upright when the card opens.
+
+    Printful's card template is landscape with the fold on the top edge.
+    Turning the photo 90° clockwise puts the top of the photo on the right.
+    Opened from the right as a tall card, the front stays upright.
+    """
+    aw = max(1, int(area_width))
+    ah = max(1, int(area_height))
+    from PIL import Image
+
+    file_w, file_h = (aw, ah) if aw >= ah else (ah, aw)
+    turned = src_im.transpose(Image.ROTATE_270)
+    canvas = Image.new("RGB", (file_w, file_h), (255, 255, 255))
+    _contain_paste_rgb(canvas, turned, (0, 0, file_w, file_h))
+    out = io.BytesIO()
+    canvas.save(out, format="JPEG", quality=90, optimize=True)
+    return out.getvalue()
+
+
+def prepare_card_printfile(
+    image: str,
+    area_width: int,
+    area_height: int,
+    api_key: str,
+) -> Optional[Tuple[str, int, int]]:
+    src_im = _load_pil_image(image)
+    if src_im is None:
+        return None
+    blob = compose_card_printfile_bytes(src_im, area_width, area_height)
+    aw = max(1, int(area_width))
+    ah = max(1, int(area_height))
+    file_w, file_h = (aw, ah) if aw >= ah else (ah, aw)
+    hosted = _upload_blob_to_supabase(blob, "image/jpeg")
+    if hosted:
+        return hosted, file_w, file_h
+    try:
+        data_url = "data:image/jpeg;base64," + base64.b64encode(blob).decode("ascii")
+        url = public_image_url_for_printful(data_url, api_key)
+        return url, file_w, file_h
+    except Exception as e:
+        logger.warning("Greeting card printfile host failed: %s", e)
+        return None
+
+
+def prepare_jigsaw_printfile(
+    image: str,
+    area_width: int,
+    area_height: int,
+    api_key: str,
+    focal_x: float = 0.5,
+    focal_y: float = 0.5,
+) -> Optional[Tuple[str, int, int]]:
+    """Host a puzzle printfile with the photo rotated to fill the print area."""
+    src_im = _load_pil_image(image)
+    if src_im is None:
+        return None
+    blob = compose_jigsaw_printfile_bytes(
+        src_im,
+        area_width,
+        area_height,
+        focal_x=focal_x,
+        focal_y=focal_y,
+    )
+    hosted = _upload_blob_to_supabase(blob, "image/jpeg")
+    if hosted:
+        return hosted, int(area_width), int(area_height)
+    try:
+        data_url = "data:image/jpeg;base64," + base64.b64encode(blob).decode("ascii")
+        url = public_image_url_for_printful(data_url, api_key)
+        return url, int(area_width), int(area_height)
+    except Exception as e:
+        logger.warning("Jigsaw printfile host failed: %s", e)
+        return None
+
+
 def prepare_tote_wrap_printfile(
     front_image: str,
     back_image: str,
@@ -686,6 +790,8 @@ def cache_key_for(
     image: str,
     back_image: str = "",
     orientation: str = "",
+    focal_x: Optional[float] = None,
+    focal_y: Optional[float] = None,
 ) -> str:
     src = str(image or "")
     digest = hashlib.sha256(src.encode("utf-8", errors="ignore")).hexdigest()[:40]
@@ -696,6 +802,14 @@ def cache_key_for(
         else "noback"
     )
     base = f"{int(catalog_id)}:{int(variant_id)}:{digest}:{back_digest}:a11"
+    if int(catalog_id) == GREETING_CARD_CATALOG_ID:
+        return f"{base}:cardopenright"
+    if int(catalog_id) == JIGSAW_CATALOG_ID:
+        fx = 0.5 if focal_x is None else float(focal_x)
+        fy = 0.5 if focal_y is None else float(focal_y)
+        fx = min(1.0, max(0.0, fx))
+        fy = min(1.0, max(0.0, fy))
+        return f"{base}:rot90ccw:{round(fx, 3)}:{round(fy, 3)}"
     if int(catalog_id) == DRAWSTRING_CATALOG_ID:
         ori = str(orientation or "").strip().lower()
         if ori not in ("portrait", "landscape"):
@@ -1295,6 +1409,8 @@ def generate_mug_mockup(
     image_height: Optional[int] = None,
     back_image: str = "",
     image_orientation: str = "",
+    focal_x: float = 0.5,
+    focal_y: float = 0.5,
     wait: bool = True,
 ) -> Dict[str, Any]:
     api_key = _api_key()
@@ -1322,7 +1438,9 @@ def generate_mug_mockup(
         probed_w, probed_h = image_pixel_size(src, blob)
         if probed_w > 0 and probed_h > 0:
             iw, ih = probed_w, probed_h
-    key = cache_key_for(catalog_id, variant_id, src, back_src, image_orientation)
+    key = cache_key_for(
+        catalog_id, variant_id, src, back_src, image_orientation, focal_x, focal_y
+    )
     hosted_key = key
     cached = _cache_get(key)
     if cached:
@@ -1340,6 +1458,22 @@ def generate_mug_mockup(
         image_url = public_image_url_for_printful(src, api_key)
         if int(catalog_id) in (PET_BOWL_CATALOG_ID, PET_BANDANA_CATALOG_ID):
             printfile_url = image_url
+        if int(catalog_id) == GREETING_CARD_CATALOG_ID:
+            _placement, area_w, area_h = print_area_for_variant(catalog_id, variant_id, api_key)
+            prepared = prepare_card_printfile(image_url, area_w, area_h, api_key)
+            if prepared:
+                image_url, iw, ih = prepared
+                prepared_printfile = True
+                printfile_url = image_url
+        if int(catalog_id) == JIGSAW_CATALOG_ID:
+            _placement, area_w, area_h = print_area_for_variant(catalog_id, variant_id, api_key)
+            prepared = prepare_jigsaw_printfile(
+                image_url, area_w, area_h, api_key, focal_x=focal_x, focal_y=focal_y
+            )
+            if prepared:
+                image_url, iw, ih = prepared
+                prepared_printfile = True
+                printfile_url = image_url
         if int(catalog_id) == TOTE_WRAP_CATALOG_ID:
             _placement, area_w, area_h = print_area_for_variant(catalog_id, variant_id, api_key)
             prepared = prepare_tote_wrap_printfile(
@@ -1349,7 +1483,9 @@ def generate_mug_mockup(
                 image_url, iw, ih = prepared
                 prepared_printfile = True
                 printfile_url = image_url
-        hosted_key = cache_key_for(catalog_id, variant_id, image_url, back_src, image_orientation)
+        hosted_key = cache_key_for(
+            catalog_id, variant_id, image_url, back_src, image_orientation, focal_x, focal_y
+        )
         if hosted_key != key:
             cached_hosted = _cache_get(hosted_key)
             if cached_hosted:

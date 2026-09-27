@@ -850,6 +850,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         image: null,
         imagePreview: null
     });
+    const [imageCropOpen, setImageCropOpen] = useState(false);
+    const [imageCropBox, setImageCropBox] = useState({ x: 0, y: 0, w: 1, h: 1 });
+    const imageCropDragRef = useRef(null);
     const [analyticsData, setAnalyticsData] = useState({
         total_sales: 0,
         total_revenue: 0,
@@ -1584,11 +1587,18 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         }
     };
 
+    const resetImageCrop = () => {
+        setImageCropOpen(false);
+        setImageCropBox({ x: 0, y: 0, w: 1, h: 1 });
+        imageCropDragRef.current = null;
+    };
+
     const resetFavoriteModal = () => {
         setShowFavoriteModal(false);
         setEditingFavorite(null);
         setThumbnailTargetVideoId('');
         setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+        resetImageCrop();
     };
 
     const openFavoriteUploadModal = () => {
@@ -1596,7 +1606,106 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         setEditingFavorite(null);
         setThumbnailTargetVideoId('');
         setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+        resetImageCrop();
         setShowFavoriteModal(true);
+    };
+
+    const clampCropBox = (box) => {
+        const min = 0.08;
+        let x = Math.max(0, Math.min(1 - min, box.x));
+        let y = Math.max(0, Math.min(1 - min, box.y));
+        let w = Math.max(min, Math.min(1 - x, box.w));
+        let h = Math.max(min, Math.min(1 - y, box.h));
+        return { x, y, w, h };
+    };
+
+    const startImageCropDrag = (edge, event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const stage = event.currentTarget.closest('.dash-crop-stage');
+        if (!stage) return;
+        const rect = stage.getBoundingClientRect();
+        imageCropDragRef.current = {
+            edge,
+            startX: event.clientX,
+            startY: event.clientY,
+            width: rect.width || 1,
+            height: rect.height || 1,
+            box: imageCropBox
+        };
+        const move = (ev) => {
+            const drag = imageCropDragRef.current;
+            if (!drag) return;
+            const dx = (ev.clientX - drag.startX) / drag.width;
+            const dy = (ev.clientY - drag.startY) / drag.height;
+            const b = drag.box;
+            const next = { ...b };
+            if (drag.edge === 'move') {
+                next.x = b.x + dx;
+                next.y = b.y + dy;
+            } else {
+                if (drag.edge.includes('w')) {
+                    next.x = b.x + dx;
+                    next.w = b.w - dx;
+                }
+                if (drag.edge.includes('e')) next.w = b.w + dx;
+                if (drag.edge.includes('n')) {
+                    next.y = b.y + dy;
+                    next.h = b.h - dy;
+                }
+                if (drag.edge.includes('s')) next.h = b.h + dy;
+            }
+            setImageCropBox(clampCropBox(next));
+        };
+        const up = () => {
+            imageCropDragRef.current = null;
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+        };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+    };
+
+    const buildCroppedFavoriteFile = async (previewUrl, box) => {
+        if (!previewUrl) return null;
+        const full = box.x < 0.004 && box.y < 0.004 && box.w > 0.992 && box.h > 0.992;
+        if (full) return null;
+        const load = (src) => new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error('Could not load the image to crop.'));
+            img.src = src;
+        });
+        let objectUrl = '';
+        let img;
+        try {
+            if (previewUrl.startsWith('data:') || previewUrl.startsWith('blob:')) {
+                img = await load(previewUrl);
+            } else {
+                const response = await fetch(previewUrl, { mode: 'cors' });
+                if (!response.ok) throw new Error('Could not load the image to crop.');
+                const blob = await response.blob();
+                objectUrl = URL.createObjectURL(blob);
+                img = await load(objectUrl);
+            }
+        } catch (err) {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            throw err;
+        }
+        const nw = img.naturalWidth || img.width;
+        const nh = img.naturalHeight || img.height;
+        const sx = Math.max(0, Math.round(box.x * nw));
+        const sy = Math.max(0, Math.round(box.y * nh));
+        const sw = Math.max(1, Math.min(nw - sx, Math.round(box.w * nw)));
+        const sh = Math.max(1, Math.min(nh - sy, Math.round(box.h * nh)));
+        const canvas = document.createElement('canvas');
+        canvas.width = sw;
+        canvas.height = sh;
+        canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        if (!blob) throw new Error('Could not crop this image.');
+        return new File([blob], 'cropped-image.jpg', { type: 'image/jpeg' });
     };
 
     const ownVideosForThumbnail = videos.filter((v) => String(v.user_id || user?.id) === String(user?.id));
@@ -1634,6 +1743,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             image: null,
             imagePreview: favorite.image_url || favorite.thumbnail_url || null
         });
+        resetImageCrop();
         setShowFavoriteModal(true);
     };
 
@@ -1696,7 +1806,17 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             alert('Please provide a title.');
             return;
         }
-        if (newFavorite.image && newFavorite.image.size > 5 * 1024 * 1024) {
+        let imageFile = newFavorite.image;
+        if (imageCropOpen && newFavorite.imagePreview) {
+            try {
+                const cropped = await buildCroppedFavoriteFile(newFavorite.imagePreview, imageCropBox);
+                if (cropped) imageFile = cropped;
+            } catch (cropErr) {
+                alert(cropErr.message || 'Could not crop this image.');
+                return;
+            }
+        }
+        if (imageFile && imageFile.size > 5 * 1024 * 1024) {
             alert('File size must be less than 5MB.');
             return;
         }
@@ -1716,7 +1836,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             formData.append('user_id', auth.userId);
             if (auth.accountEmail) formData.append('email', auth.accountEmail);
             if (auth.sessionToken) formData.append('session_token', auth.sessionToken);
-            if (newFavorite.image) formData.append('file', newFavorite.image);
+            if (imageFile) formData.append('file', imageFile);
 
             const res = await fetch(`${getBackendUrl()}/api/favorites/update`, {
                 method: 'POST',
@@ -1733,6 +1853,29 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                 setFavorites(prev => prev.map(fav => fav.id === editingFavorite.id ? { ...fav, ...json.favorite } : fav));
             }
             const imageUrl = json.favorite?.image_url || json.favorite?.thumbnail_url || editingFavorite?.image_url;
+            const oldPreview = String(editingFavorite.image_url || editingFavorite.thumbnail_url || '').trim();
+            if (imageFile && oldPreview && imageUrl && imageUrl !== oldPreview) {
+                const skus = Object.entries(shopOverrides)
+                    .filter(([, patch]) => String(patch?.preview || '') === oldPreview)
+                    .map(([sku]) => sku);
+                if (skus.length) {
+                    try {
+                        const products = {};
+                        skus.forEach((sku) => { products[sku] = { preview: imageUrl }; });
+                        const next = await patchShopCatalog({
+                            headers: auth.headers,
+                            userId: auth.userId,
+                            email: auth.accountEmail,
+                            sessionToken: auth.sessionToken,
+                            products,
+                        });
+                        setShopOverrides(next);
+                        setShopCatalogTick((n) => n + 1);
+                    } catch (syncErr) {
+                        console.error('Store image sync after crop failed:', syncErr);
+                    }
+                }
+            }
             const extra = await applyUploadedImageAsThumbnail(imageUrl);
             resetFavoriteModal();
             alert('Image updated successfully!' + extra);
@@ -3071,6 +3214,17 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                 Make Merch
                                             </button>
                                             <button
+                                                className="edit-video-btn dash-image-crop-btn"
+                                                onClick={(e) => {
+                                                    handleEditFavorite(favorite, e);
+                                                    setImageCropOpen(true);
+                                                }}
+                                                title="Crop image"
+                                                disabled={demoPreview}
+                                            >
+                                                ✂
+                                            </button>
+                                            <button
                                                 className="edit-video-btn"
                                                 onClick={(e) => handleEditFavorite(favorite, e)}
                                                 title="Edit Image"
@@ -3205,12 +3359,47 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                         {editingFavorite && !newFavorite.image && (
                                             <p className="edit-video-tip">Choose a new file only if you want to replace the current image.</p>
                                         )}
-                                        {newFavorite.imagePreview && (
-                                            <img 
-                                                src={newFavorite.imagePreview} 
-                                                alt="Preview" 
+                                        {newFavorite.imagePreview && !imageCropOpen && (
+                                            <img
+                                                src={newFavorite.imagePreview}
+                                                alt="Preview"
                                                 className="favorite-upload-preview"
                                             />
+                                        )}
+                                        {newFavorite.imagePreview && (
+                                            <button
+                                                type="button"
+                                                className="dash-crop-toggle"
+                                                onClick={() => {
+                                                    setImageCropOpen((open) => !open);
+                                                    setImageCropBox({ x: 0, y: 0, w: 1, h: 1 });
+                                                }}
+                                            >
+                                                {imageCropOpen ? 'Close crop' : 'Crop image'}
+                                            </button>
+                                        )}
+                                        {newFavorite.imagePreview && imageCropOpen && (
+                                            <div className="dash-crop-panel">
+                                                <p className="edit-video-tip">Drag the top edge down to cut off extra roof. Drag the box to move it, then save.</p>
+                                                <div className="dash-crop-stage">
+                                                    <img src={newFavorite.imagePreview} alt="" draggable={false} />
+                                                    <div
+                                                        className="dash-crop-box"
+                                                        style={{
+                                                            left: `${imageCropBox.x * 100}%`,
+                                                            top: `${imageCropBox.y * 100}%`,
+                                                            width: `${imageCropBox.w * 100}%`,
+                                                            height: `${imageCropBox.h * 100}%`
+                                                        }}
+                                                        onPointerDown={(e) => startImageCropDrag('move', e)}
+                                                    >
+                                                        <span className="dash-crop-handle dash-crop-handle--n" onPointerDown={(e) => startImageCropDrag('n', e)} />
+                                                        <span className="dash-crop-handle dash-crop-handle--e" onPointerDown={(e) => startImageCropDrag('e', e)} />
+                                                        <span className="dash-crop-handle dash-crop-handle--s" onPointerDown={(e) => startImageCropDrag('s', e)} />
+                                                        <span className="dash-crop-handle dash-crop-handle--w" onPointerDown={(e) => startImageCropDrag('w', e)} />
+                                                    </div>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                     {ownVideosForThumbnail.length > 0 ? (
