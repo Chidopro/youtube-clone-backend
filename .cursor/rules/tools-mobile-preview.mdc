@@ -1,0 +1,15 @@
+---
+description: Keep Tools Product Preview showing the garment and the design on phones
+globs: frontend/src/Pages/ToolsPage/**
+alwaysApply: false
+---
+
+# Tools mobile product preview
+
+Product Preview must show the colored garment and the shopper's design on phones. Do not put that design on category or product cards.
+
+The design image is the print box, in pixels, with object-fit cover (contain for greeting cards). Do not size it from cover-zoom math as an absolutely positioned image larger than the box. A wide screenshot becomes several times the print box, and phones clip that layer away, so a black shirt looks blank.
+
+Do not add `transform: translateZ(0)` on `.product-preview-overlay-clip`. That combination with `overflow: hidden` drops the design on iOS.
+
+Garment color is a tint of the white blank, capped around 400px, delivered as a blob URL. Do not use a full-size PNG data URL. Light colors explode in size, the phone drops the shirt, and the print-box fill shows as a solid square while the tab freezes. If the tint fails, leave the white blank visible. Do not set `crossOrigin` on a blob or data URL.

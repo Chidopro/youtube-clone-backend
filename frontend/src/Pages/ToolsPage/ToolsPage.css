@@ -700,7 +700,6 @@ body.tools-page-active .site-footer {
 .product-preview-overlay-clip {
   overflow: hidden;
   background: transparent;
-  transform: translateZ(0);
 }
 
 .product-preview-overlay-clip--lite {

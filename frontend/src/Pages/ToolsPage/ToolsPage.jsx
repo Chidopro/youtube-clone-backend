@@ -470,19 +470,25 @@ function parseCssHex(hex) {
   return [r, g, b];
 }
 
-/** Multiply opaque white-blank mockup pixels by a Printful swatch. Keeps the mint print box. */
+/** Multiply opaque white-blank mockup pixels by a Printful swatch. Keeps the mint print box.
+ *  The preview is about 200px wide. A full-size PNG (long sleeve is ~1000px)
+ *  freezes phones and, for light colors, becomes a solid square. */
 function tintMockupCanvas(img, hex) {
   const rgb = parseCssHex(hex);
   const nw = img?.naturalWidth || 0;
   const nh = img?.naturalHeight || 0;
-  if (!rgb || !nw || !nh) return '';
+  if (!rgb || !nw || !nh) return null;
   const canvas = document.createElement('canvas');
-  canvas.width = nw;
-  canvas.height = nh;
+  const maxDim = 400;
+  const scale = Math.min(1, maxDim / Math.max(nw, nh));
+  const w = Math.max(1, Math.round(nw * scale));
+  const h = Math.max(1, Math.round(nh * scale));
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return '';
-  ctx.drawImage(img, 0, 0, nw, nh);
-  const imageData = ctx.getImageData(0, 0, nw, nh);
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, w, h);
+  const imageData = ctx.getImageData(0, 0, w, h);
   const data = imageData.data;
   const [tr, tg, tb] = rgb;
   for (let i = 0; i < data.length; i += 4) {
@@ -493,7 +499,7 @@ function tintMockupCanvas(img, hex) {
     data[i + 2] = Math.round((data[i + 2] * tb) / 255);
   }
   ctx.putImageData(imageData, 0, 0);
-  return canvas.toDataURL('image/png');
+  return canvas;
 }
 
 function isPrintBoxPixel(r, g, b) {
@@ -913,15 +919,13 @@ function artworkOverlayMetrics({
 
 function artworkImageOffsetStyle(layout, vis) {
   if (!layout || !(Number(vis?.width) > 0) || !(Number(vis?.height) > 0)) return null;
-  const vw = Number(vis.width);
-  const vh = Number(vis.height);
   const box = layout.rotate ? rotatedCssBox(layout) : layout;
   return {
     position: 'absolute',
-    width: `${((Number(box.width) || 0) / vw) * 100}%`,
-    height: `${((Number(box.height) || 0) / vh) * 100}%`,
-    left: `${(((Number(box.left) || 0) - (Number(vis.left) || 0)) / vw) * 100}%`,
-    top: `${(((Number(box.top) || 0) - (Number(vis.top) || 0)) / vh) * 100}%`,
+    width: `${Math.max(0, Number(box.width) || 0)}px`,
+    height: `${Math.max(0, Number(box.height) || 0)}px`,
+    left: `${(Number(box.left) || 0) - (Number(vis.left) || 0)}px`,
+    top: `${(Number(box.top) || 0) - (Number(vis.top) || 0)}px`,
     maxWidth: 'none',
     maxHeight: 'none',
     objectFit: 'fill',
@@ -935,10 +939,10 @@ function overlayVisBoxStyle(vis, boxW, boxH) {
   if (bw > 0 && bh > 0) {
     return {
       position: 'absolute',
-      left: `${((Number(vis?.left) || 0) / bw) * 100}%`,
-      top: `${((Number(vis?.top) || 0) / bh) * 100}%`,
-      width: `${((Number(vis?.width) || 0) / bw) * 100}%`,
-      height: `${((Number(vis?.height) || 0) / bh) * 100}%`,
+      left: `${Number(vis?.left) || 0}px`,
+      top: `${Number(vis?.top) || 0}px`,
+      width: `${Math.max(0, Number(vis?.width) || 0)}px`,
+      height: `${Math.max(0, Number(vis?.height) || 0)}px`,
     };
   }
   return {
@@ -1998,6 +2002,7 @@ const ProductPreviewWithDrag = ({
   const [overlayNaturalSize, setOverlayNaturalSize] = useState({ width: 0, height: 0 });
   const overlayFitKeyRef = useRef('');
   const liteSizeLockedRef = useRef(false);
+  const tintBlobRef = useRef('');
 
   useEffect(() => {
     setMockupSrc(productImage);
@@ -2026,12 +2031,32 @@ const ProductPreviewWithDrag = ({
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       if (cancelled) return;
-      try {
-        const next = tintMockupCanvas(img, tint);
-        if (!cancelled) setTintedMockupSrc(next || '');
-      } catch {
-        if (!cancelled) setTintedMockupSrc('');
-      }
+      // Let the white blank paint first. The tint itself stays on a small canvas.
+      setTimeout(() => {
+        if (cancelled) return;
+        let canvas = null;
+        try {
+          canvas = tintMockupCanvas(img, tint);
+        } catch {
+          canvas = null;
+        }
+        if (!canvas || typeof canvas.toBlob !== 'function') {
+          if (!cancelled) setTintedMockupSrc('');
+          return;
+        }
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          if (cancelled) {
+            URL.revokeObjectURL(url);
+            return;
+          }
+          const prev = tintBlobRef.current;
+          tintBlobRef.current = url;
+          if (prev && prev !== url) URL.revokeObjectURL(prev);
+          setTintedMockupSrc(url);
+        }, 'image/png');
+      }, 0);
     };
     img.onerror = () => {
       if (!cancelled) setTintedMockupSrc('');
@@ -2041,6 +2066,13 @@ const ProductPreviewWithDrag = ({
       cancelled = true;
     };
   }, [garmentTintColor, productImage]);
+
+  useEffect(() => () => {
+    if (tintBlobRef.current) {
+      URL.revokeObjectURL(tintBlobRef.current);
+      tintBlobRef.current = '';
+    }
+  }, []);
 
   const clampFrameOffset = (x, y) => {
     const placeName = selectedProductName || productName;
@@ -2681,9 +2713,13 @@ const ProductPreviewWithDrag = ({
         alt={productName}
         decoding="async"
         referrerPolicy="no-referrer"
-        crossOrigin={garmentTintColor ? 'anonymous' : undefined}
+        crossOrigin={/^https?:/i.test(String(tintedMockupSrc || mockupSrc || productImage || '')) ? 'anonymous' : undefined}
         onLoad={handleProductImageLoad}
         onError={() => {
+          if (tintedMockupSrc) {
+            setTintedMockupSrc('');
+            return;
+          }
           const fb = String(fallbackMockupUrl || '').trim();
           if (fb && fb !== mockupSrc) setMockupSrc(fb);
         }}
@@ -2747,11 +2783,13 @@ const ProductPreviewWithDrag = ({
               posX,
               posY
             );
-            const overlayFitClass = artworkLayout
-              ? ' product-preview-overlay-zoom'
-              : (oriented.cover
-                ? ' product-preview-overlay-landscape'
-                : ' product-preview-overlay-portrait');
+            // Shirts: the photo is the print box itself. An oversized absolute
+            // image (cover math can be ~5x the box) is what phones clip away,
+            // so a black shirt looks like it has no design.
+            const useBoxFill = !artworkLayout?.rotate;
+            const overlayFitClass = useBoxFill
+              ? (isGreetingCardProduct(placeName) ? '' : ' product-preview-overlay-portrait')
+              : ' product-preview-overlay-zoom';
             const {
               vis,
               clipRadius,
@@ -2777,8 +2815,22 @@ const ProductPreviewWithDrag = ({
               height: `${scaledHeight}px`,
             };
             const fadeBg = overlayFeatherFadeBackground(featherFadeEnabled, featherFadeColor);
-            const visStyle = overlayVisBoxStyle(vis, scaledWidth, scaledHeight);
+            const visStyle = useBoxFill
+              ? { position: 'absolute', inset: 0, width: '100%', height: '100%' }
+              : overlayVisBoxStyle(vis, scaledWidth, scaledHeight);
             const zoomImgStyle = artworkImageOffsetStyle(artworkLayout, vis);
+            const zoom = Math.max(0.25, (Number(screenshotScale) || 100) / 100);
+            const boxFillStyle = {
+              width: `${scaledWidth}px`,
+              height: `${scaledHeight}px`,
+              maxWidth: 'none',
+              maxHeight: 'none',
+              objectFit: isGreetingCardProduct(placeName) ? 'contain' : 'cover',
+              objectPosition: `${posX}% ${posY}%`,
+              position: 'relative',
+              transform: zoom === 1 ? undefined : `scale(${zoom})`,
+              transformOrigin: `${posX}% ${posY}%`,
+            };
             const rasterizeLiteFeather = Boolean(
               litePreview && (featherEdge > 0 || cornerRadius > 0)
             );
@@ -2841,11 +2893,11 @@ const ProductPreviewWithDrag = ({
                       alt="Screenshot overlay"
                       decoding="async"
                       style={{
-                        ...(zoomImgStyle || {
+                        ...(useBoxFill ? boxFillStyle : (zoomImgStyle || {
                           ...clipBox,
                           objectFit: oriented.objectFit,
                           objectPosition: `${posX}% ${posY}%`,
-                        }),
+                        })),
                         display: 'block',
                         pointerEvents: 'none',
                         userSelect: 'none',
