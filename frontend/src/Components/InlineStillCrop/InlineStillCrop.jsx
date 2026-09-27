@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './InlineStillCrop.css';
 
 const MIN_CROP = 50;
@@ -15,8 +16,22 @@ function clampCropToContent(crop, content) {
   return { x, y, width, height };
 }
 
-function containedImageBox(img) {
-  if (!img) return { x: 0, y: 0, width: 0, height: 0 };
+function objectPositionFactor(token) {
+  const value = String(token || '').trim().toLowerCase();
+  if (value === 'left' || value === 'top') return 0;
+  if (value === 'right' || value === 'bottom') return 1;
+  if (value === 'center') return 0.5;
+  if (value.endsWith('%')) {
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n / 100 : 0.5;
+  }
+  return 0.5;
+}
+
+/** Fitted photo (may overflow the frame) plus the part actually visible in the window. */
+function imagePlacement(img) {
+  const empty = { x: 0, y: 0, width: 0, height: 0 };
+  if (!img) return { fitted: empty, visible: empty };
   const stage = img.parentElement || img;
   const stageRect = stage.getBoundingClientRect();
   const imgRect = img.getBoundingClientRect();
@@ -24,28 +39,44 @@ function containedImageBox(img) {
   const nh = img.naturalHeight || img.height || 1;
   const displayW = imgRect.width;
   const displayH = imgRect.height;
+  const fit = String(getComputedStyle(img).objectFit || 'fill').trim();
+  const pos = String(getComputedStyle(img).objectPosition || '50% 50%').trim().split(/\s+/);
+  const posX = objectPositionFactor(pos[0] || '50%');
+  const posY = objectPositionFactor(pos[1] || pos[0] || '50%');
   const imageAspect = nw / nh;
   const boxAspect = displayW / Math.max(1, displayH);
-  let width;
-  let height;
-  let x;
-  let y;
-  if (boxAspect > imageAspect) {
-    height = displayH;
-    width = height * imageAspect;
-    x = (displayW - width) / 2;
-    y = 0;
-  } else {
-    width = displayW;
-    height = width / imageAspect;
-    x = 0;
-    y = (displayH - height) / 2;
+  let width = displayW;
+  let height = displayH;
+  if (fit === 'contain' || fit === 'cover') {
+    const fillHeight = fit === 'contain' ? boxAspect > imageAspect : boxAspect < imageAspect;
+    if (fillHeight) {
+      height = displayH;
+      width = height * imageAspect;
+    } else {
+      width = displayW;
+      height = width / imageAspect;
+    }
   }
-  return {
-    x: (imgRect.left - stageRect.left) + x,
-    y: (imgRect.top - stageRect.top) + y,
+  const originX = imgRect.left - stageRect.left;
+  const originY = imgRect.top - stageRect.top;
+  const fitted = {
+    x: originX + (displayW - width) * posX,
+    y: originY + (displayH - height) * posY,
     width,
     height,
+  };
+  const left = Math.max(fitted.x, originX);
+  const top = Math.max(fitted.y, originY);
+  const right = Math.min(fitted.x + fitted.width, originX + displayW);
+  const bottom = Math.min(fitted.y + fitted.height, originY + displayH);
+  return {
+    fitted,
+    visible: {
+      x: left,
+      y: top,
+      width: Math.max(0, right - left),
+      height: Math.max(0, bottom - top),
+    },
   };
 }
 
@@ -123,7 +154,7 @@ const CROP_ICON = (
   </svg>
 );
 
-export default function InlineStillCrop({ sourceUrl, imgRef, onApply, onCropModeChange }) {
+export default function InlineStillCrop({ sourceUrl, imgRef, onApply, onCropModeChange, toggleHost = null, controlsHost = null, rowPlacement = false }) {
   const [isCropMode, setIsCropMode] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 200, height: 200 });
@@ -159,18 +190,11 @@ export default function InlineStillCrop({ sourceUrl, imgRef, onApply, onCropMode
   }, [isCropMode, onCropModeChange]);
 
   useEffect(() => {
-    const img = imgRef?.current;
-    if (!img) return undefined;
-    img.classList.toggle('screenshot-image--cropping', isCropMode);
-    return () => img.classList.remove('screenshot-image--cropping');
-  }, [isCropMode, imgRef]);
-
-  useEffect(() => {
     if (!isCropMode) return undefined;
     const img = imgRef?.current;
     if (!img) return undefined;
     const place = () => {
-      const content = containedImageBox(img);
+      const { visible: content } = imagePlacement(img);
       if (!(content.width > 0 && content.height > 0)) return;
       const width = Math.min(200, Math.max(MIN_CROP, content.width * 0.4));
       const height = Math.min(200, Math.max(MIN_CROP, content.height * 0.4));
@@ -197,7 +221,7 @@ export default function InlineStillCrop({ sourceUrl, imgRef, onApply, onCropMode
     const rect = stage.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-    const content = containedImageBox(img);
+    const { visible: content } = imagePlacement(img);
     const prev = cropAreaRef.current;
     if (isDraggingRef.current) {
       updateCropArea(clampCropToContent({
@@ -289,7 +313,7 @@ export default function InlineStillCrop({ sourceUrl, imgRef, onApply, onCropMode
     if (!imgEl) return;
     setIsApplying(true);
     try {
-      const content = containedImageBox(imgEl);
+      const { fitted: content } = imagePlacement(imgEl);
       const area = cropAreaRef.current || cropArea;
       const source = await imageForCanvas(sourceUrl || imgEl.currentSrc || imgEl.src);
       const sourceWidth = source.naturalWidth || source.width;
@@ -320,7 +344,7 @@ export default function InlineStillCrop({ sourceUrl, imgRef, onApply, onCropMode
     } catch (err) {
       try {
         const fallback = imgEl;
-        const content = containedImageBox(fallback);
+        const { fitted: content } = imagePlacement(fallback);
         const area = cropAreaRef.current || cropArea;
         const sourceWidth = fallback.naturalWidth || fallback.width;
         const sourceHeight = fallback.naturalHeight || fallback.height;
@@ -393,18 +417,48 @@ export default function InlineStillCrop({ sourceUrl, imgRef, onApply, onCropMode
     zIndex: 10,
   };
 
-  return (
-    <>
+  const toggleButton = (
+    <button
+      type="button"
+      className={`playvideo-crop-toggle${toggleHost ? ' playvideo-crop-toggle--row' : ''}${isCropMode ? ' is-active' : ''}`}
+      onClick={handleToggle}
+      onContextMenu={(e) => e.preventDefault()}
+      title={isCropMode ? 'Exit Crop Mode' : 'Crop Screenshot'}
+      aria-label={isCropMode ? 'Exit crop' : 'Crop'}
+    >
+      {CROP_ICON}
+      <span className="playvideo-crop-toggle-label">Crop</span>
+    </button>
+  );
+
+  const cropControls = (
+    <div
+      className="inline-crop-controls"
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
-        className={`playvideo-crop-toggle${isCropMode ? ' is-active' : ''}`}
-        onClick={handleToggle}
-        onContextMenu={(e) => e.preventDefault()}
-        title={isCropMode ? 'Exit Crop Mode' : 'Crop Screenshot'}
+        className="inline-crop-btn inline-crop-btn--cancel"
+        onClick={handleCancel}
+        disabled={isApplying}
       >
-        {CROP_ICON}
-        <span className="playvideo-crop-toggle-label">Crop</span>
+        Cancel
       </button>
+      <button
+        type="button"
+        className="inline-crop-btn inline-crop-btn--apply"
+        onClick={handleApply}
+        disabled={isApplying}
+      >
+        {isApplying ? 'Applying...' : 'Apply Crop'}
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+      {toggleHost ? createPortal(toggleButton, toggleHost) : (rowPlacement ? null : toggleButton)}
       {isCropMode ? (
         <div
           className="inline-crop-overlay"
@@ -460,30 +514,7 @@ export default function InlineStillCrop({ sourceUrl, imgRef, onApply, onCropMode
           </div>
         </div>
       ) : null}
-      {isCropMode ? (
-        <div
-          className="inline-crop-controls"
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            className="inline-crop-btn inline-crop-btn--cancel"
-            onClick={handleCancel}
-            disabled={isApplying}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="inline-crop-btn inline-crop-btn--apply"
-            onClick={handleApply}
-            disabled={isApplying}
-          >
-            {isApplying ? 'Applying...' : 'Apply Crop'}
-          </button>
-        </div>
-      ) : null}
+      {isCropMode && controlsHost ? createPortal(cropControls, controlsHost) : null}
     </>
   );
 }

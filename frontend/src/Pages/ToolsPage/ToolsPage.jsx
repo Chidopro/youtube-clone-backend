@@ -3530,6 +3530,7 @@ const ToolsPage = () => {
   const bowlPanelsTouchedRef = useRef(false);
   const bowlRandomRef = useRef(false);
   const wrapEditKeyRef = useRef('');
+  const wrapInputsRef = useRef({});
   const persistMugMockupUrl = useCallback((cartIndex, url, urls, sourceUrl, printfileUrl) => {
     const wrap = String(url || '').trim();
     const views = (Array.isArray(urls) ? urls : [])
@@ -5583,148 +5584,11 @@ const ToolsPage = () => {
     }
   }, []);
 
-  useEffect(() => {
-    const product = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
-    if (!product || !isPrintfulWrapProduct(product.name || selectedProductName, product.category)) {
-      setMugMockupLoading(false);
-      return undefined;
-    }
-    const wrapSrc = String(imageUrl || '');
-    const wrapEditKey = [
-      `${wrapSrc.length}:${wrapSrc.slice(0, 48)}:${wrapSrc.slice(-24)}`,
-      Number(featherEdge) || 0,
-      Number(cornerRadius) || 0,
-      frameEnabled ? 1 : 0,
-      String(frameColor || ''),
-      Number(frameWidth) || 0,
-      doubleFrame ? 1 : 0,
-      String(innerFrameColor || ''),
-      blackAndWhite ? 1 : 0,
-      Number(bwIntensity) || 0,
-      featherFadeEnabled ? 1 : 0,
-      String(imageOpacity ?? ''),
-      textEnabled ? 1 : 0,
-      String(textContent || ''),
-      String(imageOrientation || ''),
-    ].join('|');
-    if (!wrapRequested) {
-      if (!wrapEditKeyRef.current && mugMockupUrl) {
-        wrapEditKeyRef.current = wrapEditKey;
-      } else if (wrapEditKeyRef.current && wrapEditKeyRef.current !== wrapEditKey) {
-        setMugMockupUrl('');
-        setMugMockupUrls([]);
-        wrapEditKeyRef.current = '';
-      }
-      setMugMockupLoading(false);
-      return undefined;
-    }
-    const bowlWrap = isPetBowlProduct(product.name || selectedProductName);
-    const bandanaWrap = isPetBandanaProduct(product.name || selectedProductName);
-    const puzzleWrap = isJigsawPuzzleProduct(product.name || selectedProductName);
-    const hasPixelEdits = Boolean(
-      !bowlWrap && !bandanaWrap && !puzzleWrap && (
-        (!skipRectEdgeEdits && (featherEdge || cornerRadius || frameEnabled || featherFadeEnabled)) ||
-        blackAndWhite ||
-        imageOpacityHasEdit(imageOpacity) ||
-        (textEnabled && String(textContent || '').trim())
-      )
-    );
-    const httpsSource = /^https?:\/\//i.test(String(imageUrl || '')) ? String(imageUrl).trim() : '';
-    if ((bowlWrap && !bowlBand?.dataUrl) || (bandanaWrap && !bandanaCrop?.dataUrl)) {
-      setMugMockupLoading(false);
-      setWrapRequested(false);
-      return undefined;
-    }
-    if (hasPixelEdits && imageUrl && !editedImageUrl) {
-      setMugMockupLoading(true);
-      return undefined;
-    }
-    const artwork = bowlWrap
-      ? String(bowlBand.dataUrl)
-      : bandanaWrap
-        ? String(bandanaCrop.dataUrl)
-      : ((!hasPixelEdits && httpsSource)
-        ? httpsSource
-        : String(editedImageUrl || imageUrl || '').trim());
-    if (!artwork) {
-      setMugMockupLoading(false);
-      setWrapRequested(false);
-      return undefined;
-    }
-    const usingBaked = Boolean(!bowlWrap && !bandanaWrap && hasPixelEdits && editedImageUrl);
-    const imageWidth = bowlWrap
-      ? bowlBand.width
-      : bandanaWrap
-        ? bandanaCrop.width
-      : (usingBaked
-        ? (bakedImageSize.width || currentImageDimensions.width)
-        : (currentImageDimensions.width || bakedImageSize.width));
-    const imageHeight = bowlWrap
-      ? bowlBand.height
-      : bandanaWrap
-        ? bandanaCrop.height
-      : (usingBaked
-        ? (bakedImageSize.height || currentImageDimensions.height)
-        : (currentImageDimensions.height || bakedImageSize.height));
-    if (!(Number(imageWidth) > 0 && Number(imageHeight) > 0)) {
-      setMugMockupLoading(true);
-      return undefined;
-    }
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setMugMockupLoading(true);
-      setMugMockupError('');
-      try {
-        const wrap = await requestMugWrapMockup({
-          productName: product.name || selectedProductName,
-          color: product.color,
-          size: product.size,
-          image: artwork,
-          imageWidth,
-          imageHeight,
-          imageOrientation: (bowlWrap || bandanaWrap) ? 'landscape' : imageOrientation,
-          focalX: isJigsawPuzzleProduct(product.name || selectedProductName)
-            ? printBoxObjectPosition(product.name || selectedProductName, imageOrientation, imageOffsetX, imageOffsetY).x / 100
-            : undefined,
-          focalY: isJigsawPuzzleProduct(product.name || selectedProductName)
-            ? printBoxObjectPosition(product.name || selectedProductName, imageOrientation, imageOffsetX, imageOffsetY).y / 100
-            : undefined,
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted || !wrap?.mockupUrl) return;
-        wrapEditKeyRef.current = wrapEditKey;
-        setPuzzleViewTurns(0);
-        setMugMockupUrl(wrap.mockupUrl);
-        setMugMockupUrls(wrap.mockupUrls || []);
-        setWrapRequested(false);
-        persistMugMockupUrl(
-          product.originalCartIndex,
-          wrap.mockupUrl,
-          wrap.mockupUrls,
-          httpsSource || (/^https?:\/\//i.test(String(imageUrl || '')) ? String(imageUrl).trim() : ''),
-          wrap.printfileUrl,
-        );
-      } catch (err) {
-        if (err?.name === 'AbortError') return;
-        setWrapRequested(false);
-        setMugMockupError('Wrap did not finish. Click Wrap now again.');
-      } finally {
-        if (!controller.signal.aborted) setMugMockupLoading(false);
-      }
-    }, 0);
-    return () => {
-      controller.abort();
-      window.clearTimeout(timer);
-    };
-  }, [
-    editedImageUrl,
-    imageUrl,
-    mugPreviewSlotKey,
-    selectedCartProductIndex,
+  wrapInputsRef.current = {
+    product: selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null,
     selectedProductName,
-    persistMugMockupUrl,
-    wrapRequested,
-    mugMockupUrl,
+    imageUrl,
+    editedImageUrl,
     featherEdge,
     cornerRadius,
     frameEnabled,
@@ -5738,14 +5602,217 @@ const ToolsPage = () => {
     imageOpacity,
     textEnabled,
     textContent,
-    currentImageDimensions.width,
-    currentImageDimensions.height,
-    bakedImageSize.width,
-    bakedImageSize.height,
     imageOrientation,
+    imageOffsetX,
+    imageOffsetY,
+    skipRectEdgeEdits,
     bowlBand,
     bandanaCrop,
+    currentImageDimensions,
+    bakedImageSize,
+  };
+
+  useEffect(() => {
+    if (wrapRequested) return;
+    const snap = wrapInputsRef.current;
+    const product = snap.product;
+    if (!product || !isPrintfulWrapProduct(product.name || snap.selectedProductName, product.category)) {
+      return;
+    }
+    const wrapSrc = String(snap.imageUrl || '');
+    const wrapEditKey = [
+      `${wrapSrc.length}:${wrapSrc.slice(0, 48)}:${wrapSrc.slice(-24)}`,
+      Number(snap.featherEdge) || 0,
+      Number(snap.cornerRadius) || 0,
+      snap.frameEnabled ? 1 : 0,
+      String(snap.frameColor || ''),
+      Number(snap.frameWidth) || 0,
+      snap.doubleFrame ? 1 : 0,
+      String(snap.innerFrameColor || ''),
+      snap.blackAndWhite ? 1 : 0,
+      Number(snap.bwIntensity) || 0,
+      snap.featherFadeEnabled ? 1 : 0,
+      String(snap.imageOpacity ?? ''),
+      snap.textEnabled ? 1 : 0,
+      String(snap.textContent || ''),
+      String(snap.imageOrientation || ''),
+    ].join('|');
+    if (!wrapEditKeyRef.current && mugMockupUrl) {
+      wrapEditKeyRef.current = wrapEditKey;
+    } else if (wrapEditKeyRef.current && wrapEditKeyRef.current !== wrapEditKey) {
+      setMugMockupUrl('');
+      setMugMockupUrls([]);
+      wrapEditKeyRef.current = '';
+    }
+  }, [
+    wrapRequested,
+    mugMockupUrl,
+    imageUrl,
+    featherEdge,
+    cornerRadius,
+    frameEnabled,
+    frameColor,
+    frameWidth,
+    doubleFrame,
+    innerFrameColor,
+    blackAndWhite,
+    bwIntensity,
+    featherFadeEnabled,
+    imageOpacity,
+    textEnabled,
+    textContent,
+    imageOrientation,
+    mugPreviewSlotKey,
   ]);
+
+  useEffect(() => {
+    if (!wrapRequested) {
+      setMugMockupLoading(false);
+      return undefined;
+    }
+    const controller = new AbortController();
+    let active = true;
+    const wait = (ms) => new Promise((resolve, reject) => {
+      const timer = window.setTimeout(resolve, ms);
+      controller.signal.addEventListener('abort', () => {
+        window.clearTimeout(timer);
+        const err = new Error('aborted');
+        err.name = 'AbortError';
+        reject(err);
+      }, { once: true });
+    });
+    (async () => {
+      setMugMockupLoading(true);
+      setMugMockupError('');
+      try {
+        const deadline = Date.now() + 8000;
+        let snap = wrapInputsRef.current;
+        let artwork = '';
+        let imageWidth = 0;
+        let imageHeight = 0;
+        let bowlWrap = false;
+        let bandanaWrap = false;
+        let puzzleWrap = false;
+        let httpsSource = '';
+        let hasPixelEdits = false;
+        while (active && Date.now() < deadline) {
+          snap = wrapInputsRef.current;
+          const product = snap.product;
+          const name = product?.name || snap.selectedProductName;
+          if (!product || !isPrintfulWrapProduct(name, product?.category)) {
+            throw new Error('This product does not wrap.');
+          }
+          bowlWrap = isPetBowlProduct(name);
+          bandanaWrap = isPetBandanaProduct(name);
+          puzzleWrap = isJigsawPuzzleProduct(name);
+          hasPixelEdits = Boolean(
+            !bowlWrap && !bandanaWrap && !puzzleWrap && (
+              (!snap.skipRectEdgeEdits && (snap.featherEdge || snap.cornerRadius || snap.frameEnabled || snap.featherFadeEnabled)) ||
+              snap.blackAndWhite ||
+              imageOpacityHasEdit(snap.imageOpacity) ||
+              (snap.textEnabled && String(snap.textContent || '').trim())
+            )
+          );
+          httpsSource = /^https?:\/\//i.test(String(snap.imageUrl || '')) ? String(snap.imageUrl).trim() : '';
+          const usingBaked = Boolean(!bowlWrap && !bandanaWrap && hasPixelEdits && snap.editedImageUrl);
+          artwork = bowlWrap
+            ? String(snap.bowlBand?.dataUrl || '')
+            : bandanaWrap
+              ? String(snap.bandanaCrop?.dataUrl || '')
+              : ((!hasPixelEdits && httpsSource)
+                ? httpsSource
+                : String(snap.editedImageUrl || snap.imageUrl || '').trim());
+          imageWidth = bowlWrap
+            ? snap.bowlBand?.width
+            : bandanaWrap
+              ? snap.bandanaCrop?.width
+              : (usingBaked
+                ? (snap.bakedImageSize?.width || snap.currentImageDimensions?.width)
+                : (snap.currentImageDimensions?.width || snap.bakedImageSize?.width));
+          imageHeight = bowlWrap
+            ? snap.bowlBand?.height
+            : bandanaWrap
+              ? snap.bandanaCrop?.height
+              : (usingBaked
+                ? (snap.bakedImageSize?.height || snap.currentImageDimensions?.height)
+                : (snap.currentImageDimensions?.height || snap.bakedImageSize?.height));
+          const waitingOnBake = hasPixelEdits && snap.imageUrl && !snap.editedImageUrl;
+          const waitingOnSize = !(Number(imageWidth) > 0 && Number(imageHeight) > 0);
+          const waitingOnCrop = (bowlWrap && !snap.bowlBand?.dataUrl) || (bandanaWrap && !snap.bandanaCrop?.dataUrl);
+          if (artwork && !waitingOnBake && !waitingOnSize && !waitingOnCrop) break;
+          await wait(60);
+        }
+        if (!active) return;
+        snap = wrapInputsRef.current;
+        const product = snap.product;
+        const name = product?.name || snap.selectedProductName;
+        if (!artwork) {
+          setWrapRequested(false);
+          setMugMockupError('Add a photo, then click Wrap now.');
+          return;
+        }
+        if (!(Number(imageWidth) > 0 && Number(imageHeight) > 0)) {
+          setWrapRequested(false);
+          setMugMockupError('The photo is still loading. Click Wrap now again.');
+          return;
+        }
+        const wrapSrc = String(snap.imageUrl || '');
+        const wrapEditKey = [
+          `${wrapSrc.length}:${wrapSrc.slice(0, 48)}:${wrapSrc.slice(-24)}`,
+          Number(snap.featherEdge) || 0,
+          Number(snap.cornerRadius) || 0,
+          snap.frameEnabled ? 1 : 0,
+          String(snap.frameColor || ''),
+          Number(snap.frameWidth) || 0,
+          snap.doubleFrame ? 1 : 0,
+          String(snap.innerFrameColor || ''),
+          snap.blackAndWhite ? 1 : 0,
+          Number(snap.bwIntensity) || 0,
+          snap.featherFadeEnabled ? 1 : 0,
+          String(snap.imageOpacity ?? ''),
+          snap.textEnabled ? 1 : 0,
+          String(snap.textContent || ''),
+          String(snap.imageOrientation || ''),
+        ].join('|');
+        const place = printBoxObjectPosition(name, snap.imageOrientation, snap.imageOffsetX, snap.imageOffsetY);
+        const wrap = await requestMugWrapMockup({
+          productName: name,
+          color: product.color,
+          size: product.size,
+          image: artwork,
+          imageWidth,
+          imageHeight,
+          imageOrientation: (bowlWrap || bandanaWrap) ? 'landscape' : snap.imageOrientation,
+          focalX: puzzleWrap ? place.x / 100 : undefined,
+          focalY: puzzleWrap ? place.y / 100 : undefined,
+          signal: controller.signal,
+        });
+        if (!active || controller.signal.aborted || !wrap?.mockupUrl) return;
+        wrapEditKeyRef.current = wrapEditKey;
+        setPuzzleViewTurns(0);
+        setMugMockupUrl(wrap.mockupUrl);
+        setMugMockupUrls(wrap.mockupUrls || []);
+        setWrapRequested(false);
+        persistMugMockupUrl(
+          product.originalCartIndex,
+          wrap.mockupUrl,
+          wrap.mockupUrls,
+          httpsSource || (/^https?:\/\//i.test(String(snap.imageUrl || '')) ? String(snap.imageUrl).trim() : ''),
+          wrap.printfileUrl,
+        );
+      } catch (err) {
+        if (!active || err?.name === 'AbortError') return;
+        setWrapRequested(false);
+        setMugMockupError('Wrap did not finish. Click Wrap now again.');
+      } finally {
+        if (active && !controller.signal.aborted) setMugMockupLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [wrapRequested, mugPreviewSlotKey, persistMugMockupUrl]);
 
   const rotateScreenshotClockwise = () => {
     const src = (imageUrl || '').trim();
@@ -6758,6 +6825,11 @@ const ToolsPage = () => {
                                     Drag the window up or down. Wrap now prints that part on the bandana.
                                   </div>
                                 ) : null}
+                                {wrapKind !== 'puzzle' && wrapKind !== 'bowl' && wrapKind !== 'bandana' ? (
+                                  <div className="product-preview-unavailable-note-text">
+                                    {`Click Wrap now to place your design on the ${wrapKind}.`}
+                                  </div>
+                                ) : null}
                                 {mugMockupError ? (
                                   <div className="product-preview-unavailable-note-text">{mugMockupError}</div>
                                 ) : null}
@@ -6834,15 +6906,7 @@ const ToolsPage = () => {
                                         });
                                       return;
                                     }
-                                    const needsBake = Boolean(
-                                      wrapKind !== 'puzzle' && (
-                                        (!skipRectEdgeEdits && (featherEdge || cornerRadius || frameEnabled || featherFadeEnabled)) ||
-                                        blackAndWhite ||
-                                        imageOpacityHasEdit(imageOpacity) ||
-                                        (textEnabled && String(textContent || '').trim())
-                                      )
-                                    );
-                                    if (needsBake) setEditedImageUrl('');
+                                    setMugMockupLoading(true);
                                     setWrapRequested(true);
                                   }}
                                 >

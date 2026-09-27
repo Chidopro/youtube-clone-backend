@@ -6,6 +6,7 @@ import { useCreator } from '../../contexts/CreatorContext';
 import { readPendingMerchData } from '../../utils/merchSession';
 import { useNavigate } from 'react-router-dom';
 import { SHOP_CATEGORIES, shopCategoryThumbUrl } from '../../utils/shopCategories';
+import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 
 function CategoryThumb({ preview, emoji, thumbFit }) {
   const [failed, setFailed] = useState(false);
@@ -132,7 +133,17 @@ const MerchandiseCategories = ({ sidebar }) => {
 
       <div className="merchandise-categories">
         <div className="categories-container">
-          <h1 className="categories-title">Choose Category</h1>
+          <div className="categories-heading">
+            <button
+              type="button"
+              className="merchandise-back-btn"
+              onClick={() => navigate('/')}
+              aria-label="Back to home"
+            >
+              <ChevronLeft />
+            </button>
+            <h1 className="categories-title">Choose Category</h1>
+          </div>
 
           <div className="categories-grid">
             {categories.map((cat, i) => (

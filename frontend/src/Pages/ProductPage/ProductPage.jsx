@@ -22,7 +22,6 @@ import {
   swatchToneClass,
   usesPrintfulVariantColorTint,
 } from '../../utils/printfulColorMockups';
-import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { saveShopAddIntent, SHOP_CATEGORIES, storefrontMockupUrl } from '../../utils/shopCategories';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { readShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
@@ -171,6 +170,26 @@ const ensureHttps = (url) => {
   if (!url || typeof url !== 'string') return url;
   return url.replace(/^http:\/\//i, 'https://');
 };
+
+/** Shown before the shopper picks a color. Silver is the grey notebook. */
+const BROWSE_EXAMPLE_COLOR = {
+  'Hardcover Bound Notebook': 'Silver',
+};
+
+function browseExampleColor(product, colors) {
+  const wanted = BROWSE_EXAMPLE_COLOR[String(product?.name || '').trim()];
+  if (!wanted || !Array.isArray(colors) || !colors.includes(wanted)) return '';
+  return wanted;
+}
+
+function browseMobileZoomClass(productName) {
+  const name = String(productName || '');
+  if (name === 'Greeting Card') return ' product-image--card';
+  if (name === 'Apron') return ' product-image--apron';
+  if (name.includes('Notebook')) return ' product-image--notebook';
+  if (name.includes('Jigsaw Puzzle')) return ' product-image--puzzle';
+  return '';
+}
 
 function productImageSrc(url) {
   if (!url || typeof url !== 'string') return `${getImgBase()}/placeholder.png`;
@@ -627,7 +646,30 @@ const ProductPage = ({ sidebar }) => {
   const [browseReload, setBrowseReload] = useState(0);
   const productCardRefs = useRef([]);
   const selectedImageRef = useRef(null);
+  const cropHostsRef = useRef({ desktop: null, mobile: null });
+  const [cropToggleHost, setCropToggleHost] = useState(null);
+  const [cropConfirmHost, setCropConfirmHost] = useState(null);
+  const bindCropConfirm = useCallback((node) => {
+    setCropConfirmHost((prev) => (prev === node ? prev : node));
+  }, []);
   const [browseCropping, setBrowseCropping] = useState(false);
+  const pickCropHost = useCallback(() => {
+    const hosts = cropHostsRef.current;
+    const shown = [hosts.desktop, hosts.mobile].find((el) => el && el.getClientRects().length > 0) || null;
+    setCropToggleHost((prev) => (prev === shown ? prev : shown));
+  }, []);
+  const bindDesktopCropHost = useCallback((node) => {
+    cropHostsRef.current.desktop = node;
+    requestAnimationFrame(pickCropHost);
+  }, [pickCropHost]);
+  const bindMobileCropHost = useCallback((node) => {
+    cropHostsRef.current.mobile = node;
+    requestAnimationFrame(pickCropHost);
+  }, [pickCropHost]);
+  useEffect(() => {
+    window.addEventListener('resize', pickCropHost);
+    return () => window.removeEventListener('resize', pickCropHost);
+  }, [pickCropHost]);
   const editPrefillKeyRef = useRef('');
   const lastTouchedCartIndexRef = useRef(null);
   const lastPickedProductRef = useRef(null);
@@ -667,26 +709,6 @@ const ProductPage = ({ sidebar }) => {
   const isBrowseMode =
     !productId || productId === 'browse' || productId === 'undefined' || productId === 'null';
   const goToMainCategories = () => navigate(isShopCatalog ? '/shop' : '/merchandise');
-  const handleChangeImage = () => {
-    if (isCreatorStorefrontHostname()) {
-      try {
-        const slug = localStorage.getItem('sm_favorite_list_slug');
-        if (slug && slug !== 'owner') {
-          navigate(`/favorites/${encodeURIComponent(slug)}`);
-          return;
-        }
-      } catch {
-        /* ignore */
-      }
-      navigate('/favorites');
-      return;
-    }
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    navigate('/merchandise');
-  };
   const selectScreenshot = (key, url) => {
     if (!url) return;
     setSelectedScreenshot(key);
@@ -997,7 +1019,9 @@ const ProductPage = ({ sidebar }) => {
   const resolvedColorSize = (product, index) => {
     const colors = getColorsForCountry(product, shipToCountry);
     const fallbackColors = product?.options?.color || product?.options?.handle_color || [];
-    let color = selectedColors[index] || colors[0] || fallbackColors[0] || 'Default';
+    const colorList = colors.length ? colors : fallbackColors;
+    const exampleColor = browseExampleColor(product, colorList);
+    let color = selectedColors[index] || exampleColor || colorList[0] || 'Default';
     if (colors.length && !colors.includes(color)) {
       color = colors[0];
     }
@@ -1734,7 +1758,10 @@ const ProductPage = ({ sidebar }) => {
         if (!product || !product.options) return;
         
         // Bags "All Over Print Tote Pocket" has handle_color but no color
-        const selectedColor = selectedColors[index] || product.options?.color?.[0] || product.options?.handle_color?.[0];
+        const colorList = getColorsForCountry(product, shipToCountry);
+        const fallbackColors = product.options?.color || product.options?.handle_color || [];
+        const palette = colorList.length ? colorList : fallbackColors;
+        const selectedColor = selectedColors[index] || browseExampleColor(product, palette) || palette[0];
         if (!selectedColor && (!product.options?.size?.length)) return;
         
         const availableSizes = getAvailableSizes(product, selectedColor);
@@ -2151,31 +2178,26 @@ const ProductPage = ({ sidebar }) => {
                           imgRef={selectedImageRef}
                           onApply={handleBrowseCrop}
                           onCropModeChange={setBrowseCropping}
+                          toggleHost={cropToggleHost}
+                          controlsHost={cropConfirmHost}
+                          rowPlacement
                         />
                       ) : null}
                       {showVideoThumbLabel ? <div className="screenshot-label">Thumbnail</div> : null}
                     </div>
                     {showDesktopEditPresets && !creatorMode ? (
-                      <>
-                        <span className="screenshot-preset-label screenshot-preset-label--selected">Selected</span>
-                        <div className="selected-image-actions">
-                          <button
-                            type="button"
-                            className="change-image-link"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleChangeImage();
-                            }}
-                          >
-                            Change Image
-                          </button>
+                      <div className="selected-image-actions">
+                        <div className="selected-image-actions-main">
+                          <span className="screenshot-preset-label screenshot-preset-label--selected">Selected</span>
+                          <span className="selected-image-crop-slot" ref={bindDesktopCropHost} />
                           <BrowseLayoutPicker
                             value={browseLayoutOrientation}
                             onChange={chooseBrowseLayout}
                             groupName="browse-layout-original"
                           />
                         </div>
-                      </>
+                        <div className="selected-image-crop-confirm" ref={bindCropConfirm} />
+                      </div>
                     ) : null}
                   </div>
                   ) : null;
@@ -2228,31 +2250,26 @@ const ProductPage = ({ sidebar }) => {
                               imgRef={selectedImageRef}
                               onApply={handleBrowseCrop}
                               onCropModeChange={setBrowseCropping}
+                              toggleHost={cropToggleHost}
+                              controlsHost={cropConfirmHost}
+                          rowPlacement
                             />
                           ) : null}
                           {label ? <div className="screenshot-label">{label}</div> : null}
                         </div>
                         {showDesktopEditPresets && !creatorMode && !thumbnailUrl && index === 0 ? (
-                          <>
-                            <span className="screenshot-preset-label screenshot-preset-label--selected">Selected</span>
-                            <div className="selected-image-actions">
-                              <button
-                                type="button"
-                                className="change-image-link"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleChangeImage();
-                                }}
-                              >
-                                Change Image
-                              </button>
+                          <div className="selected-image-actions">
+                            <div className="selected-image-actions-main">
+                              <span className="screenshot-preset-label screenshot-preset-label--selected">Selected</span>
+                              <span className="selected-image-crop-slot" ref={bindDesktopCropHost} />
                               <BrowseLayoutPicker
                                 value={browseLayoutOrientation}
                                 onChange={chooseBrowseLayout}
                                 groupName="browse-layout-shot"
                               />
                             </div>
-                          </>
+                            <div className="selected-image-crop-confirm" ref={bindCropConfirm} />
+                          </div>
                         ) : null}
                       </div>
                     );
@@ -2317,19 +2334,18 @@ const ProductPage = ({ sidebar }) => {
                 </div>
               ) : null}
             </div>
-            {!creatorMode && !showVideoThumbLabel && (
-              <div className={`selected-image-meta${showDesktopEditPresets ? ' selected-image-meta--mobile-only' : ''}`}>
-                <button type="button" className="change-image-link" onClick={handleChangeImage}>
-                  Change Image
-                </button>
-                {showAutoEditPresets && !showDesktopEditPresets ? (
+            {!creatorMode && !showVideoThumbLabel && showAutoEditPresets && !showDesktopEditPresets && (
+              <>
+                <div className="selected-image-meta">
+                  <span className="selected-image-crop-slot" ref={bindMobileCropHost} />
                   <BrowseLayoutPicker
                     value={browseLayoutOrientation}
                     onChange={chooseBrowseLayout}
                     groupName="browse-layout-meta"
                   />
-                ) : null}
-              </div>
+                </div>
+                <div className="selected-image-crop-confirm" ref={bindCropConfirm} />
+              </>
             )}
             </div>
             {creatorMode && (
@@ -2510,7 +2526,7 @@ const ProductPage = ({ sidebar }) => {
                     const safeUrl = (imgUrl && typeof imgUrl === 'string') ? imgUrl : `${getImgBase()}/placeholder.png`;
                     const loadHints = browseImageLoadHints(index);
                     return (
-                      <div className={`product-image${colorMockupUrl ? ' product-image--color-mockup' : ''}`}>
+                      <div className={`product-image${colorMockupUrl ? ' product-image--color-mockup' : ''}${browseMobileZoomClass(product?.name)}`}>
                         <div className="product-image-wrapper">
                           <PrintfulColorMockupImg
                             key={`${product?.name || index}-${mockupColor || 'blank'}`}
@@ -2618,7 +2634,7 @@ const ProductPage = ({ sidebar }) => {
                     {/* Size Options */}
                     {product.options && product.options.size && product.options.size.length > 0 && (() => {
                       // Bags "All Over Print Tote Pocket" has handle_color but no color - use optional chaining
-                      const selectedColor = selectedColors[index] || product.options?.color?.[0] || product.options?.handle_color?.[0];
+                      const selectedColor = displayColor || selectedColors[index] || product.options?.color?.[0] || product.options?.handle_color?.[0];
                       const availableSizes = stockPending ? [] : getAvailableSizes(product, selectedColor);
                       const currentSize = selectedSizes[index];
                       
@@ -2645,7 +2661,7 @@ const ProductPage = ({ sidebar }) => {
                               newSelectedSizes[index] = nextSize;
                               setSelectedSizes(newSelectedSizes);
                               const colorsForSize = getAvailableColors(product, nextSize);
-                              let nextColor = selectedColors[index] || product.options?.color?.[0] || product.options?.handle_color?.[0];
+                              let nextColor = selectedColors[index] || displayColor || product.options?.color?.[0] || product.options?.handle_color?.[0];
                               if (colorsForSize.length > 0 && !colorsForSize.includes(nextColor)) {
                                 nextColor = colorsForSize[0];
                                 setSelectedColors({ ...selectedColors, [index]: nextColor });
