@@ -1464,7 +1464,11 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         || ''
     ).toLowerCase();
     const showStoreEditor = Boolean(
-        !demoPreview && (umbrellaOnly || isPremadeShopfront(storefrontSubForShop))
+        !demoPreview && (
+            umbrellaOnly
+            || isPremadeShopfront(storefrontSubForShop)
+            || isRealStorefrontUser(user || readStoredUser())
+        )
     );
 
     const handleAssignFavoriteToStore = async (favorite, sku) => {

@@ -88,6 +88,16 @@ export function isPremadeShopfront(subdomain) {
   return String(subdomain || '').trim().toLowerCase() === 'deluzion';
 }
 
+/** Saved shop art — not the shared /shop/deluzion stock tiles. */
+export function shopCatalogHasPersonalCreations(products) {
+  const map = products && typeof products === 'object' ? products : {};
+  return Object.values(map).some((patch) => {
+    if (!patch || typeof patch !== 'object' || patch.hidden) return false;
+    const preview = String(patch.preview || '').trim();
+    return Boolean(preview) && !preview.startsWith('/shop/');
+  });
+}
+
 export function applyShopCatalogOverrides(products, overrides) {
   const map = overrides && typeof overrides === 'object' ? overrides : {};
   return (products || []).map((product, index) => {

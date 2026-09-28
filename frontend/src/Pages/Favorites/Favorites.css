@@ -479,6 +479,37 @@
 
 .favorites-shelf-scrollbar {
   display: none;
+  position: relative;
+  height: 10px;
+  margin: 14px 0 0;
+  border-radius: 999px;
+  background: #d4d4d8;
+  border: 1px solid #a1a1aa;
+  box-sizing: border-box;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.favorites-shelf-scroller.has-overflow .favorites-shelf-scrollbar {
+  display: block;
+}
+
+.favorites-shelf-scrollbar-thumb {
+  position: absolute;
+  top: 1px;
+  height: calc(100% - 2px);
+  border-radius: 999px;
+  background: #18181B;
+  pointer-events: none;
+}
+
+.favorites-shelf-swipe-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #52525b;
+  text-align: center;
 }
 
 .favorites-shelf-track::-webkit-scrollbar {
@@ -775,27 +806,8 @@ button.favorites-card-image--clickable {
   }
 
   .favorites-shelf-scrollbar {
-    display: block;
-    position: relative;
-    height: 5px;
-    margin: 2px 0 8px;
-    border-radius: 999px;
-    background: #9a9a9a;
-    overflow: hidden;
-    cursor: pointer;
-  }
-
-  .favorites-shelf-scroller:not(.has-overflow) .favorites-shelf-scrollbar {
-    display: none;
-  }
-
-  .favorites-shelf-scrollbar-thumb {
-    position: absolute;
-    top: 0;
-    height: 100%;
-    border-radius: 999px;
-    background: #ededed;
-    pointer-events: none;
+    height: 10px;
+    margin: 10px 0 2px;
   }
 }
 

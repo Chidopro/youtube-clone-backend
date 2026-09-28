@@ -26,6 +26,7 @@ import {
   browseShopCategoryPath,
   deluzionShopArtworkUrl,
   isPremadeShopfront,
+  shopCatalogHasPersonalCreations,
   shopCategoryThumbUrl,
   shopperSizeLabel,
 } from '../../utils/shopCategories';
@@ -188,6 +189,7 @@ const PremadeShop = ({
   catalogUserId = '',
   favoriteListId = '',
   embedded = false,
+  personalOnly = false,
   onAvailability,
 }) => {
   const navigate = useNavigate();
@@ -220,7 +222,9 @@ const PremadeShop = ({
     };
   }, [catalogUserId]);
 
-  const tiles = orderedShopProducts(shopProducts, { collaborator: Boolean(catalogUserId) });
+  const tiles = orderedShopProducts(shopProducts, {
+    collaborator: personalOnly || Boolean(catalogUserId),
+  });
 
   useEffect(() => {
     if (!embedded || !onAvailability) return;
@@ -612,8 +616,31 @@ export function CollaboratorShop({ userId, listId, onAvailability }) {
 
 const Shop = ({ sidebar }) => {
   const navigate = useNavigate();
-  const premadeShop = isPremadeShopfront(getSubdomain());
-  if (premadeShop) return <PremadeShop sidebar={sidebar} />;
+  const subdomain = getSubdomain();
+  const designedShop = isPremadeShopfront(subdomain);
+  const [usePersonalShop, setUsePersonalShop] = useState(designedShop);
+
+  useEffect(() => {
+    if (designedShop) {
+      setUsePersonalShop(true);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchShopCatalog({ subdomain: subdomain || '' })
+      .then((data) => {
+        if (!cancelled) setUsePersonalShop(shopCatalogHasPersonalCreations(data.products));
+      })
+      .catch(() => {
+        if (!cancelled) setUsePersonalShop(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [designedShop, subdomain]);
+
+  if (usePersonalShop) {
+    return <PremadeShop sidebar={sidebar} personalOnly={!designedShop} />;
+  }
 
   return (
     <div className={`container shop-root ${sidebar ? '' : ' large-container'}`}>

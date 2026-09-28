@@ -79,23 +79,32 @@ function FavoritesShelfTrack({
     };
   }, [updateBar, itemCount]);
 
+  const framed = trio ? 3 : (pair ? 2 : 1);
+  const expectOverflow = Number(itemCount) > framed;
+  const showBar = bar.canScroll || expectOverflow;
+
   const jumpTo = (event) => {
     const el = trackRef.current;
     const track = event.currentTarget;
-    if (!el || !bar.canScroll) return;
+    if (!el) return;
+    const overflow = el.scrollWidth - el.clientWidth;
+    if (overflow <= 0) return;
     const rect = track.getBoundingClientRect();
     const x = (event.clientX - rect.left) / rect.width;
-    el.scrollTo({ left: x * (el.scrollWidth - el.clientWidth), behavior: 'smooth' });
+    el.scrollTo({ left: x * overflow, behavior: 'smooth' });
   };
 
   return (
-    <div className={`favorites-shelf-scroller${bar.canScroll ? ' has-overflow' : ''}`}>
+    <div className={`favorites-shelf-scroller${showBar ? ' has-overflow' : ''}`}>
       <div ref={setTrackEl} className={`favorites-shelf-track${pair ? ' favorites-shelf-track--pair' : ''}${trio ? ' favorites-shelf-track--trio' : ''}`}>
         {children}
       </div>
       <div
         className="favorites-shelf-scrollbar"
-        aria-hidden="true"
+        role="scrollbar"
+        aria-hidden={!showBar}
+        aria-label={showBar ? 'Scroll sideways for more images' : undefined}
+        title={showBar ? 'Scroll sideways for more' : undefined}
         onClick={jumpTo}
       >
         <span
@@ -103,6 +112,9 @@ function FavoritesShelfTrack({
           style={{ width: `${bar.thumbPct}%`, left: `${bar.leftPct}%` }}
         />
       </div>
+      {showBar ? (
+        <p className="favorites-shelf-swipe-hint">Swipe sideways for more</p>
+      ) : null}
     </div>
   );
 }
@@ -226,6 +238,7 @@ function FavoritesMediaSection({
   itemCount,
   className = '',
   alwaysShowArrows = false,
+  arrows = true,
   onPrevAtStart = null,
   children,
 }) {
@@ -321,7 +334,7 @@ function FavoritesMediaSection({
       <FavoritesSectionHeader
         title={title}
         leadTitle={leadTitle}
-        showArrows={alwaysShowArrows}
+        showArrows={arrows && (alwaysShowArrows || scrollState.canScroll || itemCount > 3)}
         atStart={scrollState.atStart}
         atEnd={scrollState.atEnd}
         onPrev={() => scrollBy(-1)}
@@ -686,6 +699,7 @@ const Favorites = ({ sidebar }) => {
                 ariaLabel="Images"
                 itemCount={imageItems.length}
                 className="favorites-shelf--images"
+                arrows={false}
               >
                 {imageItems.map((item, index) => (
                   <FavoriteImageCard
@@ -769,6 +783,7 @@ const Favorites = ({ sidebar }) => {
                   ariaLabel="Images"
                   itemCount={imageItems.length}
                   className="favorites-shelf--images"
+                  arrows={false}
                 >
                   {imageItems.map((item, index) => (
                     <FavoriteImageCard

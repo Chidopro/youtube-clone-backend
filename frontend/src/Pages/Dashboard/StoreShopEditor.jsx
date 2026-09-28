@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getBackendUrl } from '../../config/apiConfig';
+import { getSubdomain } from '../../utils/subdomainService';
 import {
   catalogStockPending,
   getAvailableColorsForCountry,
@@ -119,7 +120,7 @@ const StoreShopEditor = ({
           if (!cancelled) setOverrides(data.products || {});
           return;
         }
-        const data = await fetchShopCatalog({ subdomain: 'deluzion' });
+        const data = await fetchShopCatalog({ subdomain: getSubdomain() || '' });
         if (!cancelled) setOverrides(data.products || {});
       } catch (_) {}
     };
