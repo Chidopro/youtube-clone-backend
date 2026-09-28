@@ -611,24 +611,24 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         align-items: center;
         justify-content: center;
         min-height: 44px;
-        font-size: 13px;
-        font-weight: 650;
+        font-size: 14px;
+        font-weight: 800;
         letter-spacing: 0.02em;
-        color: #555;
+        color: #111;
         text-decoration: none;
         white-space: nowrap;
         border-radius: 8px;
     }
 
     .storefront-tab-bar a.is-active {
-        color: #111;
-        background: rgba(0, 0, 0, 0.06);
+        color: #000;
+        background: rgba(0, 0, 0, 0.08);
         box-shadow: none;
     }
 
     @media (max-width: 380px) {
         .storefront-tab-bar a {
-            font-size: 12px;
+            font-size: 13px;
             letter-spacing: 0;
         }
     }

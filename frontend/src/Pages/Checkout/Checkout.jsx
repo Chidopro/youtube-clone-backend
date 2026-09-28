@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
 import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot, resolveItemImageOrientation, withItemImageOrientation, setCartPersistPaused, consumeToolsFocusCartIndex, CART_UPDATED_EVENT, readArtworkOrientation } from '../../utils/merchSession';
-import { ProductPreviewWithDrag } from '../ToolsPage/ToolsPage';
+import { ProductPreviewWithDrag, toolsHatPreviewUrl, toolsHatLocalMockupUrl } from '../ToolsPage/ToolsPage';
 import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
@@ -132,11 +132,18 @@ function itemNeedsDesignConfirm(item) {
   return Boolean(item);
 }
 
-/** Selected-image overlay stays on shirts and hoodies. Hats, mugs, bags, pets, and accessories use a Printful photo. */
+function isConfirmHatProduct(item) {
+  const cat = String(item?.category || '').toLowerCase().trim();
+  if (cat === 'hats') return true;
+  const n = String(item?.name || item?.product || '').toLowerCase();
+  return n.includes('hat') || n.includes('cap');
+}
+
+/** Shirts, hoodies, and hats show the selected image on the product. Mugs, bags, pets, and accessories stay photo-only. */
 function isConfirmPrintOverlayProduct(item) {
   const cat = String(item?.category || '').toLowerCase().trim();
-  if (cat === 'mugs' || cat === 'bags' || cat === 'pets' || cat === 'misc' || cat === 'hats') return false;
-  if (cat === 'womens' || cat === 'mens' || cat === 'kids') return true;
+  if (cat === 'mugs' || cat === 'bags' || cat === 'pets' || cat === 'misc') return false;
+  if (cat === 'hats' || cat === 'womens' || cat === 'mens' || cat === 'kids') return true;
   const n = String(item?.name || item?.product || '').toLowerCase();
   if (
     n.includes('mug')
@@ -151,8 +158,6 @@ function isConfirmPrintOverlayProduct(item) {
     || n.includes('apron')
     || n.includes('puzzle')
     || n.includes('greeting')
-    || n.includes('hat')
-    || n.includes('cap')
   ) {
     return false;
   }
@@ -165,6 +170,8 @@ function isConfirmPrintOverlayProduct(item) {
     || n.includes('onesie')
     || n.includes('body suit')
     || n.includes('crop')
+    || n.includes('hat')
+    || n.includes('cap')
   );
 }
 
@@ -331,7 +338,7 @@ const Checkout = () => {
     return () => cancelAnimationFrame(frame);
   }, [items.length]);
 
-  // Confirm Your Design for shirts and hoodies. Hats, mugs, bags, pets, and accessories skip the overlay.
+  // Confirm Your Design for shirts, hoodies, and hats. Mugs, bags, pets, and accessories skip the overlay.
   useEffect(() => {
     if ((!signedIn && !isDemoStorefront()) || items.length === 0 || designModalShownOnLoadRef.current) return;
     designModalShownOnLoadRef.current = true;
@@ -1510,7 +1517,11 @@ const Checkout = () => {
               const itemSize = shopperSizeLabel((item?.size || '').trim());
               const printProductName = matchPrintAreaProductName(itemName) || itemName;
               const finishedPhoto = premadeFinishedPhoto(item);
-              const mockupUrl = finishedPhoto || toolsPreviewMockupUrl(
+              const isHatItem = isConfirmHatProduct(item);
+              const hatMockupUrl = isHatItem
+                ? (toolsHatPreviewUrl(item, printProductName) || toolsHatLocalMockupUrl(item, printProductName))
+                : '';
+              const mockupUrl = finishedPhoto || hatMockupUrl || toolsPreviewMockupUrl(
                 itemName,
                 item?.image || item?.img || previewMockups[previewCartIndex] || ''
               );
@@ -1555,6 +1566,7 @@ const Checkout = () => {
                       <ProductPreviewWithDrag
                         key={previewCartIndex}
                         productImage={mockupUrl}
+                        fallbackMockupUrl={isHatItem ? toolsHatLocalMockupUrl(item, printProductName) : ''}
                         screenshot={overlaySrc}
                         productName={printProductName}
                         productSize={item?.size}
@@ -1592,8 +1604,8 @@ const Checkout = () => {
                         textOffsetY={ts.textOffsetY}
                         textDirection={ts.textDirection}
                         litePreview
-                        shirtFillHint={ts.shirtFillColor || ''}
-                        garmentTintColor={getWhiteBlankGarmentTint(item, item?.color)}
+                        shirtFillHint={isHatItem ? '' : (ts.shirtFillColor || '')}
+                        garmentTintColor={isHatItem ? '' : getWhiteBlankGarmentTint(item, item?.color)}
                         sourceWidth={confirmLiveOverlay ? 0 : confirmDisplayShot.width}
                         sourceHeight={confirmLiveOverlay ? 0 : confirmDisplayShot.height}
                       />

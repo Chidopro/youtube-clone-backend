@@ -188,6 +188,7 @@ function browseMobileZoomClass(productName) {
   if (name === 'Apron') return ' product-image--apron';
   if (name.includes('Notebook')) return ' product-image--notebook';
   if (name.includes('Jigsaw Puzzle')) return ' product-image--puzzle';
+  if (name === 'Oversized T-Shirt' || name === 'Unisex Oversized T-Shirt' || name === 'Baby Jersey T-Shirt') return ' product-image--oversized';
   return '';
 }
 
@@ -278,7 +279,7 @@ function PrintfulColorMockupImg({
 }
 
 const categoryBrowseCache = new Map();
-const BROWSE_CACHE_KEY = (category) => `sm_browse_v9_${String(category || '').trim().toLowerCase()}`;
+const BROWSE_CACHE_KEY = (category) => `sm_browse_v11_${String(category || '').trim().toLowerCase()}`;
 
 function readBrowseCache(category) {
   const mem = categoryBrowseCache.get(category);
@@ -386,52 +387,52 @@ const STATIC_CATEGORY_PRODUCT_NAMES = {
 };
 
 const STATIC_PRODUCT_IMAGE_MAP = {
-  Hoodie: { filename: 'tested.png', preview: 'testedpreview.png', price: 35.35 },
-  "Men's Tank Top": { filename: 'random.png', preview: 'randompreview.png', price: 26.23 },
-  'Mens Fitted T-Shirt': { filename: 'mensfittedtshirt.png', preview: 'mensfittedtshirtpreview.png', price: 28.58 },
-  "Men's Fitted Long Sleeve": { filename: 'mensfittedlongsleeve.png', preview: 'mensfittedlongsleevepreview.png', price: 31.33 },
-  'T-Shirt': { filename: 'guidontee.png', preview: 'guidonteepreview.png', price: 23.69 },
-  'Oversized T-Shirt': { filename: 'unisexoversizedtshirt.png', preview: 'unisexoversizedtshirtpreview.png', price: 28.49 },
-  "Men's Long Sleeve Shirt": { filename: 'menslongsleeveshirt6.png', preview: 'menslongsleeveshirtpreview6.png', price: 26.79 },
-  'Champion Hoodie': { filename: 'hoodiechampion.png', preview: 'hoodiechampionpreview.png', price: 47.00 },
-  'Cropped Hoodie': { filename: 'womenscroppedhoodiepreview.png', preview: 'womenscroppedhoodiepreview.png', price: 45.15 },
-  'Racerback Tank': { filename: 'womenstankpreview.png', preview: 'womenstankpreview.png', price: 22.95 },
-  'Micro-Rib Tank Top': { filename: 'womensmicroribtanktoppreview.png', preview: 'womensmicroribtanktoppreview.png', price: 27.81 },
-  "Women's Ribbed Neck": { filename: 'womensribbedneckpreview.png', preview: 'womensribbedneckpreview.png', price: 27.60 },
-  "Women's Shirt": { filename: 'womenshirtpreview.png', preview: 'womenshirtpreview.png', price: 25.69 },
-  'Heavyweight T-Shirt': { filename: 'womenshdshirtpreview.png', preview: 'womenshdshirtpreview.png', price: 27.29 },
-  'Pullover Hoodie': { filename: 'womensunisexpulloverhoodiepreview.png', preview: 'womensunisexpulloverhoodiepreview.png', price: 43.06 },
-  "Women's Crop Top": { filename: 'womenscroptoppreview.png', preview: 'womenscroptoppreview.png', price: 30.55 },
-  'Youth Heavy Blend Hoodie': { filename: 'kidhoodie.png', preview: 'kidsyouthheavyblendhoodiepreview2.png', price: 31.33 },
-  'Kids Shirt': { filename: 'kidshirt.png', preview: 'kidsshirtpreview2.png', price: 25.49 },
-  'Kids Long Sleeve': { filename: 'kidlongsleeve.png', preview: 'kidslongsleevepreview2.png', price: 28.49 },
+  Hoodie: { filename: 'tested.png', preview: 'testedpreview.png', price: 35.82 },
+  "Men's Tank Top": { filename: 'random.png', preview: 'randompreview.png', price: 24.11 },
+  'Mens Fitted T-Shirt': { filename: 'mensfittedtshirt.png', preview: 'mensfittedtshirtpreview.png', price: 24.35 },
+  "Men's Fitted Long Sleeve": { filename: 'mensfittedlongsleeve.png', preview: 'mensfittedlongsleevepreview.png', price: 28.82 },
+  'T-Shirt': { filename: 'guidontee.png', preview: 'guidonteepreview.png', price: 21.78 },
+  'Oversized T-Shirt': { filename: 'unisexoversizedtshirt.png', preview: 'unisexoversizedtshirtpreview.png', price: 28.97 },
+  "Men's Long Sleeve Shirt": { filename: 'menslongsleeveshirt6.png', preview: 'menslongsleeveshirtpreview6.png', price: 23.01 },
+  'Champion Hoodie': { filename: 'hoodiechampion.png', preview: 'hoodiechampionpreview.png', price: 42.34 },
+  'Cropped Hoodie': { filename: 'womenscroppedhoodiepreview.png', preview: 'womenscroppedhoodiepreview.png', price: 40.84 },
+  'Racerback Tank': { filename: 'womenstankpreview.png', preview: 'womenstankpreview.png', price: 21.50 },
+  'Micro-Rib Tank Top': { filename: 'womensmicroribtanktoppreview.png', preview: 'womensmicroribtanktoppreview.png', price: 25.58 },
+  "Women's Ribbed Neck": { filename: 'womensribbedneckpreview.png', preview: 'womensribbedneckpreview.png', price: 25.39 },
+  "Women's Shirt": { filename: 'womenshirtpreview.png', preview: 'womenshirtpreview.png', price: 23.21 },
+  'Heavyweight T-Shirt': { filename: 'womenshdshirtpreview.png', preview: 'womenshdshirtpreview.png', price: 24.43 },
+  'Pullover Hoodie': { filename: 'womensunisexpulloverhoodiepreview.png', preview: 'womensunisexpulloverhoodiepreview.png', price: 40.53 },
+  "Women's Crop Top": { filename: 'womenscroptoppreview.png', preview: 'womenscroptoppreview.png', price: 28.33 },
+  'Youth Heavy Blend Hoodie': { filename: 'kidhoodie.png', preview: 'kidsyouthheavyblendhoodiepreview2.png', price: 29.50 },
+  'Kids Shirt': { filename: 'kidshirt.png', preview: 'kidsshirtpreview2.png', price: 21.99 },
+  'Kids Long Sleeve': { filename: 'kidlongsleeve.png', preview: 'kidslongsleevepreview2.png', price: 26.27 },
   'Toddler Short Sleeve T-Shirt': { filename: 'toddlershortsleevet.png', preview: 'toddlershortsleevetpreview.png', price: 24.75 },
-  'Toddler Jersey T-Shirt': { filename: 'toddlerjerseytshirt.png', preview: 'kidstoddlerjerseytshirtpreview2.png', price: 22.29 },
-  'Baby Staple Tee': { filename: 'babystapletshirt.png', preview: 'kidsbabystapleteepreview2.png', price: 24.19 },
-  'Baby Jersey T-Shirt': { filename: 'toddlershortsleevet.png', preview: 'kidsbabyjerseytshirtpreview2.png', price: 22.29 },
-  'Baby Body Suit': { filename: 'kidsbabybodysuit6.png', preview: 'kidsbabybodysuitpreview6.png', price: 22.90 },
-  'Kids Sweatshirt': { filename: 'kidssweatshirt.png', preview: 'kidssweatshirtpreview2.png', price: 29.29 },
+  'Toddler Jersey T-Shirt': { filename: 'toddlerjerseytshirt.png', preview: 'kidstoddlerjerseytshirtpreview2.png', price: 20.92 },
+  'Baby Staple Tee': { filename: 'babystapletshirt.png', preview: 'kidsbabystapleteepreview2.png', price: 22.61 },
+  'Baby Jersey T-Shirt': { filename: 'toddlershortsleevet.png', preview: 'kidsbabyjerseytshirtpreview2.png', price: 20.92 },
+  'Baby Body Suit': { filename: 'kidsbabybodysuit6.png', preview: 'kidsbabybodysuitpreview6.png', price: 21.46 },
+  'Kids Sweatshirt': { filename: 'kidssweatshirt.png', preview: 'kidssweatshirtpreview2.png', price: 26.41 },
   'Youth All Over Print Swimsuit': { filename: 'youthalloverprintswimsuit.png', preview: 'youthalloverprintswimsuitpreview.png', price: 35.95 },
   'Girls Leggings': { filename: 'girlsleggings.png', preview: 'girlsleggingspreview.png', price: 30.31 },
-  'Laptop Sleeve': { filename: 'laptopsleeve.png', preview: 'laptopsleevepreview.png', price: 33.16 },
-  'All-Over Print Drawstring': { filename: 'drawstringbag.png', preview: 'drawstringbagpreview.png', price: 27.25 },
-  'All-Over Print Utility Bag': { filename: 'crossbodybag.png', preview: 'crossbodybagpreview.png', price: 33.79 },
-  'All Over Print Tote Pocket': { filename: 'largecanvasbag.png', preview: 'largecanvasbagpreview.png', price: 35.41 },
+  'Laptop Sleeve': { filename: 'laptopsleeve.png', preview: 'laptopsleevepreview.png', price: 31.10 },
+  'All-Over Print Drawstring': { filename: 'drawstringbag.png', preview: 'drawstringbagpreview.png', price: 25.91 },
+  'All-Over Print Utility Bag': { filename: 'crossbodybag.png', preview: 'crossbodybagpreview.png', price: 30.94 },
+  'All Over Print Tote Pocket': { filename: 'largecanvasbag.png', preview: 'largecanvasbagpreview.png', price: 27.86 },
   'All-Over Print Crossbody Bag': { filename: 'crossbodybag.png', preview: 'crossbodybagpreview.png', price: 30.95 },
-  'Distressed Dad Hat': { filename: 'distresseddadhat.png', preview: 'distresseddadhatpreview.png', price: 26.95 },
-  'Closed Back Cap': { filename: 'closedbackcap.png', preview: 'hatsclosedbackcappreview.png', price: 24.91 },
-  'Five Panel Trucker Hat': { filename: 'fivepaneltruckerhat.png', preview: 'fivepaneltruckerhatpreview.png', price: 26.95 },
-  'Five Panel Baseball Cap': { filename: 'youthbaseballcap.png', preview: 'youthbaseballcappreview.png', price: 26.95 },
-  'White Glossy Mug': { filename: 'mug1.png', preview: 'mug1preview.png', price: 17.95 },
-  'Travel Mug': { filename: 'travelmug.png', preview: 'travelmugpreview.png', price: 21.95 },
-  'Enamel Mug': { filename: 'enamalmug.png', preview: 'enamalmugpreview.png', price: 20.95 },
-  'Colored Mug': { filename: 'coloredmug.png', preview: 'coloredmugpreview.png', price: 19.95 },
-  'Pet Bowl All-Over Print': { filename: 'dogbowl.png', preview: 'dogbowlpreview.png', price: 33.49 },
-  'Pet Bandana Collar': { filename: 'scarfcollar.png', preview: 'scarfcollarpreview.png', price: 21.95 },
-  'Greeting Card': { filename: 'greetingcard.png', preview: 'greetingcardpreview.png', price: 9.99 },
-  'Hardcover Bound Notebook': { filename: 'hardcovernotebook.png', preview: 'hardcovernotebookpreview.png', price: 23.05 },
-  Apron: { filename: 'apron.png', preview: 'apronpreview.png', price: 28.90 },
-  'Jigsaw Puzzle with Tin': { filename: 'jigsawpuzzle.png', preview: 'jigsawpuzzlepreview.png', price: 25.40 },
+  'Distressed Dad Hat': { filename: 'distresseddadhat.png', preview: 'distresseddadhatpreview.png', price: 24.73 },
+  'Closed Back Cap': { filename: 'closedbackcap.png', preview: 'hatsclosedbackcappreview.png', price: 25.17 },
+  'Five Panel Trucker Hat': { filename: 'fivepaneltruckerhat.png', preview: 'fivepaneltruckerhatpreview.png', price: 24.96 },
+  'Five Panel Baseball Cap': { filename: 'youthbaseballcap.png', preview: 'youthbaseballcappreview.png', price: 23.81 },
+  'White Glossy Mug': { filename: 'mug1.png', preview: 'mug1preview.png', price: 17.05 },
+  'Travel Mug': { filename: 'travelmug.png', preview: 'travelmugpreview.png', price: 30.85 },
+  'Enamel Mug': { filename: 'enamalmug.png', preview: 'enamalmugpreview.png', price: 22.02 },
+  'Colored Mug': { filename: 'coloredmug.png', preview: 'coloredmugpreview.png', price: 18.62 },
+  'Pet Bowl All-Over Print': { filename: 'dogbowl.png', preview: 'dogbowlpreview.png', price: 32.04 },
+  'Pet Bandana Collar': { filename: 'scarfcollar.png', preview: 'scarfcollarpreview.png', price: 24.02 },
+  'Greeting Card': { filename: 'greetingcard.png', preview: 'greetingcardpreview.png', price: 14.21 },
+  'Hardcover Bound Notebook': { filename: 'hardcovernotebook.png', preview: 'hardcovernotebookpreview.png', price: 23.27 },
+  Apron: { filename: 'apron.png', preview: 'apronpreview.png', price: 29.19 },
+  'Jigsaw Puzzle with Tin': { filename: 'jigsawpuzzle.png', preview: 'jigsawpuzzlepreview.png', price: 25.67 },
 };
 
 function getStaticProductsForCategory(category) {

@@ -296,6 +296,21 @@ async function jpegDisplayCopy(url) {
   return canvas.toDataURL('image/jpeg', 0.72);
 }
 
+/** Bake Selected Image / Tools pixel edits onto a wrap photo without print-box crop. */
+export async function bakeArtworkForWrap(sourceUrl, settings) {
+  const src = String(sourceUrl || '').trim();
+  if (!src) return '';
+  if (!browsePresetHasPixelEdits(settings)) return src;
+  try {
+    const baked = await bakeBrowsePresetImage(src, settings);
+    if (baked && typeof baked === 'object' && baked.full) return baked.full;
+    if (typeof baked === 'string' && baked) return baked;
+  } catch {
+    /* keep the source photo */
+  }
+  return src;
+}
+
 export async function applyBrowsePresetToCartItem(item, settings) {
   if (!item) return item;
   const tools = settings && typeof settings === 'object' ? settings : {};

@@ -179,11 +179,26 @@ function hubHashSet(thumbs, hashByUrl = {}) {
 /** These Deluzion top-row photos stay fixed across login, logout, new uploads, and reloads. */
 const LOCKED_HUB_TOP = {
   deluzion: {
-    favorites: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/8a6b0ae8-19ed-46ca-857a-a56366e780e1/favorites/thumbs/1790336768390-2ff0c6.jpg',
+    favorites: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/4d524770-cbc9-49f3-97fb-24bee25d587d/favorites/thumbs/1790238159918-05745c.jpg',
     friend: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/1c382c92-00b1-4ccd-b2c1-a1b4b973dca9/favorites/thumbs/1790337127610-ef0976.jpg',
     shop: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/1c382c92-00b1-4ccd-b2c1-a1b4b973dca9/favorites/thumbs/1790337010649-511c88.jpg',
   },
 };
+
+/** Photos pulled off the homepage so they do not slide into the second row. */
+const HIDDEN_HUB_PHOTOS = {
+  deluzion: [
+    'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/8a6b0ae8-19ed-46ca-857a-a56366e780e1/favorites/thumbs/1790336768390-2ff0c6.jpg',
+  ],
+};
+
+function withoutHiddenHubPhotos(subdomain, urls) {
+  const hidden = new Set(
+    (HIDDEN_HUB_PHOTOS[String(subdomain || '').trim().toLowerCase()] || []).map(imageIdentity)
+  );
+  if (!hidden.size) return urls;
+  return (urls || []).filter((url) => !hidden.has(imageIdentity(url)));
+}
 
 function hubTopStorageKey(subdomain) {
   return `sm_hub_top_v1:${String(subdomain || '').trim().toLowerCase()}`;
@@ -220,13 +235,13 @@ function writeHubTopPin(subdomain, thumbs) {
 
 /** Top row sticks once chosen. New uploads and sign-in changes do not replace it. */
 export function lockedHubThumbs(subdomain, computed) {
-  const saved = readHubTopPin(subdomain);
-  if (saved) return saved;
   const seed = LOCKED_HUB_TOP[String(subdomain || '').trim().toLowerCase()];
   if (seed?.favorites && seed?.friend && seed?.shop) {
     writeHubTopPin(subdomain, seed);
     return seed;
   }
+  const saved = readHubTopPin(subdomain);
+  if (saved) return saved;
   const next = {
     favorites: computed?.favorites || null,
     friend: computed?.friend || null,
@@ -364,11 +379,17 @@ const Feed = ({
   }, [showHubs]);
 
   const favoriteUrls = useMemo(
-    () => uniqueByIdentity((Array.isArray(favoritesPreview) ? favoritesPreview : []).map((u) => publicStorageCardUrl(u, 800))),
+    () => withoutHiddenHubPhotos(
+      getSubdomain(),
+      uniqueByIdentity((Array.isArray(favoritesPreview) ? favoritesPreview : []).map((u) => publicStorageCardUrl(u, 800)))
+    ),
     [favoritesPreview]
   );
   const friendUrls = useMemo(
-    () => uniqueByIdentity((Array.isArray(friendPagePreview) ? friendPagePreview : []).map((u) => publicStorageCardUrl(u, 800))),
+    () => withoutHiddenHubPhotos(
+      getSubdomain(),
+      uniqueByIdentity((Array.isArray(friendPagePreview) ? friendPagePreview : []).map((u) => publicStorageCardUrl(u, 800)))
+    ),
     [friendPagePreview]
   );
   const shopUrls = useMemo(() => {
@@ -377,7 +398,10 @@ const Feed = ({
     const videoUrls = isDemoStorefront()
       ? (videos || []).map((v) => v.thumbnail || v.thumbnail_url).filter(Boolean)
       : [];
-    return uniqueByIdentity([...pageUrls, ...favoriteUrls, ...friendUrls, ...videoUrls]);
+    return withoutHiddenHubPhotos(
+      getSubdomain(),
+      uniqueByIdentity([...pageUrls, ...favoriteUrls, ...friendUrls, ...videoUrls])
+    );
   }, [shopPreview, videos, favoriteUrls, friendUrls]);
 
   const shopPreferredUrls = useMemo(() => {

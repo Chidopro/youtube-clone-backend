@@ -104,7 +104,7 @@ function sizesForShopProduct(product, color, country) {
 }
 
 async function fetchCategoryCatalog(category) {
-  const cacheKey = `sm_browse_v9_${String(category || '').trim().toLowerCase()}`;
+  const cacheKey = `sm_browse_v11_${String(category || '').trim().toLowerCase()}`;
   try {
     const raw = sessionStorage.getItem(cacheKey);
     if (raw) {

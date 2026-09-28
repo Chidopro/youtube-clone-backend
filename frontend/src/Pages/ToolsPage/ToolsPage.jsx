@@ -6,11 +6,11 @@ import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, setToolsFocusCartI
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { getSubdomain } from '../../utils/subdomainService';
 import { favoriteImageUrl, fetchPublicFavoriteLists, fetchPublicFavoritesByList } from '../../utils/favoriteListsApi';
-import { toolsPreviewMockupUrl } from '../../utils/shopCategories';
+import { shopCategoryThumbUrl, toolsPreviewMockupUrl } from '../../utils/shopCategories';
 import { getWhiteBlankGarmentTint, getPrintfulColorMockupUrl } from '../../utils/printfulColorMockups';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlainText, cornerRadiusPx, featherPx } from '../../utils/editLog';
-import { roundedRectFeatherFactor } from '../../utils/bakeBrowsePreset';
+import { bakeArtworkForWrap, browsePresetHasPixelEdits, roundedRectFeatherFactor } from '../../utils/bakeBrowsePreset';
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
 import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isGreetingCardProduct, isJigsawPuzzleProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petBandanaPrintFile, petBowlPrintStrip, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
@@ -933,6 +933,25 @@ function artworkImageOffsetStyle(layout, vis) {
   };
 }
 
+/** Same crop as artworkImageOffsetStyle, but relative to the vis box so it scales with the stage. */
+function artworkImageOffsetStylePercent(layout, vis) {
+  if (!layout || !(Number(vis?.width) > 0) || !(Number(vis?.height) > 0)) return null;
+  const box = layout.rotate ? rotatedCssBox(layout) : layout;
+  const visW = Number(vis.width) || 1;
+  const visH = Number(vis.height) || 1;
+  return {
+    position: 'absolute',
+    width: `${((Number(box.width) || 0) / visW) * 100}%`,
+    height: `${((Number(box.height) || 0) / visH) * 100}%`,
+    left: `${(((Number(box.left) || 0) - (Number(vis.left) || 0)) / visW) * 100}%`,
+    top: `${(((Number(box.top) || 0) - (Number(vis.top) || 0)) / visH) * 100}%`,
+    maxWidth: 'none',
+    maxHeight: 'none',
+    objectFit: 'fill',
+    ...(layout.rotate ? { transform: 'rotate(-90deg)', transformOrigin: 'center center' } : {}),
+  };
+}
+
 function overlayVisBoxStyle(vis, boxW, boxH) {
   const bw = Number(boxW) || 0;
   const bh = Number(boxH) || 0;
@@ -951,6 +970,18 @@ function overlayVisBoxStyle(vis, boxW, boxH) {
     top: vis.top,
     width: vis.width,
     height: vis.height,
+  };
+}
+
+function overlayVisBoxStylePercent(vis, boxW, boxH) {
+  const bw = Number(boxW) || 1;
+  const bh = Number(boxH) || 1;
+  return {
+    position: 'absolute',
+    left: `${((Number(vis?.left) || 0) / bw) * 100}%`,
+    top: `${((Number(vis?.top) || 0) / bh) * 100}%`,
+    width: `${(Math.max(0, Number(vis?.width) || 0) / bw) * 100}%`,
+    height: `${(Math.max(0, Number(vis?.height) || 0) / bh) * 100}%`,
   };
 }
 
@@ -2699,7 +2730,7 @@ const ProductPreviewWithDrag = ({
         userSelect: 'none',
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
-        touchAction: litePreview || imageOrientation === 'landscape' ? 'auto' : 'none'
+        touchAction: litePreview || imageOrientation === 'landscape' ? 'pan-y pinch-zoom' : 'pinch-zoom'
       }}
       onMouseDown={litePreview ? undefined : handleMouseDown}
       onTouchStart={litePreview ? undefined : handleTouchStart}
@@ -2713,7 +2744,7 @@ const ProductPreviewWithDrag = ({
         alt={productName}
         decoding="async"
         referrerPolicy="no-referrer"
-        crossOrigin={/^https?:/i.test(String(tintedMockupSrc || mockupSrc || productImage || '')) ? 'anonymous' : undefined}
+        crossOrigin={garmentTintColor ? 'anonymous' : undefined}
         onLoad={handleProductImageLoad}
         onError={() => {
           if (tintedMockupSrc) {
@@ -2757,7 +2788,7 @@ const ProductPreviewWithDrag = ({
             userSelect: 'none',
             WebkitUserSelect: 'none',
             WebkitTouchCallout: 'none',
-            touchAction: litePreview ? 'auto' : 'none',
+            touchAction: litePreview ? 'pan-y pinch-zoom' : 'pinch-zoom',
             pointerEvents: litePreview ? 'none' : 'auto',
             zIndex: 2,
             overflow: 'hidden'
@@ -2786,7 +2817,9 @@ const ProductPreviewWithDrag = ({
             // Shirts: the photo is the print box itself. An oversized absolute
             // image (cover math can be ~5x the box) is what phones clip away,
             // so a black shirt looks like it has no design.
-            const useBoxFill = !artworkLayout?.rotate;
+            // Hats stay on the front-panel overlay from the hat print commit —
+            // box-fill was a later shirt-only change and throws hat placement off.
+            const useBoxFill = !isHatProduct(placeName) && !artworkLayout?.rotate;
             const overlayFitClass = useBoxFill
               ? (isGreetingCardProduct(placeName) ? '' : ' product-preview-overlay-portrait')
               : ' product-preview-overlay-zoom';
@@ -2903,7 +2936,7 @@ const ProductPreviewWithDrag = ({
                         userSelect: 'none',
                         WebkitUserSelect: 'none',
                         WebkitTouchCallout: 'none',
-                        touchAction: 'none',
+                        touchAction: 'pinch-zoom',
                         filter: blackAndWhiteStyle(blackAndWhite, bwIntensity),
                         opacity: imageOpacityCss(imageOpacity),
                       }}
@@ -3037,8 +3070,8 @@ function ScreenshotPreviewPane({
     sourceHeight,
   });
   const fadeBg = overlayFeatherFadeBackground(featherFadeEnabled, featherFadeColor);
-  const visStyle = overlayVisBoxStyle(vis, boxW, boxH);
-  const zoomImgStyle = artworkImageOffsetStyle(artworkLayout, vis);
+  const visStyle = overlayVisBoxStylePercent(vis, boxW, boxH);
+  const zoomImgStyle = artworkImageOffsetStylePercent(artworkLayout, vis);
   const fill = { position: 'absolute', inset: 0 };
   const nudgePuzzle = nudgeEnabled && typeof onImageOffsetChange === 'function';
   const onNudgePointerDown = (event) => {
@@ -3268,7 +3301,24 @@ function isPrintfulMockupUrl(url) {
   return /files\.cdn\.printful\.com/i.test(String(url || ''));
 }
 
-function toolsHatLocalMockupUrl(product) {
+// Catalog front-face previews (backend preview_image). Used when Printful
+// color lookup misses so Tools does not fall back to hatflatfront or a 3/4 shot.
+const HAT_FRONT_FACE_PREVIEWS = {
+  'Distressed Dad Hat': 'hatsdistresseddadhatpreview.png',
+  'Closed Back Cap': 'hatsclosedbackcappreview.png',
+  'Five Panel Trucker Hat': 'hatsfivepaneltruckerhatpreview.png',
+  'Five Panel Baseball Cap': 'hatsfivepanelbaseballhatpreview.png',
+};
+
+function toolsHatFrontFaceUrl(productName) {
+  const name = matchPrintAreaProductName(productName) || String(productName || '').trim();
+  const file = HAT_FRONT_FACE_PREVIEWS[name] || HAT_FRONT_FACE_PREVIEWS[String(productName || '').trim()];
+  return file ? shopCategoryThumbUrl(file) : '';
+}
+
+function toolsHatLocalMockupUrl(product, selectedName) {
+  const fromCatalog = toolsHatFrontFaceUrl(selectedName || product?.name || product?.product);
+  if (fromCatalog) return fromCatalog;
   const fallback = String(product?.productImage || '').trim();
   if (fallback && !/hatflatfront/i.test(fallback) && !isPrintfulMockupUrl(fallback)) return fallback;
   return '';
@@ -3289,7 +3339,7 @@ function toolsHatPreviewUrl(product, selectedName) {
     product?.color
   );
   if (fromPrintful) return fromPrintful;
-  return toolsHatLocalMockupUrl(product);
+  return toolsHatLocalMockupUrl(product, name);
 }
 
 // Placeholder when product image is missing (e.g. products loaded from order_id) so screenshot still shows
@@ -3309,6 +3359,22 @@ const getPlaceholderProductImage = () => {
   _placeholderProductImage = canvas.toDataURL('image/png');
   return _placeholderProductImage;
 };
+
+function wrapPixelSettingsFrom(source) {
+  const skipRect = Boolean(source?.skipRectEdgeEdits);
+  return {
+    blackAndWhite: Boolean(source?.blackAndWhite),
+    bwIntensity: source?.bwIntensity,
+    featherEdge: skipRect ? 0 : source?.featherEdge,
+    cornerRadius: skipRect ? 0 : source?.cornerRadius,
+    frameEnabled: skipRect ? false : Boolean(source?.frameEnabled),
+    frameColor: source?.frameColor,
+    frameWidth: source?.frameWidth,
+    doubleFrame: Boolean(source?.doubleFrame),
+    innerFrameColor: source?.innerFrameColor,
+    imageOpacity: source?.imageOpacity,
+  };
+}
 
 function BandanaCropPreview({ src, offset, onOffsetChange }) {
   const frameRef = useRef(null);
@@ -3522,6 +3588,7 @@ const ToolsPage = () => {
   const [mugMockupError, setMugMockupError] = useState('');
   const [wrapRequested, setWrapRequested] = useState(false);
   const [bowlPanels, setBowlPanels] = useState(() => Array(PET_BOWL_PANEL_COUNT).fill(''));
+  const [wrapArtworkUrl, setWrapArtworkUrl] = useState('');
   const [bowlBand, setBowlBand] = useState(null);
   const [bowlDashLoading, setBowlDashLoading] = useState(false);
   const [bandanaCropOffset, setBandanaCropOffset] = useState(0.5);
@@ -3530,6 +3597,7 @@ const ToolsPage = () => {
   const bowlPanelsTouchedRef = useRef(false);
   const bowlRandomRef = useRef(false);
   const wrapEditKeyRef = useRef('');
+  const wrapNowNoteRef = useRef(null);
   const wrapInputsRef = useRef({});
   const persistMugMockupUrl = useCallback((cartIndex, url, urls, sourceUrl, printfileUrl) => {
     const wrap = String(url || '').trim();
@@ -4152,6 +4220,11 @@ const ToolsPage = () => {
               printful_catalog_product_id: item.printful_catalog_product_id || null,
               screenshot: item.originalScreenshot || item.screenshot || '',
               originalScreenshot: item.originalScreenshot || '',
+              bakedScreenshot: (
+                item.originalScreenshot
+                && item.screenshot
+                && item.screenshot !== item.originalScreenshot
+              ) ? item.screenshot : '',
               productImage: toolsPreviewMockupUrl(item.name || item.product, item.image || ''),
               imageOrientation: item.imageOrientation || item.toolSettings?.imageOrientation || '',
               toolSettings: item.toolSettings || null // Store tool settings if they exist
@@ -5512,12 +5585,82 @@ const ToolsPage = () => {
   }, [mugPreviewSlotKey, selectedCartProductIndex, selectedProductName]);
 
   useEffect(() => {
-    if (!isPetBowlProduct(mugPreviewName) || bowlPanelsTouchedRef.current) return undefined;
+    if (mugMockupUrl || mugMockupLoading) return undefined;
+    if (!isPetBowlProduct(mugPreviewName)) return undefined;
+    const note = wrapNowNoteRef.current;
+    if (!note) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      note.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [mugPreviewName, mugMockupUrl, mugMockupLoading, mugPreviewSlotKey]);
+
+  useEffect(() => {
     const src = String(imageUrl || '').trim();
+    const wrapProduct = isPetBowlProduct(mugPreviewName) || isPetBandanaProduct(mugPreviewName);
+    if (!src || !wrapProduct) {
+      setWrapArtworkUrl('');
+      return undefined;
+    }
+    let cancelled = false;
+    const settings = wrapPixelSettingsFrom({
+      blackAndWhite,
+      bwIntensity,
+      featherEdge,
+      cornerRadius,
+      frameEnabled,
+      frameColor,
+      frameWidth,
+      doubleFrame,
+      innerFrameColor,
+      imageOpacity,
+      skipRectEdgeEdits,
+    });
+    const cartBaked = String(
+      (selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex]?.bakedScreenshot : '')
+      || ''
+    ).trim();
+    if (browsePresetHasPixelEdits(settings) && cartBaked) {
+      setWrapArtworkUrl(cartBaked);
+    }
+    bakeArtworkForWrap(src, settings).then((next) => {
+      if (cancelled) return;
+      const baked = String(next || '').trim();
+      if (browsePresetHasPixelEdits(settings) && (!baked || baked === src) && cartBaked) {
+        setWrapArtworkUrl(cartBaked);
+        return;
+      }
+      setWrapArtworkUrl(baked || cartBaked || src);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    mugPreviewSlotKey,
+    mugPreviewName,
+    imageUrl,
+    blackAndWhite,
+    bwIntensity,
+    featherEdge,
+    cornerRadius,
+    frameEnabled,
+    frameColor,
+    frameWidth,
+    doubleFrame,
+    innerFrameColor,
+    imageOpacity,
+    skipRectEdgeEdits,
+    selectedCartProductIndex,
+    selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex]?.bakedScreenshot : '',
+  ]);
+
+  useEffect(() => {
+    if (!isPetBowlProduct(mugPreviewName) || bowlPanelsTouchedRef.current) return undefined;
+    const src = String(wrapArtworkUrl || imageUrl || '').trim();
     if (!src) return undefined;
     setBowlPanels(Array(PET_BOWL_PANEL_COUNT).fill(src));
     return undefined;
-  }, [mugPreviewSlotKey, mugPreviewName, imageUrl]);
+  }, [mugPreviewSlotKey, mugPreviewName, wrapArtworkUrl, imageUrl]);
 
   const fillBowlFromDashboard = useCallback(async () => {
     setMugMockupError('');
@@ -5958,12 +6101,26 @@ const ToolsPage = () => {
       return;
     }
     const productLabel = selectedProduct?.name || selectedProductName || '';
+    const wrapSettings = wrapPixelSettingsFrom({
+      blackAndWhite,
+      bwIntensity,
+      featherEdge,
+      cornerRadius,
+      frameEnabled,
+      frameColor,
+      frameWidth,
+      doubleFrame,
+      innerFrameColor,
+      imageOpacity,
+      skipRectEdgeEdits,
+    });
     if (isPetBowlProduct(productLabel)) {
       setGenerating300Dpi(true);
       setPrintQualityImageUrl('');
       setPrintQualityMeta(null);
       try {
-        const strip = await petBowlPrintStrip(imageToUse);
+        const wrapSrc = await bakeArtworkForWrap(imageToUse, wrapSettings);
+        const strip = await petBowlPrintStrip(wrapSrc || imageToUse);
         if (!strip?.dataUrl) {
           alert('Could not build the pet bowl image strip.');
           return;
@@ -5987,7 +6144,8 @@ const ToolsPage = () => {
       setPrintQualityImageUrl('');
       setPrintQualityMeta(null);
       try {
-        const file = await petBandanaPrintFile(imageToUse, bandanaCropOffset);
+        const wrapSrc = await bakeArtworkForWrap(imageToUse, wrapSettings);
+        const file = await petBandanaPrintFile(wrapSrc || imageToUse, bandanaCropOffset);
         if (!file?.dataUrl) {
           alert('Could not build the pet bandana print.');
           return;
@@ -6754,9 +6912,9 @@ const ToolsPage = () => {
                                     />
                                   ))}
                                 </div>
-                              ) : wrapKind === 'bandana' && (imageUrl || currentImage) ? (
+                              ) : wrapKind === 'bandana' && (wrapArtworkUrl || imageUrl || currentImage) ? (
                                 <BandanaCropPreview
-                                  src={imageUrl || currentImage}
+                                  src={wrapArtworkUrl || imageUrl || currentImage}
                                   offset={bandanaCropOffset}
                                   onOffsetChange={setBandanaCropOffset}
                                 />
@@ -6810,7 +6968,10 @@ const ToolsPage = () => {
                               ) : null}
                             </div>
                             {showWrapNow ? (
-                              <div className="product-preview-unavailable-note">
+                              <div
+                                ref={wrapNowNoteRef}
+                                className="product-preview-unavailable-note product-preview-unavailable-note--actions"
+                              >
                                 {wrapKind === 'puzzle' ? (
                                   <div className="product-preview-unavailable-note-text">
                                     This is the puzzle print area. Drag the photo to choose what stays in the picture, then click Wrap now.
@@ -6848,26 +7009,48 @@ const ToolsPage = () => {
                                   className="mug-wrap-now-btn"
                                   onClick={() => {
                                     setMugMockupError('');
+                                    const wrapSettings = wrapPixelSettingsFrom({
+                                      blackAndWhite,
+                                      bwIntensity,
+                                      featherEdge,
+                                      cornerRadius,
+                                      frameEnabled,
+                                      frameColor,
+                                      frameWidth,
+                                      doubleFrame,
+                                      innerFrameColor,
+                                      imageOpacity,
+                                      skipRectEdgeEdits,
+                                    });
                                     if (wrapKind === 'bowl') {
-                                      let panels = bowlPanels;
-                                      if (!bowlRandomRef.current) {
-                                        const src = String(imageUrl || bowlPanels.find(Boolean) || '').trim();
-                                        if (!src) {
-                                          setMugMockupError('Add a photo before wrapping.');
-                                          return;
-                                        }
-                                        panels = Array(PET_BOWL_PANEL_COUNT).fill(src);
-                                        bowlPanelsTouchedRef.current = true;
-                                        setBowlPanels(panels);
+                                      const sourceSrc = String(imageUrl || bowlPanels.find(Boolean) || '').trim();
+                                      if (!bowlRandomRef.current && !sourceSrc && !wrapArtworkUrl) {
+                                        setMugMockupError('Add a photo before wrapping.');
+                                        return;
                                       }
-                                      const ready = panels.length === PET_BOWL_PANEL_COUNT
-                                        && panels.every((src) => String(src || '').trim());
+                                      const ready = bowlRandomRef.current
+                                        ? bowlPanels.length === PET_BOWL_PANEL_COUNT
+                                          && bowlPanels.every((src) => String(src || '').trim())
+                                        : Boolean(wrapArtworkUrl || sourceSrc);
                                       if (!ready) {
                                         setMugMockupError('Add a photo to every panel before wrapping.');
                                         return;
                                       }
                                       setMugMockupLoading(true);
-                                      composePetBowlBand(panels)
+                                      const panelPromise = bowlRandomRef.current
+                                        ? Promise.all(bowlPanels.map((src) => bakeArtworkForWrap(src, wrapSettings)))
+                                        : Promise.resolve(String(wrapArtworkUrl || '').trim() || null)
+                                          .then((readyArt) => readyArt
+                                            ? readyArt
+                                            : bakeArtworkForWrap(sourceSrc, wrapSettings))
+                                          .then((wrapSrc) => {
+                                            const panels = Array(PET_BOWL_PANEL_COUNT).fill(wrapSrc || sourceSrc);
+                                            bowlPanelsTouchedRef.current = true;
+                                            setBowlPanels(panels);
+                                            return panels;
+                                          });
+                                      panelPromise
+                                        .then((panels) => composePetBowlBand(panels))
                                         .then((band) => {
                                           if (!band?.dataUrl) {
                                             setMugMockupLoading(false);
@@ -6885,12 +7068,16 @@ const ToolsPage = () => {
                                     }
                                     if (wrapKind === 'bandana') {
                                       const src = String(imageUrl || '').trim();
-                                      if (!src) {
+                                      if (!src && !wrapArtworkUrl) {
                                         setMugMockupError('Add a photo before wrapping.');
                                         return;
                                       }
                                       setMugMockupLoading(true);
-                                      composePetBandanaCrop(src, bandanaCropOffset)
+                                      const artPromise = String(wrapArtworkUrl || '').trim()
+                                        ? Promise.resolve(wrapArtworkUrl)
+                                        : bakeArtworkForWrap(src, wrapSettings);
+                                      artPromise
+                                        .then((wrapSrc) => composePetBandanaCrop(wrapSrc || src, bandanaCropOffset))
                                         .then((crop) => {
                                           if (!crop?.dataUrl) {
                                             setMugMockupLoading(false);
@@ -7026,7 +7213,7 @@ const ToolsPage = () => {
                       // Hats: Printful front photo for this SKU + cart color (overlay stays on the front panel).
                       if (isHat) {
                         const hatImage = toolsHatPreviewUrl(product, productName) || getPlaceholderProductImage();
-                        const hatFallback = toolsHatLocalMockupUrl(product);
+                        const hatFallback = toolsHatLocalMockupUrl(product, productName);
                         if (currentImage) {
                           return (
                             <ProductPreviewWithDrag
@@ -7098,7 +7285,7 @@ const ToolsPage = () => {
                                 alt={productName}
                                 referrerPolicy="no-referrer"
                                 onError={(e) => {
-                                  const fb = toolsHatLocalMockupUrl(product);
+                                  const fb = toolsHatLocalMockupUrl(product, productName);
                                   if (fb && e.currentTarget.src !== fb) e.currentTarget.src = fb;
                                 }}
                                 style={{ maxWidth: '200px', maxHeight: '150px', marginBottom: '10px' }}
@@ -8001,6 +8188,6 @@ const ToolsPage = () => {
   );
 };
 
-export { ProductPreviewWithDrag };
+export { ProductPreviewWithDrag, toolsHatPreviewUrl, toolsHatLocalMockupUrl };
 export default ToolsPage;
 

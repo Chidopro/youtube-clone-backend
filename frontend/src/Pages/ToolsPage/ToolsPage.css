@@ -619,6 +619,14 @@ body.tools-page-active .site-footer {
   margin-top: 8px;
 }
 
+.product-preview-unavailable-note--actions {
+  scroll-margin-bottom: 12px;
+}
+
+.mug-product-preview-image--bowl .bowl-panel {
+  max-height: 96px;
+}
+
 .product-preview-unavailable-note .mug-wrap-now-btn:hover {
   background: #0069d9;
 }
@@ -861,9 +869,9 @@ body.tools-page-active .site-footer {
 }
 
 .screenshot-preview-stage img.is-artwork-zoom {
-  width: auto;
-  height: auto;
   object-fit: fill;
+  max-width: none;
+  max-height: none;
 }
 
 .screenshot-preview-stage.is-portrait img {
@@ -1561,7 +1569,19 @@ body.tools-page-active .site-footer {
   }
 
   body.tools-page-active .tools-left-column {
-    max-height: 100dvh;
+    top: 88px;
+    max-height: calc(100dvh - 96px);
+  }
+
+  body.tools-page-active .product-preview-unavailable-note--actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 6;
+    box-shadow: 0 -10px 16px rgba(249, 249, 249, 0.92);
+  }
+
+  body.tools-page-active .mug-product-preview-image--bowl .bowl-panel {
+    max-height: 88px;
   }
 
   body.tools-page-active .cart-products-preview-fixed {
@@ -1806,7 +1826,7 @@ body.tools-page-active .site-footer {
   .tools-page-container {
     overflow-x: clip;
     overscroll-behavior-x: none;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
     width: 100%;
     max-width: 100%;
   }
@@ -1831,10 +1851,10 @@ body.tools-page-active .site-footer {
     text-align: center !important;
   }
 
-  /* Prevent scrolling and selection during drag on mobile */
+  /* One-finger drag still moves the design; two fingers can enlarge the preview. */
   .preview-image-wrapper,
   .preview-image-wrapper-compact {
-    touch-action: none;
+    touch-action: pinch-zoom;
     -webkit-overflow-scrolling: touch;
     overflow: hidden;
   }
@@ -1845,7 +1865,7 @@ body.tools-page-active .site-footer {
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
-    touch-action: none;
+    touch-action: pinch-zoom;
     pointer-events: auto;
   }
 
@@ -2159,6 +2179,7 @@ body.tools-page-active .site-footer {
     margin-left: auto;
     margin-right: auto;
     flex-shrink: 0;
+    touch-action: pinch-zoom;
   }
 
   body.tools-page-active .product-preview-mockup {
@@ -2218,7 +2239,7 @@ body.tools-page-active .site-footer {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
     display: flex;
     flex-direction: column;
   }
@@ -2253,7 +2274,7 @@ body.tools-page-active .site-footer {
     padding: 0.5rem;
     overflow-x: clip;
     overscroll-behavior-x: none;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
     width: 100%;
     max-width: 100%;
   }
@@ -2340,10 +2361,10 @@ body.tools-page-active .site-footer {
     text-align: center !important;
   }
 
-  /* Prevent scrolling and selection during drag on small mobile */
+  /* One-finger drag still moves the design; two fingers can enlarge the preview. */
   .preview-image-wrapper,
   .preview-image-wrapper-compact {
-    touch-action: none;
+    touch-action: pinch-zoom;
     -webkit-overflow-scrolling: touch;
     overflow: hidden;
   }
@@ -2354,7 +2375,7 @@ body.tools-page-active .site-footer {
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
-    touch-action: none;
+    touch-action: pinch-zoom;
     pointer-events: auto;
   }
 
@@ -2408,7 +2429,7 @@ body.tools-page-active .site-footer {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
     display: flex;
     flex-direction: column;
   }
@@ -2424,6 +2445,7 @@ body.tools-page-active .site-footer {
     max-width: 200px;
     width: 100%;
     height: auto;
+    touch-action: pinch-zoom;
   }
 
   body.tools-page-active .product-preview-mockup {

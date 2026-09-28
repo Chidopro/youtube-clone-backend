@@ -1174,12 +1174,11 @@ def _pet_bandana_print(image, print_dpi=300, reference=None):
 
 
 def _pet_bowl_print_strip(image, print_dpi=300):
-    """Eleven copies of one photo. Each window is covered so the band is one height."""
+    """Eleven copies of one photo filling Printful's 6496×803 wrap exactly."""
     import base64
     panel_count = 11
-    tile_w = 590
+    width = 6496
     height = 803
-    width = tile_w * panel_count
     photo = _as_bgr(image)
     if photo is None:
         return {"success": False, "error": "Could not read the bowl photo"}
@@ -1189,11 +1188,18 @@ def _pet_bowl_print_strip(image, print_dpi=300):
     if image_w > 0 and image_h > 0 and (image_w / image_h) > strip_aspect * 0.7:
         _paste_cover(canvas, photo)
     else:
-        panel = np.full((height, tile_w, 3), 17, dtype=np.uint8)
-        _paste_cover(panel, photo)
+        base = width // panel_count
+        extra = width - base * panel_count
+        left = 0
         for index in range(panel_count):
-            left = index * tile_w
+            add = ((index + 1) * extra) // panel_count - (index * extra) // panel_count
+            tile_w = base + add
+            if index == panel_count - 1:
+                tile_w = width - left
+            panel = np.full((height, tile_w, 3), 17, dtype=np.uint8)
+            _paste_cover(panel, photo)
             canvas[:, left:left + tile_w] = panel
+            left += tile_w
     return _encode_print_jpeg(canvas, print_dpi, width, height)
 
 

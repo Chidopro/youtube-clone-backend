@@ -75,7 +75,10 @@ const COLOR_ALIASES = {
 };
 
 function normalizeColor(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s*\/\s*/g, '/');
 }
 
 /** Printful per-color photos and swatches on every storefront product page. */

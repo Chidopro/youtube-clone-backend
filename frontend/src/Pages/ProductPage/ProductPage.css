@@ -1917,6 +1917,16 @@
   height: 100%;
 }
 
+.product-image--oversized {
+  overflow: hidden;
+}
+
+.product-image--oversized .product-image-clear,
+.product-image--oversized .product-image-normal {
+  transform: scale(1.333);
+  transform-origin: center center;
+}
+
 
 .print-area-overlay {
   position: absolute;

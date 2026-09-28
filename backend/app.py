@@ -1474,22 +1474,22 @@ PRODUCTS = [
     # Products with both COLOR and SIZE options
     {
         "name": "T-Shirt",
-        "price": 21.59,
+        "price": 21.78,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "mensunisextshirtpreview.png",
         "description": "The Unisex Staple T-Shirt feels soft and light with just the right amount of stretch. It's comfortable and flattering for all. We can't compliment this shirt enough–it's one of our crowd favorites, and it's sure to be your next favorite too! Solid colors are 100% Airlume combed and ring-spun cotton. Ash color is 99% combed and ring-spun cotton, 1% polyester. Heather colors are 52% combed and ring-spun cotton, 48% polyester. Athletic and Black Heather are 90% combed and ring-spun cotton, 10% polyester. Heather Prism colors are 99% combed and ring-spun cotton, 1% polyester. Fabric weight: 4.2 oz./yd.² (142 g/m²). Pre-shrunk fabric. 30 singles. Side-seamed construction. Tear-away label. Shoulder-to-shoulder taping. Blank product sourced from Nicaragua, Mexico, Honduras, or the US. Disclaimer: The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
         "size_pricing": {
-            "XS": 0,      # Base price $21.59
-            "S": 0,       # Base price $21.59
-            "M": 0,       # Base price $21.59
-            "L": 0,       # Base price $21.59
-            "XL": 0,      # Base price $21.59
-            "XXL": 1.65,  # +$1.65 = $23.24
-            "XXXL": 3.30, # +$3.30 = $24.89
-            "XXXXL": 4.95, # +$4.95 = $26.54
-            "XXXXXL": 6.60 # +$6.60 = $28.19
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 1.65,
+            "XXXL": 3.30,
+            "XXXXL": 4.95,
+            "XXXXXL": 6.60
         },
         "size_color_availability": {
             "XS": ["Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather", "Kelly", "Heather Midnight Navy", "Heather Prism Ice Blue", "Heather Prism Lilac", "Soft Cream"],
@@ -1505,20 +1505,20 @@ PRODUCTS = [
     },
     {
         "name": "Mens Fitted T-Shirt",
-        "price": 24.11,
+        "price": 24.35,
         "filename": "mensfittedtshirt.png",
         "main_image": "mensfittedtshirt.png",
         "preview_image": "mensfittedtshirtpreview.png",
         "description": "The Next Level 3600 Men's Fitted T-Shirt combines softness with a modern, tailored fit that holds its shape wash after wash. Its lightweight feel makes it a natural everyday favorite, while the tear-away tag offers room for custom branding. 100% ring-spun combed cotton. Heather Grey is 90% cotton, 10% polyester. Fabric weight: 4.3 oz/y² (145.8 g/m²). 32 singles. Pre-shrunk. Tear-away tag. Blank product sourced from Honduras, Nicaragua, Mexico, or Cambodia. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue", "Red", "Desert Pink", "Light Blue"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "XS": 0,      # Base price $24.11
-            "S": 0,       # Base price $24.11
-            "M": 0,       # Base price $24.11
-            "L": 0,       # Base price $24.11
-            "XL": 0,      # Base price $24.11
-            "XXL": 1.65,  # +$1.65
-            "XXXL": 3.30  # +$3.30
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 1.65,
+            "XXXL": 3.30
         },
         "size_color_availability": {
             "XS": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue"],
@@ -1532,121 +1532,121 @@ PRODUCTS = [
     },
     {
         "name": "Oversized T-Shirt",
-        "price": 26.02,
+        "price": 28.97,
         "filename": "unisexoversizedtshirt.png",
         "main_image": "unisexoversizedtshirt.png",
         "preview_image": "mensunisexoversizedtshirtpreview.png",
         "description": "Upgrade your everyday wardrobe with this heavyweight oversized tee. The relaxed, boxy fit and dropped shoulders create a laid-back look, while the premium cotton fabric delivers comfort you'll reach for again and again. Easy to wear on its own or layered, it's a versatile staple for any style. 100% Airlume combed and ring-spun cotton. Athletic Heather is 90% Airlume combed and ring-spun cotton, 10% polyester. Fabric weight: 6 oz./yd.² (170 g/m²). Relaxed oversized fit. Dropped shoulders. Side-seamed construction. Durable double-needle topstitching. Tear-away label. 20 singles. Blank product sourced from Nicaragua. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Dark Grey", "Natural", "Forest", "Athletic Heather", "Toast", "Soft Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "XS": 0,      # No extra charge
-            "S": 0,       # No extra charge
-            "M": 0,       # No extra charge
-            "L": 0,       # No extra charge
-            "XL": 0,      # No extra charge
-            "XXL": 1.65,  # +$1.65
-            "XXXL": 3.30  # +$3.30
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 0.78,
+            "XXXL": 2.58
         }
     },
     {
         "name": "Men's Tank Top",
-        "price": 23.87,
+        "price": 24.11,
         "filename": "menstanktoppreview.png",
         "main_image": "menstanktoppreview.png",
         "preview_image": "menstanktoppreview.png",
         "description": "The Men's Staple Tank Top is made of high-quality durable materials. Wear it on a sunny day out or offer it to your customers on your online store. 100% combed and ring-spun cotton. Tri-blends are 50% polyester, 25% combed, 25% ring-spun cotton, and rayon. Athletic Heather is 90% airlume combed and ring-spun cotton, 10% polyester. All the other Heather colors are 52% airlume combed and ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/yd² (142.40 g/m²), triblends: 3.8 oz/yd² (90.07 g/m²). 30 singles. Regular fit. Side-seamed construction. Blank product sourced from Nicaragua, Honduras, or the US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "True Royal", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
-            "XS": 0,      # Base price $23.87
-            "S": 0,       # Base price $23.87
-            "M": 0,       # Base price $23.87
-            "L": 0,       # Base price $23.87
-            "XL": 0,      # Base price $23.87
-            "XXL": 1.65   # +$1.65 = $25.52
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 1.65
         }
     },
     {
         "name": "Men's Fitted Long Sleeve",
-        "price": 28.49,
+        "price": 28.82,
         "filename": "mensfittedlongsleeve.png",
         "main_image": "mensfittedlongsleeve.png",
         "preview_image": "mensfittedlongsleeveshirtpreview.png",
         "description": "This super-soft long-sleeved crew shirt will be a classic piece in your wardrobe. There are multiple branding options for this 100% cotton shirt, so get your designs ready and customize it to your liking! 100% combed ring-spun cotton. Fabric weight: 4.3 oz/yd² (149.2 g/m²). 32 singles. Pre-shrunk fabric. Set-in 1 × 1 baby rib collar. Tear-away label. Blank product sourced from Nicaragua or Cambodia. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Heavy Metal", "White"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
-            "S": 0,       # No extra charge  
-            "M": 0,       # No extra charge
-            "L": 0,       # No extra charge
-            "XL": 0,      # No extra charge
-            "XXL": 1.65   # +$1.65 = $28.14
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 1.65
         }
     },
     {
         "name": "Hoodie",
-        "price": 35.35,
+        "price": 35.82,
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "mensunisexhoodiepreview.png",
         "description": "Classic unisex hoodie with a front pouch pocket and matching flat drawstrings. The 100% cotton exterior makes this hoodie soft to the touch. What's more, if you go with custom prints, you can personalize the hoodie to your heart's content and maximize your branding thanks to the custom inside label. Use it to showcase your logo, strengthen customer loyalty, and boost your brand's visibility on the market. 65% ring-spun cotton, 35% polyester. Charcoal Heather is 60% ring-spun cotton, 40% polyester. Carbon Grey is 55% ring-spun cotton, 45% polyester. 100% cotton face. Fabric weight: 8.5 oz./yd.² (288.2 g/m²). Front pouch pocket. Self-fabric patch on the back. Matching flat drawstrings. 3-panel hood. Tear-away tag. Blank product sourced from Pakistan. Disclaimer: Please be aware that, for legal reasons, this product comes with a manufacturer's side tag attached. The tag is discreet and won't compromise your design's integrity. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy Blazer", "Maroon", "Charcoal Heather", "Carbon Grey", "White", "Vintage Black", "Team Royal", "Purple", "Forest Green", "Military Green", "Team Red", "Adobe", "Dusty Rose", "Latte", "Khaki", "Team Gold", "Carolina Blue", "Light Pink", "Lavender"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $35.35
-            "M": 0,       # Base price $35.35
-            "L": 0,       # Base price $35.35
-            "XL": 0,      # Base price $35.35
-            "XXL": 1.65,  # +$1.65 = $37.00
-            "XXXL": 3.30  # +$3.30 = $38.65
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 1.65,
+            "XXXL": 3.30
         }
     },
     {
         "name": "Cropped Hoodie",
-        "price": 40.27,
+        "price": 40.84,
         "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
         "preview_image": "womenscroppedhoodiepreview.png",
         "description": "Comfort and style rolled into one—that's the easiest way to describe this fashion-forward hoodie. It serves as a great statement piece in any wardrobe, and with its trendy raw hem and matching drawstrings, the hoodie is bound to become a true favorite on your online store. 52% airlume combed and ring-spun cotton, 48% poly fleece. Fabric weight: 6.5 oz/yd² (220.39 g/m²). Dyed-to-match drawstrings. Dropped shoulder cut. Cropped body with a raw hem. Blank product sourced from Mexico, Nicaragua or the United States. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Military Green", "Storm"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $40.27
-            "M": 0,       # Base price $40.27
-            "L": 0,       # Base price $40.27
-            "XL": 0,      # Base price $40.27
-            "XXL": 1.65   # +$1.65 = $41.92
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 1.65
         }
     },
     {
         "name": "Champion Hoodie",
-        "price": 41.75,
+        "price": 42.34,
         "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
         "preview_image": "mensunisexchampionhoodiepreview.png",
         "description": "A classic hoodie that combines Champion's signature quality with everyday comfort. The cotton-poly blend makes it soft and durable, while the two-ply hood and snug rib-knit cuffs lock in warmth. Champion's double Dry technology keeps the wearer dry on the move, and the kangaroo pocket keeps essentials handy. Customize it with your design, order one for yourself, or sell it online. 50% cotton, 50% polyester. Light Steel color is 50% cotton, 40% polyester, and 10% black polyester. Fabric weight: 9 oz./yd.² (305 g/m²). Regular fit. Set-in sleeves. Two-ply hood. Dyed-to-match drawcord. Kangaroo pocket. Heavy rib-knit waistband and cuffs. Embroidered C logo on the left cuff. Blank product sourced from Honduras and Guatemala. Disclaimer: Size up for a looser fit.",
         "options": {"color": ["Black", "Light Steel"], "size": ["S", "M", "L", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $41.75
-            "M": 0,       # Base price $41.75
-            "L": 0,       # Base price $41.75
-            "XXL": 1.65,  # +$1.65 = $43.40
-            "XXXL": 3.30  # +$3.30 = $45.05
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XXL": 1.66,
+            "XXXL": 3.30
         }
     },
     {
         "name": "Women's Ribbed Neck",
-        "price": 25.13,
+        "price": 25.39,
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
         "preview_image": "womensribbedneckpreview.png",
         "description": "This classic women's t-shirt is designed to flatter every body shape. The 100% organic cotton is soft on the skin, and the ribbed collar adds a polished look. Add your design, order this tee for yourself, or sell it online. 100% organic combed ring-spun cotton. Fabric weight: 5.3 oz./yd.² (180 g/m²). Regular fit. Set-in sleeves. 1 × 1 rib at collar. Double-needle topstitch on the sleeves and bottom hems. Self-fabric neck tape on the inside of the back. The fabric of this product holds certifications for its organic cotton content under GOTS (Global Organic Textile Standard) and OCS (Organic Content Standard). Blank product sourced from Bangladesh. Disclaimer: Note that we show the US sizes for this product. The sizes correspond to a bigger size in the European market, so customers from that region should order a size down. To learn more about eco-friendly certificates, check out this FAQ article! This product is made on demand. No minimums.",
         "options": {"color": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
          "size_pricing": {
-            "S": 0,       # Base price $23.13
-            "M": 0,       # Base price $23.13
-            "L": 0,       # Base price $23.13
-            "XL": 0,      # Base price $23.13
-            "XXL": 1.65,  # +$1.65 = $24.78
-            "XXXL": 3.30, # +$3.30 = $26.43
-            "XXXXL": 4.95, # +$4.95 = $28.08
-            "XXXXXL": 6.60 # +$6.60 = $29.73
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 1.65,
+            "XXXL": 3.30,
+            "XXXXL": 4.95,
+            "XXXXXL": 6.60
         },
         "size_color_availability": {
             "S": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"],
@@ -1661,7 +1661,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Shirt",
-        "price": 22.99,
+        "price": 23.21,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
         "preview_image": "womenshirtpreview.png",
@@ -1672,13 +1672,13 @@ PRODUCTS = [
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 1.65,  # +$1.65 = $22.64
-            "XXXL": 3.30  # +$3.30 = $24.29
+            "XXL": 1.65,
+            "XXXL": 3.30
         } 
     },
     {
         "name": "Heavyweight T-Shirt",
-        "price": 24.19,
+        "price": 24.43,
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
@@ -1689,14 +1689,14 @@ PRODUCTS = [
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 1.65,  # +$1.65 = $23.84
-            "XXXL": 3.30, # +$3.30 = $25.49
-            "XXXXL": 4.95 # +$4.95 = $27.14
+            "XXL": 1.65,
+            "XXXL": 3.30,
+            "XXXXL": 4.95
         }
     },
     {
         "name": "Kids Shirt",
-        "price": 21.79,
+        "price": 21.99,
         "filename": "kidsshirtpreview2.png",
         "main_image": "kidsshirtpreview2.png",
         "preview_image": "kidsshirtpreview2.png",
@@ -1711,7 +1711,7 @@ PRODUCTS = [
     },
     {
         "name": "Youth Heavy Blend Hoodie",
-        "price": 29.16,
+        "price": 29.50,
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
         "preview_image": "kidsyouthheavyblendhoodiepreview2.png",
@@ -1727,7 +1727,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Long Sleeve",
-        "price": 25.99,
+        "price": 26.27,
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
         "preview_image": "kidslongsleevepreview2.png",
@@ -1741,81 +1741,81 @@ PRODUCTS = [
     },
     {
         "name": "Kids Sweatshirt",
-        "price": 26.13,
+        "price": 26.41,
         "filename": "kidssweatshirt.png",
         "main_image": "kidssweatshirt.png",
         "preview_image": "kidssweatshirtpreview2.png",
         "description": "Available in 8 classic colors, you're sure to fall in love with this sweatshirt's comfy fit and cozy feel. Made from air-jetted fleece fabric for a softer touch and reduced pilling, it'll stay looking great wash after wash. Customize it with your original designs and create a must-have wardrobe staple for a younger audience. Sell it online or order for yourself with no minimums. 50% cotton, 50% polyester. Fabric weight: 8 oz/yd² (271.25 g/m²). Air-jetted fleece fabric. Regular fit. Double-needle stitching on shoulders, armholes, neck, waistband, and cuffs. The fabric is OEKO-TEX Standard 100 certified. Blank product sourced from Honduras. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Maroon", "Red", "Dark Heather", "Royal", "Sport Grey", "White"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
-            "XS": 0,      # No extra charge
-            "S": 0,       # No extra charge  
-            "M": 0,       # No extra charge
-            "L": 0,       # No extra charge
-            "XL": 0       # No extra charge
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0
         }
     },
     {
         "name": "Baby Body Suit",
-        "price": 21.60,
+        "price": 21.46,
         "filename": "kidsbabybodysuit6.png",
         "main_image": "kidsbabybodysuit6.png",
         "preview_image": "kidsbabybodysuitpreview6.png",
         "description": "Made from supremely soft cotton, this one-piece is ideal for delicate skin. The lap shoulder design and three-snap closure ensure quick, easy outfit changes, making it a practical choice for parents. Add your design, order this bodysuit for your little one, or start selling it online! 100% combed ring-spun cotton in a 1 × 1 rib. Heather color is 90% combed ring-spun cotton, 10% polyester. Fabric weight: 5 oz./yd.² (170 g/m²). Three-snap closure. Lap shoulders. Blank product sourced from India. Note that due to the ribbed fabric, the print can break when stretched. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Red", "Royal", "Pink", "White", "Vintage Indigo", "Ash"], "size": ["12m", "18m", "24m"]},
         "size_pricing": {
-            "12m": 0,     # Base price $21.60
-            "18m": 0,     # Base price $21.60
-            "24m": 0      # Base price $21.60
+            "12m": 0,
+            "18m": 0,
+            "24m": 0
         }
     },
     {
         "name": "Toddler Jersey T-Shirt",
-        "price": 20.75,
+        "price": 20.92,
         "filename": "toddlerjerseytshirt.png",
         "main_image": "toddlerjerseytshirt.png",
         "preview_image": "kidstoddlerjerseytshirtpreview2.png",
         "description": "This soft jersey t-shirt is built to handle the energy of active toddlers. Its ribbed collar, self-fabric neck tape, and double-stitched sleeves add comfort and durability. Customize the shirt with print designs and add it to your store! 100% combed ring-spun cotton. Ash color is 99% combed ring-spun cotton and 1% polyester. Heather color is 90% combed ring-spun cotton and 10% polyester. Fabric weight: 4.5 oz./yd.² (153 g/m²). Side-seamed construction. Shoulder-to-shoulder taping. Double-needle stitching on the sleeves and bottom hem. Ribbed topstitch on the collar. EasyTear label. Blank product sourced from India. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Hot Pink", "Heather", "Light Blue", "White"], "size": ["2", "3", "4", "5/6"]},
         "size_pricing": {
-            "2": 0,       # No extra charge
-            "3": 0,       # No extra charge
-            "4": 0,       # No extra charge
-            "5/6": 0      # No extra charge
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5/6": 0
         }
     },
     {
         "name": "Baby Staple Tee",
-        "price": 22.40,
+        "price": 22.61,
         "filename": "babystapletshirt.png",
         "main_image": "babystapletshirt.png",
         "preview_image": "kidsbabystapleteepreview2.png",
         "description": "This Bella + Canvas baby short sleeve tee is made from soft and light jersey cotton and ensures maximum comfort. Combined with your unique design, the casual crew neck tee will become a well-loved item in any baby's wardrobe! 100% Airlume combed ring-spun cotton. Heather colors are 52% combed ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/yd² (142 g/m²). Pre-shrunk fabric. 32 singles. Relaxed fit. Side-seamed construction. Blank product sourced from Nicaragua, the US, or Honduras. Looking for bigger sizes? Check out the same tee for toddlers and youth! This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Pink", "White"], "size": ["6-12m", "12-18m", "18-24m"]},
         "size_pricing": {
-            "6-12m": 0,      # No extra charge
-            "12-18m": 0,     # No extra charge
-            "18-24m": 0      # No extra charge
+            "6-12m": 0,
+            "12-18m": 0,
+            "18-24m": 0
         }
     },
     {
         "name": "Baby Jersey T-Shirt",
-        "price": 20.75,
+        "price": 20.92,
         "filename": "toddlershortsleevet.png",
         "main_image": "toddlershortsleevet.png",
         "preview_image": "kidsbabyjerseytshirtpreview2.png",
         "description": "Soft, cozy, and made for everyday wear—this baby jersey t-shirt is designed with gentle, breathable fabric that's perfect for delicate skin. The ribbed collar keeps the shirt snug and maintains its shape wash after wash. Whether it's playtime, naptime, or a family outing, it's a reliable choice. Customize this baby tee with your design, order it for your child, or start selling it online. 100% combed ring-spun cotton. Fabric weight: 4.5 oz./yd.² (153 g/m²). Regular fit. Side-seamed construction. Topstitched ribbed collar. Shoulder-to-shoulder self-fabric back neck tape. Double-needle topstitch on sleeves and bottom hem. EasyTear label. Blank product sourced from India. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Royal", "Pink", "Light Blue", "White", "Charcoal"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
-            "6m": 0,      # Base price $20.75
-            "12m": 0,     # Base price $20.75
-            "18m": 0,     # Base price $20.75
-            "24m": 0      # Base price $20.75
+            "6m": 0,
+            "12m": 0,
+            "18m": 0,
+            "24m": 0
         }
     },
     {
         "name": "Laptop Sleeve",
-        "price": 30.73,
+        "price": 31.10,
         "filename": "laptopsleeve.png",
         "main_image": "laptopsleeve.png",
         "preview_image": "bagslaptopsleevepreview.png",
@@ -1823,12 +1823,12 @@ PRODUCTS = [
         "options": {"color": ["White"], "size": ["13.5\"x10.5\"", "14.75\"x11.25\""]},
         "size_pricing": {
             "13.5\"x10.5\"": 0,
-            "14.75\"x11.25\"": 1.78  # +$1.78 = $30.51
+            "14.75\"x11.25\"": 1.82
         }
     },
     {
         "name": "All-Over Print Drawstring",
-        "price": 25.64,
+        "price": 25.91,
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
         "preview_image": "bagsalloverprintdrawstringpreview.png",
@@ -1840,7 +1840,7 @@ PRODUCTS = [
     },
     {
         "name": "All Over Print Tote Pocket",
-        "price": 27.55,
+        "price": 27.86,
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
         "preview_image": "bagsalloverprinttotepocketpreview.png",
@@ -1852,7 +1852,7 @@ PRODUCTS = [
     },
     {
         "name": "Greeting Card",
-        "price": 9.99,
+        "price": 14.21,
         "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
         "preview_image": "miscellaneousgreetingcardpreview.png",
@@ -1860,13 +1860,13 @@ PRODUCTS = [
         "options": {"color": ["White"], "size": ["4\"x6\"", "5\"x7\"", "5.83\"x8.27\""]},
         "size_pricing": {
             "4\"x6\"": 0,
-            "5\"x7\"": 0,
-            "5.83\"x8.27\"": 0
+            "5\"x7\"": 0.74,
+            "5.83\"x8.27\"": 1.29
         }
     },
     {
         "name": "Hardcover Bound Notebook",
-        "price": 23.05,
+        "price": 23.27,
         "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
         "preview_image": "miscellaneoushardcovernotebookpreview.png",
@@ -1878,7 +1878,7 @@ PRODUCTS = [
     },
     {
         "name": "Apron",
-        "price": 28.90,
+        "price": 29.19,
         "filename": "apron.png",
         "main_image": "apron.png",
         "preview_image": "miscellaneousapronpreview.png",
@@ -1890,7 +1890,7 @@ PRODUCTS = [
     },
     {
         "name": "Pet Bowl All-Over Print",
-        "price": 31.65,
+        "price": 32.04,
         "filename": "dogbowl.png",
         "main_image": "dogbowl.png",
         "preview_image": "petspetbowlalloverprintpreview.png",
@@ -1898,12 +1898,12 @@ PRODUCTS = [
         "options": {"color": ["White"], "size": ["18oz", "32oz"]},
         "size_pricing": {
             "18oz": 0,
-            "32oz": 1.64  # +$1.64 = $31.29
+            "32oz": 1.68
         }
     },
     {
         "name": "Pet Bandana Collar",
-        "price": 23.78,
+        "price": 24.02,
         "filename": "scarfcollar.png",
         "main_image": "scarfcollar.png",
         "preview_image": "petspetbandanacollarpreview.png",
@@ -1912,43 +1912,43 @@ PRODUCTS = [
         "size_pricing": {
             "Small 10″–16.75″": 0,
             "Medium 12″–20.25″": 0,
-            "Large 14.25″–23″": 1.35,  # +$1.35 = $23.13
-            "XL 15.5″–23.5″": 1.35  # +$1.35 = $23.13
+            "Large 14.25″–23″": 1.37,
+            "XL 15.5″–23.5″": 1.37
         }
     },
     {
         "name": "Jigsaw Puzzle with Tin",
-        "price": 25.40,
+        "price": 25.67,
         "filename": "jigsawpuzzle.png",
         "main_image": "jigsawpuzzle.png",
         "preview_image": "miscellaneousjigsawpuzzlewithtinpreview.png",
         "description": "Make quality time more fun with a custom jigsaw puzzle that's both a challenge and a keepsake. Whether it's a cozy night in with family or a weekend brain-teaser with friends, this puzzle delivers an experience worth framing. With rich colors, a glossy finish, and your design, it's ideal for sellers looking to offer meaningful, personalized gifts. Pre-die-cut chipboard with non-edge pieces. White metal tin box with the image on the lid. Available in 6 sizes: 30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm), 110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm), 252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm), 500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm), 1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm), 2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm). Weight by size: 30 pcs: 8 oz (227 g), 110 pcs: 8 oz (227 g), 252 pcs: 9.6 oz (272 g), 500 pcs: 20 oz (567 g), 1000 pcs: 24 oz (680 g), 2000 pcs: 28 oz (794 g). Glossy finish. Vibrant colors. Ideal for gifting or wall decor. Blank product sourced from China. Important: Choking hazard—small parts. Not suitable for children under 4 years. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)", "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)", "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)", "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)"]},
         "size_pricing": {
-            "30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,  # Base price $25.40
-            "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,  # Base price $25.40
-            "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)": 2.19,  # +$2.19 = $27.59
-            "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)": 5.93,  # +$5.93 = $31.33
-            "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)": 8.37,  # +$8.37 = $33.77
-            "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)": 17.10  # +$17.10 = $42.50
+            "30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,
+            "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,
+            "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)": 2.23,
+            "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)": 6.05,
+            "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)": 8.54,
+            "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)": 17.44
         }
     },
     {
         "name": "Men's Long Sleeve Shirt",
-        "price": 22.79,
+        "price": 23.01,
         "filename": "menslongsleeveshirt6.png",
         "main_image": "menslongsleeveshirt6.png",
         "preview_image": "menslongsleeveshirtpreview6.png",
         "description": "With its classic and regular fit, this Men's Long Sleeve Shirt is a true wardrobe essential. It'll look great on its own or layered under a jacket and will be perfect for a relaxed and casual setting. 100% cotton. Sport Grey is 90% cotton, 10% polyester. Fabric weight: 6.0 oz./yd.² (203.43 g/m²). Classic fit with long sleeves and rib cuffs. Pre-shrunk jersey knit. Seamless double-needle ⅞ ″ (2.2 cm) collar. Double-needle bottom hem. Taped neck and shoulders. Quarter-turned to avoid crease down the middle. Blank product sourced from Honduras, Haiti, or Nicaragua. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $22.79
-            "M": 0,       # Base price $22.79
-            "L": 0,       # Base price $22.79
-            "XL": 0,      # Base price $22.79
-            "XXL": 1.65,  # +$1.65 = $24.44
-            "XXXL": 3.30, # +$3.30 = $26.09
-            "XXXXL": 4.95 # +$4.95 = $27.74
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 1.65,
+            "XXXL": 3.30,
+            "XXXXL": 4.95
         },
         "size_color_availability": {
             "S": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
@@ -1962,23 +1962,23 @@ PRODUCTS = [
     },
     {
         "name": "Racerback Tank",
-        "price": 25.82,
+        "price": 21.50,
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.png",
         "description": "A proven bestseller in women's activewear, this racerback tank blends style, comfort, and affordability. Designed to deliver a premium feel without the high price tag, it's a smart pick for fitness or athleisure-oriented stores. With matching self-binding seams, a flattering fitted cut, and a lightweight cotton-poly jersey blend, it's built to perform and easy to customize for yourself or to sell online. 60% combed ringspun cotton, 40% polyester. Fabric weight: 4 oz./yd.² (113.4 g/m²). Lightweight jersey. Fitted silhouette. Scoop neck and racerback. Self-binding seams in matching colors for a seamless look. Tear-away label. Blank product sourced from Honduras. This product is made on demand. No minimums.",
         "options": {"color": ["Vintage Black", "Purple Rush", "Premium Heather", "Vintage Navy", "Vintage Red", "Vintage Royal", "Vintage Turquoise", "Heather White"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
-            "XS": 0,      # Base price $25.82
-            "S": 0,       # Base price $25.82
-            "M": 0,       # Base price $25.82
-            "L": 0,       # Base price $25.82
-            "XL": 0       # Base price $25.82
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0
         }
     },
     {
         "name": "Pullover Hoodie",
-        "price": 39.97,
+        "price": 40.53,
         "filename": "unisexpulloverhoodie.png",
         "main_image": "unisexpulloverhoodie.png",
         "preview_image": "womensunisexpulloverhoodiepreview.png",
@@ -1989,12 +1989,12 @@ PRODUCTS = [
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 1.65  # +$1.65 = $41.62
+            "XXL": 1.65
         }
     },
     {
         "name": "Micro-Rib Tank Top",
-        "price": 25.31,
+        "price": 25.58,
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
         "preview_image": "womensmicroribtanktoppreview.png",
@@ -2006,12 +2006,12 @@ PRODUCTS = [
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 1.65  # +$1.65 = $24.96
+            "XXL": 1.65
         }
     },
     {
         "name": "Distressed Dad Hat",
-        "price": 24.48,
+        "price": 24.73,
         "filename": "distresseddadhat.png",
         "main_image": "distresseddadhat.png",
         "preview_image": "hatsdistresseddadhatpreview.png",
@@ -2023,20 +2023,20 @@ PRODUCTS = [
     },
     {
         "name": "Closed Back Cap",
-        "price": 24.91,
+        "price": 25.17,
         "filename": "closedbackcap.png",
         "main_image": "closedbackcap.png",
         "preview_image": "hatsclosedbackcappreview.png",
         "description": "Closed back cap with adjustable fit. Perfect for custom designs and logos.",
         "options": {"color": ["Dark Navy", "Black", "Royal Blue", "Red", "Grey", "White", "Dark Grey", "Multicam Black", "Olive", "Multicam Green", "Khaki"], "size": ["S/M", "L/XL"]},
         "size_pricing": {
-            "S/M": 0,     # Base price $24.91
-            "L/XL": 0     # Same price $24.91
+            "S/M": 0,
+            "L/XL": 0
         }
     },
     {
         "name": "Five Panel Trucker Hat",
-        "price": 25.39,
+        "price": 24.96,
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
         "preview_image": "hatsfivepaneltruckerhatpreview.png",
@@ -2062,7 +2062,7 @@ PRODUCTS = [
     },
     {
         "name": "Five Panel Baseball Cap",
-        "price": 22.46,
+        "price": 23.81,
         "filename": "youthbaseballcap.png",
         "main_image": "youthbaseballcap.png",
         "preview_image": "hatsfivepanelbaseballhatpreview.png",
@@ -2074,34 +2074,34 @@ PRODUCTS = [
     },
     {
         "name": "White Glossy Mug",
-        "price": 16.95,
+        "price": 17.05,
         "filename": "mug1.png",
         "main_image": "mug1.png",
         "preview_image": "mugwhiteglossymugpreview.png",
         "description": "This sturdy mug is perfect for your morning coffee, afternoon tea, or whatever hot beverage you enjoy. It's glossy white and yields vivid prints that retain their quality when dish-washed and microwaved. Add a graphic of your choice and add this best-seller to your store, so others can enjoy your magical designs too! Ceramic. 11 oz mug dimensions: 3.8″ (9.6 cm) in height, 3.2″ (8.2 cm) in diameter. 15 oz mug dimensions: 4.7″ (11.9 cm) in height, 3.3″ (8.5 cm) in diameter. 20 oz mug dimensions: 4.3″ (10.9 cm) in height, 3.7″ (9.3 cm) in diameter. Lead and BPA-free material. Dishwasher and microwave safe. Blank product sourced from China. Disclaimer: The White Glossy Mug may vary slightly in size by up to +/- 0.1″ (2 mm) due to the nature of the production process. These variations are normal and won't affect your mug's quality or functionality. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["11 oz", "15 oz", "20 oz"]},
         "size_pricing": {
-            "11 oz": 0,      # Base price $16.95
-            "15 oz": 1.50,   # +$1.50 = $18.45
-            "20 oz": 3.00    # +$3.00 = $19.95
+            "11 oz": 0,
+            "15 oz": 1.53,
+            "20 oz": 3.06
         }
     },
     {
         "name": "Travel Mug",
-        "price": 30.48,
+        "price": 30.85,
         "filename": "travelmug.png",
         "main_image": "travelmug.png",
         "preview_image": "mugtravelmugpreview.png",
         "description": "Enjoy your favorite beverage on the go with a premium-quality travel mug. It's made with stainless steel and keeps hot drinks hot for up to 6 h, and cold drinks cold for up to 8 h. It fits into most car cup holders and has a spill-proof plastic lid. Personalize it for yourself or add it to your online store and start selling modern drinkware. Made with stainless steel. Lead and BPA-free materials used. Hand-wash only. Blank product sourced from China. 25 oz (739 ml) size: Height: 7.9″ (20 cm), Upper diameter: 3.3″ (8.4 cm), Bottom diameter: 2.7″ (7 cm). Comes with a plastic press-in lid. 40 oz (1183 ml) size: Height: 10.4″ (26.5 cm), Upper diameter: 3.9″ (9.9 cm), Bottom diameter: 2.9″ (7.4 cm). Comes with a plastic straw and screw-on lid. Caution! To prevent steam pressure buildup, always open the lid before placing it on a hot drink. This product is made on demand. No minimums.",
         "options": {"color": ["White", "Black", "Navy", "Gray"], "size": ["25 oz", "40 oz"]},
         "size_pricing": {
-            "25 oz": 0,      # Base price $30.48
-            "40 oz": 0.93    # +$0.93 = $31.41
+            "25 oz": 0,
+            "40 oz": 0.95
         }
     },
     {
         "name": "Enamel Mug",
-        "price": 21.82,
+        "price": 22.02,
         "filename": "enamalmug.png",
         "main_image": "enamalmug.png",
         "preview_image": "mugenamelmugpreview.png",
@@ -2113,15 +2113,15 @@ PRODUCTS = [
     },
     {
         "name": "Colored Mug",
-        "price": 18.49,
+        "price": 18.62,
         "filename": "coloredmug.png",
         "main_image": "coloredmug.png",
         "preview_image": "mugcoloredmugpreview.png",
         "description": "This sturdy White Ceramic Mug has a colorful inside and a white print area all around the mug. Choose between vibrant color options, create your own unique designs, and start selling the mug to your customers! Ceramic. 11 oz mug dimensions: 3.79″ (9.6 cm) in height, 3.25″ (8.3 cm) in diameter. 15 oz mug dimensions: 4.69″ (11.9 cm) in height, 3.35″ (8.5 cm) in diameter. Lead and BPA-free material. White print area. Colored rim, inside, and handle. Dishwasher and microwave safe. Blank product sourced from China. This product is made on demand. No minimums. Disclaimer: This product is not suitable for children under 18 months. Depending on the light setting, the handle color of the White Ceramic Mug in Black may appear blue.",
         "options": {"color": ["Black", "Red", "Blue", "Pink", "Yellow", "Orange", "Dark Blue", "Dark Green", "Golden Yellow", "Green"], "size": ["11 oz", "15 oz"]},
         "size_pricing": {
-            "11 oz": 0,      # Base price $18.49
-            "15 oz": 0.80    # +$0.80 = $19.29
+            "11 oz": 0,
+            "15 oz": 0.82
         },
         "size_color_availability": {
             "11 oz": ["Black", "Red", "Blue", "Pink", "Yellow", "Orange", "Dark Blue", "Dark Green", "Golden Yellow", "Green"],
@@ -2130,7 +2130,7 @@ PRODUCTS = [
     },
     {
         "name": "All-Over Print Utility Bag",
-        "price": 30.57,
+        "price": 30.94,
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "bagsalloverprintutilitybagpreview.png",
@@ -2142,7 +2142,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Crop Top",
-        "price": 28.01,
+        "price": 28.33,
         "filename": "womens-crop-top.png",
         "main_image": "womens-crop-top.png",
         "preview_image": "womenscroptoppreview.png",

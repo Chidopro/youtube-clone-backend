@@ -44,21 +44,48 @@ export function isPetBowlProduct(productName) {
 }
 
 /**
- * Bowl print is 6496×803. Eleven windows of 590×803 (about 3:4) tile that band exactly.
- * Each photo covers its window. Extra edges are cropped so every panel is the same height.
+ * Printful bowl printfile is 6496×803. Eleven integer windows must sum to
+ * that width (6×591 + 5×590). A 590×11 = 6490 strip left a 6px sliver
+ * when Printful closed the ring.
  */
 export const PET_BOWL_PANEL_COUNT = 11;
-export const PET_BOWL_WINDOW = { width: 590, height: 803 };
+export const PET_BOWL_PRINT = { width: 6496, height: 803 };
+export const PET_BOWL_WINDOW = {
+  width: Math.round(PET_BOWL_PRINT.width / PET_BOWL_PANEL_COUNT),
+  height: PET_BOWL_PRINT.height,
+};
 /** Wider than this, a photo cannot fill a portrait window without becoming a slice. */
 export const PET_BOWL_MAX_PHOTO_ASPECT = 1.45;
-export const PET_BOWL_PRINT = { width: 6496, height: 803 };
-/** Eleven exact windows. 11 × 590 = 6490, the file Printful should receive. */
 export const PET_BOWL_PRINT_FILE = {
-  width: PET_BOWL_WINDOW.width * PET_BOWL_PANEL_COUNT,
-  height: PET_BOWL_WINDOW.height,
+  width: PET_BOWL_PRINT.width,
+  height: PET_BOWL_PRINT.height,
 };
-/** Half-size strip: 11 × 295 by 401, same ratio as the print band. */
-const PET_BOWL_COMPOSE = { width: 3245, height: 401 };
+const PET_BOWL_COMPOSE = {
+  width: PET_BOWL_PRINT.width,
+  height: PET_BOWL_PRINT.height,
+};
+
+/** Integer tile boxes that fill `width` with no leftover column. */
+export function bowlTileRects(width, height, count = PET_BOWL_PANEL_COUNT) {
+  const w = Math.max(count, Math.round(Number(width) || 0));
+  const h = Math.max(1, Math.round(Number(height) || 0));
+  const n = Math.max(1, Math.round(Number(count) || PET_BOWL_PANEL_COUNT));
+  const base = Math.floor(w / n);
+  const extra = w - base * n;
+  const rects = [];
+  let x = 0;
+  for (let index = 0; index < n; index += 1) {
+    const add = Math.floor(((index + 1) * extra) / n) - Math.floor((index * extra) / n);
+    const tileW = base + add;
+    rects.push({ x, width: tileW, height: h });
+    x += tileW;
+  }
+  if (rects.length) {
+    const last = rects[rects.length - 1];
+    last.width = w - last.x;
+  }
+  return rects;
+}
 
 function loadHtmlImage(src, failMessage = 'Could not load image') {
   return new Promise((resolve, reject) => {
@@ -72,14 +99,17 @@ function loadHtmlImage(src, failMessage = 'Could not load image') {
 
 /** Fill one print window. Crop the overflow so the photo meets the top and bottom edges. */
 function drawBowlPanel(ctx, img, tileX, tileW, height) {
-  const scale = Math.max(tileW / img.width, height / img.height);
+  const x = Math.round(tileX);
+  const w = Math.max(1, Math.round(tileW));
+  const h = Math.max(1, Math.round(height));
+  const scale = Math.max(w / img.width, h / img.height);
   const dw = img.width * scale;
   const dh = img.height * scale;
-  const dx = tileX + (tileW - dw) / 2;
-  const dy = (height - dh) / 2;
+  const dx = x + (w - dw) / 2;
+  const dy = (h - dh) / 2;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(tileX, 0, tileW, height);
+  ctx.rect(x, 0, w, h);
   ctx.clip();
   ctx.drawImage(img, dx, dy, dw, dh);
   ctx.restore();
@@ -89,9 +119,9 @@ export async function composePetBowlBand(sources, target = PET_BOWL_COMPOSE) {
   const count = PET_BOWL_PANEL_COUNT;
   const panels = Array.from({ length: count }, (_, index) => String(sources?.[index] || '').trim());
   if (panels.some((src) => !src)) return null;
-  const width = Number(target?.width) || PET_BOWL_COMPOSE.width;
-  const height = Number(target?.height) || PET_BOWL_COMPOSE.height;
-  const tileW = width / count;
+  const width = Math.round(Number(target?.width) || PET_BOWL_COMPOSE.width);
+  const height = Math.round(Number(target?.height) || PET_BOWL_COMPOSE.height);
+  const tiles = bowlTileRects(width, height, count);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -101,7 +131,10 @@ export async function composePetBowlBand(sources, target = PET_BOWL_COMPOSE) {
   ctx.fillRect(0, 0, width, height);
   for (let index = 0; index < count; index += 1) {
     const img = await loadHtmlImage(panels[index], 'Could not load a bowl panel');
-    drawBowlPanel(ctx, img, index * tileW, tileW, height);
+    const tile = tiles[index];
+    const next = tiles[index + 1];
+    const overlap = next ? 1 : 0;
+    drawBowlPanel(ctx, img, tile.x, tile.width + overlap, height);
   }
   return {
     dataUrl: canvas.toDataURL('image/jpeg', 0.85),
