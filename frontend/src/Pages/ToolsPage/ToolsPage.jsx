@@ -2128,6 +2128,7 @@ const ProductPreviewWithDrag = ({
   const [shirtFillColor, setShirtFillColor] = useState(() => String(garmentTintColor || shirtFillHint || ''));
   const [tintedMockupSrc, setTintedMockupSrc] = useState('');
   const [mockupSrc, setMockupSrc] = useState(productImage);
+  const [mockupReady, setMockupReady] = useState(false);
   const [overlayNaturalSize, setOverlayNaturalSize] = useState({ width: 0, height: 0 });
   const overlayFitKeyRef = useRef('');
   const liteSizeLockedRef = useRef(false);
@@ -2136,6 +2137,10 @@ const ProductPreviewWithDrag = ({
   useEffect(() => {
     setMockupSrc(productImage);
   }, [productImage]);
+
+  useLayoutEffect(() => {
+    setMockupReady(false);
+  }, [productImage, mockupSrc, tintedMockupSrc]);
 
   useEffect(() => {
     const tint = String(garmentTintColor || '').trim();
@@ -2630,6 +2635,9 @@ const ProductPreviewWithDrag = ({
   const handleProductImageLoad = () => {
     measureProductImage();
     const img = productImageRef.current;
+    if (img?.naturalWidth > 0 && img?.naturalHeight > 0) {
+      setMockupReady(true);
+    }
     const name = (printAreaFit === 'product' && selectedProductName) ? selectedProductName : productName;
     const src = img ? (img.currentSrc || img.src) : '';
     if (src && !isPrintfulMockupUrl(src)) {
@@ -2698,6 +2706,17 @@ const ProductPreviewWithDrag = ({
         if (!measureCancelled) measureProductImage();
       }, delay)
     ));
+    const retryTimers = [1800, 4200].map((delay) => (
+      window.setTimeout(() => {
+        if (measureCancelled) return;
+        const current = productImageRef.current;
+        if (current?.complete && current.naturalWidth > 0 && current.naturalHeight > 0) {
+          setMockupReady(true);
+          return;
+        }
+        retryPreviewImage(current, mockupSrc || productImage);
+      }, delay)
+    ));
     const observer = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
         if (measureCancelled) return;
@@ -2713,6 +2732,7 @@ const ProductPreviewWithDrag = ({
     return () => {
       measureCancelled = true;
       delayedMeasures.forEach((timer) => window.clearTimeout(timer));
+      retryTimers.forEach((timer) => window.clearTimeout(timer));
       observer?.disconnect();
       window.removeEventListener('resize', measureProductImage);
       window.removeEventListener('orientationchange', measureProductImage);
@@ -2824,7 +2844,7 @@ const ProductPreviewWithDrag = ({
   return (
     <div 
       ref={containerRef}
-      className="product-preview-stage"
+      className={`product-preview-stage${matchPrintAreaProductName(productName) === 'Racerback Tank' ? ' product-preview-stage--racerback' : ''}`}
       style={{
         position: 'relative',
         width: '100%',
@@ -2848,12 +2868,13 @@ const ProductPreviewWithDrag = ({
         alt={productName}
         decoding="async"
         referrerPolicy="no-referrer"
-        crossOrigin={garmentTintColor ? 'anonymous' : undefined}
+        crossOrigin={garmentTintColor ? undefined : 'anonymous'}
         onLoad={(event) => {
           delete event.currentTarget.dataset.previewRetryCount;
           handleProductImageLoad();
         }}
         onError={(event) => {
+          setMockupReady(false);
           if (tintedMockupSrc) {
             setTintedMockupSrc('');
             return;
@@ -2875,7 +2896,7 @@ const ProductPreviewWithDrag = ({
       />
       
       {/* Screenshot Overlay (Draggable) */}
-      {screenshot && screenshotDisplaySize.width >= 8 && screenshotDisplaySize.height >= 8 && (() => {
+      {mockupReady && screenshot && screenshotDisplaySize.width >= 8 && screenshotDisplaySize.height >= 8 && (() => {
         const placeName = selectedProductName || productName;
         const printBox = overlaySizeForOrientation(
           screenshotDisplaySize.width,

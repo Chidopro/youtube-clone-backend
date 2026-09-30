@@ -664,6 +664,10 @@ body.tools-page-active .site-footer {
   cursor: grab;
 }
 
+.product-preview-stage.product-preview-stage--racerback {
+  max-width: 160px;
+}
+
 .product-preview-stage:active {
   cursor: grabbing;
 }
@@ -2200,6 +2204,12 @@ body.tools-page-active .site-footer {
     margin-right: auto;
     flex-shrink: 0;
     touch-action: pinch-zoom;
+  }
+
+  /* The racerback mockup is much taller and narrower than the Women's Shirt
+     asset. Scale its stage so both preview windows have the same height. */
+  body.tools-page-active .product-preview-stage.product-preview-stage--racerback {
+    max-width: 123px;
   }
 
   body.tools-page-active .product-preview-mockup {
