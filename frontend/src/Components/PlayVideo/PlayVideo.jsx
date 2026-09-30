@@ -33,6 +33,9 @@ function getUseCustomPlayer() {
 }
 
 const PLAYBACK_RATES = [0.5, 1, 1.25, 1.5, 2];
+const ALWAYS_MUTED_VIDEO_IDS = new Set([
+    'f21b7f49-348e-4651-aa50-8e77897e1753', // MaxFreedom: DJ Panda
+]);
 
 function formatPlaybackRate(rate) {
     const n = Number(rate) || 1;
@@ -374,6 +377,7 @@ const PlayVideo = ({
     const { creatorSettings } = useCreator();
     const navigate = useNavigate();
     const [video, setVideo] = useState(null);
+    const forceMuted = ALWAYS_MUTED_VIDEO_IDS.has(String(videoId || ''));
     const [loading, setLoading] = useState(true);
     const [isBuffering, setIsBuffering] = useState(false);
     const [error, setError] = useState('');
@@ -445,15 +449,28 @@ const PlayVideo = ({
         video.setAttribute('webkit-playsinline', 'true');
     }, [videoRef]);
 
+    const keepVideoMuted = useCallback((el) => {
+        const video = el || videoRef.current;
+        if (!forceMuted || !video) return;
+        video.defaultMuted = true;
+        video.muted = true;
+        video.volume = 0;
+    }, [forceMuted, videoRef]);
+
+    useEffect(() => {
+        keepVideoMuted();
+    }, [keepVideoMuted, video]);
+
     const startInlinePlay = useCallback((el) => {
         const video = el || videoRef.current;
         if (!video) return;
+        keepVideoMuted(video);
         video.playsInline = true;
         video.setAttribute('playsinline', 'true');
         video.setAttribute('webkit-playsinline', 'true');
         const play = video.play();
         if (play && typeof play.catch === 'function') play.catch(() => {});
-    }, [videoRef]);
+    }, [videoRef, keepVideoMuted]);
 
     const drawPausedFrame = useCallback(() => {
         const video = videoRef.current;
@@ -1432,12 +1449,14 @@ const PlayVideo = ({
                         }} 
                         src={playerSrc}
                         crossOrigin="anonymous"
+                        muted={forceMuted}
                         playsInline
                         webkit-playsinline="true"
                         x-webkit-airplay="allow"
                         preload="auto"
                         disablePictureInPicture
                         disableRemotePlayback
+                        onVolumeChange={(event) => keepVideoMuted(event.currentTarget)}
                         onTimeUpdate={() => {
                             const el = videoRef.current;
                             if (!el) return;
@@ -1452,6 +1471,7 @@ const PlayVideo = ({
                         onLoadedMetadata={() => {
                             const el = videoRef.current;
                             if (!el) return;
+                            keepVideoMuted(el);
                             const portrait = el.videoWidth > 0 && el.videoHeight > el.videoWidth;
                             setIsPortraitVideo(portrait);
                             if (el.duration && Number.isFinite(el.duration)) {

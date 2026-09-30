@@ -240,9 +240,9 @@ CATALOG_COLOR_ALIASES: Dict[int, Dict[str, str]] = {
     19: {"White": "White (glossy)"},
     # Otto Cap dad hat: US spelling vs Printful Grey.
     396: {"Charcoal Gray": "Charcoal Grey"},
-    # Next Level 1533: storefront still uses older "Vintage …" labels.
-    # Do not invent mappings for Purple Rush / Vintage Navy / Vintage Red / Vintage Royal
-    # — Printful dropped those SKUs.
+    # Next Level 1533: storefront uses current Printful names. Keep retired
+    # "Vintage …" aliases so older carts still resolve. Purple Rush / Vintage
+    # Navy / Vintage Red / Vintage Royal have no Printful variant.
     857: {
         "Vintage Black": "Black",
         "Heather White": "White",

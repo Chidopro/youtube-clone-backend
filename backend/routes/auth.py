@@ -5,12 +5,16 @@ import logging
 import os
 import re
 import uuid
+import hashlib
+import hmac
+import secrets
 import bcrypt
 import requests
 import base64
 import json
 from urllib.parse import quote, urlparse
 from datetime import datetime, timedelta, timezone
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 # Google OAuth imports
 from google_auth_oauthlib.flow import Flow
@@ -25,6 +29,16 @@ from utils.helpers import (
 from utils.legal_acceptance import (
     customer_legal_acceptance_fields,
     has_customer_legal_acceptance,
+)
+from utils.mfa import (
+    consume_recovery_code,
+    generate_recovery_codes,
+    generate_totp_secret,
+    otpauth_uri,
+    read_mfa_config,
+    recovery_hash,
+    verify_totp,
+    write_mfa_config,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,6 +89,142 @@ def _get_supabase_client():
 def _get_config(key, default=None):
     """Get configuration value from Blueprint config"""
     return auth_bp.config.get(key, default) if hasattr(auth_bp, 'config') else default
+
+
+def _public_user(user):
+    return {
+        "id": user.get("id"),
+        "email": user.get("email"),
+        "display_name": user.get("display_name"),
+        "role": user.get("role", "customer"),
+        "is_admin": bool(user.get("is_admin")),
+        "admin_role": user.get("admin_role"),
+        "status": user.get("status", "active"),
+        "profile_image_url": user.get("profile_image_url"),
+        "cover_image_url": user.get("cover_image_url"),
+        "bio": user.get("bio"),
+        "subdomain": user.get("subdomain"),
+    }
+
+
+def _is_admin_user(user):
+    return bool(
+        user.get("is_admin")
+        or user.get("role") == "admin"
+        or user.get("admin_role") in ("master_admin", "admin", "order_processing_admin")
+    )
+
+
+def _mfa_serializer():
+    return URLSafeTimedSerializer(current_app.secret_key, salt="screenmerch-mfa-login-v1")
+
+
+def _email_code_hash(challenge_id, code):
+    key = str(current_app.secret_key).encode("utf-8")
+    return hmac.new(key, f"{challenge_id}:{code}".encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _send_mfa_email(email, code):
+    api_key = _get_config("RESEND_API_KEY") or os.getenv("RESEND_API_KEY")
+    sender = _get_config("RESEND_FROM") or os.getenv("RESEND_FROM", "noreply@screenmerch.com")
+    if not api_key:
+        return False
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={
+            "from": sender,
+            "to": email,
+            "subject": "Your ScreenMerch verification code",
+            "html": (
+                "<div style='font-family:Arial,sans-serif;color:#18181b'>"
+                "<h2>ScreenMerch verification code</h2>"
+                f"<p style='font-size:30px;font-weight:700;letter-spacing:6px'>{code}</p>"
+                "<p>This code expires in 10 minutes. If you did not try to sign in, "
+                "change your password and contact support.</p></div>"
+            ),
+        },
+        timeout=20,
+    )
+    return response.status_code in (200, 201, 202)
+
+
+def _issue_login_response(user, mfa_verified=False):
+    token = ("mfa_" if mfa_verified else "") + str(uuid.uuid4())
+    user_id = str(user.get("id"))
+    current_app.config.setdefault("session_token_store", {})[token] = user_id
+    try:
+        import importlib
+        app_module = importlib.import_module("app")
+        if hasattr(app_module, "_persist_session_token"):
+            app_module._persist_session_token(token, user_id)
+    except Exception as exc:
+        logger.warning("[LOGIN] Persist session token: %s", exc)
+    resp = make_response(jsonify({
+        "success": True,
+        "message": "Login successful",
+        "user": _public_user(user),
+        "token": token,
+    }), 200)
+    resp.set_cookie(
+        "sm_session",
+        token,
+        domain=get_cookie_domain(),
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="None",
+        max_age=7 * 24 * 3600,
+    )
+    return resp
+
+
+def _mfa_methods_for_user(user, config):
+    methods = []
+    if config.get("email_enabled"):
+        methods.append("email")
+    if config.get("totp_enabled") and config.get("totp_secret"):
+        methods.append("totp")
+    if config.get("recovery_hashes"):
+        methods.append("recovery")
+    if _is_admin_user(user) and not any(method in methods for method in ("email", "totp")):
+        methods.insert(0, "email")
+    return methods
+
+
+def _create_mfa_challenge(user, methods):
+    challenge_id = secrets.token_urlsafe(18)
+    payload = {
+        "challenge_id": challenge_id,
+        "user_id": str(user.get("id")),
+        "email": str(user.get("email") or "").lower(),
+        "methods": methods,
+    }
+    email_sent = False
+    if "email" in methods:
+        code = f"{secrets.randbelow(1000000):06d}"
+        payload["email_code_hash"] = _email_code_hash(challenge_id, code)
+        email_sent = _send_mfa_email(payload["email"], code)
+    return _mfa_serializer().dumps(payload), email_sent
+
+
+def _authenticated_user():
+    token = (
+        (request.headers.get("X-Session-Token") or "").strip()
+        or (request.cookies.get("sm_session") or "").strip()
+    )
+    if not token:
+        return None
+    try:
+        import importlib
+        app_module = importlib.import_module("app")
+        user_id = app_module._resolve_session_token(token)
+    except Exception:
+        user_id = None
+    if not user_id:
+        return None
+    result = _get_supabase_client().table("users").select("*").eq("id", user_id).limit(1).execute()
+    return result.data[0] if result.data else None
 
 
 @auth_bp.route("/api/auth/login", methods=["POST", "OPTIONS"])
@@ -171,66 +321,19 @@ def auth_login():
                         )
                     except Exception as sync_err:
                         logger.warning("[LOGIN] auth.users sync: %s", sync_err)
-                    response = jsonify({
-                        "success": True, 
-                        "message": "Login successful",
-                        "user": {
-                            "id": user.get('id'),
-                            "email": user.get('email'),
-                            "display_name": user.get('display_name'),
-                            "role": user.get('role', 'customer'),
-                            "status": user.get('status', 'active'),
-                            "profile_image_url": user.get('profile_image_url'),
-                            "cover_image_url": user.get('cover_image_url'),
-                            "bio": user.get('bio'),
-                            "subdomain": user.get('subdomain')
-                        }
-                    })
-                    
-                    # Generate token
-                    token = str(uuid.uuid4())
-                    
-                    is_form = not request.is_json
-                    domain = get_cookie_domain()
-                    
-                    if is_form:
-                        resp = redirect(_return_url(), code=303)
-                    else:
-                        response_data = {
+                    mfa_config = read_mfa_config(client, user.get("id"))
+                    methods = _mfa_methods_for_user(user, mfa_config)
+                    if methods:
+                        challenge_token, email_sent = _create_mfa_challenge(user, methods)
+                        return jsonify({
                             "success": True,
-                            "message": "Login successful",
-                            "user": {
-                                "id": user.get('id'),
-                                "email": user.get('email'),
-                                "display_name": user.get('display_name'),
-                                "role": user.get('role', 'customer'),
-                                "status": user.get('status', 'active'),
-                                "profile_image_url": user.get('profile_image_url'),
-                                "cover_image_url": user.get('cover_image_url'),
-                                "bio": user.get('bio'),
-                                "subdomain": user.get('subdomain')
-                            },
-                            "token": token
-                        }
-                        resp = make_response(jsonify(response_data), 200)
-                    
-                    # Flask-CORS will handle CORS headers automatically
-                    resp.set_cookie(
-                        "sm_session", token,
-                        domain=domain, path="/",
-                        secure=True, httponly=True, samesite="None", max_age=7*24*3600
-                    )
-                    # Store token -> user_id for /api/users/me validation (in-memory + DB for multi-instance Fly)
-                    current_app.config.setdefault("session_token_store", {})[token] = user.get("id")
-                    try:
-                        import importlib
-
-                        _app = importlib.import_module("app")
-                        if hasattr(_app, "_persist_session_token"):
-                            _app._persist_session_token(token, str(user.get("id")))
-                    except Exception as pe:
-                        logger.warning("[LOGIN] Persist session token: %s", pe)
-                    return resp
+                            "mfa_required": True,
+                            "challenge_token": challenge_token,
+                            "methods": methods,
+                            "email_sent": email_sent,
+                            "masked_email": re.sub(r"(^.).*(@.*$)", r"\1***\2", email),
+                        }), 202
+                    return _issue_login_response(user, mfa_verified=False)
                 else:
                     response = jsonify({"success": False, "error": "Invalid email or password"})
                     return response, 401
@@ -247,6 +350,164 @@ def auth_login():
         logger.error(f"Login error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
         return response, 500
+
+
+@auth_bp.route("/api/auth/mfa/verify", methods=["POST", "OPTIONS"])
+@(_get_limiter().limit("10 per minute") if _get_limiter() else lambda f: f)
+def auth_mfa_verify():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    data = _data_from_request()
+    challenge_token = (data.get("challenge_token") or "").strip()
+    method = (data.get("method") or "").strip().lower()
+    code = (data.get("code") or "").strip()
+    try:
+        challenge = _mfa_serializer().loads(challenge_token, max_age=600)
+    except SignatureExpired:
+        return jsonify({"success": False, "error": "Verification expired. Please sign in again."}), 401
+    except BadSignature:
+        return jsonify({"success": False, "error": "Invalid verification request."}), 401
+
+    if method not in challenge.get("methods", []):
+        return jsonify({"success": False, "error": "That verification method is not available."}), 400
+
+    client = _get_supabase_client()
+    result = client.table("users").select("*").eq("id", challenge.get("user_id")).limit(1).execute()
+    user = result.data[0] if result.data else None
+    if not user or user.get("status") in ("suspended", "banned", "pending"):
+        return jsonify({"success": False, "error": "Account is not available."}), 403
+
+    config = read_mfa_config(client, user.get("id"))
+    valid = False
+    if method == "email":
+        expected = challenge.get("email_code_hash") or ""
+        valid = bool(expected) and hmac.compare_digest(
+            expected,
+            _email_code_hash(challenge.get("challenge_id"), code),
+        )
+    elif method == "totp":
+        valid = verify_totp(config.get("totp_secret"), code)
+    elif method == "recovery":
+        valid = consume_recovery_code(config, code)
+        if valid:
+            valid = write_mfa_config(client, user.get("id"), config)
+
+    if not valid:
+        return jsonify({"success": False, "error": "Incorrect verification code."}), 401
+    return _issue_login_response(user, mfa_verified=True)
+
+
+@auth_bp.route("/api/auth/mfa/status", methods=["GET", "OPTIONS"])
+def auth_mfa_status():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    user = _authenticated_user()
+    if not user:
+        return jsonify({"success": False, "error": "Authentication required"}), 401
+    config = read_mfa_config(_get_supabase_client(), user.get("id"))
+    return jsonify({
+        "success": True,
+        "is_admin": _is_admin_user(user),
+        "email_enabled": bool(config.get("email_enabled")),
+        "totp_enabled": bool(config.get("totp_enabled") and config.get("totp_secret")),
+        "recovery_codes_remaining": len(config.get("recovery_hashes") or []),
+        "admin_mfa_required": _is_admin_user(user),
+    })
+
+
+@auth_bp.route("/api/auth/mfa/email", methods=["PUT", "OPTIONS"])
+def auth_mfa_email_setting():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    user = _authenticated_user()
+    if not user:
+        return jsonify({"success": False, "error": "Authentication required"}), 401
+    data = _data_from_request()
+    enabled = data.get("enabled")
+    if not isinstance(enabled, bool):
+        return jsonify({"success": False, "error": "enabled must be true or false"}), 400
+    client = _get_supabase_client()
+    config = read_mfa_config(client, user.get("id"))
+    if _is_admin_user(user) and not enabled and not config.get("totp_enabled"):
+        return jsonify({
+            "success": False,
+            "error": "Admin accounts must keep email or authenticator verification enabled.",
+        }), 400
+    config["email_enabled"] = enabled
+    if not write_mfa_config(client, user.get("id"), config):
+        return jsonify({"success": False, "error": "Could not save security settings"}), 500
+    return jsonify({"success": True, "email_enabled": enabled})
+
+
+@auth_bp.route("/api/auth/mfa/totp/setup", methods=["POST", "OPTIONS"])
+def auth_mfa_totp_setup():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    user = _authenticated_user()
+    if not user:
+        return jsonify({"success": False, "error": "Authentication required"}), 401
+    secret = generate_totp_secret()
+    setup_token = _mfa_serializer().dumps({
+        "purpose": "totp-setup",
+        "user_id": str(user.get("id")),
+        "secret": secret,
+    })
+    return jsonify({
+        "success": True,
+        "secret": secret,
+        "otpauth_uri": otpauth_uri(secret, user.get("email") or ""),
+        "setup_token": setup_token,
+    })
+
+
+@auth_bp.route("/api/auth/mfa/totp/confirm", methods=["POST", "OPTIONS"])
+def auth_mfa_totp_confirm():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    user = _authenticated_user()
+    if not user:
+        return jsonify({"success": False, "error": "Authentication required"}), 401
+    data = _data_from_request()
+    try:
+        setup = _mfa_serializer().loads((data.get("setup_token") or "").strip(), max_age=600)
+    except (BadSignature, SignatureExpired):
+        return jsonify({"success": False, "error": "Authenticator setup expired. Start again."}), 400
+    if setup.get("purpose") != "totp-setup" or setup.get("user_id") != str(user.get("id")):
+        return jsonify({"success": False, "error": "Invalid authenticator setup."}), 400
+    secret = setup.get("secret")
+    if not verify_totp(secret, data.get("code")):
+        return jsonify({"success": False, "error": "Incorrect authenticator code."}), 400
+    recovery_codes = generate_recovery_codes()
+    client = _get_supabase_client()
+    config = read_mfa_config(client, user.get("id"))
+    config.update({
+        "totp_enabled": True,
+        "totp_secret": secret,
+        "recovery_hashes": [recovery_hash(code) for code in recovery_codes],
+    })
+    if not write_mfa_config(client, user.get("id"), config):
+        return jsonify({"success": False, "error": "Could not save authenticator settings"}), 500
+    return jsonify({"success": True, "recovery_codes": recovery_codes})
+
+
+@auth_bp.route("/api/auth/mfa/totp", methods=["DELETE", "OPTIONS"])
+def auth_mfa_totp_disable():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    user = _authenticated_user()
+    if not user:
+        return jsonify({"success": False, "error": "Authentication required"}), 401
+    client = _get_supabase_client()
+    config = read_mfa_config(client, user.get("id"))
+    if _is_admin_user(user) and not config.get("email_enabled"):
+        return jsonify({
+            "success": False,
+            "error": "Enable email verification before disabling the authenticator.",
+        }), 400
+    config.update({"totp_enabled": False, "totp_secret": None, "recovery_hashes": []})
+    if not write_mfa_config(client, user.get("id"), config):
+        return jsonify({"success": False, "error": "Could not save security settings"}), 500
+    return jsonify({"success": True})
 
 
 @auth_bp.route("/api/auth/check-admin", methods=["POST", "OPTIONS"])
@@ -303,6 +564,22 @@ def auth_check_admin():
         
         is_admin = user_data.get('is_admin', False) or False
         admin_role = user_data.get('admin_role')
+        if is_admin:
+            session_token = (
+                (request.headers.get("X-Session-Token") or "").strip()
+                or (request.cookies.get("sm_session") or "").strip()
+            )
+            session_user = _authenticated_user()
+            if (
+                not session_token.startswith("mfa_")
+                or not session_user
+                or str(session_user.get("id")) != str(user_data.get("id"))
+            ):
+                return jsonify({
+                    "success": False,
+                    "error": "Two-step verification is required for admin access.",
+                    "mfa_required": True,
+                }), 403
         
         # Calculate admin types based on role
         is_master_admin = is_admin and admin_role == 'master_admin'

@@ -141,6 +141,11 @@
   display: block;
 }
 
+.shop-tile--womens .shop-tile-img--model {
+  transform: scale(1.06);
+  transform-origin: center center;
+}
+
 .shop-tile-img--nudge-right {
   transform: translateX(10%);
 }

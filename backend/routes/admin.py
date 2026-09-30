@@ -15,11 +15,60 @@ from urllib.parse import quote
 # Import utilities
 from utils.helpers import _data_from_request, _allow_origin, build_platform_revenue_attribution_maps, platform_revenue_attribution_for_earning, notify_admin_subdomain_for_netlify
 from utils.security import admin_required
+from utils.storefront_payments import (
+    storefront_stripe_enabled,
+    write_storefront_stripe_enabled,
+)
 
 logger = logging.getLogger(__name__)
 
 # Create Blueprint
 admin_bp = Blueprint('admin', __name__)
+
+
+@admin_bp.before_request
+def require_verified_admin_session():
+    """Protect admin APIs with a real MFA-verified session, not a spoofable email header."""
+    if request.method == "OPTIONS":
+        return None
+    if request.path.rstrip("/") in {
+        "/api/admin/validate-invite",
+        "/api/admin/submit-signup-from-invite",
+    }:
+        return None
+    token = (
+        (request.headers.get("X-Session-Token") or "").strip()
+        or (request.cookies.get("sm_session") or "").strip()
+    )
+    if not token.startswith("mfa_"):
+        return _allow_origin(jsonify({
+            "success": False,
+            "error": "Two-step verification is required for admin access.",
+            "mfa_required": True,
+        })), 403
+    try:
+        import importlib
+        app_module = importlib.import_module("app")
+        user_id = app_module._resolve_session_token(token)
+        client = _get_supabase_client()
+        result = (
+            client.table("users")
+            .select("id, email, is_admin, admin_role")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        admin = result.data[0] if result.data else None
+        supplied_email = (request.headers.get("X-User-Email") or "").strip().lower()
+        if (
+            not admin
+            or not admin.get("is_admin")
+            or (supplied_email and supplied_email != str(admin.get("email") or "").lower())
+        ):
+            raise ValueError("Admin session does not match request")
+    except Exception:
+        return _allow_origin(jsonify({"success": False, "error": "Admin authentication required"})), 403
+    return None
 
 
 def register_admin_routes(app, supabase, supabase_admin, order_store):
@@ -951,10 +1000,15 @@ def admin_get_users():
         if role != 'all':
             query = query.eq('role', role)
         result = query.order('created_at', desc=True).range(page * limit, (page + 1) * limit - 1).execute()
+        users = result.data or []
+        for listed_user in users:
+            listed_user["stripe_enabled"] = storefront_stripe_enabled(
+                listed_user.get("id"), client
+            )
         total = result.count if hasattr(result, 'count') and result.count is not None else (len(result.data) if result.data else 0)
         response = jsonify({
             "success": True,
-            "users": result.data or [],
+            "users": users,
             "total": total,
             "page": page,
             "limit": limit,
@@ -965,6 +1019,71 @@ def admin_get_users():
         logger.error(f"Error in admin_get_users: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
         return _allow_origin(response), 500
+
+
+@admin_bp.route("/api/admin/users/<user_id>/stripe", methods=["PUT", "OPTIONS"])
+@admin_bp.route("/api/admin/users/<user_id>/stripe/", methods=["PUT", "OPTIONS"])
+def admin_update_storefront_stripe(user_id):
+    """Enable or disable Stripe checkout for one creator storefront."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        data = _data_from_request()
+        admin_email = request.headers.get("X-User-Email") or data.get("admin_email")
+        if not admin_email:
+            return _allow_origin(jsonify({"success": False, "error": "Admin email required"})), 401
+
+        client = _get_supabase_client()
+        if not client:
+            return _allow_origin(jsonify({"success": False, "error": "Database service unavailable"})), 500
+
+        admin_result = (
+            client.table("users")
+            .select("is_admin, admin_role")
+            .ilike("email", admin_email)
+            .limit(1)
+            .execute()
+        )
+        admin = admin_result.data[0] if admin_result.data else None
+        if not admin or not admin.get("is_admin") or admin.get("admin_role") != "master_admin":
+            return _allow_origin(jsonify({"success": False, "error": "Master admin access required"})), 403
+
+        enabled = data.get("enabled")
+        if not isinstance(enabled, bool):
+            return _allow_origin(jsonify({"success": False, "error": "enabled must be true or false"})), 400
+
+        target = (
+            client.table("users")
+            .select("id, role, subdomain")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        user = target.data[0] if target.data else None
+        if not user:
+            return _allow_origin(jsonify({"success": False, "error": "User not found"})), 404
+        if user.get("role") != "creator" or not user.get("subdomain"):
+            return _allow_origin(jsonify({
+                "success": False,
+                "error": "Stripe can only be enabled for creators with a subdomain",
+            })), 400
+
+        if not write_storefront_stripe_enabled(user_id, enabled, client):
+            return _allow_origin(jsonify({
+                "success": False,
+                "error": "Could not save the storefront Stripe setting",
+            })), 500
+
+        state = "enabled" if enabled else "disabled"
+        logger.info("Stripe checkout %s for storefront user %s", state, user_id)
+        return _allow_origin(jsonify({
+            "success": True,
+            "stripe_enabled": enabled,
+            "message": f"Stripe checkout {state} for {user.get('subdomain')}.screenmerch.com",
+        })), 200
+    except Exception as e:
+        logger.exception("Error updating storefront Stripe setting: %s", e)
+        return _allow_origin(jsonify({"success": False, "error": "Internal server error"})), 500
 
 
 # Subdomain management routes (Master Admin only)

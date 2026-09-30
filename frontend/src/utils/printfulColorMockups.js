@@ -209,7 +209,10 @@ const NAMED_GARMENT_HEX = {
   'dark heather': '#424248',
   'carolina blue': '#9ABEF5',
   'sport grey': '#cacacd',
-  'hot pink': '#fe607a',
+  'hot pink': '#ff7289',
+  'light orange': '#ff9967',
+  'heather gray': '#ededed',
+  'heather grey': '#ededed',
   'light pink': '#FFD6DC',
   'light blue': '#cbdbec',
   charcoal: '#6e6661',
@@ -308,6 +311,9 @@ const STOREFRONT_COLORS_BY_NAME = {
   'Five Panel Baseball Cap': [
     'Black', 'Black/Natural', 'Red/Natural', 'Navy/Natural',
     'Dark Green/Natural', 'Royal/Natural', 'White',
+  ],
+  'Racerback Tank': [
+    'Black', 'White', 'Heather Gray', 'Hot Pink', 'Tahiti Blue', 'Cancun', 'Light Orange',
   ],
 };
 

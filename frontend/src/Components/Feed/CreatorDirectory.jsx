@@ -209,11 +209,8 @@ const CreatorDirectory = () => {
   return (
     <div className="creator-directory">
       <div className="creator-directory-header">
-        <p className="creator-directory-subtitle creator-directory-subtitle-desktop">
-          Unlock your Free ScreenMerch storefront, limited access soft launch.
-        </p>
-        <p className="creator-directory-subtitle creator-directory-subtitle-mobile">
-          Free ScreenMerch storefront limited access soft launch
+        <p className="creator-directory-subtitle creator-directory-subtitle-primary">
+          Turn YouTube clips into custom merchandise your viewers create themselves
         </p>
       </div>
 
@@ -271,9 +268,7 @@ const CreatorDirectory = () => {
               : (canVisit ? `${subdomain}.screenmerch.com` : 'Soft launch seat claimed');
           const openSlot = () => {
             if (canVisit) {
-              window.location.href = isDemo
-                ? `https://${DEMO_STOREFRONT_SUBDOMAIN}.screenmerch.com/demo/dashboard`
-                : storeHref;
+              window.location.href = storeHref;
               return;
             }
             if (!isTaken) openReserveCta();

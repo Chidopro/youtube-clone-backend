@@ -179,9 +179,14 @@ function hubHashSet(thumbs, hashByUrl = {}) {
 /** These Deluzion top-row photos stay fixed across login, logout, new uploads, and reloads. */
 const LOCKED_HUB_TOP = {
   deluzion: {
-    favorites: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/4d524770-cbc9-49f3-97fb-24bee25d587d/favorites/thumbs/1790238159918-05745c.jpg',
+    favorites: '/storefront/deluzion/creator.jpg',
     friend: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/1c382c92-00b1-4ccd-b2c1-a1b4b973dca9/favorites/thumbs/1790337127610-ef0976.jpg',
-    shop: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/1c382c92-00b1-4ccd-b2c1-a1b4b973dca9/favorites/thumbs/1790337010649-511c88.jpg',
+    shop: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/4d524770-cbc9-49f3-97fb-24bee25d587d/favorites/thumbs/1790238159918-05745c.jpg',
+  },
+  maxfreedom: {
+    favorites: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/9d8ecd1a-0d2d-4300-a171-2cdc7ee1cc0d/favorites/thumbs/1787120265284.jpg',
+    friend: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/3cba9c71-5e31-4697-a032-95273a09d04c/favorites/thumbs/1789949023825-6cb319.jpg',
+    shop: 'https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/thumbnails/3cba9c71-5e31-4697-a032-95273a09d04c/thumbnails/1786943370535.png',
   },
 };
 
@@ -467,13 +472,13 @@ const Feed = ({
       {showHubs && (
         <>
           <div className="feed-hubs" aria-label="Storefront sections">
-            <button type="button" className="card hub-card" onClick={() => navigate('/favorites')}>
+            <button type="button" className="card hub-card hub-card--creator" onClick={() => navigate('/favorites')}>
               <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />
               <h2>Creator</h2>
             </button>
             <button
               type="button"
-              className="card hub-card"
+              className="card hub-card hub-card--co-creators"
               onPointerEnter={() => {
                 const sub = getSubdomain();
                 if (sub) fetchPublicFavoriteLists(sub, { lite: true });

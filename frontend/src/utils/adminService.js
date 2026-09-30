@@ -103,6 +103,7 @@ export class AdminService {
           email: userEmail
         })
       });
+      const result = await response.json().catch(() => ({}));
       
       if (!response.ok) {
         console.error('🔐 AdminService: Backend check failed with status:', response.status);
@@ -111,11 +112,11 @@ export class AdminService {
           isFullAdmin: false,
           isMasterAdmin: false,
           isOrderProcessingAdmin: false,
-          adminRole: null
+          adminRole: null,
+          mfaRequired: !!result.mfa_required,
         };
       }
       
-      const result = await response.json();
       console.log('🔐 AdminService: Backend admin check result:', result);
       
       if (result.success) {
@@ -326,6 +327,34 @@ export class AdminService {
     } catch (error) {
       console.error('Error updating user role:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Enable or disable Stripe checkout for one creator storefront.
+   */
+  static async updateStorefrontStripe(userId, enabled) {
+    try {
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) {
+        return { success: false, error: 'Not authenticated' };
+      }
+      const res = await fetch(adminApiUrl(`/api/admin/users/${userId}/stripe`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': currentUser.userEmail,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ enabled: !!enabled }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) {
+        return { success: false, error: json.error || `Request failed (${res.status})` };
+      }
+      return json;
+    } catch (error) {
+      return { success: false, error: error.message || 'Failed to update Stripe setting' };
     }
   }
 

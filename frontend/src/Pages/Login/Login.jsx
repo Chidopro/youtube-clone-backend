@@ -35,6 +35,14 @@ const Login = () => {
   const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [acceptedCustomerLegal, setAcceptedCustomerLegal] = useState(false);
+  const [mfaChallenge, setMfaChallenge] = useState(null);
+  const [mfaMethods, setMfaMethods] = useState([]);
+  const [mfaMethod, setMfaMethod] = useState('email');
+  const [mfaCode, setMfaCode] = useState('');
+  const [securityStatus, setSecurityStatus] = useState(null);
+  const [totpSetup, setTotpSetup] = useState(null);
+  const [totpSetupCode, setTotpSetupCode] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState([]);
 
 // Customer signup = email-only flow (from "Make a purchase" in Sign Up modal)
   const isCustomerSignup = location.pathname === '/signup' && location.state?.intent === 'customer';
@@ -80,9 +88,10 @@ const Login = () => {
     const isAuthenticated = localStorage.getItem('isAuthenticated');
     const userData = localStorage.getItem('user');
     const returnTo = searchParams.get('returnTo');
+    const requiresFreshMfaLogin = searchParams.get('status') === 'mfa_required';
     
     // Only auto-redirect if there's a returnTo parameter (user was trying to access a protected route)
-    if (isAuthenticated === 'true' && userData && returnTo) {
+    if (!requiresFreshMfaLogin && isAuthenticated === 'true' && userData && returnTo) {
       try {
         const user = JSON.parse(userData);
         console.log('✅ User already authenticated with returnTo, redirecting...', user);
@@ -110,7 +119,7 @@ const Login = () => {
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('user');
       }
-    } else if (isAuthenticated === 'true' && userData) {
+    } else if (!requiresFreshMfaLogin && isAuthenticated === 'true' && userData) {
       // User is authenticated but no returnTo - allow them to stay on login page
       // They can log out or switch accounts if needed
       try {
@@ -132,6 +141,13 @@ const Login = () => {
     const status = searchParams.get('status');
     if (status === 'session_expired') {
       setMessage({ type: 'error', text: 'Your session expired. Please sign in again.' });
+    } else if (status === 'mfa_required') {
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('user_authenticated');
+      localStorage.removeItem('auth_token');
+      setIsAlreadyLoggedIn(false);
+      setLoggedInUser(null);
+      setMessage({ type: 'error', text: 'Sign in again and complete two-step verification to access Admin.' });
     }
   }, [searchParams]);
 
@@ -148,6 +164,155 @@ const Login = () => {
     const base = getBackendUrl();
     if (!base) return endpoint;
     return `${String(base).replace(/\/$/, '')}${endpoint}`;
+  };
+
+  const authHeaders = (extra = {}) => ({
+    ...extra,
+    ...(localStorage.getItem('auth_token')
+      ? { 'X-Session-Token': localStorage.getItem('auth_token') }
+      : {}),
+  });
+
+  const loadSecurityStatus = async () => {
+    try {
+      const response = await fetch(apiUrl('/api/auth/mfa/status'), {
+        credentials: 'include',
+        headers: authHeaders({ Accept: 'application/json' }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.success) setSecurityStatus(data);
+    } catch (_) {
+      // The signed-in notice remains usable if settings cannot load.
+    }
+  };
+
+  useEffect(() => {
+    if (isAlreadyLoggedIn && loggedInUser) loadSecurityStatus();
+  }, [isAlreadyLoggedIn, loggedInUser]);
+
+  const setEmailMfa = async (enabled) => {
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(apiUrl('/api/auth/mfa/email'), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not update email verification.');
+      await loadSecurityStatus();
+      setMessage({ type: 'success', text: `Email verification ${enabled ? 'enabled' : 'disabled'}.` });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const beginTotpSetup = async () => {
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(apiUrl('/api/auth/mfa/totp/setup'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: authHeaders({ Accept: 'application/json' }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not start authenticator setup.');
+      setTotpSetup(data);
+      setTotpSetupCode('');
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const confirmTotpSetup = async () => {
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(apiUrl('/api/auth/mfa/totp/confirm'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
+        body: JSON.stringify({ setup_token: totpSetup?.setup_token, code: totpSetupCode }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not verify authenticator.');
+      setRecoveryCodes(data.recovery_codes || []);
+      setTotpSetup(null);
+      setTotpSetupCode('');
+      await loadSecurityStatus();
+      setMessage({ type: 'success', text: 'Authenticator verification enabled. Save your recovery codes now.' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const disableTotp = async () => {
+    if (!confirm('Disable authenticator verification?')) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(apiUrl('/api/auth/mfa/totp'), {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: authHeaders({ Accept: 'application/json' }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not disable authenticator.');
+      setRecoveryCodes([]);
+      await loadSecurityStatus();
+      setMessage({ type: 'success', text: 'Authenticator verification disabled.' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMfaVerify = async (e) => {
+    e.preventDefault();
+    if (!mfaCode.trim()) {
+      setMessage({ type: 'error', text: 'Enter your verification code.' });
+      return;
+    }
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(apiUrl('/api/auth/mfa/verify'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          challenge_token: mfaChallenge,
+          method: mfaMethod,
+          code: mfaCode.trim(),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Verification failed.');
+      }
+      if (data.token) localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('user_authenticated', 'true');
+      if (data.user?.email) localStorage.setItem('user_email', data.user.email);
+      AdminService.clearCache();
+      window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: { user: data.user } }));
+      const returnTo = safeAuthReturnPath(searchParams.get('returnTo')) || consumeAuthReturnPath();
+      const isAdmin = data.user?.is_admin || data.user?.role === 'admin';
+      goAfterAuth(returnTo || (isAdmin ? '/admin' : '/'), navigate, { replace: true });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message || 'Verification failed.' });
+      setIsLoading(false);
+    }
   };
 
   // Customer (make a purchase) signup: email only → backend sends confirmation email to set password
@@ -293,6 +458,22 @@ const Login = () => {
       }
 
       const data = await response.json();
+
+      if (data?.mfa_required) {
+        const methods = Array.isArray(data.methods) ? data.methods : [];
+        setMfaChallenge(data.challenge_token);
+        setMfaMethods(methods);
+        setMfaMethod(methods.includes('email') ? 'email' : (methods[0] || 'totp'));
+        setMfaCode('');
+        setMessage({
+          type: 'success',
+          text: data.email_sent
+            ? `A verification code was sent to ${data.masked_email || 'your email'}.`
+            : 'Enter a verification code to finish signing in.',
+        });
+        setIsLoading(false);
+        return;
+      }
 
       endDemoPreviewSession();
 
@@ -547,6 +728,71 @@ const Login = () => {
             >
               Log Out
             </button>
+            {securityStatus && (
+              <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid #90caf9', textAlign: 'left' }}>
+                <h3 style={{ margin: '0 0 8px', color: '#111827' }}>Two-step verification</h3>
+                {securityStatus.admin_mfa_required && (
+                  <p style={{ color: '#7c2d12', fontWeight: 600 }}>
+                    Required for admin accounts. Keep at least one method enabled.
+                  </p>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ color: '#111827' }}>Email codes</span>
+                  <button
+                    type="button"
+                    className="login-toggle-btn"
+                    disabled={isLoading}
+                    onClick={() => setEmailMfa(!securityStatus.email_enabled)}
+                  >
+                    {securityStatus.email_enabled ? 'Disable' : 'Enable'}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
+                  <span style={{ color: '#111827' }}>Authenticator app</span>
+                  <button
+                    type="button"
+                    className="login-toggle-btn"
+                    disabled={isLoading}
+                    onClick={securityStatus.totp_enabled ? disableTotp : beginTotpSetup}
+                  >
+                    {securityStatus.totp_enabled ? 'Disable' : 'Set up'}
+                  </button>
+                </div>
+                {totpSetup && (
+                  <div style={{ marginTop: '14px', padding: '12px', background: '#fff', borderRadius: '8px' }}>
+                    <p style={{ color: '#111827', marginTop: 0 }}>
+                      In Google Authenticator, Authy, or Microsoft Authenticator, choose “Enter setup key”.
+                    </p>
+                    <code style={{ display: 'block', color: '#111827', overflowWrap: 'anywhere', marginBottom: '10px' }}>
+                      {totpSetup.secret}
+                    </code>
+                    <input
+                      className="login-input"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      placeholder="Enter the 6-digit code"
+                      value={totpSetupCode}
+                      onChange={(e) => setTotpSetupCode(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="login-submit-btn"
+                      style={{ marginTop: '8px' }}
+                      disabled={isLoading || !totpSetupCode.trim()}
+                      onClick={confirmTotpSetup}
+                    >
+                      Confirm Authenticator
+                    </button>
+                  </div>
+                )}
+                {recoveryCodes.length > 0 && (
+                  <div style={{ marginTop: '14px', padding: '12px', background: '#fff7ed', color: '#7c2d12', borderRadius: '8px' }}>
+                    <strong>Save these one-time recovery codes:</strong>
+                    {recoveryCodes.map((code) => <code key={code} style={{ display: 'block', marginTop: '5px' }}>{code}</code>)}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -559,7 +805,53 @@ const Login = () => {
           </div>
         )}
 
-        <form className="login-form" onSubmit={handleSubmit} noValidate>
+        {mfaChallenge && (
+          <form className="login-form" onSubmit={handleMfaVerify} noValidate>
+            <div className="login-field">
+              <label className="login-label" htmlFor="mfa-method">Verification method</label>
+              <select
+                id="mfa-method"
+                className="login-input"
+                value={mfaMethod}
+                onChange={(e) => { setMfaMethod(e.target.value); setMfaCode(''); }}
+                disabled={isLoading}
+              >
+                {mfaMethods.includes('email') && <option value="email">Email code</option>}
+                {mfaMethods.includes('totp') && <option value="totp">Authenticator app</option>}
+                {mfaMethods.includes('recovery') && <option value="recovery">Recovery code</option>}
+              </select>
+            </div>
+            <div className="login-field">
+              <label className="login-label" htmlFor="mfa-code">
+                {mfaMethod === 'recovery' ? 'Recovery code' : '6-digit code'}
+              </label>
+              <input
+                id="mfa-code"
+                className="login-input"
+                type="text"
+                inputMode={mfaMethod === 'recovery' ? 'text' : 'numeric'}
+                autoComplete="one-time-code"
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                disabled={isLoading}
+                autoFocus
+              />
+            </div>
+            <button type="submit" className="login-submit-btn" disabled={isLoading}>
+              {isLoading ? 'Verifying…' : 'Verify and Sign In'}
+            </button>
+            <button
+              type="button"
+              className="login-toggle-btn"
+              onClick={() => { setMfaChallenge(null); setMfaCode(''); setMessage(null); }}
+              disabled={isLoading}
+            >
+              Back to sign in
+            </button>
+          </form>
+        )}
+
+        <form className="login-form" onSubmit={handleSubmit} noValidate style={{ display: mfaChallenge ? 'none' : undefined }}>
           <div className="login-field">
             <label htmlFor="email" className="login-label">Email Address</label>
             <input
@@ -632,7 +924,7 @@ const Login = () => {
           )}
         </form>
 
-        {!isCustomerSignup && (
+        {!mfaChallenge && !isCustomerSignup && (
           <div className="login-toggle">
             <span>{isLoginMode ? "Don't have an account?" : "Already have an account?"}</span>
             <button className="login-toggle-btn" onClick={handleToggleMode} disabled={isLoading}>
@@ -640,7 +932,7 @@ const Login = () => {
             </button>
           </div>
         )}
-        {isCustomerSignup && (
+        {!mfaChallenge && isCustomerSignup && (
           <div className="login-toggle">
             <span>Already have an account?</span>
             <button

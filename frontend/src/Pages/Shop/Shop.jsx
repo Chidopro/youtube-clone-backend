@@ -105,7 +105,7 @@ function sizesForShopProduct(product, color, country) {
 }
 
 async function fetchCategoryCatalog(category) {
-  const cacheKey = `sm_browse_v11_${String(category || '').trim().toLowerCase()}`;
+  const cacheKey = `sm_browse_v12_${String(category || '').trim().toLowerCase()}`;
   try {
     const raw = sessionStorage.getItem(cacheKey);
     if (raw) {
@@ -655,7 +655,7 @@ const Shop = ({ sidebar }) => {
               <button
                 key={cat.preview || cat.name}
                 type="button"
-                className="shop-tile"
+                className={`shop-tile shop-tile--${cat.category}`}
                 aria-label={`Open ${cat.name}`}
                 onClick={() => navigate(browseShopCategoryPath(cat.category))}
               >

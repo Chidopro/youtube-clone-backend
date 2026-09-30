@@ -129,6 +129,85 @@ function jigsawArtworkLayout(boxW, boxH, imgW, imgH, zoomPercent, posX, posY) {
   return { ...layout, rotate: 90 };
 }
 
+/**
+ * Bake the exact puzzle crop shown in Tools, then turn it back so the server's
+ * required 90° puzzle rotation recreates that crop pixel-for-pixel.
+ */
+function lockJigsawPreviewCrop({
+  src,
+  productName,
+  productSize,
+  printAreaFit,
+  zoomPercent,
+  posX,
+  posY,
+}) {
+  return new Promise((resolve) => {
+    const imageSrc = String(src || '').trim();
+    if (!imageSrc) {
+      resolve(null);
+      return;
+    }
+    const img = new Image();
+    if (/^https?:\/\//i.test(imageSrc)) img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const aspect = printBoxPreviewAspect(
+          productName,
+          productSize,
+          'landscape',
+          printAreaFit,
+        );
+        const safeAspect = aspect > 0 ? aspect : 2953 / 2350;
+        const rawWidth = 1200;
+        const rawHeight = Math.max(1, Math.round(rawWidth / safeAspect));
+        const layout = jigsawArtworkLayout(
+          rawWidth,
+          rawHeight,
+          img.naturalWidth || img.width,
+          img.naturalHeight || img.height,
+          zoomPercent,
+          posX,
+          posY,
+        );
+        if (!layout) {
+          resolve(null);
+          return;
+        }
+
+        const raw = document.createElement('canvas');
+        raw.width = rawWidth;
+        raw.height = rawHeight;
+        const rawCtx = raw.getContext('2d');
+        rawCtx.fillStyle = '#fff';
+        rawCtx.fillRect(0, 0, rawWidth, rawHeight);
+        drawLayoutImage(rawCtx, img, layout);
+
+        // The backend rotates puzzle sources counter-clockwise. Supplying this
+        // clockwise copy makes its result equal the exact preview canvas above.
+        const source = document.createElement('canvas');
+        source.width = rawHeight;
+        source.height = rawWidth;
+        const sourceCtx = source.getContext('2d');
+        sourceCtx.fillStyle = '#fff';
+        sourceCtx.fillRect(0, 0, source.width, source.height);
+        sourceCtx.translate(source.width / 2, source.height / 2);
+        sourceCtx.rotate(Math.PI / 2);
+        sourceCtx.drawImage(raw, -raw.width / 2, -raw.height / 2);
+        resolve({
+          dataUrl: source.toDataURL('image/jpeg', 0.92),
+          width: source.width,
+          height: source.height,
+        });
+      } catch (_) {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = imageSrc;
+  });
+}
+
 function artworkLayoutForProduct(productName, boxW, boxH, imgW, imgH, zoomPercent, posX, posY) {
   if (isJigsawPuzzleProduct(productName)) {
     return jigsawArtworkLayout(boxW, boxH, imgW, imgH, zoomPercent, posX, posY);
@@ -1970,6 +2049,25 @@ function printBoxPreviewAspect(productName, productSize, orientation, printAreaF
   return width / height;
 }
 
+function retryPreviewImage(img, source, maxRetries = 3) {
+  const src = String(source || '').trim();
+  if (!img || !src || src.startsWith('data:') || src.startsWith('blob:')) return false;
+  const attempt = Number(img.dataset.previewRetryCount || 0);
+  if (attempt >= maxRetries) return false;
+  img.dataset.previewRetryCount = String(attempt + 1);
+  window.setTimeout(() => {
+    if (!img.isConnected) return;
+    try {
+      const url = new URL(src, window.location.href);
+      url.searchParams.set('sm_preview_retry', `${attempt + 1}-${Date.now()}`);
+      img.src = url.toString();
+    } catch {
+      img.src = src;
+    }
+  }, 120 * (attempt + 1));
+  return true;
+}
+
 // Component for product preview with draggable screenshot
 const ProductPreviewWithDrag = ({ 
   productImage, 
@@ -2595,6 +2693,11 @@ const ProductPreviewWithDrag = ({
       }
     };
     requestAnimationFrame(() => tickMeasure(0));
+    const delayedMeasures = [100, 250, 500, 900, 1500].map((delay) => (
+      window.setTimeout(() => {
+        if (!measureCancelled) measureProductImage();
+      }, delay)
+    ));
     const observer = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
         if (measureCancelled) return;
@@ -2609,11 +2712,12 @@ const ProductPreviewWithDrag = ({
     window.addEventListener('orientationchange', measureProductImage);
     return () => {
       measureCancelled = true;
+      delayedMeasures.forEach((timer) => window.clearTimeout(timer));
       observer?.disconnect();
       window.removeEventListener('resize', measureProductImage);
       window.removeEventListener('orientationchange', measureProductImage);
     };
-  }, [productImage, productName, litePreview]);
+  }, [productImage, productName, screenshot, litePreview]);
 
   const handleMouseDown = (e) => {
     if (litePreview) return;
@@ -2745,14 +2849,21 @@ const ProductPreviewWithDrag = ({
         decoding="async"
         referrerPolicy="no-referrer"
         crossOrigin={garmentTintColor ? 'anonymous' : undefined}
-        onLoad={handleProductImageLoad}
-        onError={() => {
+        onLoad={(event) => {
+          delete event.currentTarget.dataset.previewRetryCount;
+          handleProductImageLoad();
+        }}
+        onError={(event) => {
           if (tintedMockupSrc) {
             setTintedMockupSrc('');
             return;
           }
           const fb = String(fallbackMockupUrl || '').trim();
-          if (fb && fb !== mockupSrc) setMockupSrc(fb);
+          if (fb && fb !== mockupSrc) {
+            setMockupSrc(fb);
+            return;
+          }
+          retryPreviewImage(event.currentTarget, mockupSrc || productImage);
         }}
         onDragStart={(e) => e.preventDefault()}
         style={{
@@ -2940,6 +3051,11 @@ const ProductPreviewWithDrag = ({
                         filter: blackAndWhiteStyle(blackAndWhite, bwIntensity),
                         opacity: imageOpacityCss(imageOpacity),
                       }}
+                      onLoad={(event) => {
+                        delete event.currentTarget.dataset.previewRetryCount;
+                        requestAnimationFrame(measureProductImage);
+                      }}
+                      onError={(event) => retryPreviewImage(event.currentTarget, screenshot)}
                       draggable={false}
                     />
                     )}
@@ -5748,6 +5864,8 @@ const ToolsPage = () => {
     imageOrientation,
     imageOffsetX,
     imageOffsetY,
+    printAreaFit,
+    screenshotScale,
     skipRectEdgeEdits,
     bowlBand,
     bandanaCrop,
@@ -5918,6 +6036,24 @@ const ToolsPage = () => {
           String(snap.imageOrientation || ''),
         ].join('|');
         const place = printBoxObjectPosition(name, snap.imageOrientation, snap.imageOffsetX, snap.imageOffsetY);
+        let puzzleCropLocked = false;
+        if (puzzleWrap) {
+          const locked = await lockJigsawPreviewCrop({
+            src: artwork,
+            productName: name,
+            productSize: product.size,
+            printAreaFit: snap.printAreaFit,
+            zoomPercent: snap.screenshotScale,
+            posX: place.x,
+            posY: place.y,
+          });
+          if (locked?.dataUrl) {
+            artwork = locked.dataUrl;
+            imageWidth = locked.width;
+            imageHeight = locked.height;
+            puzzleCropLocked = true;
+          }
+        }
         const wrap = await requestMugWrapMockup({
           productName: name,
           color: product.color,
@@ -5926,8 +6062,8 @@ const ToolsPage = () => {
           imageWidth,
           imageHeight,
           imageOrientation: (bowlWrap || bandanaWrap) ? 'landscape' : snap.imageOrientation,
-          focalX: puzzleWrap ? place.x / 100 : undefined,
-          focalY: puzzleWrap ? place.y / 100 : undefined,
+          focalX: puzzleWrap ? (puzzleCropLocked ? 0.5 : place.x / 100) : undefined,
+          focalY: puzzleWrap ? (puzzleCropLocked ? 0.5 : place.y / 100) : undefined,
           signal: controller.signal,
         });
         if (!active || controller.signal.aborted || !wrap?.mockupUrl) return;

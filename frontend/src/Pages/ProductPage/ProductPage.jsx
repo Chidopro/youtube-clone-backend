@@ -279,7 +279,7 @@ function PrintfulColorMockupImg({
 }
 
 const categoryBrowseCache = new Map();
-const BROWSE_CACHE_KEY = (category) => `sm_browse_v11_${String(category || '').trim().toLowerCase()}`;
+const BROWSE_CACHE_KEY = (category) => `sm_browse_v12_${String(category || '').trim().toLowerCase()}`;
 
 function readBrowseCache(category) {
   const mem = categoryBrowseCache.get(category);

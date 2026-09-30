@@ -277,10 +277,15 @@ const Admin = () => {
       setUser(user);
 
       // Check if user is admin using AdminService
-      const isUserAdmin = await AdminService.isAdmin();
-      const isUserMasterAdmin = await AdminService.isMasterAdmin();
-      const isUserFullAdmin = await AdminService.isFullAdmin(); // This now only returns true for master_admin
-      const isUserOrderProcessingAdmin = await AdminService.isOrderProcessingAdmin();
+      const adminStatus = await AdminService.checkAdminStatus();
+      if (adminStatus.mfaRequired) {
+        window.location.replace('/login?returnTo=/admin&status=mfa_required');
+        return;
+      }
+      const isUserAdmin = adminStatus.isAdmin;
+      const isUserMasterAdmin = adminStatus.isMasterAdmin;
+      const isUserFullAdmin = adminStatus.isFullAdmin;
+      const isUserOrderProcessingAdmin = adminStatus.isOrderProcessingAdmin;
 
       console.log('🔐 Admin Status Check:', {
         isUserAdmin,
@@ -1286,6 +1291,29 @@ const Admin = () => {
     }
   };
 
+  const handleStorefrontStripe = async (user, enabled) => {
+    const subdomain = String(user?.subdomain || '').trim();
+    const verb = enabled ? 'turn ON' : 'turn OFF';
+    if (!subdomain) {
+      alert('Assign a subdomain before enabling Stripe.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to ${verb} Stripe purchases for ${subdomain}.screenmerch.com?`)) {
+      return;
+    }
+    try {
+      const result = await AdminService.updateStorefrontStripe(user.id, enabled);
+      if (!result.success) {
+        alert(`Failed to update Stripe: ${result.error || 'Unknown error'}`);
+        return;
+      }
+      alert(result.message || `Stripe purchases ${enabled ? 'enabled' : 'disabled'}.`);
+      await loadUsers();
+    } catch (error) {
+      alert(`Failed to update Stripe: ${error.message}`);
+    }
+  };
+
   const handleResetAnalytics = async (userId, userEmail) => {
     if (!confirm('⚠️ WARNING: This will permanently delete all sales and analytics data for this creator. This action cannot be undone. Are you absolutely sure?')) {
       return;
@@ -1896,6 +1924,8 @@ const Admin = () => {
                               else if (action === 'activate') handleUserAction(user.id, 'activate');
                               else if (action === 'delete') handleUserAction(user.id, 'delete');
                               else if (action === 'reset-analytics') handleResetAnalytics(user.id, user.email);
+                              else if (action === 'stripe-on') handleStorefrontStripe(user, true);
+                              else if (action === 'stripe-off') handleStorefrontStripe(user, false);
                               e.target.value = '';
                             }}
                             onClick={(e) => e.stopPropagation()}
@@ -1909,6 +1939,11 @@ const Admin = () => {
                               <option value="activate" disabled={user.status === 'active' || user.status === 'pending'}>Activate</option>
                             )}
                             <option value="delete">Delete</option>
+                            {isMasterAdmin && user.role === 'creator' && user.subdomain && (
+                              user.stripe_enabled
+                                ? <option value="stripe-off">Turn Off Stripe</option>
+                                : <option value="stripe-on">Turn On Stripe</option>
+                            )}
                             {isMasterAdmin && user.role === 'creator' && <option value="reset-analytics">Reset Analytics</option>}
                           </select>
                         </td>

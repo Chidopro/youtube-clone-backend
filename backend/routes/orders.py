@@ -17,6 +17,10 @@ from utils.stripe_tax_checkout import (
     stripe_product_tax_code_for_line_item,
     tax_line_item_price_data,
 )
+from utils.storefront_payments import (
+    PAYMENTS_DISABLED_MESSAGE,
+    storefront_payments_allowed,
+)
 import logging
 import json
 import uuid
@@ -347,6 +351,22 @@ def _get_supabase_client():
 def _get_supabase_admin():
     """Get Supabase admin client"""
     return orders_bp.supabase_admin if hasattr(orders_bp, 'supabase_admin') else None
+
+
+def _storefront_payment_block():
+    """Return a fail-closed response when this storefront is not live for sales."""
+    allowed, subdomain = storefront_payments_allowed(
+        request.headers.get("Origin", ""),
+        _get_supabase_admin() or _get_supabase_client(),
+    )
+    if allowed:
+        return None
+    logger.warning("Blocked checkout on Stripe-disabled storefront: %s", subdomain)
+    return _allow_origin(jsonify({
+        "success": False,
+        "error": PAYMENTS_DISABLED_MESSAGE,
+        "code": "storefront_payments_disabled",
+    })), 403
 
 
 def _get_order_store():
@@ -686,6 +706,9 @@ def place_order():
     """Place an order - validates ZIP code requirement"""
     if request.method == "OPTIONS":
         return _handle_cors_preflight()
+    payment_block = _storefront_payment_block()
+    if payment_block:
+        return payment_block
     
     try:
         data = read_json()
@@ -943,6 +966,9 @@ def place_order():
 @orders_bp.route("/send-order", methods=["POST"])
 def send_order():
     """Legacy send-order endpoint"""
+    payment_block = _storefront_payment_block()
+    if payment_block:
+        return payment_block
     try:
         data = request.get_json()
         cart = data.get("cart", [])
@@ -1146,6 +1172,9 @@ def create_checkout_session():
     """Create Stripe checkout session"""
     if request.method == "OPTIONS":
         return _handle_cors_preflight()
+    payment_block = _storefront_payment_block()
+    if payment_block:
+        return payment_block
     
     try:
         data = read_json()

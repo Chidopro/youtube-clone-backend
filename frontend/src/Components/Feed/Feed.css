@@ -135,6 +135,15 @@
   object-position: center top;
 }
 
+/* MaxFreedom homepage display crops only; merchandise artwork stays untouched. */
+html[data-storefront="maxfreedom"] .feed-hubs:not(.feed-hubs--shuffle) .hub-card--creator > img {
+  object-position: center 15% !important;
+}
+
+html[data-storefront="maxfreedom"] .feed-hubs:not(.feed-hubs--shuffle) .hub-card--co-creators > img {
+  object-position: center center !important;
+}
+
 .hub-shop-thumb {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

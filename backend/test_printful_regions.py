@@ -638,6 +638,10 @@ class TestCatalogSizeAliases(unittest.TestCase):
             "Tahiti Blue": {"M": 13},
         }
         with patch("printful_catalog.get_nested_variant_map", return_value=nested):
+            self.assertEqual(lookup_catalog_variant_id(857, "Black", "M"), 10)
+            self.assertEqual(lookup_catalog_variant_id(857, "White", "M"), 11)
+            self.assertEqual(lookup_catalog_variant_id(857, "Heather Gray", "M"), 12)
+            self.assertEqual(lookup_catalog_variant_id(857, "Tahiti Blue", "M"), 13)
             self.assertEqual(lookup_catalog_variant_id(857, "Vintage Black", "M"), 10)
             self.assertEqual(lookup_catalog_variant_id(857, "Heather White", "M"), 11)
             self.assertEqual(lookup_catalog_variant_id(857, "Premium Heather", "M"), 12)

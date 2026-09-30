@@ -1837,6 +1837,15 @@
   max-width: 100%;
 }
 
+.product-page--womens .product-card .product-image--color-mockup {
+  overflow: hidden;
+}
+
+.product-page--womens .product-card .product-image--color-mockup .product-image-wrapper {
+  transform: scale(1.06);
+  transform-origin: center center;
+}
+
 .product-image-tint-shell {
   display: inline-flex;
   height: 100%;
@@ -1924,6 +1933,12 @@
 .product-image--oversized .product-image-clear,
 .product-image--oversized .product-image-normal {
   transform: scale(1.333);
+  transform-origin: center center;
+}
+
+.product-image--notebook .product-image-clear,
+.product-image--notebook .product-image-normal {
+  transform: rotate(180deg);
   transform-origin: center center;
 }
 

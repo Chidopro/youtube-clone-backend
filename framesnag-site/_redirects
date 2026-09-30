@@ -1,0 +1,6 @@
+# Netlify / static host redirects for FrameSnag
+/install-extension/  https://chromewebstore.google.com/detail/framesnag-for-screenmerch/hfokckkkdojjgfgknpakccbfmbakkilf  302
+/install-extension   https://chromewebstore.google.com/detail/framesnag-for-screenmerch/hfokckkkdojjgfgknpakccbfmbakkilf  302
+/policy              /privacy/  301
+/policy/             /privacy/  301
+/download/*          https://chromewebstore.google.com/detail/framesnag-for-screenmerch/hfokckkkdojjgfgknpakccbfmbakkilf  302

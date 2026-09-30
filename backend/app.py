@@ -1967,13 +1967,14 @@ PRODUCTS = [
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.png",
         "description": "A proven bestseller in women's activewear, this racerback tank blends style, comfort, and affordability. Designed to deliver a premium feel without the high price tag, it's a smart pick for fitness or athleisure-oriented stores. With matching self-binding seams, a flattering fitted cut, and a lightweight cotton-poly jersey blend, it's built to perform and easy to customize for yourself or to sell online. 60% combed ringspun cotton, 40% polyester. Fabric weight: 4 oz./yd.² (113.4 g/m²). Lightweight jersey. Fitted silhouette. Scoop neck and racerback. Self-binding seams in matching colors for a seamless look. Tear-away label. Blank product sourced from Honduras. This product is made on demand. No minimums.",
-        "options": {"color": ["Vintage Black", "Purple Rush", "Premium Heather", "Vintage Navy", "Vintage Red", "Vintage Royal", "Vintage Turquoise", "Heather White"], "size": ["XS", "S", "M", "L", "XL"]},
+        "options": {"color": ["Black", "White", "Heather Gray", "Hot Pink", "Tahiti Blue", "Cancun", "Light Orange"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
             "S": 0,
             "M": 0,
             "L": 0,
-            "XL": 0
+            "XL": 0,
+            "XXL": 2.00
         }
     },
     {
