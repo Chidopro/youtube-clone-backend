@@ -390,7 +390,6 @@ const PlayVideo = ({
     const playbackFallbackRef = useRef([]);
     const playStartedAtRef = useRef(0);
     const pausedCanvasRef = useRef(null);
-    const [forcePlaybackFile, setForcePlaybackFile] = useState(false);
     const [letterbox, setLetterbox] = useState(null);
     const letterboxSamplesRef = useRef([]);
     
@@ -578,11 +577,8 @@ const PlayVideo = ({
             optimizePendingRef.current = needsVideoOptimize(data);
             const originalPlayback = String(data.video_url || '');
             const playback = playbackUrlForVideo(data) || originalPlayback;
-            const preferOriginal = !getUseCustomPlayer();
-            const playerSrc = playerSrcForVideo({ ...data, video_url: playback }, { preferOriginal });
-            if (preferOriginal && playerSrc && playerSrc !== playback) {
-                playbackFallbackRef.current = [...new Set([playback, originalPlayback])].filter((u) => u && u !== playerSrc);
-            } else if (isOptimizedPlaybackUrl(playback)) {
+            const playerSrc = playerSrcForVideo({ ...data, video_url: playback });
+            if (isOptimizedPlaybackUrl(playback)) {
                 playbackFallbackRef.current = [];
             } else {
                 playbackFallbackRef.current = [...new Set([
@@ -595,9 +591,7 @@ const PlayVideo = ({
                     if (result?.video_url && isOptimizedPlaybackUrl(result.video_url)) {
                         optimizePendingRef.current = false;
                         setVideo((prev) => prev ? { ...prev, video_url: result.video_url, source_video_url: result.source_video_url || prev.source_video_url } : prev);
-                        if (!preferOriginal) {
-                            playbackUrlRef.current = result.video_url;
-                        }
+                        playbackUrlRef.current = result.video_url;
                     }
                 });
             }
@@ -663,9 +657,8 @@ const PlayVideo = ({
             if (cancelled || !data?.video_url) return;
             if (isOptimizedPlaybackUrl(data.video_url)) {
                 optimizePendingRef.current = false;
-                const preferOriginal = !getUseCustomPlayer();
                 setVideo((prev) => prev ? { ...prev, video_url: data.video_url, source_video_url: data.source_video_url || prev.source_video_url } : prev);
-                if (!preferOriginal && data.video_url !== playbackUrlRef.current) {
+                if (data.video_url !== playbackUrlRef.current) {
                     const el = videoRef.current;
                     if (el) {
                         pendingSeekRef.current = { time: el.currentTime || 0, play: !el.paused };
@@ -705,7 +698,6 @@ const PlayVideo = ({
         setMobilePlaying(false);
         setHideMediaChrome(false);
         setPlaybackRate(1);
-        setForcePlaybackFile(false);
         setLetterbox(null);
         letterboxSamplesRef.current = [];
         if (hideChromeTimerRef.current) {
@@ -1368,7 +1360,7 @@ const PlayVideo = ({
         }
     };
 
-    const playerSrc = video ? playerSrcForVideo(video, { preferOriginal: !isMobile && !forcePlaybackFile }) : '';
+    const playerSrc = video ? playerSrcForVideo(video) : '';
 
     if (loading) return (
         <div style={{
@@ -1553,7 +1545,6 @@ const PlayVideo = ({
                             const videoElement = e.target;
                             const next = playbackFallbackRef.current.shift();
                             if (next) {
-                                setForcePlaybackFile(true);
                                 playbackUrlRef.current = next;
                                 setVideo((prev) => prev ? { ...prev, video_url: next } : prev);
                                 return;

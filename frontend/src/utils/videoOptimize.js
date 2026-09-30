@@ -50,16 +50,9 @@ export function playbackUrlForVideo(video) {
   return raw;
 }
 
-/**
- * Desktop / large screens play the original upload (source_video_url).
- * Phones keep the small _w720t file so Watch can start on cellular.
- */
-export function playerSrcForVideo(video, { preferOriginal = false } = {}) {
-  const playback = playbackUrlForVideo(video) || String(video?.video_url || '').trim();
-  if (!preferOriginal) return playback;
-  const source = String(video?.source_video_url || '').trim();
-  if (source && !isOptimizedPlaybackUrl(source)) return source;
-  return playback;
+/** Always stream the governed playback artifact. Originals are reserved for screenshots and print. */
+export function playerSrcForVideo(video) {
+  return playbackUrlForVideo(video) || String(video?.video_url || '').trim();
 }
 
 /** Warm the small playback file as soon as Watch is tapped (Samurai Dog path). */
