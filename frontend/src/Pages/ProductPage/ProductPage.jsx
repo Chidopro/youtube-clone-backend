@@ -2385,7 +2385,7 @@ const ProductPage = ({ sidebar }) => {
 
           {/* Tools Page Button - Underneath screenshots, above cart/checkout - Hidden in creator mode and My Shop catalog */}
           {!creatorMode && !isShopCatalog && (
-            <div className="tools-button-container">
+            <div className="tools-button-container selected-image-mobile-actions">
               <p className="screenshots-subtitle screenshots-subtitle-above-buttons">For your custom merchandise</p>
               <button 
                 className="tools-page-btn"
@@ -2412,7 +2412,7 @@ const ProductPage = ({ sidebar }) => {
 
           <div className="product-options-section">
             {/* Cart Buttons Above Products */}
-            <div className="cart-section">
+            <div className={`cart-section${!isShopCatalog ? ' selected-image-mobile-actions' : ''}`}>
               {isBrowseMode ? (
                 <div className="shop-catalog-toolbar">
                   <button
@@ -2804,22 +2804,13 @@ const ProductPage = ({ sidebar }) => {
               
               <div className="added-to-cart-modal-actions">
                 <button 
-                  className="checkout-btn-modal"
-                  onClick={() => {
-                    setShowAddedToCartModal(false);
-                    goToCheckout();
-                  }}
-                >
-                  Checkout
-                </button>
-                <button 
                   className="go-to-tools-btn"
                   onClick={() => {
                     setShowAddedToCartModal(false);
                     goToToolsPage();
                   }}
                 >
-                  Preview Design
+                  Preview Product
                 </button>
                 <button 
                   className="continue-shopping-btn"

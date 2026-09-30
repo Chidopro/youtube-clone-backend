@@ -7500,6 +7500,13 @@ const ToolsPage = () => {
                     })()}
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      className="tools-preview-checkout-btn"
+                      onClick={handleCheckoutFromTools}
+                    >
+                      Checkout
+                    </button>
                     <p className="edit-tools-under-preview">Customize Your Design</p>
                   </div>
                 );
@@ -8300,14 +8307,7 @@ const ToolsPage = () => {
                     className="continue-shopping-btn"
                     onClick={handleContinueShopping}
                   >
-                    Shopping
-                  </button>
-                  <button
-                    type="button"
-                    className="tools-checkout-btn"
-                    onClick={handleCheckoutFromTools}
-                  >
-                    Checkout
+                    Continue Shopping
                   </button>
                 </>
               );

@@ -1404,6 +1404,26 @@ body.tools-page-active .site-footer {
   transform: none;
 }
 
+.tools-preview-checkout-btn {
+  display: block;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #18181B;
+  color: #FFFFFF;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(24, 24, 27, 0.3);
+}
+
+.tools-preview-checkout-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 24, 27, 0.45);
+}
+
 /* Acknowledgment Modal */
 .acknowledgment-modal {
   position: fixed;

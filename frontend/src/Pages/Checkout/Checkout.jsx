@@ -258,8 +258,8 @@ const Checkout = () => {
   const [confirmedCartIndexes, setConfirmedCartIndexes] = useState([]);
   const [previewMockups, setPreviewMockups] = useState({});
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
-  /** Set true when user completes design modal with "Continue to Checkout". Required before Place Order. */
-  const [designConfirmed, setDesignConfirmed] = useState(false);
+  /** Product Preview on Tools is the design confirmation step. */
+  const [designConfirmed, setDesignConfirmed] = useState(true);
   const designModalShownOnLoadRef = useRef(false);
   const shippingSectionRef = useRef(null);
   const confirmClickLockRef = useRef(false);
@@ -338,19 +338,12 @@ const Checkout = () => {
     return () => cancelAnimationFrame(frame);
   }, [items.length]);
 
-  // Confirm Your Design for shirts, hoodies, and hats. Mugs, bags, pets, and accessories skip the overlay.
+  // Product Preview on Tools is now the review step; checkout opens directly.
   useEffect(() => {
     if ((!signedIn && !isDemoStorefront()) || items.length === 0 || designModalShownOnLoadRef.current) return;
     designModalShownOnLoadRef.current = true;
-    if (petWrapItemsNeedingPreview(items).length) {
-      setShowDesignModal(false);
-      return;
-    }
-    if (cartNeedsDesignModal(items)) {
-      setShowDesignModal(true);
-    } else {
-      setDesignConfirmed(true);
-    }
+    setShowDesignModal(false);
+    setDesignConfirmed(true);
   }, [signedIn, items.length]);
 
   // When design modal opens, show Product Preview with the item's saved or default orientation.
@@ -1451,14 +1444,6 @@ const Checkout = () => {
                   alert(previewMessage);
                   return;
                 }
-                // Require design preferences for shirts, hoodies, and hats. Other categories skip modal.
-                if (!designConfirmed) {
-                  if (cartNeedsDesignModal(items)) {
-                    setShowDesignModal(true);
-                    return;
-                  }
-                  setDesignConfirmed(true);
-                }
                 const zipInput = document.querySelector('input[aria-label="ZIP or Postal Code"]');
                 const zipValue = String(zipInput?.value ?? address.zip ?? '').trim();
                 const countryValue = String(address.country_code || 'US').trim();
@@ -1495,7 +1480,7 @@ const Checkout = () => {
         </div>
 
       {/* Design preferences – portaled to body so navbar cannot cover it */}
-      {showDesignModal && cartConfirmIndexes(items).length > 0 && createPortal(
+      {showDesignModal && !designConfirmed && cartConfirmIndexes(items).length > 0 && createPortal(
         <div className="design-modal-overlay" onClick={() => setShowDesignModal(false)}>
           <div className="design-modal design-modal--multi design-modal--preview" onClick={e => e.stopPropagation()}>
             <button
