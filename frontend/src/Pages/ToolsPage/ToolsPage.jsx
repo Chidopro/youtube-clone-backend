@@ -208,6 +208,71 @@ function lockJigsawPreviewCrop({
   });
 }
 
+/** Bake the exact apron crop shown in Tools so Printful preserves the adjustment. */
+function lockApronPreviewCrop({
+  src,
+  productName,
+  productSize,
+  imageOrientation,
+  printAreaFit,
+  zoomPercent,
+  posX,
+  posY,
+}) {
+  return new Promise((resolve) => {
+    const imageSrc = String(src || '').trim();
+    if (!imageSrc) {
+      resolve(null);
+      return;
+    }
+    const img = new Image();
+    if (/^https?:\/\//i.test(imageSrc)) img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const aspect = printBoxPreviewAspect(
+          productName,
+          productSize,
+          imageOrientation,
+          printAreaFit,
+        );
+        const safeAspect = aspect > 0 ? aspect : 12 / 14;
+        const width = 1200;
+        const height = Math.max(1, Math.round(width / safeAspect));
+        const layout = artworkLayoutInBox(
+          width,
+          height,
+          img.naturalWidth || img.width,
+          img.naturalHeight || img.height,
+          zoomPercent,
+          posX,
+          posY,
+          'cover',
+        );
+        if (!layout) {
+          resolve(null);
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, width, height);
+        drawLayoutImage(ctx, img, layout);
+        resolve({
+          dataUrl: canvas.toDataURL('image/jpeg', 0.92),
+          width,
+          height,
+        });
+      } catch (_) {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = imageSrc;
+  });
+}
+
 function artworkLayoutForProduct(productName, boxW, boxH, imgW, imgH, zoomPercent, posX, posY) {
   if (isJigsawPuzzleProduct(productName)) {
     return jigsawArtworkLayout(boxW, boxH, imgW, imgH, zoomPercent, posX, posY);
@@ -5918,6 +5983,9 @@ const ToolsPage = () => {
       snap.textEnabled ? 1 : 0,
       String(snap.textContent || ''),
       String(snap.imageOrientation || ''),
+      Number(snap.imageOffsetX) || 0,
+      Number(snap.imageOffsetY) || 0,
+      Number(snap.screenshotScale) || 100,
     ].join('|');
     if (!wrapEditKeyRef.current && mugMockupUrl) {
       wrapEditKeyRef.current = wrapEditKey;
@@ -5944,6 +6012,9 @@ const ToolsPage = () => {
     textEnabled,
     textContent,
     imageOrientation,
+    imageOffsetX,
+    imageOffsetY,
+    screenshotScale,
     mugPreviewSlotKey,
   ]);
 
@@ -5975,6 +6046,7 @@ const ToolsPage = () => {
         let bowlWrap = false;
         let bandanaWrap = false;
         let puzzleWrap = false;
+        let apronWrap = false;
         let httpsSource = '';
         let hasPixelEdits = false;
         while (active && Date.now() < deadline) {
@@ -5987,6 +6059,7 @@ const ToolsPage = () => {
           bowlWrap = isPetBowlProduct(name);
           bandanaWrap = isPetBandanaProduct(name);
           puzzleWrap = isJigsawPuzzleProduct(name);
+          apronWrap = printfulWrapKind(name, product?.category) === 'apron';
           hasPixelEdits = Boolean(
             !bowlWrap && !bandanaWrap && !puzzleWrap && (
               (!snap.skipRectEdgeEdits && (snap.featherEdge || snap.cornerRadius || snap.frameEnabled || snap.featherFadeEnabled)) ||
@@ -6055,6 +6128,9 @@ const ToolsPage = () => {
           snap.textEnabled ? 1 : 0,
           String(snap.textContent || ''),
           String(snap.imageOrientation || ''),
+          Number(snap.imageOffsetX) || 0,
+          Number(snap.imageOffsetY) || 0,
+          Number(snap.screenshotScale) || 100,
         ].join('|');
         const place = printBoxObjectPosition(name, snap.imageOrientation, snap.imageOffsetX, snap.imageOffsetY);
         let puzzleCropLocked = false;
@@ -6073,6 +6149,23 @@ const ToolsPage = () => {
             imageWidth = locked.width;
             imageHeight = locked.height;
             puzzleCropLocked = true;
+          }
+        }
+        if (apronWrap) {
+          const locked = await lockApronPreviewCrop({
+            src: artwork,
+            productName: name,
+            productSize: product.size,
+            imageOrientation: snap.imageOrientation,
+            printAreaFit: snap.printAreaFit,
+            zoomPercent: snap.screenshotScale,
+            posX: place.x,
+            posY: place.y,
+          });
+          if (locked?.dataUrl) {
+            artwork = locked.dataUrl;
+            imageWidth = locked.width;
+            imageHeight = locked.height;
           }
         }
         const wrap = await requestMugWrapMockup({
@@ -7111,8 +7204,8 @@ const ToolsPage = () => {
                                   textOffsetX={textOffsetX}
                                   textOffsetY={textOffsetY}
                                   textDirection={textDirection}
-                                  nudgeEnabled={wrapKind === 'puzzle'}
-                                  onImageOffsetChange={wrapKind === 'puzzle' ? (x, y) => {
+                                  nudgeEnabled={wrapKind === 'puzzle' || wrapKind === 'apron'}
+                                  onImageOffsetChange={wrapKind === 'puzzle' || wrapKind === 'apron' ? (x, y) => {
                                     setImageOffsetX(x);
                                     setImageOffsetY(y);
                                   } : undefined}
@@ -7133,6 +7226,10 @@ const ToolsPage = () => {
                                   <div className="product-preview-unavailable-note-text">
                                     This is the puzzle print area. Drag the photo to choose what stays in the picture, then click Wrap now.
                                   </div>
+                                ) : wrapKind === 'apron' ? (
+                                  <div className="product-preview-unavailable-note-text">
+                                    This is the apron print area. Drag the photo to adjust its position, then click Wrap now.
+                                  </div>
                                 ) : wrapKind === 'bowl' ? (
                                   <div className="product-preview-unavailable-note-text">
                                     Eleven photos wrap around the bowl. Wrap now uses this image in every window, unless you choose random dashboard photos.
@@ -7143,7 +7240,7 @@ const ToolsPage = () => {
                                     Drag the window up or down. Wrap now prints that part on the bandana.
                                   </div>
                                 ) : null}
-                                {wrapKind !== 'puzzle' && wrapKind !== 'bowl' && wrapKind !== 'bandana' ? (
+                                {wrapKind !== 'puzzle' && wrapKind !== 'apron' && wrapKind !== 'bowl' && wrapKind !== 'bandana' ? (
                                   <div className="product-preview-unavailable-note-text">
                                     {`Click Wrap now to place your design on the ${wrapKind}.`}
                                   </div>
@@ -7257,15 +7354,17 @@ const ToolsPage = () => {
                                   Wrap now
                                 </button>
                               </div>
-                            ) : wrapKind === 'puzzle' && mugMockupUrl ? (
+                            ) : (wrapKind === 'puzzle' || wrapKind === 'apron') && mugMockupUrl ? (
                               <div className="product-preview-unavailable-note">
-                                <button
-                                  type="button"
-                                  className="bowl-panel-same-btn"
-                                  onClick={() => setPuzzleViewTurns((turns) => (turns + 1) % 4)}
-                                >
-                                  Turn view
-                                </button>
+                                {wrapKind === 'puzzle' ? (
+                                  <button
+                                    type="button"
+                                    className="bowl-panel-same-btn"
+                                    onClick={() => setPuzzleViewTurns((turns) => (turns + 1) % 4)}
+                                  >
+                                    Turn view
+                                  </button>
+                                ) : null}
                                 <button
                                   type="button"
                                   className="bowl-panel-same-btn"
@@ -7281,7 +7380,9 @@ const ToolsPage = () => {
                                   Move photo
                                 </button>
                                 <div className="product-preview-unavailable-note-text">
-                                  Turn view only changes how you look at the wrap. The print stays as wrapped.
+                                  {wrapKind === 'puzzle'
+                                    ? 'Turn view only changes how you look at the wrap. The print stays as wrapped.'
+                                    : 'Move photo lets you adjust the apron print, then wrap it again.'}
                                 </div>
                               </div>
                             ) : wrapKind === 'bowl' && mugMockupUrl ? (
