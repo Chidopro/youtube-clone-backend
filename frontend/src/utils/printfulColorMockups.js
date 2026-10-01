@@ -1,4 +1,5 @@
 import mockupsByCatalogId from '../data/printfulColorMockups.json';
+import hatFrontMockupsByCatalogId from '../data/printfulHatFrontMockups.json';
 
 /** Catalog ids with Printful per-color photos. */
 const SHIRT_CATALOG_IDS_BY_NAME = {
@@ -112,6 +113,22 @@ export function getPrintfulColorEntry(product, colorName) {
 
 export function getPrintfulColorMockupUrl(product, colorName) {
   return getPrintfulColorEntry(product, colorName)?.image || '';
+}
+
+/** Official Printful straight-on hat blanks generated for each catalog color. */
+export function getPrintfulHatFrontMockupUrl(product, colorName) {
+  const id = catalogIdForColorMockup(product);
+  const table = hatFrontMockupsByCatalogId[String(id)];
+  if (!table) return '';
+  const wanted = String(colorName || '').trim();
+  if (!wanted) return '';
+  if (table[wanted]) return table[wanted];
+  const lower = normalizeColor(wanted);
+  const match = Object.keys(table).find((key) => normalizeColor(key) === lower);
+  if (match) return table[match];
+  const alias = COLOR_ALIASES[id]?.[lower];
+  if (alias && table[alias]) return table[alias];
+  return '';
 }
 
 /** Women's gallery cutouts: shirt pixels are transparent so color_code shows through. */

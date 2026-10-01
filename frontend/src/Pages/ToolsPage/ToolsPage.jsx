@@ -7,7 +7,7 @@ import { isDemoStorefront } from '../../utils/demoStorefront';
 import { getSubdomain } from '../../utils/subdomainService';
 import { favoriteImageUrl, fetchPublicFavoriteLists, fetchPublicFavoritesByList } from '../../utils/favoriteListsApi';
 import { shopCategoryThumbUrl, toolsPreviewMockupUrl } from '../../utils/shopCategories';
-import { getWhiteBlankGarmentTint, getPrintfulColorMockupUrl } from '../../utils/printfulColorMockups';
+import { getWhiteBlankGarmentTint, getPrintfulHatFrontMockupUrl } from '../../utils/printfulColorMockups';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 import { buildEditLog, editLogHasEntries, formatEditLogLines, formatEditLogPlainText, cornerRadiusPx, featherPx } from '../../utils/editLog';
 import { bakeArtworkForWrap, browsePresetHasPixelEdits, roundedRectFeatherFactor } from '../../utils/bakeBrowsePreset';
@@ -3461,14 +3461,14 @@ function toolsHatLocalMockupUrl(product, selectedName) {
   return '';
 }
 
-/** Tools Product Preview only: selected hat + cart color from Printful. No tint, no hatflatfront. */
+/** Tools Product Preview only: straight-on selected hat + cart color from Printful. */
 function toolsHatPreviewUrl(product, selectedName) {
   const name = String(selectedName || product?.name || product?.product || '').trim();
   const cartName = String(product?.name || product?.product || '').trim();
   const sameHat =
     isHatProduct(cartName) &&
     (!name || name === cartName || matchPrintAreaProductName(name) === matchPrintAreaProductName(cartName));
-  const fromPrintful = getPrintfulColorMockupUrl(
+  const fromPrintful = getPrintfulHatFrontMockupUrl(
     {
       name,
       printful_catalog_product_id: sameHat ? product?.printful_catalog_product_id : undefined,

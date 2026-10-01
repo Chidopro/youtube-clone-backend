@@ -1,5 +1,5 @@
 // frontend/src/Pages/Products/MerchandiseCategories.jsx
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useLayoutEffect } from 'react';
 import './MerchandiseCategories.css';
 import '../Home/Home.css';
 import { useCreator } from '../../contexts/CreatorContext';
@@ -8,18 +8,11 @@ import { useNavigate } from 'react-router-dom';
 import { SHOP_CATEGORIES, shopCategoryThumbUrl } from '../../utils/shopCategories';
 import { ChevronLeft } from '../../Components/Chevrons/Chevrons';
 
-function CategoryThumb({ preview, emoji, thumbFit }) {
-  const [failed, setFailed] = useState(false);
+function CategoryThumb({ preview, thumbFit }) {
   const src = shopCategoryThumbUrl(preview);
   const isModel = thumbFit === 'model';
 
-  if (!src || failed) {
-    return (
-      <div className="category-emoji" aria-hidden="true">
-        {emoji}
-      </div>
-    );
-  }
+  if (!src) return null;
 
   return (
     <div className={`category-thumb${isModel ? ' category-thumb--model' : ''}`}>
@@ -29,8 +22,9 @@ function CategoryThumb({ preview, emoji, thumbFit }) {
         alt=""
         loading="lazy"
         decoding="async"
-        referrerPolicy="no-referrer"
-        onError={() => setFailed(true)}
+        onError={(event) => {
+          event.currentTarget.hidden = true;
+        }}
       />
     </div>
   );
@@ -157,7 +151,7 @@ const MerchandiseCategories = ({ sidebar }) => {
                   window.__DEBUG__ && console.log('👆 touchstart:', cat.category)
                 }
               >
-                <CategoryThumb preview={cat.preview} emoji={cat.emoji} thumbFit={cat.thumbFit} />
+                <CategoryThumb preview={cat.preview} thumbFit={cat.thumbFit} />
                 <div className="category-name">{cat.name}</div>
               </button>
             ))}
