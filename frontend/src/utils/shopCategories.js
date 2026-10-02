@@ -16,24 +16,24 @@ export const SHOP_CATEGORIES = [
     name: "Women's",
     category: 'womens',
     thumbFit: 'model',
-    preview: '/category/womens.jpg',
+    preview: '/category/womens-white.jpg',
   },
   {
     name: "Men's",
     category: 'mens',
     thumbFit: 'model',
-    preview: '/category/mens.jpg',
+    preview: '/category/mens-white.jpg',
   },
   {
     name: 'Kids',
     category: 'kids',
     thumbFit: 'model',
-    preview: '/category/kids.jpg',
+    preview: '/category/kids-white.jpg',
   },
   {
     name: 'Hats',
     category: 'hats',
-    preview: '/category/hats.jpg',
+    preview: '/category/hats-white.jpg',
   },
   {
     name: 'Mugs',
