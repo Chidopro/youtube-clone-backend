@@ -2976,7 +2976,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                         onClick={() => navigate('/upload')}
                                         disabled={demoPreview}
                                     >
-                                        Upload Clip
+                                        Upload Short
                                     </button>
                                     <button
                                         type="button"

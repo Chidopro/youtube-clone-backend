@@ -1375,9 +1375,10 @@ const ProductPage = ({ sidebar }) => {
     }
   };
 
-  const goToToolsPage = async () => {
+  const goToToolsPage = async (options = {}) => {
     // Prefer the item being edited or last picked, then the most recently added cart item.
     try {
+      const fromAddedModal = options?.fromAddedModal === true;
       let items = readCartItems();
       const picked = lastPickedProductRef.current;
       const pickedColor = picked
@@ -1394,15 +1395,25 @@ const ProductPage = ({ sidebar }) => {
         let focusIndex = Array.isArray(items) && items.length ? items.length - 1 : -1;
         let openedNewSelection = Boolean(peekToolsPreviewNewest());
         const lastTouched = lastTouchedCartIndexRef.current;
-        const justAdded = (
-          lastTouched != null
+        const touchedItemExists = (
+          Number.isInteger(lastTouched)
+          && lastTouched >= 0
           && Array.isArray(items)
+          && Boolean(items[lastTouched])
+        );
+        const justAdded = (
+          touchedItemExists
           && lastTouched === items.length - 1
           && picked?.product
           && cartLineMatchesPick(items[lastTouched], picked.product, pickedColor, pickedSize)
         );
 
-        if (justAdded) {
+        // "Preview Product" in the Added to Cart window must use the exact
+        // line just created. Never try to add that selection a second time.
+        if (fromAddedModal && touchedItemExists) {
+          focusIndex = lastTouched;
+          openedNewSelection = true;
+        } else if (justAdded) {
           focusIndex = lastTouched;
           openedNewSelection = true;
         } else if (picked?.product && !isShopCatalog) {
@@ -2807,7 +2818,7 @@ const ProductPage = ({ sidebar }) => {
                   className="go-to-tools-btn"
                   onClick={() => {
                     setShowAddedToCartModal(false);
-                    goToToolsPage();
+                    goToToolsPage({ fromAddedModal: true });
                   }}
                 >
                   Preview Product

@@ -1774,8 +1774,8 @@
             applyFitProductForOrderItem(selectedProduct);
             renderEditLogPanel(selectedProduct);
             var itemName = selectedProduct.product || selectedProduct.name;
-            var cleanShot = (isJigsawName(itemName) || isGreetingCardName(itemName))
-                ? savedPuzzlePrint(selectedProduct)
+            var cleanShot = (isJigsawName(itemName) || isGreetingCardName(itemName) || isToteWrapName(itemName))
+                ? savedPreparedPrint(selectedProduct)
                 : itemCleanScreenshot(selectedProduct);
             if (cleanShot) {
                 orderScreenshot = cleanShot;
@@ -2000,7 +2000,19 @@
             return isJigsawName(orderProductName()) || isJigsawName(fitName);
         }
 
-        function savedPuzzlePrint(product) {
+        function isToteWrapName(name) {
+            var n = String(name || '').toLowerCase();
+            return n.indexOf('all over print tote pocket') !== -1
+                || n.indexOf('tote pocket') !== -1;
+        }
+
+        function isToteWrapOrder() {
+            var fit = document.getElementById('fitProductSelect');
+            var fitName = fit && fit.value ? fit.value : '';
+            return isToteWrapName(orderProductName()) || isToteWrapName(fitName);
+        }
+
+        function savedPreparedPrint(product) {
             if (!product) return '';
             var file = String(product.printful_tote_printfile_url || product.printfulTotePrintfileUrl || '').trim();
             if (file) return file;
@@ -2092,9 +2104,9 @@
                         payload.bandana_crop_image = savedCrop;
                     }
                 }
-                if (isJigsawOrder() || isGreetingCardOrder()) {
-                    var puzzleFile = savedPuzzlePrint(allProducts && allProducts[selectedQueueIndex]);
-                    if (puzzleFile) payload.thumbnail_data = puzzleFile;
+                if (isJigsawOrder() || isGreetingCardOrder() || isToteWrapOrder()) {
+                    var preparedFile = savedPreparedPrint(allProducts && allProducts[selectedQueueIndex]);
+                    if (preparedFile) payload.thumbnail_data = preparedFile;
                     payload.preserve_edits = true;
                     payload.fit_mode = 'preserve';
                     delete payload.image_orientation;

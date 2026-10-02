@@ -273,6 +273,57 @@ function lockApronPreviewCrop({
   });
 }
 
+/** Bake one finished tote face; the server duplicates and turns it for the back. */
+function lockTotePreviewCrop({ src, zoomPercent, posX, posY }) {
+  return new Promise((resolve) => {
+    const imageSrc = String(src || '').trim();
+    if (!imageSrc) {
+      resolve(null);
+      return;
+    }
+    const img = new Image();
+    if (/^https?:\/\//i.test(imageSrc)) img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        // Printful's 16" × 35" finished surface is split equally between faces.
+        const faceAspect = 32 / 35;
+        const width = 1200;
+        const height = Math.max(1, Math.round(width / faceAspect));
+        const layout = artworkLayoutInBox(
+          width,
+          height,
+          img.naturalWidth || img.width,
+          img.naturalHeight || img.height,
+          zoomPercent,
+          posX,
+          posY,
+          'cover',
+        );
+        if (!layout) {
+          resolve(null);
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, width, height);
+        drawLayoutImage(ctx, img, layout);
+        resolve({
+          dataUrl: canvas.toDataURL('image/jpeg', 0.92),
+          width,
+          height,
+        });
+      } catch (_) {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = imageSrc;
+  });
+}
+
 function artworkLayoutForProduct(productName, boxW, boxH, imgW, imgH, zoomPercent, posX, posY) {
   if (isJigsawPuzzleProduct(productName)) {
     return jigsawArtworkLayout(boxW, boxH, imgW, imgH, zoomPercent, posX, posY);
@@ -2101,6 +2152,7 @@ function printBoxPreviewAspect(productName, productSize, orientation, printAreaF
   if (printAreaFit === 'vertical') return 2 / 3;
 
   const name = matchPrintAreaProductName(productName) || String(productName || '').trim();
+  if (isTotePocketProduct(name)) return 32 / 35;
   const dims = getPrintAreaDimensions(name, productSize, 'front');
   const width = dims?.width > 0 ? dims.width : 11.5;
   const height = dims?.height > 0 ? dims.height : 13.8;
@@ -6047,6 +6099,7 @@ const ToolsPage = () => {
         let bandanaWrap = false;
         let puzzleWrap = false;
         let apronWrap = false;
+        let toteWrap = false;
         let httpsSource = '';
         let hasPixelEdits = false;
         while (active && Date.now() < deadline) {
@@ -6060,6 +6113,7 @@ const ToolsPage = () => {
           bandanaWrap = isPetBandanaProduct(name);
           puzzleWrap = isJigsawPuzzleProduct(name);
           apronWrap = printfulWrapKind(name, product?.category) === 'apron';
+          toteWrap = isTotePocketProduct(name);
           hasPixelEdits = Boolean(
             !bowlWrap && !bandanaWrap && !puzzleWrap && (
               (!snap.skipRectEdgeEdits && (snap.featherEdge || snap.cornerRadius || snap.frameEnabled || snap.featherFadeEnabled)) ||
@@ -6158,6 +6212,19 @@ const ToolsPage = () => {
             productSize: product.size,
             imageOrientation: snap.imageOrientation,
             printAreaFit: snap.printAreaFit,
+            zoomPercent: snap.screenshotScale,
+            posX: place.x,
+            posY: place.y,
+          });
+          if (locked?.dataUrl) {
+            artwork = locked.dataUrl;
+            imageWidth = locked.width;
+            imageHeight = locked.height;
+          }
+        }
+        if (toteWrap) {
+          const locked = await lockTotePreviewCrop({
+            src: artwork,
             zoomPercent: snap.screenshotScale,
             posX: place.x,
             posY: place.y,
@@ -7060,7 +7127,10 @@ const ToolsPage = () => {
                           ? `Wrapping your design on the ${wrapKind}…`
                           : mugMockupError;
                         const showWrapNow = !mugMockupLoading && !mugMockupUrl;
-                        const mugViews = uniqueMugWrapViews(mugMockupUrls);
+                        const toteFaceWrap = wrapKind === 'bag' && isTotePocketProduct(productName);
+                        // A tote has one shopper-facing preview. Its second Printful
+                        // angle is only a mockup view, not another cart product.
+                        const mugViews = toteFaceWrap ? [] : uniqueMugWrapViews(mugMockupUrls);
                         const wrapAngleNoun = wrapKind === 'mug' ? 'Mug' : wrapKind.charAt(0).toUpperCase() + wrapKind.slice(1);
                         return (
                           <div>
@@ -7204,8 +7274,8 @@ const ToolsPage = () => {
                                   textOffsetX={textOffsetX}
                                   textOffsetY={textOffsetY}
                                   textDirection={textDirection}
-                                  nudgeEnabled={wrapKind === 'puzzle' || wrapKind === 'apron'}
-                                  onImageOffsetChange={wrapKind === 'puzzle' || wrapKind === 'apron' ? (x, y) => {
+                                  nudgeEnabled={wrapKind === 'puzzle' || wrapKind === 'apron' || toteFaceWrap}
+                                  onImageOffsetChange={wrapKind === 'puzzle' || wrapKind === 'apron' || toteFaceWrap ? (x, y) => {
                                     setImageOffsetX(x);
                                     setImageOffsetY(y);
                                   } : undefined}
@@ -7230,6 +7300,10 @@ const ToolsPage = () => {
                                   <div className="product-preview-unavailable-note-text">
                                     This is the apron print area. Drag the photo to adjust its position, then click Wrap now.
                                   </div>
+                                ) : toteFaceWrap ? (
+                                  <div className="product-preview-unavailable-note-text">
+                                    Drag the photo to frame the front. Wrap now places the same photo upright on the back.
+                                  </div>
                                 ) : wrapKind === 'bowl' ? (
                                   <div className="product-preview-unavailable-note-text">
                                     Eleven photos wrap around the bowl. Wrap now uses this image in every window, unless you choose random dashboard photos.
@@ -7240,7 +7314,7 @@ const ToolsPage = () => {
                                     Drag the window up or down. Wrap now prints that part on the bandana.
                                   </div>
                                 ) : null}
-                                {wrapKind !== 'puzzle' && wrapKind !== 'apron' && wrapKind !== 'bowl' && wrapKind !== 'bandana' ? (
+                                {wrapKind !== 'puzzle' && wrapKind !== 'apron' && wrapKind !== 'bowl' && wrapKind !== 'bandana' && !toteFaceWrap ? (
                                   <div className="product-preview-unavailable-note-text">
                                     {`Click Wrap now to place your design on the ${wrapKind}.`}
                                   </div>
@@ -7354,7 +7428,7 @@ const ToolsPage = () => {
                                   Wrap now
                                 </button>
                               </div>
-                            ) : (wrapKind === 'puzzle' || wrapKind === 'apron') && mugMockupUrl ? (
+                            ) : (wrapKind === 'puzzle' || wrapKind === 'apron' || toteFaceWrap) && mugMockupUrl ? (
                               <div className="product-preview-unavailable-note">
                                 {wrapKind === 'puzzle' ? (
                                   <button
@@ -7382,7 +7456,9 @@ const ToolsPage = () => {
                                 <div className="product-preview-unavailable-note-text">
                                   {wrapKind === 'puzzle'
                                     ? 'Turn view only changes how you look at the wrap. The print stays as wrapped.'
-                                    : 'Move photo lets you adjust the apron print, then wrap it again.'}
+                                    : wrapKind === 'apron'
+                                      ? 'Move photo lets you adjust the apron print, then wrap it again.'
+                                      : 'Move photo lets you adjust both tote faces, then wrap them again.'}
                                 </div>
                               </div>
                             ) : wrapKind === 'bowl' && mugMockupUrl ? (
@@ -7815,7 +7891,7 @@ const ToolsPage = () => {
               </select>
               {isTotePocketProduct(selectedProductName || selectedCartProduct?.name || '') ? (
                 <p className="tote-wrap-note">
-                  Same photo on the back, reversed.
+                  Same photo prints upright on the front and back.
                 </p>
               ) : null}
             </div>

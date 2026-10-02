@@ -1,11 +1,25 @@
 node_modules
 .pnp
 **/.pnp.js
+.git
+.cursor
 
 coverage
 
 build
 dist
+frontend
+
+# Local investigation artifacts are not part of the production backend.
+backend/_oldhats*
+backend/_*.zip
+backend/_*.png
+backend/_*.json
+backend/_*.txt
+backend/_*.csv
+backend/_*.js
+backend/_[!_]*.py
+backend/tmp*
 
 **/.DS_Store
 **/.env.local

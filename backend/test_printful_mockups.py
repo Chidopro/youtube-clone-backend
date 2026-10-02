@@ -158,19 +158,16 @@ class TestMugMockupHelpers(unittest.TestCase):
 
     def test_tote_panels_are_front_top_and_back_bottom(self):
         front, back = tote_wrap_panels(3150, 5550)
-        self.assertEqual(front[0], 0)
-        self.assertEqual(front[1], 0)
-        self.assertEqual(front[2], 3150)
-        self.assertLess(front[3], 5550 * 0.55)
-        self.assertGreater(back[1], 5550 * 0.45)
-        self.assertEqual(back[1] + back[3], 5550)
+        self.assertEqual(front, (0, 0, 3150, 2775))
+        self.assertEqual(back, (0, 2775, 3150, 2775))
 
     def test_tote_positions_photo_on_front_panel_only(self):
         pos = artwork_position_for_catalog(274, 3150, 5550, 3000, 4000)
         self.assertEqual(pos["area_width"], 3150)
         self.assertEqual(pos["area_height"], 5550)
-        self.assertLessEqual(pos["top"] + pos["height"], int(round(5550 * 0.48)) + 1)
-        self.assertGreater(pos["height"], 2000)
+        self.assertEqual(pos["width"], 2400)
+        self.assertGreater(pos["height"], 2625)
+        self.assertLess(pos["top"], 150)
         fallback = tote_front_artwork_position(3150, 5550, 3000, 4000)
         self.assertEqual(pos, fallback)
 
@@ -187,7 +184,9 @@ class TestMugMockupHelpers(unittest.TestCase):
             return all(abs(int(a) - int(b)) <= slack for a, b in zip(pixel, color))
         self.assertTrue(near(out.getpixel((1575, int(5550 * 0.24))), (255, 0, 0)))
         self.assertTrue(near(out.getpixel((1575, int(5550 * 0.76))), (0, 0, 255)))
-        self.assertTrue(near(out.getpixel((1575, 2775)), (0, 0, 0)))
+        # JPEG chroma subsampling blends the exact red/blue boundary by a few
+        # pixels; sample just inside the back panel.
+        self.assertTrue(near(out.getpixel((1575, 2781)), (0, 0, 255)))
 
     def test_compose_tote_copies_front_onto_back_when_back_missing(self):
         from io import BytesIO
@@ -203,7 +202,7 @@ class TestMugMockupHelpers(unittest.TestCase):
         self.assertTrue(near(out.getpixel((1575, int(5550 * 0.24))), (255, 0, 0)))
         self.assertTrue(near(out.getpixel((1575, int(5550 * 0.76))), (255, 0, 0)))
 
-    def test_compose_tote_keeps_art_off_opening_and_gusset(self):
+    def test_compose_tote_extends_art_through_printful_bleed(self):
         from io import BytesIO
         from PIL import Image
 
@@ -214,12 +213,13 @@ class TestMugMockupHelpers(unittest.TestCase):
         def near(pixel, color, slack=8):
             return all(abs(int(a) - int(b)) <= slack for a, b in zip(pixel, color))
 
-        self.assertTrue(near(out.getpixel((1575, 6)), (0, 0, 0)))
-        front_h = int(round(5550 * 0.48))
-        self.assertTrue(near(out.getpixel((1575, front_h - 6)), (0, 0, 0)))
+        self.assertTrue(near(out.getpixel((1575, 6)), (255, 0, 0)))
+        front_h = 5550 // 2
+        self.assertTrue(near(out.getpixel((1575, front_h - 6)), (255, 0, 0)))
+        self.assertTrue(near(out.getpixel((1575, front_h + 6)), (255, 0, 0)))
         self.assertTrue(near(out.getpixel((1575, int(5550 * 0.24))), (255, 0, 0)))
 
-    def test_compose_tote_mirrors_front_onto_back_when_back_missing(self):
+    def test_compose_tote_flips_back_vertically_without_reversing_left_right(self):
         from io import BytesIO
         from PIL import Image
 
@@ -231,16 +231,18 @@ class TestMugMockupHelpers(unittest.TestCase):
         out = Image.open(BytesIO(blob)).convert("RGB")
         _front_box, back_box = tote_wrap_panels(3150, 5550)
         _bl, back_top, bw, bh = back_box
-        on_bag = out.crop((0, back_top, bw, back_top + bh)).rotate(180)
+        on_bag = out.crop((0, back_top, bw, back_top + bh)).transpose(Image.FLIP_TOP_BOTTOM)
 
         def near(pixel, color, slack=8):
             return all(abs(int(a) - int(b)) <= slack for a, b in zip(pixel, color))
 
         mid_y = bh // 2
-        self.assertTrue(near(on_bag.getpixel((int(bw * 0.28), mid_y)), (0, 0, 255)))
-        self.assertTrue(near(on_bag.getpixel((int(bw * 0.72), mid_y)), (255, 0, 0)))
+        self.assertTrue(near(on_bag.getpixel((int(bw * 0.28), mid_y)), (255, 0, 0)))
+        self.assertTrue(near(on_bag.getpixel((int(bw * 0.72), mid_y)), (0, 0, 255)))
         self.assertTrue(near(out.getpixel((int(3150 * 0.28), int(5550 * 0.24))), (255, 0, 0)))
         self.assertTrue(near(out.getpixel((int(3150 * 0.72), int(5550 * 0.24))), (0, 0, 255)))
+        self.assertTrue(near(out.getpixel((int(3150 * 0.28), int(5550 * 0.76))), (255, 0, 0)))
+        self.assertTrue(near(out.getpixel((int(3150 * 0.72), int(5550 * 0.76))), (0, 0, 255)))
 
     def test_catalog_cover_vs_contain(self):
         cover = artwork_position_for_catalog(394, 2250, 1725, 3000, 4000)

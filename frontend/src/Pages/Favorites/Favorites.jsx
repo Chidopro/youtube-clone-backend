@@ -612,7 +612,7 @@ const Favorites = ({ sidebar }) => {
         {!pageReady && !error ? (
           <div className="favorites-shelves" aria-busy="true">
             <section className="favorites-shelf favorites-shelf--videos" aria-label="Loading clips">
-              <FavoritesSectionHeader title="View Clip" showArrows={false} />
+              <FavoritesSectionHeader title="View Short" showArrows={false} />
               <div className="favorites-shelf-scroller">
                 <div className="favorites-shelf-track favorites-shelf-track--trio">
                   {[0, 1, 2].map((n) => (
@@ -642,8 +642,8 @@ const Favorites = ({ sidebar }) => {
             {videoItems.length > 0 ? (
               <FavoritesMediaSection
                 id="videos"
-                title="View Clip"
-                ariaLabel="View Clip"
+                title="View Short"
+                ariaLabel="View Short"
                 itemCount={videoItems.length}
                 className="favorites-shelf--videos"
                 alwaysShowArrows
@@ -674,7 +674,7 @@ const Favorites = ({ sidebar }) => {
               </FavoritesMediaSection>
             ) : clipsLoading ? (
               <section className="favorites-shelf favorites-shelf--videos" aria-label="Loading clips">
-                <FavoritesSectionHeader title="View Clip" showArrows={false} />
+                <FavoritesSectionHeader title="View Short" showArrows={false} />
                 <div className="favorites-shelf-scroller">
                   <div className="favorites-shelf-track favorites-shelf-track--trio">
                     {[0, 1, 2].map((n) => (

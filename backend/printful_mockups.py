@@ -67,12 +67,12 @@ COVER_PRINT_AREA_CATALOG_IDS = frozenset({
     NOTEBOOK_CATALOG_ID,
     APRON_CATALOG_ID,
 })
-# Top of the unrolled tote printfile is the front face; bottom is the back
-# (sewn inverted). Keep a small gusset between the two panels.
-TOTE_FRONT_PANEL_FRAC = 0.48
-TOTE_BACK_PANEL_FRAC = 0.48
-# Pull art off the opening and gusset so a frame or feather stays on the bag face.
-TOTE_ART_INSET_FRAC = 0.08
+# The large tote template is 21" × 37" (3150 × 5550). Its finished printable
+# surface is 16" × 35"; the extra canvas is bleed. The top half is the front
+# and the bottom half is sewn inverted to become the back. Flip it vertically
+# without reversing left/right so artwork joins correctly at the center seam.
+TOTE_ACTUAL_WIDTH_FRAC = 16.0 / 21.0
+TOTE_ACTUAL_HEIGHT_FRAC = 35.0 / 37.0
 
 _storage_admin = None
 _storage_admin_failed = False
@@ -459,11 +459,8 @@ def tote_wrap_panels(
     """Return (front_box, back_box) as (left, top, width, height)."""
     aw = max(1, int(area_width))
     ah = max(1, int(area_height))
-    front_h = max(1, int(round(ah * TOTE_FRONT_PANEL_FRAC)))
-    back_h = max(1, int(round(ah * TOTE_BACK_PANEL_FRAC)))
-    if front_h + back_h > ah:
-        back_h = max(1, ah - front_h)
-    return (0, 0, aw, front_h), (0, ah - back_h, aw, back_h)
+    front_h = max(1, ah // 2)
+    return (0, 0, aw, front_h), (0, front_h, aw, ah - front_h)
 
 
 def _inset_box(box: Tuple[int, int, int, int], frac: float) -> Tuple[int, int, int, int]:
@@ -481,10 +478,15 @@ def tote_front_artwork_position(
     image_width: Optional[int] = None,
     image_height: Optional[int] = None,
 ) -> Dict[str, int]:
-    """Contain the shopper photo on the tote front only (no wrap onto the back)."""
+    """Cover the finished front face while leaving Printful's surrounding bleed."""
     front, _back = tote_wrap_panels(area_width, area_height)
-    left, top, panel_w, panel_h = _inset_box(front, TOTE_ART_INSET_FRAC)
-    pos = contain_in_print_area(panel_w, panel_h, image_width, image_height)
+    panel_left, panel_top, panel_w, panel_h = front
+    face_w = max(1, int(round(max(1, int(area_width)) * TOTE_ACTUAL_WIDTH_FRAC)))
+    total_face_h = max(2, int(round(max(1, int(area_height)) * TOTE_ACTUAL_HEIGHT_FRAC)))
+    face_h = max(1, total_face_h // 2)
+    left = panel_left + max(0, (panel_w - face_w) // 2)
+    top = panel_top + max(0, panel_h - face_h)
+    pos = cover_in_print_area(face_w, face_h, image_width, image_height)
     return {
         "area_width": max(1, int(area_width)),
         "area_height": max(1, int(area_height)),
@@ -538,35 +540,85 @@ def _contain_paste_rgb(canvas, src, box: Tuple[int, int, int, int]) -> None:
     canvas.paste(rgb, (left + pos["left"], top + pos["top"]), mask)
 
 
+def _cover_face_rgb(src, width: int, height: int):
+    """Crop an image to cover a finished tote face without stretching it."""
+    from PIL import Image
+
+    w = max(1, int(width))
+    h = max(1, int(height))
+    rgba = src.convert("RGBA")
+    pos = cover_in_print_area(w, h, rgba.size[0], rgba.size[1])
+    resized = rgba.resize((pos["width"], pos["height"]), _pil_resample())
+    face = Image.new("RGB", (w, h), (0, 0, 0))
+    crop_left = max(0, -pos["left"])
+    crop_top = max(0, -pos["top"])
+    crop = resized.crop((crop_left, crop_top, crop_left + w, crop_top + h))
+    face.paste(crop.convert("RGB"), (0, 0), crop.split()[-1] if "A" in crop.getbands() else None)
+    return face
+
+
+def _tote_panel_with_bleed(src, panel_width: int, panel_height: int, face_width: int, face_height: int, *, opening_at_top: bool):
+    """Place a finished face in its panel and extend edge pixels through bleed."""
+    from PIL import Image
+
+    face = _cover_face_rgb(src, face_width, face_height)
+    # Never enlarge the whole photo behind itself: Printful can expose that
+    # second copy around the safe area as a visible strip. Extend only the
+    # outermost edge pixels into bleed, leaving one continuous photo.
+    panel = Image.new("RGB", (panel_width, panel_height), (0, 0, 0))
+    left = max(0, (panel_width - face_width) // 2)
+    top = 0 if opening_at_top else max(0, (panel_height - face_height) // 2)
+    panel.paste(face, (left, top))
+    right = left + face_width
+    bottom = top + face_height
+    if left > 0:
+        panel.paste(face.crop((0, 0, 1, face_height)).resize((left, face_height)), (0, top))
+    if right < panel_width:
+        edge_w = panel_width - right
+        panel.paste(
+            face.crop((face_width - 1, 0, face_width, face_height)).resize((edge_w, face_height)),
+            (right, top),
+        )
+    if top > 0:
+        panel.paste(panel.crop((0, top, panel_width, top + 1)).resize((panel_width, top)), (0, 0))
+    if bottom < panel_height:
+        edge_h = panel_height - bottom
+        panel.paste(
+            panel.crop((0, bottom - 1, panel_width, bottom)).resize((panel_width, edge_h)),
+            (0, bottom),
+        )
+    return panel
+
+
 def compose_tote_wrap_bytes(
     front_im,
     back_im=None,
     area_width: int = 3150,
     area_height: int = 5550,
 ) -> bytes:
-    """Build the single tote printfile: front upright, back rotated 180°.
-
-    If no back image is supplied, the front photo is mirrored onto the back
-    so both faces print and the reverse side reads a little differently.
-    """
+    """Build one Printful file with an upright copy on both finished faces."""
     from PIL import Image
 
     aw = max(1, int(area_width))
     ah = max(1, int(area_height))
     canvas = Image.new("RGB", (aw, ah), (0, 0, 0))
     front_box, back_box = tote_wrap_panels(aw, ah)
-    front_art_box = _inset_box(front_box, TOTE_ART_INSET_FRAC)
+    face_w = max(1, int(round(aw * TOTE_ACTUAL_WIDTH_FRAC)))
+    total_face_h = max(2, int(round(ah * TOTE_ACTUAL_HEIGHT_FRAC)))
+    face_h = max(1, total_face_h // 2)
+    _fl, _ft, fw, fh = front_box
     if front_im is not None:
-        _contain_paste_rgb(canvas, front_im, front_art_box)
+        front_panel = _tote_panel_with_bleed(
+            front_im, fw, fh, min(face_w, fw), min(face_h, fh), opening_at_top=False
+        )
+        canvas.paste(front_panel, (0, 0))
     back_art = back_im if back_im is not None else front_im
     if back_art is not None:
-        if back_im is None:
-            back_art = back_art.transpose(Image.FLIP_LEFT_RIGHT)
         _bl, back_top, bw, bh = back_box
-        panel = Image.new("RGB", (bw, bh), (0, 0, 0))
-        panel_art_box = _inset_box((0, 0, bw, bh), TOTE_ART_INSET_FRAC)
-        _contain_paste_rgb(panel, back_art, panel_art_box)
-        canvas.paste(panel.rotate(180), (0, back_top))
+        panel = _tote_panel_with_bleed(
+            back_art, bw, bh, min(face_w, bw), min(face_h, bh), opening_at_top=False
+        )
+        canvas.paste(panel.transpose(Image.FLIP_TOP_BOTTOM), (0, back_top))
     out = io.BytesIO()
     canvas.save(out, format="JPEG", quality=88, optimize=True)
     return out.getvalue()
@@ -802,6 +854,8 @@ def cache_key_for(
         else "noback"
     )
     base = f"{int(catalog_id)}:{int(variant_id)}:{digest}:{back_digest}:a11"
+    if int(catalog_id) == TOTE_WRAP_CATALOG_ID:
+        return f"{base}:edge-bleed-vertical-flip-v3"
     if int(catalog_id) == GREETING_CARD_CATALOG_ID:
         return f"{base}:cardopenright"
     if int(catalog_id) == JIGSAW_CATALOG_ID:
