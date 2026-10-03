@@ -39,7 +39,7 @@ CREATE TRIGGER auto_create_user_subscription
 
 ## 🌐 LIVE URLs
 - **Frontend:** https://screenmerch.com
-- **Backend:** https://copy5-backend.fly.dev
+- **Backend:** https://screenmerch.fly.dev
 
 ---
 
@@ -55,7 +55,7 @@ CREATE TRIGGER auto_create_user_subscription
 ## 🆘 EMERGENCY COMMANDS
 ```bash
 # Check backend logs
-fly logs
+flyctl logs --app screenmerch
 
 # Deploy frontend
 cd frontend
@@ -63,7 +63,8 @@ npm run build
 npx netlify deploy --prod --dir=dist
 
 # Deploy backend
-fly deploy
+cd backend
+flyctl deploy --app screenmerch
 ```
 
 ---

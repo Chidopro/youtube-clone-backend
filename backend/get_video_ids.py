@@ -25,7 +25,7 @@ try:
         
         print("📝 To test deletion, use one of these IDs:")
         for video in result.data:
-            print(f"   curl -X DELETE https://copy5-backend.fly.dev/api/videos/{video['id']}")
+            print(f"   curl -X DELETE https://screenmerch.fly.dev/api/videos/{video['id']}")
             
     else:
         print("❌ No videos found in database")

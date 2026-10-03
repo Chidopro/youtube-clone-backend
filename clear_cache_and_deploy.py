@@ -63,7 +63,10 @@ def main():
     
     # Step 4: Trigger Fly.io redeploy
     print("\n🚀 Step 4: Triggering Fly.io redeploy...")
-    if run_command("fly deploy --remote-only", "Deploying to Fly.io"):
+    if run_command(
+        "cd backend && flyctl deploy --remote-only --app screenmerch",
+        "Deploying production backend to Fly.io",
+    ):
         print("✅ Fly.io deployment triggered")
     
     # Step 5: Instructions for Netlify

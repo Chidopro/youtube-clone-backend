@@ -63,7 +63,7 @@ print(f"ADMIN_EMAIL: {'OK' if ADMIN_EMAIL else 'MISSING'}")
 # Google OAuth configuration
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "https://copy5-backend.fly.dev/api/auth/google/callback"
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "https://screenmerch.fly.dev/api/auth/google/callback"
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 print(f"GOOGLE_CLIENT_ID: {'OK' if GOOGLE_CLIENT_ID else 'MISSING'}")
