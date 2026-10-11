@@ -1186,6 +1186,13 @@ const Navbar = ({ resetCategory }) => {
                         >
                             Shop
                         </Link>
+                        <button
+                            type="button"
+                            className="storefront-signup-link"
+                            onClick={handleSignUpClick}
+                        >
+                            Sign Up
+                        </button>
                     </div>
                 ) : null}
                 <div className="nav-center-right flex-div">

@@ -68,8 +68,13 @@ export function CountryFlag({ code }) {
   );
 }
 
+function GlobeIcon() {
+  return <span className="ship-to-globe" aria-hidden="true">🌍</span>;
+}
+
 const ShipToPicker = () => {
   const [code, setCode] = useState(readShipToCountry);
+  const [hasSelection, setHasSelection] = useState(false);
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState(null);
   const wrapRef = useRef(null);
@@ -77,7 +82,10 @@ const ShipToPicker = () => {
   const current = getShipToOption(code);
 
   useEffect(() => {
-    const sync = () => setCode(readShipToCountry());
+    const sync = () => {
+      setCode(readShipToCountry());
+      setHasSelection(true);
+    };
     window.addEventListener(SHIP_TO_UPDATED_EVENT, sync);
     window.addEventListener('storage', sync);
     return () => {
@@ -124,6 +132,7 @@ const ShipToPicker = () => {
   const select = (next) => {
     writeShipToCountry(next);
     setCode(next);
+    setHasSelection(true);
     setOpen(false);
   };
 
@@ -148,13 +157,23 @@ const ShipToPicker = () => {
       <button
         type="button"
         className="ship-to-picker-btn"
-        aria-label={`Ship to ${current.name}`}
+        aria-label={hasSelection ? `Ship to ${current.name}` : 'Choose shipping country'}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={`Ship to ${current.name}`}
+        title={hasSelection ? `Ship to ${current.name}` : 'Choose shipping country'}
         onClick={toggle}
       >
-        <CountryFlag code={current.code} />
+        {hasSelection ? (
+          <>
+            <CountryFlag code={current.code} />
+            <span className="ship-to-current-name">{current.name}</span>
+          </>
+        ) : (
+          <>
+            <GlobeIcon />
+            <span className="ship-to-neutral-label">Ship to</span>
+          </>
+        )}
         <svg className="ship-to-caret" viewBox="0 0 10 6" aria-hidden="true" focusable="false">
           <path
             d="M1 1l4 4 4-4"

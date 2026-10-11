@@ -445,6 +445,16 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
             friendPagePreview={friendPagePreview}
             shopPreview={shopPreview}
             showHubs
+            creatorLabel={
+              creatorSettings?.display_name
+              || currentCreator?.display_name
+              || creatorSettings?.username
+              || currentCreator?.username
+              || creatorSettings?.subdomain
+              || currentCreator?.subdomain
+              || getSubdomain()
+              || 'Creator'
+            }
           />
         )}
       </div>

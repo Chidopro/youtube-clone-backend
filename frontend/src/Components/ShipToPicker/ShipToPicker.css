@@ -15,8 +15,8 @@
   height: 26px;
   padding: 0 5px 0 6px;
   border: 1px solid #d0d7de;
-  border-radius: 5px;
-  background: #fff;
+  border-radius: 4px;
+  background: #f3f4f6;
   color: #222;
   cursor: pointer;
 }
@@ -32,6 +32,27 @@
   border-radius: 2px;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
   overflow: hidden;
+}
+
+.ship-to-globe {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.ship-to-neutral-label,
+.ship-to-current-name {
+  white-space: nowrap;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .ship-to-caret {
@@ -89,8 +110,7 @@
   text-align: left;
 }
 
-.ship-to-menu button:hover,
-.ship-to-menu button.is-selected {
+.ship-to-menu button:hover {
   background: #f3f4f6;
 }
 
@@ -106,6 +126,17 @@
   .ship-to-flag-svg {
     width: 20px;
     height: 14px;
+  }
+
+  .ship-to-globe {
+    width: 18px;
+    height: 18px;
+    font-size: 17px;
+  }
+
+  .ship-to-neutral-label,
+  .ship-to-current-name {
+    display: none;
   }
 
   .ship-to-caret {

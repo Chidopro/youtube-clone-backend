@@ -169,7 +169,7 @@ html:not(.creator-storefront) nav .nav-right .subscribe-btn {
     height: 38px !important;
     padding: 0 14px !important;
     border: 1px solid #111 !important;
-    border-radius: 8px !important;
+    border-radius: 4px !important;
     background: transparent !important;
     color: #111 !important;
     font-size: 15px !important;
@@ -973,8 +973,8 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         height: 32px !important;
         padding: 0 10px !important;
         font-size: 13px !important;
-        border: 1px solid #111 !important;
-        border-radius: 8px !important;
+        border: 1px solid #d0d7de !important;
+        border-radius: 4px !important;
         background: transparent !important;
         color: #111 !important;
         margin: 0 !important;
@@ -1012,8 +1012,8 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         height: 30px !important;
         padding: 0 8px !important;
         font-size: 12px !important;
-        border: 1px solid #111 !important;
-        border-radius: 8px !important;
+        border: 1px solid #d0d7de !important;
+        border-radius: 4px !important;
         background: transparent !important;
         color: #111 !important;
         margin: 0 !important;
@@ -1313,8 +1313,8 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         height: 38px !important;
         padding: 0 14px !important;
         font-size: 15px !important;
-        border: 1px solid #111 !important;
-        border-radius: 8px !important;
+        border: 1px solid #d0d7de !important;
+        border-radius: 4px !important;
         background: transparent !important;
         color: #111 !important;
     }
@@ -1833,6 +1833,20 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         padding: 0;
     }
 
+    html.creator-storefront nav .storefront-signup-link {
+        display: block;
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        color: #222;
+        cursor: pointer;
+        font: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1;
+    }
+
     html.creator-storefront nav .nav-center-right {
         margin-left: auto;
         display: flex;
@@ -1868,24 +1882,7 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
     }
 
     html.creator-storefront nav .nav-right .subscribe-btn {
-        height: 38px !important;
-        padding: 0 14px !important;
-        margin-left: 16px;
-        border-radius: 8px !important;
-        display: inline-flex !important;
-        align-items: center;
-        justify-content: center;
-        font-size: 15px !important;
-        font-weight: 600 !important;
-        line-height: 1;
-        border: 1px solid #111 !important;
-        background: transparent !important;
-        color: #111 !important;
-        width: auto !important;
-        min-width: 0 !important;
-        max-width: none !important;
-        box-shadow: none !important;
-        transform: none !important;
+        display: none !important;
     }
 
     html.creator-storefront nav .nav-right .subscribe-btn:hover {
@@ -1905,7 +1902,7 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         min-width: 0;
         height: 36px;
         padding: 0 7px 0 9px;
-        border-radius: 8px;
+        border-radius: 4px;
         gap: 5px;
     }
 
@@ -1961,18 +1958,17 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         font-weight: 600;
     }
 
+    html.creator-storefront nav .storefront-signup-link {
+        font-size: 17px;
+    }
+
     html.creator-storefront nav .sign-in-btn {
         font-size: 16px !important;
         font-weight: 600 !important;
     }
 
     html.creator-storefront nav .nav-right .subscribe-btn {
-        height: 42px !important;
-        padding: 0 18px !important;
-        margin-left: 22px;
-        border-radius: 8px !important;
-        font-size: 16px !important;
-        font-weight: 600 !important;
+        display: none !important;
     }
 
     html.creator-storefront nav .ship-to-picker {
@@ -1984,7 +1980,7 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         min-width: 0;
         height: 40px;
         padding: 0 8px 0 10px;
-        border-radius: 8px;
+        border-radius: 4px;
         gap: 5px;
     }
 
@@ -2170,14 +2166,14 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         height: 32px !important;
         padding: 0 10px !important;
         margin: 0 0 0 10px !important;
-        border-radius: 8px !important;
+        border-radius: 4px !important;
         display: inline-flex !important;
         align-items: center;
         justify-content: center;
         font-size: 13px !important;
         font-weight: 600 !important;
         line-height: 1;
-        border: 1px solid #111 !important;
+        border: 1px solid #d0d7de !important;
         background: transparent !important;
         color: #111 !important;
         width: auto !important;
@@ -2185,6 +2181,10 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         max-width: none !important;
         box-shadow: none !important;
         transform: none !important;
+    }
+
+    html.creator-storefront nav .storefront-signup-link {
+        display: none;
     }
 
     html.creator-storefront nav .nav-right .subscribe-btn:hover {
@@ -2204,7 +2204,7 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         min-width: 0;
         height: 32px;
         padding: 0 6px 0 8px;
-        border-radius: 8px;
+        border-radius: 4px;
         gap: 4px;
     }
 
@@ -2244,8 +2244,8 @@ nav.nav--brand-gradient .nav-middle .search-box input::placeholder {
         padding: 0 8px !important;
         margin: 0 0 0 8px !important;
         font-size: 12px !important;
-        border: 1px solid #111 !important;
-        border-radius: 8px !important;
+        border: 1px solid #d0d7de !important;
+        border-radius: 4px !important;
         background: transparent !important;
         color: #111 !important;
     }

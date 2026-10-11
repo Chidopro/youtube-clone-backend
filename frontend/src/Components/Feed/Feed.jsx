@@ -315,7 +315,7 @@ export function shuffleHubThumbs(pools, tick, stagnant, hashByUrl = {}) {
   return { favorites, friend, shop };
 }
 
-export function HubThumb({ src, emptyLabel }) {
+export function HubThumb({ src, emptyLabel, contain = false }) {
   const [fallback, setFallback] = useState('');
   const [failed, setFailed] = useState(false);
 
@@ -336,6 +336,7 @@ export function HubThumb({ src, emptyLabel }) {
 
   return (
     <img
+      className={contain ? 'hub-card-thumb--contain' : undefined}
       src={current}
       alt=""
       loading={emptyLabel ? 'eager' : 'lazy'}
@@ -371,9 +372,12 @@ const Feed = ({
   friendPagePreview = null,
   shopPreview = null,
   showHubs = false,
+  creatorLabel = 'Creator',
 }) => {
   const navigate = useNavigate();
   const [tick, setTick] = useState(() => Math.floor(Date.now() / HUB_ROTATE_MS));
+  const storefrontName = String(creatorLabel || 'Creator').trim() || 'Creator';
+  const formattedStorefrontName = storefrontName.charAt(0).toUpperCase() + storefrontName.slice(1);
 
   useEffect(() => {
     if (!showHubs) return undefined;
@@ -474,7 +478,7 @@ const Feed = ({
           <div className="feed-hubs" aria-label="Storefront sections">
             <button type="button" className="card hub-card hub-card--creator" onClick={() => navigate('/favorites')}>
               <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />
-              <h2>Creator</h2>
+              <h2>{formattedStorefrontName}</h2>
             </button>
             <button
               type="button"
