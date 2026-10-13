@@ -1,4 +1,5 @@
 """Unit tests for mug wrap mockup helpers (no live Printful calls)."""
+import io
 import unittest
 
 from printful_mockups import (
@@ -6,6 +7,7 @@ from printful_mockups import (
     _pick_placement,
     artwork_position_for_catalog,
     collect_mockup_views,
+    compose_card_printfile_bytes,
     compose_tote_wrap_bytes,
     contain_in_print_area,
     cover_in_print_area,
@@ -17,6 +19,7 @@ from printful_mockups import (
     is_public_https_url,
     mockup_task_payloads,
     mug_preview_object_path,
+    cache_key_for,
     pick_mockup_url,
     public_image_url_for_printful,
     resolve_bag_catalog_id,
@@ -123,6 +126,34 @@ class TestMugMockupHelpers(unittest.TestCase):
         )
         self.assertEqual(placement, "default")
         self.assertEqual(printfile_id, 7)
+
+    def test_card_cache_separates_orientation_and_focal_point(self):
+        portrait = cache_key_for(568, 1, "image", orientation="portrait", focal_x=0.5, focal_y=0.5)
+        landscape = cache_key_for(568, 1, "image", orientation="landscape", focal_x=0.5, focal_y=0.5)
+        moved = cache_key_for(568, 1, "image", orientation="portrait", focal_x=0.5, focal_y=0.25)
+        self.assertNotEqual(portrait, landscape)
+        self.assertNotEqual(portrait, moved)
+
+    def test_card_printfile_covers_entire_front_in_both_orientations(self):
+        from PIL import Image
+
+        source = Image.new("RGBA", (100, 240), (220, 20, 20, 255))
+        for orientation in ("portrait", "landscape"):
+            blob = compose_card_printfile_bytes(
+                source,
+                300,
+                200,
+                orientation=orientation,
+                focal_x=0.5,
+                focal_y=0.5,
+            )
+            output = Image.open(io.BytesIO(blob)).convert("RGB")
+            self.assertEqual(output.size, (300, 200))
+            for point in ((0, 0), (299, 0), (0, 199), (299, 199)):
+                red, green, blue = output.getpixel(point)
+                self.assertGreater(red, 180)
+                self.assertLess(green, 60)
+                self.assertLess(blue, 60)
 
     def test_colored_and_travel_request_left_right_options(self):
         self.assertEqual(

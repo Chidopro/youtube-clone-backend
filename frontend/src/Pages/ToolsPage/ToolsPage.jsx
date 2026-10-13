@@ -329,7 +329,7 @@ function artworkLayoutForProduct(productName, boxW, boxH, imgW, imgH, zoomPercen
     return jigsawArtworkLayout(boxW, boxH, imgW, imgH, zoomPercent, posX, posY);
   }
   if (isGreetingCardProduct(productName)) {
-    return artworkLayoutInBox(boxW, boxH, imgW, imgH, zoomPercent, posX, posY, 'contain');
+    return artworkLayoutInBox(boxW, boxH, imgW, imgH, zoomPercent, posX, posY, 'cover');
   }
   return artworkLayoutInBox(boxW, boxH, imgW, imgH, zoomPercent, posX, posY, 'cover');
 }
@@ -436,7 +436,9 @@ function printBoxObjectPosition(productName, orientation, offsetX, offsetY) {
     return { x: 50, y: 50 };
   }
   const x = Math.max(0, Math.min(100, 50 + (Number(offsetX) || 0) / 2));
-  const yBase = orientation === 'landscape' ? 50 : PORTRAIT_COVER_Y;
+  const yBase = orientation === 'landscape' || isGreetingCardProduct(productName)
+    ? 50
+    : PORTRAIT_COVER_Y;
   const y = Math.max(0, Math.min(100, yBase + (Number(offsetY) || 0) / 2));
   return { x, y };
 }
@@ -3107,7 +3109,7 @@ const ProductPreviewWithDrag = ({
               height: `${scaledHeight}px`,
               maxWidth: 'none',
               maxHeight: 'none',
-              objectFit: isGreetingCardProduct(placeName) ? 'contain' : 'cover',
+              objectFit: 'cover',
               objectPosition: `${posX}% ${posY}%`,
               position: 'relative',
               transform: zoom === 1 ? undefined : `scale(${zoom})`,
@@ -6243,8 +6245,12 @@ const ToolsPage = () => {
           imageWidth,
           imageHeight,
           imageOrientation: (bowlWrap || bandanaWrap) ? 'landscape' : snap.imageOrientation,
-          focalX: puzzleWrap ? (puzzleCropLocked ? 0.5 : place.x / 100) : undefined,
-          focalY: puzzleWrap ? (puzzleCropLocked ? 0.5 : place.y / 100) : undefined,
+          focalX: (puzzleWrap || isGreetingCardProduct(name))
+            ? (puzzleCropLocked ? 0.5 : place.x / 100)
+            : undefined,
+          focalY: (puzzleWrap || isGreetingCardProduct(name))
+            ? (puzzleCropLocked ? 0.5 : place.y / 100)
+            : undefined,
           signal: controller.signal,
         });
         if (!active || controller.signal.aborted || !wrap?.mockupUrl) return;
@@ -7137,7 +7143,7 @@ const ToolsPage = () => {
                             <div className={`mug-product-preview-image${mugMockupUrl ? ' mug-product-preview-image--wrap' : ''}${wrapKind === 'mug' || (wrapKind === 'bowl' && mugMockupUrl) ? ' mug-product-preview-image--mug' : ''}${wrapKind === 'bowl' && !mugMockupUrl ? ' mug-product-preview-image--bowl' : ''}${wrapKind === 'bandana' && !mugMockupUrl ? ' mug-product-preview-image--bandana' : ''}`}>
                               {mugMockupUrl ? (
                                 <>
-                                  <div className={`mug-wrap-mockup-clip${wrapKind === 'puzzle' && puzzleViewTurns % 2 === 1 ? ' is-view-turned-side' : ''}${wrapKind === 'card' ? ' is-card-portrait' : ''}`}>
+                                  <div className={`mug-wrap-mockup-clip${wrapKind === 'puzzle' && puzzleViewTurns % 2 === 1 ? ' is-view-turned-side' : ''}${wrapKind === 'card' && imageOrientation === 'portrait' ? ' is-card-portrait' : ''}`}>
                                     <img
                                       className="mug-wrap-mockup"
                                       src={mugMockupUrl}
@@ -7274,8 +7280,8 @@ const ToolsPage = () => {
                                   textOffsetX={textOffsetX}
                                   textOffsetY={textOffsetY}
                                   textDirection={textDirection}
-                                  nudgeEnabled={wrapKind === 'puzzle' || wrapKind === 'apron' || toteFaceWrap}
-                                  onImageOffsetChange={wrapKind === 'puzzle' || wrapKind === 'apron' || toteFaceWrap ? (x, y) => {
+                                  nudgeEnabled={wrapKind === 'puzzle' || wrapKind === 'apron' || wrapKind === 'card' || toteFaceWrap}
+                                  onImageOffsetChange={wrapKind === 'puzzle' || wrapKind === 'apron' || wrapKind === 'card' || toteFaceWrap ? (x, y) => {
                                     setImageOffsetX(x);
                                     setImageOffsetY(y);
                                   } : undefined}
@@ -7783,7 +7789,11 @@ const ToolsPage = () => {
           <div className="tool-control-group tools-orientation-group">
             {/* Portrait = tuned print box. Landscape = same box, wide on the chest. */}
             <div className="select-control" style={{ marginBottom: '1rem', marginTop: 0 }}>
-              <h3 style={{ marginTop: 0, marginBottom: '0.5rem', fontWeight: 'bold' }}>Image orientation:</h3>
+              <h3 style={{ marginTop: 0, marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                {isGreetingCardProduct(selectedProductName || selectedCartProduct?.name || '')
+                  ? 'Card orientation:'
+                  : 'Image orientation:'}
+              </h3>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
                   <input

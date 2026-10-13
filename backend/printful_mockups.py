@@ -675,21 +675,48 @@ def compose_jigsaw_printfile_bytes(
     return out.getvalue()
 
 
-def compose_card_printfile_bytes(src_im, area_width: int, area_height: int) -> bytes:
-    """Fit the whole photo for a tall card, upright when the card opens.
+def compose_card_printfile_bytes(
+    src_im,
+    area_width: int,
+    area_height: int,
+    orientation: str = "portrait",
+    focal_x: float = 0.5,
+    focal_y: float = 0.5,
+) -> bytes:
+    """Cover the complete card front in portrait or landscape orientation.
 
     Printful's card template is landscape with the fold on the top edge.
-    Turning the photo 90° clockwise puts the top of the photo on the right.
-    Opened from the right as a tall card, the front stays upright.
+    Portrait artwork is turned 90° clockwise so it is upright when the card
+    stands vertically. Landscape artwork stays unturned.
     """
     aw = max(1, int(area_width))
     ah = max(1, int(area_height))
     from PIL import Image
 
     file_w, file_h = (aw, ah) if aw >= ah else (ah, aw)
-    turned = src_im.transpose(Image.ROTATE_270)
+    ori = str(orientation or "").strip().lower()
+    if ori == "landscape":
+        artwork = src_im
+        fx = min(1.0, max(0.0, float(focal_x)))
+        fy = min(1.0, max(0.0, float(focal_y)))
+    else:
+        artwork = src_im.transpose(Image.ROTATE_270)
+        # A clockwise turn maps the displayed focal point into Printful's
+        # landscape print-file coordinates.
+        fx = 1.0 - min(1.0, max(0.0, float(focal_y)))
+        fy = min(1.0, max(0.0, float(focal_x)))
     canvas = Image.new("RGB", (file_w, file_h), (255, 255, 255))
-    _contain_paste_rgb(canvas, turned, (0, 0, file_w, file_h))
+    rgba = artwork.convert("RGBA")
+    pos = cover_in_print_area(
+        file_w,
+        file_h,
+        rgba.size[0],
+        rgba.size[1],
+        focal_x=fx,
+        focal_y=fy,
+    )
+    resized = rgba.resize((pos["width"], pos["height"]), _pil_resample()).convert("RGB")
+    canvas.paste(resized, (pos["left"], pos["top"]))
     out = io.BytesIO()
     canvas.save(out, format="JPEG", quality=90, optimize=True)
     return out.getvalue()
@@ -700,11 +727,21 @@ def prepare_card_printfile(
     area_width: int,
     area_height: int,
     api_key: str,
+    orientation: str = "portrait",
+    focal_x: float = 0.5,
+    focal_y: float = 0.5,
 ) -> Optional[Tuple[str, int, int]]:
     src_im = _load_pil_image(image)
     if src_im is None:
         return None
-    blob = compose_card_printfile_bytes(src_im, area_width, area_height)
+    blob = compose_card_printfile_bytes(
+        src_im,
+        area_width,
+        area_height,
+        orientation=orientation,
+        focal_x=focal_x,
+        focal_y=focal_y,
+    )
     aw = max(1, int(area_width))
     ah = max(1, int(area_height))
     file_w, file_h = (aw, ah) if aw >= ah else (ah, aw)
@@ -857,7 +894,14 @@ def cache_key_for(
     if int(catalog_id) == TOTE_WRAP_CATALOG_ID:
         return f"{base}:edge-bleed-vertical-flip-v3"
     if int(catalog_id) == GREETING_CARD_CATALOG_ID:
-        return f"{base}:cardopenright"
+        ori = str(orientation or "").strip().lower()
+        if ori not in ("portrait", "landscape"):
+            ori = "portrait"
+        fx = 0.5 if focal_x is None else float(focal_x)
+        fy = 0.5 if focal_y is None else float(focal_y)
+        fx = min(1.0, max(0.0, fx))
+        fy = min(1.0, max(0.0, fy))
+        return f"{base}:card-cover-v2:{ori}:{round(fx, 3)}:{round(fy, 3)}"
     if int(catalog_id) == JIGSAW_CATALOG_ID:
         fx = 0.5 if focal_x is None else float(focal_x)
         fy = 0.5 if focal_y is None else float(focal_y)
@@ -1514,7 +1558,15 @@ def generate_mug_mockup(
             printfile_url = image_url
         if int(catalog_id) == GREETING_CARD_CATALOG_ID:
             _placement, area_w, area_h = print_area_for_variant(catalog_id, variant_id, api_key)
-            prepared = prepare_card_printfile(image_url, area_w, area_h, api_key)
+            prepared = prepare_card_printfile(
+                image_url,
+                area_w,
+                area_h,
+                api_key,
+                orientation=image_orientation,
+                focal_x=0.5 if focal_x is None else focal_x,
+                focal_y=0.5 if focal_y is None else focal_y,
+            )
             if prepared:
                 image_url, iw, ih = prepared
                 prepared_printfile = True

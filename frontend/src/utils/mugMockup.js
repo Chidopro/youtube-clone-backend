@@ -402,7 +402,9 @@ function cacheKey(productName, color, size, image, backImage, orientation, focal
   const focalBit = name.toLowerCase().includes('jigsaw') || name.toLowerCase().includes('puzzle')
     ? `|${Number(focalX ?? 0.5).toFixed(3)}|${Number(focalY ?? 0.5).toFixed(3)}`
     : '';
-  const cardBit = name.toLowerCase().includes('greeting card') ? '|cardopenright' : '';
+  const cardBit = name.toLowerCase().includes('greeting card')
+    ? `|card-cover-${String(orientation || '').trim().toLowerCase() === 'landscape' ? 'landscape' : 'portrait'}|${Number(focalX ?? 0.5).toFixed(3)}|${Number(focalY ?? 0.5).toFixed(3)}`
+    : '';
   return `${name}|${String(color || '')}|${String(size || '')}|${finger}|${backFinger}|a11${oriBit}${focalBit}${cardBit}`;
 }
 
