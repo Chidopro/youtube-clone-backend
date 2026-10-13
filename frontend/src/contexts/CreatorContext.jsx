@@ -15,8 +15,10 @@ export const CreatorProvider = ({ children }) => {
   const [loading, setLoading] = useState(
     () => !peekCachedStorefrontBrand() && !peekCachedPlatformBrand()
   );
+  const [storefrontChecked, setStorefrontChecked] = useState(false);
 
   const detectCreator = async () => {
+    setStorefrontChecked(false);
     const cachedBrand = peekCachedStorefrontBrand() || peekCachedPlatformBrand();
     if (!cachedBrand) setLoading(true);
     
@@ -188,6 +190,7 @@ export const CreatorProvider = ({ children }) => {
       document.documentElement.style.setProperty('--secondary-color', '#764ba2');
     } finally {
       setLoading(false);
+      setStorefrontChecked(true);
     }
   };
 
@@ -225,7 +228,13 @@ export const CreatorProvider = ({ children }) => {
   }, [currentCreator?.id, currentCreator?.subdomain]);
 
   return (
-    <CreatorContext.Provider value={{ currentCreator, creatorSettings, loading, refreshCreator: detectCreator }}>
+    <CreatorContext.Provider value={{
+      currentCreator,
+      creatorSettings,
+      loading,
+      storefrontChecked,
+      refreshCreator: detectCreator,
+    }}>
       {children}
     </CreatorContext.Provider>
   );
@@ -235,7 +244,12 @@ export const useCreator = () => {
   const context = useContext(CreatorContext);
   if (!context) {
     // Return default values if context is not available (for backward compatibility)
-    return { currentCreator: null, creatorSettings: null, loading: false };
+    return {
+      currentCreator: null,
+      creatorSettings: null,
+      loading: false,
+      storefrontChecked: true,
+    };
   }
   return context;
 };

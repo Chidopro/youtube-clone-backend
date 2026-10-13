@@ -41,8 +41,44 @@ import FriendPages from "./Pages/FriendPages/FriendPages";
 import Shop from "./Pages/Shop/Shop";
 import DemoDashboard from "./Pages/DemoDashboard/DemoDashboard";
 import UmbrellaJoin from "./Pages/UmbrellaJoin/UmbrellaJoin";
-import { CreatorProvider } from "./contexts/CreatorContext";
+import { CreatorProvider, useCreator } from "./contexts/CreatorContext";
 import { getSubdomain, isCreatorStorefrontHostname } from "./utils/subdomainService";
+
+const StorefrontAvailabilityGate = ({ children }) => {
+  const { currentCreator, storefrontChecked } = useCreator();
+  if (!isCreatorStorefrontHostname()) return children;
+  if (!storefrontChecked) {
+    return (
+      <main style={{ minHeight: '100vh', background: '#fff' }} aria-busy="true" />
+    );
+  }
+  if (currentCreator?.storefront_online === false) {
+    return (
+      <main
+        style={{
+          minHeight: '100vh',
+          display: 'grid',
+          placeItems: 'center',
+          padding: '24px',
+          boxSizing: 'border-box',
+          background: '#f7f7f8',
+          color: '#18181b',
+          textAlign: 'center',
+        }}
+      >
+        <section>
+          <h1 style={{ margin: '0 0 12px', fontSize: 'clamp(28px, 5vw, 44px)' }}>
+            Storefront temporarily unavailable
+          </h1>
+          <p style={{ margin: 0, color: '#52525b', fontSize: '18px' }}>
+            This storefront is currently offline. Please check back soon.
+          </p>
+        </section>
+      </main>
+    );
+  }
+  return children;
+};
 
 const App = () => {
   // Pages keep the full-width layout (the old sidebar menu is gone).
@@ -254,7 +290,8 @@ const App = () => {
   
   return (
     <CreatorProvider>
-      <div
+      <StorefrontAvailabilityGate>
+        <div
         className={isStorefrontHome ? 'app-shell app-shell--storefront-home' : 'app-shell'}
         style={isStorefrontHome ? undefined : { display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
       >
@@ -328,7 +365,8 @@ const App = () => {
             <Footer />
           </div>
         </div>
-      </div>
+        </div>
+      </StorefrontAvailabilityGate>
     </CreatorProvider>
   );
 };

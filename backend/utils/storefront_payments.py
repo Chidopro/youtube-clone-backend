@@ -8,6 +8,7 @@ PAYMENTS_DISABLED_MESSAGE = (
 )
 _SETTINGS_BUCKET = "creator-logos"
 _ENABLED_MARKER = "stripe-enabled.png"
+_OFFLINE_MARKER = "storefront-offline.png"
 
 
 def _marker_bytes():
@@ -28,6 +29,42 @@ def storefront_stripe_enabled(user_id, supabase_client):
         )
     except Exception:
         return False
+
+
+def storefront_online(user_id, supabase_client):
+    """Storefronts are online by default; an explicit marker takes one offline."""
+    if not user_id or not supabase_client:
+        return True
+    try:
+        items = supabase_client.storage.from_(_SETTINGS_BUCKET).list(str(user_id)) or []
+        return not any(
+            isinstance(item, dict) and item.get("name") == _OFFLINE_MARKER
+            for item in items
+        )
+    except Exception:
+        return True
+
+
+def write_storefront_online(user_id, online, supabase_client):
+    """Persist or remove the offline marker without deleting storefront data."""
+    if not user_id or not supabase_client:
+        return False
+    path = f"{user_id}/{_OFFLINE_MARKER}"
+    bucket = supabase_client.storage.from_(_SETTINGS_BUCKET)
+    try:
+        if online:
+            bucket.remove([path])
+        else:
+            if not storefront_online(user_id, supabase_client):
+                return True
+            bucket.upload(
+                path=path,
+                file=_marker_bytes(),
+                file_options={"content-type": "image/png", "upsert": "true"},
+            )
+        return True
+    except Exception:
+        return storefront_online(user_id, supabase_client) == bool(online)
 
 
 def write_storefront_stripe_enabled(user_id, enabled, supabase_client):
@@ -90,6 +127,8 @@ def storefront_payments_allowed(origin, supabase_client):
             .execute()
         )
         row = result.data[0] if result.data else None
-        return storefront_stripe_enabled(row.get("id"), supabase_client) if row else False, subdomain
+        if not row or not storefront_online(row.get("id"), supabase_client):
+            return False, subdomain
+        return storefront_stripe_enabled(row.get("id"), supabase_client), subdomain
     except Exception:
         return False, subdomain

@@ -9,85 +9,106 @@ const Release = () => {
         <h1 className="release-title">Welcome to ScreenMerch</h1>
 
         <p>
-          ScreenMerch is a creator-focused merchandising platform that transforms memorable moments
-          from clips and photos into products fans can make their own.
+          ScreenMerch isn&apos;t designed to replace what you&apos;re already doing. It works alongside
+          your existing website, merch store, YouTube channel, or other platforms by adding something
+          different: an interactive merchandise experience built around your content and your
+          audience&apos;s choices.
         </p>
 
+        <h2>Your Content. User Creativity. More Ways to Earn.</h2>
         <p>
-          It was built around a simple idea: creators should have more ways to earn from the content they
-          already create — without depending entirely on advertising, sponsorships, or unpredictable
-          algorithms.
+          ScreenMerch gives your audience a new way to interact with the content they already enjoy.
+        </p>
+        <p>
+          Instead of offering only pre-designed merchandise, you provide the clips and images, and your
+          fans choose the moments that mean something to them. They can capture a favorite moment from a
+          clip or select an image, choose the product they want, and use ScreenMerch&apos;s design tools to
+          preview, position, crop, and personalize their creation before purchasing.
+        </p>
+        <p>
+          You provide the content. Your fans choose the moment. They create the merch.
+        </p>
+        <p>
+          Already have merchandise? Keep it. ScreenMerch also lets you offer your own pre-made products
+          alongside the interactive experience.
+        </p>
+        <p>
+          Two fans can discover the same piece of content and create something completely different from
+          it.
+        </p>
+        <p>
+          That&apos;s what makes ScreenMerch different from a traditional merch store.
         </p>
 
+        <h2>A Storefront Built Around Your Brand</h2>
         <p>
-          With ScreenMerch, approved creators receive their own subdomain and branded storefront.
-          Where fans can browse images and capture moments from clips they love. Then choose from a
-          variety of categories to print on merchandise to purchase. All within the creator&apos;s
-          ScreenMerch store.
+          Approved creators receive their own customizable ScreenMerch storefront with a personalized
+          subdomain such as:
+        </p>
+        <p><strong>yourname.screenmerch.com</strong></p>
+        <p>
+          Make it your own with your logo, page colors, favicon, images, clips, and other branding
+          elements.
+        </p>
+        <p>
+          Instead of sending your audience to a generic marketplace, your fans remain in a storefront
+          built around your content and your identity.
+        </p>
+        <p>
+          Behind the storefront, your creator dashboard gives you the tools to manage your content, view
+          analytics, track sales and earnings, manage payouts, and personalize your storefront.
+        </p>
+        <p>
+          And because ScreenMerch handles the commerce and coordinates production and fulfillment,
+          there&apos;s no inventory to purchase, no products to pack, and no monthly membership fee.
+        </p>
+        <p>
+          You concentrate on creating. ScreenMerch handles what happens after the order.
         </p>
 
-        <h2>A Storefront That Belongs to Your Brand</h2>
+        <h2>Bring Your People With You</h2>
         <p>
-          Instead of sending your audience to a generic marketplace, ScreenMerch gives you a destination
-          built around your identity.
+          ScreenMerch doesn&apos;t have to stop with one creator.
         </p>
-        <p>Your storefront can include your own:</p>
-        <ul>
-          <li>Personalized ScreenMerch subdomain</li>
-          <li>Logo and header branding</li>
-          <li>Page colors</li>
-          <li>Favicon</li>
-          <li>Storefront images and content</li>
-          <li>Clips and photos</li>
-        </ul>
-        <p>
-          Behind the storefront, your creator dashboard gives you the tools to manage your content,
-          monitor activity and analytics, and track earnings and payouts.
-        </p>
-        <p>
-          Your fans stay connected to your content and your brand throughout the shopping experience.
-        </p>
-
-        <h2>Turn Content Into Something Fans Can Keep</h2>
-        <p>
-          A great moment in a clip can last only a few seconds. ScreenMerch gives that moment another
-          life.
-        </p>
-        <p>
-          Creators add the images and clips. Fans can capture memorable screenshots from those clips,
-          browse images, choose their favorites, and personalize merchandise with the content that
-          means something to them. That lets fans take part in choosing what they want.
-        </p>
-        <p>
-          There&apos;s no inventory for creators to purchase, no boxes to pack, and no monthly membership
-          fee.
-        </p>
-        <p>
-          ScreenMerch coordinates payment processing, production, fulfillment, and delivery through its
-          platform and fulfillment partners, allowing creators to concentrate on what they do best —
-          creating content and building their audience.
-        </p>
-
-        <h2>Built to Grow Beyond One Creator</h2>
-        <p>ScreenMerch can also become a shared home for a creator network.</p>
         <p>
           Through <strong>Umbrella Creators</strong>, storefront owners can invite trusted collaborators,
-          co-hosts, staff members, or other creators to establish their own presence within the owner&apos;s
+          co-creators, co-hosts, staff members, performers, or other creators to become part of their
           storefront.
         </p>
+        <p>Each collaborator can have:</p>
+        <ul>
+          <li>Their own page within your storefront</li>
+          <li>Their own clips and images</li>
+          <li>Their own merchandise shop</li>
+          <li>Their own pre-made products</li>
+          <li>Their own sales and earnings activity</li>
+        </ul>
         <p>
-          Each collaborator has a page of their own to add content and view sales analytics, product sales
-          and current earnings history.
+          This gives the people around your brand an opportunity to contribute their own content, build
+          their own presence, and earn from the sales they generate — while remaining part of your
+          overall storefront.
         </p>
         <p>
-          For a YouTube channel, podcast, production team, business, or other group with multiple people
-          creating content, this makes it possible to build around one branded storefront instead of
-          sending audiences in different directions.
+          For a YouTube channel, podcast, entertainment venue, production team, business, or creator
+          group, ScreenMerch can grow from one creator into an entire creator community.
         </p>
 
-        <h2>One Platform for Content and Commerce</h2>
+        <h2>One Storefront. Multiple Creators. Endless Moments.</h2>
+        <p>ScreenMerch was built around a simple idea:</p>
+        <p>
+          Creators should have more ways to earn from the content they&apos;re already creating, and fans
+          should have more ways to participate in the content they enjoy.
+        </p>
+        <p>Your existing website can still be your website.</p>
+        <p>Your existing merch store can still sell your merchandise.</p>
+        <p>Your social channels can still be where your audience follows you.</p>
+        <p>ScreenMerch adds something new to all of it.</p>
+        <p>
+          A place where your content becomes interactive, your audience becomes part of the creative
+          process, and the people around your brand can have opportunities of their own.
+        </p>
         <p className="release-tagline">
-          <strong>Your brand. Your content. Your earnings.</strong>
+          <strong>Your Brand. Your Content. Your Earnings.</strong>
         </p>
       </article>
       <div className="release-cta-row">

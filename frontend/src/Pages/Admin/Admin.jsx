@@ -1314,6 +1314,29 @@ const Admin = () => {
     }
   };
 
+  const handleStorefrontAvailability = async (user, online) => {
+    const subdomain = String(user?.subdomain || '').trim();
+    if (!subdomain) {
+      alert('Assign a subdomain before changing storefront availability.');
+      return;
+    }
+    const action = online ? 'put this storefront back online' : 'take this storefront offline';
+    if (!confirm(`Are you sure you want to ${action}?\n\n${subdomain}.screenmerch.com`)) {
+      return;
+    }
+    try {
+      const result = await AdminService.updateStorefrontAvailability(user.id, online);
+      if (!result.success) {
+        alert(`Failed to update storefront: ${result.error || 'Unknown error'}`);
+        return;
+      }
+      alert(result.message || `Storefront is now ${online ? 'online' : 'offline'}.`);
+      await loadUsers();
+    } catch (error) {
+      alert(`Failed to update storefront: ${error.message}`);
+    }
+  };
+
   const handleResetAnalytics = async (userId, userEmail) => {
     if (!confirm('⚠️ WARNING: This will permanently delete all sales and analytics data for this creator. This action cannot be undone. Are you absolutely sure?')) {
       return;
@@ -1926,6 +1949,8 @@ const Admin = () => {
                               else if (action === 'reset-analytics') handleResetAnalytics(user.id, user.email);
                               else if (action === 'stripe-on') handleStorefrontStripe(user, true);
                               else if (action === 'stripe-off') handleStorefrontStripe(user, false);
+                              else if (action === 'storefront-online') handleStorefrontAvailability(user, true);
+                              else if (action === 'storefront-offline') handleStorefrontAvailability(user, false);
                               e.target.value = '';
                             }}
                             onClick={(e) => e.stopPropagation()}
@@ -1943,6 +1968,11 @@ const Admin = () => {
                               user.stripe_enabled
                                 ? <option value="stripe-off">Turn Off Stripe</option>
                                 : <option value="stripe-on">Turn On Stripe</option>
+                            )}
+                            {isMasterAdmin && user.role === 'creator' && user.subdomain && (
+                              user.storefront_online === false
+                                ? <option value="storefront-online">Put Storefront Online</option>
+                                : <option value="storefront-offline">Take Storefront Offline</option>
                             )}
                             {isMasterAdmin && user.role === 'creator' && <option value="reset-analytics">Reset Analytics</option>}
                           </select>

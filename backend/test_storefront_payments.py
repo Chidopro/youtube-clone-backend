@@ -1,6 +1,7 @@
 import unittest
 
 from utils.storefront_payments import (
+    storefront_online,
     storefront_payments_allowed,
     storefront_subdomain_from_origin,
 )
@@ -29,9 +30,10 @@ class _Query:
 
 
 class _Client:
-    def __init__(self, data, stripe_enabled=False):
+    def __init__(self, data, stripe_enabled=False, storefront_offline=False):
         self.data = data
         self.stripe_enabled = stripe_enabled
+        self.storefront_offline = storefront_offline
         self.storage = self
 
     def table(self, _name):
@@ -41,7 +43,12 @@ class _Client:
         return self
 
     def list(self, _folder):
-        return [{"name": "stripe-enabled.png"}] if self.stripe_enabled else []
+        items = []
+        if self.stripe_enabled:
+            items.append({"name": "stripe-enabled.png"})
+        if self.storefront_offline:
+            items.append({"name": "storefront-offline.png"})
+        return items
 
 
 class StorefrontPaymentsTest(unittest.TestCase):
@@ -72,6 +79,20 @@ class StorefrontPaymentsTest(unittest.TestCase):
                 origin, _Client([{"id": "creator-id"}], stripe_enabled=True)
             ),
             (True, "newcreator"),
+        )
+
+    def test_offline_storefront_blocks_checkout_without_deleting_settings(self):
+        client = _Client(
+            [{"id": "creator-id"}],
+            stripe_enabled=True,
+            storefront_offline=True,
+        )
+        self.assertFalse(storefront_online("creator-id", client))
+        self.assertEqual(
+            storefront_payments_allowed(
+                "https://newcreator.screenmerch.com", client
+            ),
+            (False, "newcreator"),
         )
 
 

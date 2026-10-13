@@ -16,7 +16,9 @@ from urllib.parse import quote
 from utils.helpers import _data_from_request, _allow_origin, build_platform_revenue_attribution_maps, platform_revenue_attribution_for_earning, notify_admin_subdomain_for_netlify
 from utils.security import admin_required
 from utils.storefront_payments import (
+    storefront_online,
     storefront_stripe_enabled,
+    write_storefront_online,
     write_storefront_stripe_enabled,
 )
 
@@ -1005,6 +1007,9 @@ def admin_get_users():
             listed_user["stripe_enabled"] = storefront_stripe_enabled(
                 listed_user.get("id"), client
             )
+            listed_user["storefront_online"] = storefront_online(
+                listed_user.get("id"), client
+            )
         total = result.count if hasattr(result, 'count') and result.count is not None else (len(result.data) if result.data else 0)
         response = jsonify({
             "success": True,
@@ -1083,6 +1088,71 @@ def admin_update_storefront_stripe(user_id):
         })), 200
     except Exception as e:
         logger.exception("Error updating storefront Stripe setting: %s", e)
+        return _allow_origin(jsonify({"success": False, "error": "Internal server error"})), 500
+
+
+@admin_bp.route("/api/admin/users/<user_id>/storefront", methods=["PUT", "OPTIONS"])
+@admin_bp.route("/api/admin/users/<user_id>/storefront/", methods=["PUT", "OPTIONS"])
+def admin_update_storefront_availability(user_id):
+    """Take one creator storefront offline or restore it without deleting data."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        data = _data_from_request()
+        admin_email = request.headers.get("X-User-Email") or data.get("admin_email")
+        if not admin_email:
+            return _allow_origin(jsonify({"success": False, "error": "Admin email required"})), 401
+
+        client = _get_supabase_client()
+        if not client:
+            return _allow_origin(jsonify({"success": False, "error": "Database service unavailable"})), 500
+
+        admin_result = (
+            client.table("users")
+            .select("is_admin, admin_role")
+            .ilike("email", admin_email)
+            .limit(1)
+            .execute()
+        )
+        admin = admin_result.data[0] if admin_result.data else None
+        if not admin or not admin.get("is_admin") or admin.get("admin_role") != "master_admin":
+            return _allow_origin(jsonify({"success": False, "error": "Master admin access required"})), 403
+
+        online = data.get("online")
+        if not isinstance(online, bool):
+            return _allow_origin(jsonify({"success": False, "error": "online must be true or false"})), 400
+
+        target = (
+            client.table("users")
+            .select("id, role, subdomain")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        user = target.data[0] if target.data else None
+        if not user:
+            return _allow_origin(jsonify({"success": False, "error": "User not found"})), 404
+        if user.get("role") != "creator" or not user.get("subdomain"):
+            return _allow_origin(jsonify({
+                "success": False,
+                "error": "Availability can only be changed for creators with a subdomain",
+            })), 400
+
+        if not write_storefront_online(user_id, online, client):
+            return _allow_origin(jsonify({
+                "success": False,
+                "error": "Could not save the storefront availability setting",
+            })), 500
+
+        state = "online" if online else "offline"
+        logger.info("Storefront %s for user %s", state, user_id)
+        return _allow_origin(jsonify({
+            "success": True,
+            "storefront_online": online,
+            "message": f"{user.get('subdomain')}.screenmerch.com is now {state}.",
+        })), 200
+    except Exception as e:
+        logger.exception("Error updating storefront availability: %s", e)
         return _allow_origin(jsonify({"success": False, "error": "Internal server error"})), 500
 
 

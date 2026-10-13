@@ -91,6 +91,7 @@ from utils.stripe_checkout import (
     session_shipping_cost_usd,
     session_tax_usd,
 )
+from utils.storefront_payments import storefront_online
 from utils.stripe_tax_checkout import (
     apply_automatic_tax_to_checkout_session,
     fulfillment_tax_product_data,
@@ -7581,6 +7582,7 @@ def get_subdomain_creator(subdomain):
                     "username": creator.get('username'),
                     "bio": creator.get('bio'),
                     "subdomain": creator.get('subdomain'),
+                    "storefront_online": storefront_online(creator.get('id'), client),
                     "personalization_enabled": creator.get('personalization_enabled', False),
                     "primary_color": creator.get('primary_color'),
                     "secondary_color": creator.get('secondary_color'),

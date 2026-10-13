@@ -359,6 +359,34 @@ export class AdminService {
   }
 
   /**
+   * Take one creator storefront offline or restore it without deleting data.
+   */
+  static async updateStorefrontAvailability(userId, online) {
+    try {
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) {
+        return { success: false, error: 'Not authenticated' };
+      }
+      const res = await fetch(adminApiUrl(`/api/admin/users/${userId}/storefront`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': currentUser.userEmail,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ online: !!online }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) {
+        return { success: false, error: json.error || `Request failed (${res.status})` };
+      }
+      return json;
+    } catch (error) {
+      return { success: false, error: error.message || 'Failed to update storefront availability' };
+    }
+  }
+
+  /**
    * Get all videos with pagination
    * @param {number} page - Page number (0-based)
    * @param {number} limit - Items per page

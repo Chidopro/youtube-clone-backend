@@ -60,6 +60,36 @@ function ShopTileThumb({ preview, emoji, thumbFit, nudge }) {
   );
 }
 
+export function GeneralShopCategories({ onSelectCategory }) {
+  const navigate = useNavigate();
+  const openCategory = (category) => {
+    if (onSelectCategory) {
+      onSelectCategory(category);
+      return;
+    }
+    navigate(browseShopCategoryPath(category));
+  };
+
+  return (
+    <div className="shop-category-grid">
+      {SHOP_CATEGORIES.map((cat) => (
+        <button
+          key={cat.preview || cat.name}
+          type="button"
+          className={`shop-tile shop-tile--${cat.category}`}
+          aria-label={`Open ${cat.name}`}
+          onClick={() => openCategory(cat.category)}
+        >
+          <span className={`shop-tile-thumb${cat.thumbFit === 'model' ? ' shop-tile-thumb--model' : ''}`}>
+            <ShopTileThumb preview={cat.preview} emoji={cat.emoji} thumbFit={cat.thumbFit} />
+          </span>
+          <span className="shop-tile-name">{cat.name}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function matchCatalogProduct(products, catalogName) {
   const want = String(catalogName || '').trim().toLowerCase();
   if (!want) return null;
@@ -191,6 +221,7 @@ const PremadeShop = ({
   embedded = false,
   personalOnly = false,
   onAvailability,
+  emptyFallback = null,
 }) => {
   const navigate = useNavigate();
   const addingLockRef = useRef(new Set());
@@ -202,9 +233,11 @@ const PremadeShop = ({
   const [addingId, setAddingId] = useState(null);
   const [addedConfirm, setAddedConfirm] = useState(null);
   const [tileError, setTileError] = useState({});
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setCatalogLoaded(false);
     const sub = getSubdomain() || 'deluzion';
     const req = catalogUserId
       ? fetchShopCatalog({ subdomain: sub, collaboratorId: catalogUserId })
@@ -216,7 +249,10 @@ const PremadeShop = ({
         setSelectedColors({});
         setSelectedSizes({});
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setCatalogLoaded(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -228,8 +264,8 @@ const PremadeShop = ({
 
   useEffect(() => {
     if (!embedded || !onAvailability) return;
-    onAvailability(tiles.length > 0);
-  }, [embedded, onAvailability, tiles.length]);
+    onAvailability(tiles.length > 0 || (catalogLoaded && Boolean(emptyFallback)));
+  }, [catalogLoaded, embedded, emptyFallback, onAvailability, tiles.length]);
 
   useEffect(() => {
     const sync = () => setShipToCountry(readShipToCountry());
@@ -428,7 +464,7 @@ const PremadeShop = ({
     }
   };
 
-  if (embedded && !tiles.length) return null;
+  if (embedded && !tiles.length) return catalogLoaded ? emptyFallback : null;
 
   const grid = (
           <div className="shop-category-grid shop-category-grid--premade">
@@ -602,14 +638,26 @@ const PremadeShop = ({
   );
 };
 
-export function CollaboratorShop({ userId, listId, onAvailability }) {
+export function CollaboratorShop({ userId, listId, listSlug, onAvailability }) {
+  const navigate = useNavigate();
   if (!userId) return null;
+  const fallback = (
+    <section className="collaborator-shop" aria-label="Shop">
+      <h2 className="collaborator-shop-title">Shop</h2>
+      <GeneralShopCategories
+        onSelectCategory={(category) => navigate(
+          browseShopCategoryPath(category, { favoriteSlug: listSlug })
+        )}
+      />
+    </section>
+  );
   return (
     <PremadeShop
       embedded
       catalogUserId={userId}
       favoriteListId={listId || ''}
       onAvailability={onAvailability}
+      emptyFallback={fallback}
     />
   );
 }
@@ -650,22 +698,7 @@ const Shop = ({ sidebar }) => {
         <ShopToolbar title="Choose Category" onBack={() => navigate('/')} />
 
         <div className="shop-body">
-          <div className="shop-category-grid">
-            {SHOP_CATEGORIES.map((cat) => (
-              <button
-                key={cat.preview || cat.name}
-                type="button"
-                className={`shop-tile shop-tile--${cat.category}`}
-                aria-label={`Open ${cat.name}`}
-                onClick={() => navigate(browseShopCategoryPath(cat.category))}
-              >
-                <span className={`shop-tile-thumb${cat.thumbFit === 'model' ? ' shop-tile-thumb--model' : ''}`}>
-                  <ShopTileThumb preview={cat.preview} emoji={cat.emoji} thumbFit={cat.thumbFit} />
-                </span>
-                <span className="shop-tile-name">{cat.name}</span>
-              </button>
-            ))}
-          </div>
+          <GeneralShopCategories />
         </div>
       </div>
     </div>

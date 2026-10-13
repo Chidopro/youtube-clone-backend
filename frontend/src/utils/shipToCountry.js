@@ -1,6 +1,7 @@
 import { CHECKOUT_COUNTRY_OPTIONS } from '../data/shippingRegions';
 
 export const SHIP_TO_STORAGE_KEY = 'ship_to_country';
+export const SHIP_TO_SELECTION_KEY = 'ship_to_country_selected_v2';
 export const SHIP_TO_UPDATED_EVENT = 'screenmerch-ship-to-country-updated';
 
 export function isAllowedShipToCountry(code) {
@@ -18,10 +19,22 @@ export function readShipToCountry() {
   return 'US';
 }
 
+export function hasSavedShipToCountry() {
+  try {
+    return (
+      localStorage.getItem(SHIP_TO_SELECTION_KEY) === 'true'
+      && isAllowedShipToCountry(localStorage.getItem(SHIP_TO_STORAGE_KEY))
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function writeShipToCountry(code) {
   const next = isAllowedShipToCountry(code) ? String(code).trim().toUpperCase() : 'US';
   try {
     localStorage.setItem(SHIP_TO_STORAGE_KEY, next);
+    localStorage.setItem(SHIP_TO_SELECTION_KEY, 'true');
   } catch {
     /* ignore */
   }

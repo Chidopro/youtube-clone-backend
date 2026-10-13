@@ -706,6 +706,7 @@ const ProductPage = ({ sidebar }) => {
   const authenticated = searchParams.get('authenticated') === 'true';
   const email = searchParams.get('email') || '';
   const isShopCatalog = searchParams.get('from') === 'shop';
+  const shopFavoriteSlug = String(searchParams.get('favorite') || '').trim();
   const colorMockupPreview = isColorMockupPreviewEnabled();
   const isBrowseMode =
     !productId || productId === 'browse' || productId === 'undefined' || productId === 'null';
@@ -1211,7 +1212,11 @@ const ProductPage = ({ sidebar }) => {
         color: chosenColor,
         size: chosenSize,
       });
-      navigate('/favorites?from=shop');
+      navigate(
+        shopFavoriteSlug
+          ? `/favorites/${encodeURIComponent(shopFavoriteSlug)}?from=shop`
+          : '/favorites?from=shop'
+      );
       window.scrollTo(0, 0);
       return null;
     }

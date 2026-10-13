@@ -355,6 +355,7 @@ function FavoritesMediaSection({
 }
 
 const EMPTY_PAGE_MEDIA = { images: [], videos: [] };
+const GENERAL_CO_CREATOR_SHOP_THUMB = '/category/cocreator-general-shop.png';
 
 const Favorites = ({ sidebar }) => {
   const navigate = useNavigate();
@@ -587,10 +588,16 @@ const Favorites = ({ sidebar }) => {
           { collaborator: true }
         );
         const custom = products[0];
-        setShopThumb(custom ? deluzionShopArtworkUrl(custom.preview) : '');
+        setShopThumb(
+          custom
+            ? deluzionShopArtworkUrl(custom.preview)
+            : GENERAL_CO_CREATOR_SHOP_THUMB
+        );
       })
       .catch(() => {
-        if (!cancelled) setShopThumb('');
+        if (!cancelled) {
+          setShopThumb(GENERAL_CO_CREATOR_SHOP_THUMB);
+        }
       });
     return () => {
       cancelled = true;
@@ -726,7 +733,11 @@ const Favorites = ({ sidebar }) => {
               <h2>Images</h2>
             </button>
             <button type="button" className="card hub-card" onClick={() => setCollabSection('shop')}>
-              <HubThumb src={shopThumb} emptyLabel="Shop" />
+              <HubThumb
+                src={shopThumb}
+                emptyLabel="Shop"
+                contain={shopThumb === GENERAL_CO_CREATOR_SHOP_THUMB}
+              />
               <h2>Shop</h2>
             </button>
           </div>
@@ -803,9 +814,9 @@ const Favorites = ({ sidebar }) => {
                 <CollaboratorShop
                   userId={listMeta.owner_user_id}
                   listId={listMeta.id}
+                  listSlug={listMeta.slug || effectiveSlug}
                   onAvailability={setCollabShopReady}
                 />
-                {!collabShopReady ? <p className="favorites-empty-note">No shop products yet.</p> : null}
               </>
             ) : null}
           </div>

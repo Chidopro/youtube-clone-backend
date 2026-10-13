@@ -13,16 +13,16 @@ function shopImgBase() {
 /** Storefront shop hubs: the 8 product categories (no Product Info / Image Tools). */
 export const SHOP_CATEGORIES = [
   {
-    name: "Women's",
-    category: 'womens',
-    thumbFit: 'model',
-    preview: '/category/womens-white.jpg',
-  },
-  {
     name: "Men's",
     category: 'mens',
     thumbFit: 'model',
     preview: '/category/mens-white.jpg',
+  },
+  {
+    name: "Women's",
+    category: 'womens',
+    thumbFit: 'model',
+    preview: '/category/womens-white.jpg',
   },
   {
     name: 'Kids',
@@ -222,6 +222,7 @@ const SHOP_ADD_INTENT_KEY = 'sm_shop_add_intent';
 
 export function browseShopCategoryPath(category, options = {}) {
   const fromShop = options.fromShop !== false;
+  const favoriteSlug = String(options.favoriteSlug || '').trim();
   const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
   const userEmail = localStorage.getItem('user_email') || '';
   localStorage.setItem('last_selected_category', category);
@@ -231,6 +232,7 @@ export function browseShopCategoryPath(category, options = {}) {
     email: userEmail,
   });
   if (fromShop) qs.set('from', 'shop');
+  if (favoriteSlug) qs.set('favorite', favoriteSlug);
   return `/product/browse?${qs.toString()}`;
 }
 
