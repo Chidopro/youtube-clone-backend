@@ -73,7 +73,7 @@ export function buildEditLog({
   textOffsetY = 50,
   textDirection = 'horizontal',
   textMaskEnabled = false,
-  textMaskOpacity = 85,
+  textMaskOpacity = 0,
   textMaskColor = 'cream',
   textPlacement = 'center',
   textSafeArea = null,
@@ -81,6 +81,7 @@ export function buildEditLog({
   selectedProverbTemplateId = '',
   printAreaFit = 'none',
   imageOrientation = 'portrait',
+  printPlacement = 'front',
   imageOffsetX = 0,
   imageOffsetY = 0,
   screenshotScale = 100,
@@ -133,7 +134,7 @@ export function buildEditLog({
     textOffsetY: asNumber(textOffsetY, 50),
     textDirection: String(textDirection || '').toLowerCase() === 'vertical' ? 'vertical' : 'horizontal',
     textMaskEnabled: Boolean(textOn && textMaskEnabled),
-    textMaskOpacity: Math.max(0, Math.min(100, Math.round(asNumber(textMaskOpacity, 85)))),
+    textMaskOpacity: Math.max(0, Math.min(100, Math.round(asNumber(textMaskOpacity, 0)))),
     textMaskColor: String(textMaskColor || '').toLowerCase() === 'charcoal' ? 'charcoal' : 'cream',
     textPlacement: ['top', 'bottom'].includes(textPlacement) ? textPlacement : 'center',
     textSafeArea: textSafeArea && typeof textSafeArea === 'object' ? { ...textSafeArea } : null,
@@ -141,6 +142,7 @@ export function buildEditLog({
     selectedProverbTemplateId: String(selectedProverbTemplateId || ''),
     printAreaFit: printAreaFit || 'none',
     imageOrientation: imageOrientation === 'landscape' ? 'landscape' : 'portrait',
+    printPlacement: printPlacement === 'back' ? 'back' : 'front',
     imageOffsetX: asNumber(imageOffsetX),
     imageOffsetY: asNumber(imageOffsetY),
     screenshotScale: asNumber(screenshotScale, 100),
@@ -172,6 +174,9 @@ export function formatEditLogLines(log) {
   lines.push({ label: 'Orientation', value: ori === 'landscape' ? 'Landscape' : 'Portrait' });
   if (log.selectedProductName) {
     lines.push({ label: 'Product', value: String(log.selectedProductName) });
+  }
+  if (log.printPlacement === 'back') {
+    lines.push({ label: 'Print side', value: 'Back' });
   }
   const fit = String(log.printAreaFit || 'none');
   if (fit && fit !== 'none') {
@@ -240,7 +245,7 @@ export function formatEditLogLines(log) {
     if (log.textMaskEnabled) {
       lines.push({
         label: 'Text background',
-        value: `${log.textMaskColor === 'charcoal' ? 'Soft charcoal' : 'Warm cream'} · ${Math.round(asNumber(log.textMaskOpacity, 85))}% · ${log.textPlacement || 'center'}`,
+        value: `${log.textMaskColor === 'charcoal' ? 'Soft charcoal' : 'Warm cream'} · ${Math.round(asNumber(log.textMaskOpacity, 0))}% · ${log.textPlacement || 'center'}`,
       });
     }
   }
@@ -290,6 +295,7 @@ export function editLogFromToolSettings(ts) {
     selectedProverbTemplateId: ts.selectedProverbTemplateId,
     printAreaFit: ts.printAreaFit,
     imageOrientation: ts.imageOrientation,
+    printPlacement: ts.printPlacement,
     imageOffsetX: ts.imageOffsetX || ts.offsetX,
     imageOffsetY: ts.imageOffsetY || ts.offsetY,
     screenshotScale: ts.screenshotScale,

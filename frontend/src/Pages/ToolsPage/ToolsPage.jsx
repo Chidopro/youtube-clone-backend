@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import html2canvas from 'html2canvas';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName, getProductPrintFilter } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
@@ -84,6 +85,28 @@ const PORTRAIT_COVER_Y = 26;
 
 const ARTWORK_ZOOM_MIN = 50;
 const ARTWORK_ZOOM_MAX = 150;
+const QUICK_TEXT_COLORS = [
+  { name: 'Black', value: '#111111' },
+  { name: 'White', value: '#ffffff' },
+  { name: 'Cream', value: '#fff8e6' },
+  { name: 'Pink', value: '#e75480' },
+  { name: 'Hot pink', value: '#ff1493' },
+  { name: 'Red', value: '#c62828' },
+  { name: 'Orange', value: '#f57c00' },
+  { name: 'Yellow', value: '#fbc02d' },
+  { name: 'Blue', value: '#1e5aa8' },
+  { name: 'Navy', value: '#0a1f44' },
+  { name: 'Cyan', value: '#00acc1' },
+  { name: 'Teal', value: '#00897b' },
+  { name: 'Gold', value: '#b8860b' },
+  { name: 'Green', value: '#2e7d32' },
+  { name: 'Lime', value: '#7cb342' },
+  { name: 'Purple', value: '#6f42c1' },
+  { name: 'Lavender', value: '#9575cd' },
+  { name: 'Brown', value: '#795548' },
+  { name: 'Burgundy', value: '#800020' },
+  { name: 'Charcoal', value: '#36454f' },
+];
 
 function clampArtworkZoom(value) {
   const n = Number(value);
@@ -1926,9 +1949,10 @@ const EDITOR_SLOT_DEFAULTS = {
   textOffsetY: 50,
   textDirection: 'horizontal',
   textMaskEnabled: false,
-  textMaskOpacity: 85,
+  textMaskOpacity: 0,
   textMaskColor: 'cream',
   textPlacement: 'center',
+  printPlacement: 'front',
   textSafeArea: { x: 8, y: 25, width: 84, height: 50 },
   selectedProverbId: '',
   selectedProverbTemplateId: '',
@@ -2163,6 +2187,11 @@ function editorSlotFromCartItem(item) {
     ...EDITOR_SLOT_DEFAULTS,
     ...(hasSettings ? s : {}),
     imageOrientation: ori === 'landscape' ? 'landscape' : (ori === 'portrait' ? 'portrait' : (hasSettings ? s.imageOrientation : 'portrait')),
+    printPlacement: (
+      s?.printPlacement === 'back'
+      || item.printPlacement === 'back'
+      || item.print_placement === 'back'
+    ) ? 'back' : 'front',
     offsetX: hasSettings && typeof s.offsetX === 'number' ? s.offsetX : 0,
     offsetY: hasSettings && typeof s.offsetY === 'number' ? s.offsetY : 0,
     sourceScreenshot: slotSourceKey(
@@ -2254,11 +2283,11 @@ function migrateBibleVerseCartItems(cartItems) {
     const templateUrl = new URL(template.imageUrl, window.location.origin).toString();
     const placement = textPositionDefaults(template.recommendedTextPosition);
     const preset = KJV_PROVERB_PRESETS.find((candidate) => candidate.id === item?.toolSettings?.selectedProverbId);
-    const needsDesignUpgrade = Number(item?.toolSettings?.bibleVerseDesignVersion || 0) < 17;
+    const needsDesignUpgrade = Number(item?.toolSettings?.bibleVerseDesignVersion || 0) < 18;
     const settings = {
       ...(item.toolSettings || {}),
       ...(needsDesignUpgrade ? {
-        bibleVerseDesignVersion: 17,
+        bibleVerseDesignVersion: 18,
         imageOpacity: 100,
         textContent: formatProverbDesignText(preset) || item.toolSettings?.textContent || '',
         textFont: 'IM FELL English',
@@ -2268,7 +2297,7 @@ function migrateBibleVerseCartItems(cartItems) {
         textPlacement: placement.position,
         textSafeArea: template.recommendedTextSafeArea,
         textMaskEnabled: true,
-        textMaskOpacity: template.recommendedMaskOpacity,
+        textMaskOpacity: 0,
         textMaskColor: template.recommendedMaskColor,
         screenshotScale: ARTWORK_ZOOM_MAX,
       } : {}),
@@ -2346,14 +2375,18 @@ function getInitialEditorSlot() {
       slot
       && isBibleVerseMerchStorefront(getSubdomain())
       && slot.selectedProverbTemplateId
-      && Number(slot.bibleVerseDesignVersion || 0) < 17
+      && Number(slot.bibleVerseDesignVersion || 0) < 18
     ) {
-      return {
+      const upgraded = {
         ...slot,
-        bibleVerseDesignVersion: 17,
+        bibleVerseDesignVersion: 18,
         textMaskEnabled: true,
+        textMaskOpacity: 0,
         screenshotScale: ARTWORK_ZOOM_MAX,
       };
+      slots[index] = upgraded;
+      writeEditorSlots(slots);
+      return upgraded;
     }
     return slot;
   } catch {
@@ -2362,9 +2395,9 @@ function getInitialEditorSlot() {
 }
 
 /** 300 DPI print-box pixels for the current product / orientation / scale. */
-function printTargetPixels(productName, productSize, orientation, printAreaFit, screenshotScale = 100) {
+function printTargetPixels(productName, productSize, orientation, printAreaFit, screenshotScale = 100, printPlacement = 'front') {
   const name = matchPrintAreaProductName(productName) || String(productName || '').trim();
-  const dims = getPrintAreaDimensions(name, productSize, 'front');
+  const dims = getPrintAreaDimensions(name, productSize, printPlacement);
   let wIn = dims?.width > 0 ? dims.width : 11.5;
   let hIn = dims?.height > 0 ? dims.height : 13.8;
   if (printAreaFit === 'horizontal') {
@@ -2423,7 +2456,7 @@ function ToolsEditLogCard({ log, previewSrc }) {
 }
 
 /** Aspect of the visible print box so Screenshot Preview matches Product Preview. */
-function printBoxPreviewAspect(productName, productSize, orientation, printAreaFit, overlayW = 0, overlayH = 0) {
+function printBoxPreviewAspect(productName, productSize, orientation, printAreaFit, overlayW = 0, overlayH = 0, printPlacement = 'front') {
   if (overlayW > 0 && overlayH > 0) return overlayW / overlayH;
   if (printAreaFit === 'horizontal') return 1.5;
   if (printAreaFit === 'square') return 1;
@@ -2431,7 +2464,7 @@ function printBoxPreviewAspect(productName, productSize, orientation, printAreaF
 
   const name = matchPrintAreaProductName(productName) || String(productName || '').trim();
   if (isTotePocketProduct(name)) return 32 / 35;
-  const dims = getPrintAreaDimensions(name, productSize, 'front');
+  const dims = getPrintAreaDimensions(name, productSize, printPlacement);
   const width = dims?.width > 0 ? dims.width : 11.5;
   const height = dims?.height > 0 ? dims.height : 13.8;
 
@@ -2482,7 +2515,7 @@ const ProductPreviewWithDrag = ({
   textOffsetY = 50,
   textDirection = 'horizontal',
   textMaskEnabled = false,
-  textMaskOpacity = 85,
+  textMaskOpacity = 0,
   textMaskColor = 'cream',
   textSafeArea,
   onTextPositionChange,
@@ -2501,6 +2534,7 @@ const ProductPreviewWithDrag = ({
   imageOffsetX = 0,
   imageOffsetY = 0,
   imageOrientation = 'portrait',
+  printPlacement = 'front',
   blackAndWhite = false,
   bwIntensity = BW_INTENSITY_DEFAULT,
   imageOpacity = IMAGE_OPACITY_DEFAULT,
@@ -2715,7 +2749,7 @@ const ProductPreviewWithDrag = ({
       }
 
       const commitOverlaySize = (width, height) => {
-        overlayFitKeyRef.current = `${effectiveProductName}|${productSize || ''}`;
+        overlayFitKeyRef.current = `${effectiveProductName}|${productSize || ''}|${printPlacement}`;
         setScreenshotDisplaySize((prev) => {
           if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) {
             return prev;
@@ -2726,7 +2760,7 @@ const ProductPreviewWithDrag = ({
 
       try {
         // Get print area dimensions for this product
-        const printDimensions = getPrintAreaDimensions(effectiveProductName, productSize || null, 'front');
+        const printDimensions = getPrintAreaDimensions(effectiveProductName, productSize || null, printPlacement);
         
         if (DEBUG_OVERLAY_SIZE) {
         console.log(`🔍 [SIZE_CALC] Product: "${effectiveProductName}" (from ${printAreaFit === 'product' && selectedProductName ? 'dropdown' : 'cart'}), Size: "${productSize || 'default'}", Print Area:`, printDimensions);
@@ -2947,7 +2981,7 @@ const ProductPreviewWithDrag = ({
     calculateSize();
     const raf = requestAnimationFrame(calculateSize);
     return () => cancelAnimationFrame(raf);
-  }, [productName, productSize, productImageSize, selectedProductName, printAreaFit, productImage, detectedPrintBox, litePreview]);
+  }, [productName, productSize, productImageSize, selectedProductName, printAreaFit, printPlacement, productImage, detectedPrintBox, litePreview]);
 
   useLayoutEffect(() => {
     if (!onOverlayBoxChange) return;
@@ -3541,6 +3575,7 @@ function ScreenshotPreviewPane({
   productName,
   productSize,
   imageOrientation,
+  printPlacement = 'front',
   printAreaFit,
   imageOffsetX = 0,
   imageOffsetY = 0,
@@ -3572,7 +3607,7 @@ function ScreenshotPreviewPane({
   textOffsetY = 50,
   textDirection = 'horizontal',
   textMaskEnabled = false,
-  textMaskOpacity = 85,
+  textMaskOpacity = 0,
   textMaskColor = 'cream',
   textSafeArea,
   nudgeEnabled = false,
@@ -3591,7 +3626,8 @@ function ScreenshotPreviewPane({
     imageOrientation,
     printAreaFit,
     overlayBoxWidth,
-    overlayBoxHeight
+    overlayBoxHeight,
+    printPlacement
   );
   const maxSide = boxWidth > 0 ? boxWidth : 176;
   const safeAspect = aspect > 0 ? aspect : 1;
@@ -4115,6 +4151,9 @@ const ToolsPage = () => {
   const [imageOrientation, setImageOrientation] = useState(() => (
     initialEditorSlot.imageOrientation === 'landscape' ? 'landscape' : 'portrait'
   ));
+  const [printPlacement, setPrintPlacement] = useState(() => (
+    initialEditorSlot.printPlacement === 'back' ? 'back' : 'front'
+  ));
   const [imageOffsetX, setImageOffsetX] = useState(() => initialEditorSlot.imageOffsetX ?? 0);
   const [imageOffsetY, setImageOffsetY] = useState(() => initialEditorSlot.imageOffsetY ?? 0);
   const [editedImageUrl, setEditedImageUrl] = useState('');
@@ -4259,6 +4298,7 @@ const ToolsPage = () => {
   const [printQualityImageUrl, setPrintQualityImageUrl] = useState(''); // 300 DPI image from API (parked for download)
   const [printQualityMeta, setPrintQualityMeta] = useState(null); // { dimensions: { width, height, dpi }, file_size, format, quality }
   const [generating300Dpi, setGenerating300Dpi] = useState(false);
+  const [downloadingProductPreview, setDownloadingProductPreview] = useState(false);
   const customFontsReadyRef = useRef(false);
 
   // Lock horizontal page pan on mobile so it doesn't fight mockup drag / sliders
@@ -4408,7 +4448,8 @@ const ToolsPage = () => {
       previewSize,
       imageOrientation,
       printAreaFit,
-      screenshotScale
+      screenshotScale,
+      printPlacement
     );
     const bakedW = bakedImageSize.width || currentImageDimensions.width;
     const bakedH = bakedImageSize.height || currentImageDimensions.height;
@@ -4446,6 +4487,7 @@ const ToolsPage = () => {
       selectedProverbTemplateId,
       printAreaFit,
       imageOrientation,
+      printPlacement,
       imageOffsetX,
       imageOffsetY,
       screenshotScale,
@@ -4489,6 +4531,11 @@ const ToolsPage = () => {
       textSafeArea,
       selectedProverbId,
       selectedProverbTemplateId,
+      bibleVerseDesignVersion: (
+        bibleVerseMerch && selectedProverbTemplateId
+          ? 18
+          : Number(prev.bibleVerseDesignVersion || 0)
+      ),
       screenshotScale,
       selectedProductName,
       printAreaFit,
@@ -4556,6 +4603,7 @@ const ToolsPage = () => {
     setSelectedProverbTemplateId(saved.selectedProverbTemplateId || '');
     if (typeof saved.imageOffsetX === 'number') setImageOffsetX(saved.imageOffsetX);
     if (typeof saved.imageOffsetY === 'number') setImageOffsetY(saved.imageOffsetY);
+    setPrintPlacement(saved.printPlacement === 'back' ? 'back' : 'front');
     if (typeof saved.screenshotScale === 'number') setScreenshotScale(clampArtworkZoom(saved.screenshotScale));
     if (bibleVerseMerch) {
       setPrintBoxFillColor('');
@@ -4609,8 +4657,12 @@ const ToolsPage = () => {
       textSafeArea: normalizeTextSafeArea(slot.textSafeArea),
       selectedProverbId: slot.selectedProverbId || '',
       selectedProverbTemplateId: slot.selectedProverbTemplateId || '',
+      ...(Number(slot.bibleVerseDesignVersion || 0) > 0
+        ? { bibleVerseDesignVersion: Number(slot.bibleVerseDesignVersion) }
+        : {}),
       printAreaFit: slot.printAreaFit,
       imageOrientation: slot.imageOrientation,
+      printPlacement: slot.printPlacement === 'back' ? 'back' : 'front',
       selectedProductName: slot.selectedProductName,
       editLog: slot.editLog || null,
     };
@@ -4620,6 +4672,7 @@ const ToolsPage = () => {
       const prev = cartItems[orig].toolSettings || null;
       const nextIsDefault = !nextSettings.frameEnabled
         && nextSettings.imageOrientation !== 'landscape'
+        && nextSettings.printPlacement !== 'back'
         && !nextSettings.blackAndWhite
         && !nextSettings.featherFadeEnabled
         && !nextSettings.textEnabled
@@ -4629,6 +4682,7 @@ const ToolsPage = () => {
       const prevHasEdits = prev && (
         prev.frameEnabled
         || prev.imageOrientation === 'landscape'
+        || prev.printPlacement === 'back'
         || prev.blackAndWhite
         || prev.featherFadeEnabled
         || prev.textEnabled
@@ -4646,7 +4700,13 @@ const ToolsPage = () => {
       writeCartItems(cartItems.map((item, i) => (
         i !== orig
           ? item
-          : { ...item, imageOrientation: slot.imageOrientation, toolSettings: nextSettings }
+          : {
+              ...item,
+              imageOrientation: slot.imageOrientation,
+              printPlacement: nextSettings.printPlacement,
+              print_placement: nextSettings.printPlacement,
+              toolSettings: nextSettings,
+            }
       )));
     } catch {
       /* ignore */
@@ -4757,7 +4817,7 @@ const ToolsPage = () => {
       selectedCartProductIndex,
     });
     syncLiveEditorToCartItem(idx);
-  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textPlacement, textSafeArea, selectedProverbId, selectedProverbTemplateId, searchParams]);
+  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, printPlacement, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textPlacement, textSafeArea, selectedProverbId, selectedProverbTemplateId, searchParams]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -6811,17 +6871,27 @@ const ToolsPage = () => {
     img.src = src;
   };
 
-  const handleDownload = () => {
-    const imageToDownload = editedImageUrl || imageUrl;
-    if (!imageToDownload || !imageToDownload.trim()) {
-      alert('No image to download. Please load a screenshot first.');
+  const handleDownload = async () => {
+    const preview = document.querySelector(
+      '.product-preview-visual .product-preview-stage, '
+      + '.product-preview-visual .mug-wrap-mockup-clip'
+    );
+    if (!preview) {
+      alert('Select a product before downloading the product preview.');
       return;
     }
     const orderId = searchParams.get('order_id') || '';
-    const baseName = orderId ? 'screenmerch-' + orderId : 'screenmerch-design';
-    const filename = baseName + '.png';
+    const product = selectedCartProduct?.name || selectedProductName || 'product';
+    const productSlug = String(product)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'product';
+    const baseName = orderId ? `screenmerch-${orderId}-${productSlug}` : `screenmerch-${productSlug}`;
+    const filename = `${baseName}-preview.png`;
 
     const doDownload = (blob) => {
+      if (!blob) throw new Error('Could not create the product preview image.');
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -6832,31 +6902,24 @@ const ToolsPage = () => {
       URL.revokeObjectURL(url);
     };
 
-    if (imageToDownload.startsWith('data:image')) {
-      try {
-        const comma = imageToDownload.indexOf(',');
-        const base64 = comma >= 0 ? imageToDownload.slice(comma + 1) : '';
-        const mime = imageToDownload.match(/data:([^;]+);/);
-        const type = (mime && mime[1]) || 'image/png';
-        if (base64) {
-          const binary = atob(base64);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-          doDownload(new Blob([bytes], { type }));
-        } else {
-          alert('Download failed. No image data.');
-        }
-      } catch (e) {
-        console.error(e);
-        alert('Download failed. Try again.');
-      }
-    } else if (imageToDownload.startsWith('http')) {
-      fetch(imageToDownload, { mode: 'cors' })
-        .then((r) => r.blob())
-        .then(doDownload)
-        .catch(() => alert('Download failed. Image may be from another origin.'));
-    } else {
-      alert('Download failed. No valid image.');
+    setDownloadingProductPreview(true);
+    try {
+      if (document.fonts?.ready) await document.fonts.ready;
+      const canvas = await html2canvas(preview, {
+        backgroundColor: null,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        imageTimeout: 15000,
+        scale: Math.max(2, Math.min(3, window.devicePixelRatio || 1)),
+      });
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      doDownload(blob);
+    } catch (error) {
+      console.error('Product preview download failed:', error);
+      alert('Download failed. Please wait for the product preview to finish loading and try again.');
+    } finally {
+      setDownloadingProductPreview(false);
     }
   };
 
@@ -6976,7 +7039,7 @@ const ToolsPage = () => {
       };
       if (selectedProductName && printAreaFit === 'product') {
         try {
-          const dims = getPrintAreaDimensions(selectedProductName, fitProductSize, 'front');
+          const dims = getPrintAreaDimensions(selectedProductName, fitProductSize, printPlacement);
           if (dims && dims.width && dims.height) {
             payload.print_area_width = dims.width;
             payload.print_area_height = dims.height;
@@ -7085,6 +7148,8 @@ const ToolsPage = () => {
       const data = { ...readPendingMerchData() };
       if (bakedShot) data.edited_screenshot = bakedShot;
       data.imageOrientation = imageOrientation === 'landscape' ? 'landscape' : 'portrait';
+      data.printPlacement = printPlacement;
+      data.print_placement = printPlacement;
       data.tools_used = {
         featherEdge,
         cornerRadius,
@@ -7113,8 +7178,10 @@ const ToolsPage = () => {
         textSafeArea,
         selectedProverbId,
         selectedProverbTemplateId,
+        ...(bibleVerseMerch && selectedProverbTemplateId ? { bibleVerseDesignVersion: 18 } : {}),
         printAreaFit,
         imageOrientation,
+        printPlacement,
         imageOffsetX,
         imageOffsetY,
         editLog: buildLiveEditLog(selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null)
@@ -7167,8 +7234,10 @@ const ToolsPage = () => {
         textSafeArea,
         selectedProverbId,
         selectedProverbTemplateId,
+        ...(bibleVerseMerch && selectedProverbTemplateId ? { bibleVerseDesignVersion: 18 } : {}),
         printAreaFit,
         imageOrientation,
+        printPlacement,
         imageOffsetX,
         imageOffsetY,
         editLog: buildLiveEditLog(selectedProduct)
@@ -7183,6 +7252,8 @@ const ToolsPage = () => {
             edited: true,
             tools_acknowledged: true,
             imageOrientation,
+            printPlacement,
+            print_placement: printPlacement,
             toolSettings: nextToolSettings,
           };
           if (mugMockupUrl) next.printfulMugMockupUrl = mugMockupUrl;
@@ -7406,7 +7477,7 @@ const ToolsPage = () => {
     setTextColor(template?.recommendedTextColor || '#30291f');
     setTextMaskEnabled(true);
     setImageOpacity(100);
-    setTextMaskOpacity(template?.recommendedMaskOpacity ?? 85);
+    setTextMaskOpacity(template?.recommendedMaskOpacity ?? 0);
     setTextMaskColor(normalizeTextMaskColor(template?.recommendedMaskColor));
     setScreenshotScale(ARTWORK_ZOOM_MAX);
     setTextDirection('horizontal');
@@ -7816,6 +7887,7 @@ const ToolsPage = () => {
                                   productName={productName}
                                   productSize={product.size}
                                   imageOrientation={imageOrientation}
+                                  printPlacement={printPlacement}
                                   printAreaFit={printAreaFit}
                                   imageOffsetX={imageOffsetX}
                                   imageOffsetY={imageOffsetY}
@@ -8081,6 +8153,7 @@ const ToolsPage = () => {
                                   productName={productName}
                                   productSize={product.size}
                                   imageOrientation={imageOrientation}
+                                  printPlacement={printPlacement}
                                   printAreaFit={printAreaFit}
                                   imageOffsetX={imageOffsetX}
                                   imageOffsetY={imageOffsetY}
@@ -8173,6 +8246,7 @@ const ToolsPage = () => {
                               imageOffsetX={imageOffsetX}
                               imageOffsetY={imageOffsetY}
                               imageOrientation={imageOrientation}
+                              printPlacement={printPlacement}
                               blackAndWhite={blackAndWhite}
                               bwIntensity={bwIntensity}
                               imageOpacity={imageOpacity}
@@ -8271,6 +8345,7 @@ const ToolsPage = () => {
                             imageOffsetX={imageOffsetX}
                             imageOffsetY={imageOffsetY}
                             imageOrientation={imageOrientation}
+                            printPlacement={printPlacement}
                             blackAndWhite={blackAndWhite}
                             bwIntensity={bwIntensity}
                             imageOpacity={imageOpacity}
@@ -8489,6 +8564,25 @@ const ToolsPage = () => {
                 </p>
               ) : null}
             </div>
+
+            {isApparelChestPrintProduct(selectedProductName || selectedCartProduct?.name || '') ? (
+              <div className="select-control tools-print-placement-control">
+                <span className="tools-print-placement-label">Print side:</span>
+                <div className="tools-print-placement-buttons" role="group" aria-label="Choose garment print side">
+                  {['front', 'back'].map((side) => (
+                    <button
+                      key={side}
+                      type="button"
+                      className={printPlacement === side ? 'is-active' : ''}
+                      aria-pressed={printPlacement === side}
+                      onClick={() => setPrintPlacement(side)}
+                    >
+                      {side.charAt(0).toUpperCase() + side.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="slider-control" style={{ marginTop: '1rem' }}>
               <label>Zoom:</label>
@@ -8778,21 +8872,40 @@ const ToolsPage = () => {
                           style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
                         />
                       </div>
-                      <div className="select-control" style={{ marginTop: '0.75rem' }}>
-                        <h4 style={{ margin: '0 0 0.45rem', fontWeight: 'bold' }}>Placement:</h4>
-                        <div className="tools-text-direction">
-                          {['top', 'center', 'bottom'].map((position) => (
-                            <label key={position}>
-                              <input
-                                type="radio"
-                                name="textPlacement"
-                                value={position}
-                                checked={textPlacement === position}
-                                onChange={() => applyTextPlacement(position)}
+                      <div className="tools-text-placement-color-row">
+                        <div className="select-control tools-text-placement-control">
+                          <h4 style={{ margin: '0 0 0.45rem', fontWeight: 'bold' }}>Placement:</h4>
+                          <div className="tools-text-direction">
+                            {['top', 'center', 'bottom'].map((position) => (
+                              <label key={position}>
+                                <input
+                                  type="radio"
+                                  name="textPlacement"
+                                  value={position}
+                                  checked={textPlacement === position}
+                                  onChange={() => applyTextPlacement(position)}
+                                />
+                                <span>{position.charAt(0).toUpperCase() + position.slice(1)}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="tools-quick-text-colors" role="group" aria-label="Quick text colors">
+                          <span className="tools-quick-text-colors-label">Quick colors:</span>
+                          <div className="tools-quick-text-colors-grid">
+                            {QUICK_TEXT_COLORS.map((color) => (
+                              <button
+                                key={color.value}
+                                type="button"
+                                className={`tools-quick-text-color${textColor.toLowerCase() === color.value ? ' is-selected' : ''}`}
+                                style={{ '--quick-text-color': color.value }}
+                                aria-label={`${color.name} text`}
+                                aria-pressed={textColor.toLowerCase() === color.value}
+                                title={color.name}
+                                onClick={() => setTextColor(color.value)}
                               />
-                              <span>{position.charAt(0).toUpperCase() + position.slice(1)}</span>
-                            </label>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       </div>
                       <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -9031,6 +9144,7 @@ const ToolsPage = () => {
                             productName={previewName}
                             productSize={cartProduct?.size}
                             imageOrientation={imageOrientation}
+                            printPlacement={printPlacement}
                             printAreaFit={printAreaFit}
                             imageOffsetX={imageOffsetX}
                             imageOffsetY={imageOffsetY}
@@ -9228,10 +9342,10 @@ const ToolsPage = () => {
                     type="button"
                     className="download-design-btn"
                     onClick={handleDownload}
-                    disabled={!editedImageUrl && !imageUrl}
-                    title="Save the finished artwork to your computer"
+                    disabled={downloadingProductPreview || !selectedCartProduct}
+                    title="Save the selected product with your finished design"
                   >
-                    Download Design
+                    {downloadingProductPreview ? 'Preparing Download…' : 'Download Product Preview'}
                   </button>
                   <button
                     type="button"

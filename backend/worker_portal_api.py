@@ -159,7 +159,7 @@ def register_worker_portal_routes(app, supabase, supabase_admin, printful_integr
                 printful_items.append({
                     "variant_id": variant_id,
                     "quantity": quantity,
-                    "files": [{"url": printful_image_url}]
+                    "files": [printful_integration.print_file_payload(item, printful_image_url)]
                 })
             
             # Step 5: Get shipping address from order

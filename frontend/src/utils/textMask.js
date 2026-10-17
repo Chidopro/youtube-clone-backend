@@ -9,7 +9,7 @@ export function normalizeTextMaskColor(value) {
 
 export function clampTextMaskOpacity(value) {
   const number = Number(value);
-  if (!Number.isFinite(number)) return 85;
+  if (!Number.isFinite(number)) return 0;
   return Math.max(0, Math.min(100, Math.round(number)));
 }
 
@@ -81,7 +81,7 @@ export function drawTextMask(ctx, {
   safeArea,
   maskEnabled = false,
   maskColor = 'cream',
-  maskOpacity = 85,
+  maskOpacity = 0,
 }) {
   const value = String(text || '').trim();
   if (!value || !ctx?.canvas) return null;

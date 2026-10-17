@@ -36,9 +36,11 @@ export const BIBLE_VERSE_TEMPLATES = TEMPLATE_TITLES.map(
     title,
     recommendedTextPosition,
     recommendedTextSafeArea: SAFE_AREAS[recommendedTextPosition],
-    recommendedTextColor: recommendedTextPosition === 'bottom' ? '#fff8e6' : '#30291f',
+    recommendedTextColor: index === 0
+      ? '#6f42c1'
+      : (recommendedTextPosition === 'bottom' ? '#fff8e6' : '#30291f'),
     recommendedMaskColor: recommendedTextPosition === 'bottom' ? 'charcoal' : 'cream',
-    recommendedMaskOpacity: 98,
+    recommendedMaskOpacity: 0,
   })
 );
 

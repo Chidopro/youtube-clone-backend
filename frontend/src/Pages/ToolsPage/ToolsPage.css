@@ -1149,6 +1149,105 @@ body.tools-page-active .site-footer {
   color: #333;
 }
 
+.tools-text-placement-color-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 0.75rem;
+}
+
+.tools-text-placement-control {
+  flex: 1 1 auto;
+  min-width: 230px;
+}
+
+.tools-quick-text-colors {
+  flex: 0 0 auto;
+}
+
+.tools-quick-text-colors-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #333;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.tools-quick-text-colors-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 22px);
+  gap: 6px;
+}
+
+.tools-quick-text-color {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  padding: 0;
+  border: 1px solid #aeb3b8;
+  border-radius: 4px;
+  background: var(--quick-text-color);
+  cursor: pointer;
+}
+
+.tools-quick-text-color:hover {
+  border-color: #111;
+  transform: scale(1.08);
+}
+
+.tools-quick-text-color.is-selected {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}
+
+.tools-print-placement-control {
+  margin-top: 0.75rem;
+}
+
+.tools-print-placement-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.9rem;
+}
+
+.tools-print-placement-buttons {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.tools-print-placement-buttons button {
+  min-width: 76px;
+  padding: 7px 14px;
+  border: 1px solid #aeb3b8;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+}
+
+.tools-print-placement-buttons button:hover {
+  border-color: #555;
+}
+
+.tools-print-placement-buttons button.is-active {
+  border-color: #333;
+  background: #e5e7eb;
+  box-shadow: inset 0 0 0 1px #333;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .tools-text-placement-color-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .tools-text-placement-control {
+    min-width: 0;
+  }
+}
+
 .checkbox-control {
   margin-top: 0.5rem;
 }

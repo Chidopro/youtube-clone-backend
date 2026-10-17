@@ -12,7 +12,7 @@ import { supabase } from '../../supabaseClient'
 import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from '../../utils/userService'
 import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
-import { isCreatorStorefrontHostname, peekCachedStorefrontBrand, rememberStorefrontBrand } from '../../utils/subdomainService'
+import { getSubdomain, isCreatorStorefrontHostname, peekCachedStorefrontBrand, rememberStorefrontBrand } from '../../utils/subdomainService'
 import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
 import { DEMO_DASHBOARD_PATH, endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
@@ -20,6 +20,7 @@ import { cropCustomLogoFromUrl } from '../../utils/logoBackground'
 import { apiJoin, getBackendUrl } from '../../config/apiConfig'
 import ShipToPicker from '../ShipToPicker/ShipToPicker'
 import DeliveryFlags from '../DeliveryFlags/DeliveryFlags'
+import { isBibleVerseMerchStorefront } from '../../data/bibleVerseMerch'
 
 const creatorSearchText = (creator) =>
     [creator?.name, creator?.username, creator?.subdomain]
@@ -133,9 +134,12 @@ const Navbar = ({ resetCategory }) => {
     const showStorefrontTabBar = showStorefrontHeaderLinks
         && location.pathname !== '/tools'
         && !location.pathname.startsWith('/checkout');
+    const bibleVerseMerch = isBibleVerseMerchStorefront(getSubdomain());
     const cachedBrand = peekCachedStorefrontBrand();
     const customLogoUrl = (creatorSettings?.custom_logo_url || cachedBrand?.custom_logo_url || '').trim();
-    const logoSrc = customLogoUrl || (!isStorefront ? logo : '');
+    const bibleVerseLogoUrl = bibleVerseMerch ? '/bibleverse-merch-logo.png' : '';
+    const logoSrc = customLogoUrl || bibleVerseLogoUrl || (!isStorefront ? logo : '');
+    const hasStorefrontLogo = Boolean(customLogoUrl || bibleVerseLogoUrl);
     const [logoOrientation, setLogoOrientation] = useState(() => {
         const cached = peekCachedStorefrontBrand()?.logo_orientation;
         if (cached === 'horizontal' || cached === 'square') return cached;
@@ -1135,7 +1139,7 @@ const Navbar = ({ resetCategory }) => {
                             src={logoSrc}
                             alt="Logo"
                             data-logo-original={customLogoUrl || undefined}
-                            className={`logo${customLogoUrl ? ' logo--custom' : ''} logo--${logoOrientation}${isOrderSuccessPage ? ' order-success-logo' : ''}`}
+                            className={`logo${hasStorefrontLogo ? ' logo--custom' : ''}${bibleVerseMerch ? ' logo--bibleverse' : ''} logo--${logoOrientation}${isOrderSuccessPage ? ' order-success-logo' : ''}`}
                             fetchPriority="high"
                             loading="eager"
                             decoding="async"

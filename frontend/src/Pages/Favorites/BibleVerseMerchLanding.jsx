@@ -65,7 +65,7 @@ export default function BibleVerseMerchLanding() {
       creatorName: 'Bible Verse Merch',
       screenshot_timestamp: '0:00',
       bibleVerseDesign: {
-        bibleVerseDesignVersion: 17,
+        bibleVerseDesignVersion: 18,
         imageOpacity: 100,
         textEnabled: true,
         textContent: designText,
@@ -102,7 +102,10 @@ export default function BibleVerseMerchLanding() {
           <div className="bvm-preview">
             {template ? <img src={template.imageUrl} alt={template.title} /> : null}
             <div className={`bvm-preview-copy bvm-preview-copy--${template?.recommendedTextPosition || 'center'}`}>
-              <div className={`bvm-preview-mask bvm-preview-mask--${template?.recommendedMaskColor || 'cream'}`}>
+              <div
+                className={`bvm-preview-mask bvm-preview-mask--${template?.recommendedMaskColor || 'cream'}`}
+                style={{ color: template?.recommendedTextColor || '#6f42c1' }}
+              >
                 <span>{displayText}</span>
                 {proverb?.reference ? <strong>{proverb.reference}</strong> : null}
               </div>

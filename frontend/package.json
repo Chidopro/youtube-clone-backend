@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.2",
+    "html2canvas": "^1.4.1",
     "moment": "^2.30.1",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",

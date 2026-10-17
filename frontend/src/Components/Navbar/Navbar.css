@@ -10,6 +10,13 @@ nav{
     flex-shrink: 0;
 }
 
+/* Bible Verse Merch: white header-matching fill with the neutral frame retained. */
+html[data-storefront="bibleversemerch"] nav .ship-to-picker-btn {
+    background: #fff !important;
+    border-color: #d0d7de !important;
+    opacity: 1 !important;
+}
+
 html:not(.creator-storefront) nav {
     box-shadow: none;
 }

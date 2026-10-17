@@ -482,6 +482,23 @@ class ScreenMerchPrintfulIntegration:
             "fallback": True
         }
 
+    @staticmethod
+    def print_file_payload(item: dict, image_url: str) -> dict:
+        """Build a Printful file entry while preserving a shopper's front/back choice."""
+        settings = item.get("toolSettings") if isinstance(item, dict) else None
+        settings = settings if isinstance(settings, dict) else {}
+        raw_side = (
+            item.get("print_placement")
+            or item.get("printPlacement")
+            or settings.get("printPlacement")
+            or ""
+        )
+        side = str(raw_side).strip().lower()
+        payload = {"url": image_url}
+        if side in ("front", "back"):
+            payload["type"] = side
+        return payload
+
     def create_order(self, order_data: dict) -> dict:
         """Create order in Printful"""
         try:
@@ -495,7 +512,7 @@ class ScreenMerchPrintfulIntegration:
                 printful_items.append({
                     "variant_id": item['printful_variant_id'],
                     "quantity": item['quantity'],
-                    "files": [{"url": item['image_url']}]
+                    "files": [self.print_file_payload(item, item['image_url'])]
                 })
             
             order_payload = {
