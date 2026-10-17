@@ -24,6 +24,8 @@ import { CollaboratorShop } from '../Shop/Shop';
 import { ChevronLeft, ChevronRight } from '../../Components/Chevrons/Chevrons';
 import { sortVideosForPlay } from '../../utils/videoPlayOrder';
 import { prefetchVideoPlayback } from '../../utils/videoOptimize';
+import { isBibleVerseMerchStorefront } from '../../data/bibleVerseMerch';
+import BibleVerseMerchLanding from './BibleVerseMerchLanding';
 import './Favorites.css';
 
 const sortNewest = (a, b) => {
@@ -371,6 +373,7 @@ const Favorites = ({ sidebar }) => {
   const [error, setError] = useState('');
   const images = pageMedia.images;
   const videos = pageMedia.videos;
+  const bibleVerseMerch = isBibleVerseMerchStorefront(getSubdomain());
 
   const isOnFriendPage = () => {
     if (listMeta?.is_primary || listMeta?.slug === 'owner') return false;
@@ -406,6 +409,15 @@ const Favorites = ({ sidebar }) => {
     const run = async () => {
       setCollabShopReady(false);
       const sub = getSubdomain();
+      if (isBibleVerseMerchStorefront(sub)) {
+        setLoading(false);
+        setPageMedia(EMPTY_PAGE_MEDIA);
+        setListMeta(null);
+        setMediaSlug(effectiveSlug);
+        setError('');
+        setClipsLoading(false);
+        return;
+      }
       if (!sub) {
         setLoading(false);
         setPageMedia(EMPTY_PAGE_MEDIA);
@@ -608,6 +620,10 @@ const Favorites = ({ sidebar }) => {
     ? friendPageLabel(listMeta, currentCreator?.id)
     : '';
   const pageReady = !loading && mediaSlug === effectiveSlug;
+
+  if (bibleVerseMerch) {
+    return <BibleVerseMerchLanding />;
+  }
 
   return (
     <div className={`container favorites-root${isCollabPage ? ' favorites-root--collab' : ''}${sidebar ? '' : ' large-container'}`}>

@@ -684,6 +684,17 @@ def process_thumbnail_print_quality():
         except (TypeError, ValueError):
             text_offset_y = 50
         text_direction = "vertical" if str(data.get("text_direction") or "").strip().lower() == "vertical" else "horizontal"
+        text_mask_enabled = bool(data.get("text_mask_enabled", False))
+        try:
+            text_mask_opacity = int(round(float(data.get("text_mask_opacity", 85))))
+        except (TypeError, ValueError):
+            text_mask_opacity = 85
+        text_mask_opacity = max(0, min(100, text_mask_opacity))
+        text_mask_color = "charcoal" if str(data.get("text_mask_color") or "").strip().lower() == "charcoal" else "cream"
+        text_image_fade_enabled = bool(data.get("text_image_fade_enabled", False))
+        text_safe_area = data.get("text_safe_area")
+        if not isinstance(text_safe_area, dict):
+            text_safe_area = None
         add_white_background = data.get("add_white_background", True)  # ignored when corners are rounded
         feather_fade_color = data.get("feather_fade_color") or data.get("featherFadeColor") or "white"
         print_area_width = data.get("print_area_width")
@@ -757,6 +768,11 @@ def process_thumbnail_print_quality():
             text_offset_x=text_offset_x,
             text_offset_y=text_offset_y,
             text_direction=text_direction,
+            text_mask_enabled=text_mask_enabled,
+            text_mask_opacity=text_mask_opacity,
+            text_mask_color=text_mask_color,
+            text_safe_area=text_safe_area,
+            text_image_fade_enabled=text_image_fade_enabled,
             add_white_background=add_white_background,
             print_area_width=print_area_width,
             print_area_height=print_area_height,

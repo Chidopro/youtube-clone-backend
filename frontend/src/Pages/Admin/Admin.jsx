@@ -823,6 +823,8 @@ const Admin = () => {
     const frameWidth = settings.frame_width || 10;
     const doubleFrame = settings.double_frame || false;
     const innerFrameColor = settings.inner_frame_color || settings.innerFrameColor || frameColor;
+    const selectedItem = selectedOrder?.cart?.[selectedCartItemIndex];
+    const savedText = selectedItem?.toolSettings?.editLog || selectedItem?.toolSettings || {};
     
     console.log(`applyBothEffects: Using unified API (like email generator). Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}`);
 
@@ -853,8 +855,20 @@ const Admin = () => {
         double_frame: doubleFrame, // Pass double frame flag
         inner_frame_color: innerFrameColor,
         image_opacity: Number.isFinite(Number(settings.image_opacity)) ? Math.max(0, Math.min(100, Math.round(Number(settings.image_opacity)))) : 100,
-        add_white_background: Boolean(settings.add_white_background),
-        feather_fade_color: settings.feather_fade_color === 'black' ? 'black' : 'white'
+        add_white_background: savedText.textMaskEnabled ? false : Boolean(settings.add_white_background),
+        feather_fade_color: settings.feather_fade_color === 'black' ? 'black' : 'white',
+        text_enabled: Boolean(savedText.textEnabled && String(savedText.textContent || '').trim()),
+        text_content: savedText.textContent || '',
+        text_font: savedText.textFont || 'Arial',
+        text_color: savedText.textColor || '#000000',
+        text_size: savedText.textSize || 24,
+        text_offset_x: savedText.textOffsetX ?? 50,
+        text_offset_y: savedText.textOffsetY ?? 50,
+        text_direction: savedText.textDirection || 'horizontal',
+        text_mask_enabled: Boolean(savedText.textMaskEnabled),
+        text_mask_opacity: savedText.textMaskOpacity ?? 85,
+        text_mask_color: savedText.textMaskColor || 'cream',
+        text_safe_area: savedText.textSafeArea || null
       };
       
       // Add print area dimensions if available (to maintain exact size)

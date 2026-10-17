@@ -1,0 +1,147 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  BIBLE_VERSE_TEMPLATES,
+  formatProverbDesignText,
+  KJV_PROVERB_PRESETS,
+  textPositionDefaults,
+} from '../../data/bibleVerseMerch';
+import { markMerchIntentStarted, savePendingMerchData } from '../../utils/merchSession';
+import './BibleVerseMerchLanding.css';
+
+const CUSTOM_ID = 'custom';
+
+export default function BibleVerseMerchLanding() {
+  const navigate = useNavigate();
+  const [availableTemplateIds, setAvailableTemplateIds] = useState([]);
+  const [templateId, setTemplateId] = useState(BIBLE_VERSE_TEMPLATES[0]?.id || '');
+  const [proverbId, setProverbId] = useState(KJV_PROVERB_PRESETS[0]?.id || CUSTOM_ID);
+  const [customText, setCustomText] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(
+      BIBLE_VERSE_TEMPLATES.map((template) => new Promise((resolve) => {
+        const image = new Image();
+        image.onload = () => resolve(template.id);
+        image.onerror = () => resolve('');
+        image.src = template.imageUrl;
+      }))
+    ).then((ids) => {
+      if (cancelled) return;
+      const available = ids.filter(Boolean);
+      setAvailableTemplateIds(available);
+      if (available.length && !available.includes(templateId)) setTemplateId(available[0]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const templates = useMemo(
+    () => BIBLE_VERSE_TEMPLATES.filter((template) => availableTemplateIds.includes(template.id)),
+    [availableTemplateIds]
+  );
+  const template = BIBLE_VERSE_TEMPLATES.find((item) => item.id === templateId)
+    || BIBLE_VERSE_TEMPLATES[0];
+  const proverb = KJV_PROVERB_PRESETS.find((item) => item.id === proverbId);
+  const selectedText = proverbId === CUSTOM_ID
+    ? customText.trim()
+    : String(proverb?.text || '').replace(/\s*;\s*/g, ', ');
+  const designText = proverbId === CUSTOM_ID ? selectedText : formatProverbDesignText(proverb);
+  const displayText = selectedText || 'Enter your own message';
+
+  const startDesign = () => {
+    if (!template || !selectedText) return;
+    const placement = textPositionDefaults(template.recommendedTextPosition);
+    markMerchIntentStarted();
+    savePendingMerchData({
+      source: 'image',
+      selected_screenshot: new URL(template.imageUrl, window.location.origin).toString(),
+      display_screenshot: template.imageUrl,
+      screenshots: [template.imageUrl],
+      thumbnail: template.imageUrl,
+      videoTitle: template.title,
+      creatorName: 'Bible Verse Merch',
+      screenshot_timestamp: '0:00',
+      bibleVerseDesign: {
+        bibleVerseDesignVersion: 17,
+        imageOpacity: 100,
+        textEnabled: true,
+        textContent: designText,
+        textFont: 'IM FELL English',
+        textColor: template.recommendedTextColor,
+        textSize: 28,
+        textOffsetX: placement.offsetX,
+        textOffsetY: placement.offsetY,
+        textDirection: 'horizontal',
+        textMaskEnabled: true,
+        textMaskOpacity: template.recommendedMaskOpacity,
+        textMaskColor: template.recommendedMaskColor,
+        screenshotScale: 150,
+        textPlacement: placement.position,
+        textSafeArea: template.recommendedTextSafeArea,
+        selectedProverbId: proverbId === CUSTOM_ID ? '' : proverbId,
+        selectedProverbTemplateId: template.id,
+      },
+    });
+    navigate('/merchandise');
+    window.scrollTo(0, 0);
+  };
+
+  return (
+    <main className="bvm-landing">
+      <header className="bvm-heading">
+        <p className="bvm-eyebrow">Bible Verse Merch</p>
+        <h1>Create merchandise with a message</h1>
+        <p>Choose an image and a proverb, then select the product you want to customize.</p>
+      </header>
+
+      <div className="bvm-builder">
+        <section className="bvm-preview-panel" aria-label="Design preview">
+          <div className="bvm-preview">
+            {template ? <img src={template.imageUrl} alt={template.title} /> : null}
+            <div className={`bvm-preview-copy bvm-preview-copy--${template?.recommendedTextPosition || 'center'}`}>
+              <div className={`bvm-preview-mask bvm-preview-mask--${template?.recommendedMaskColor || 'cream'}`}>
+                <span>{displayText}</span>
+                {proverb?.reference ? <strong>{proverb.reference}</strong> : null}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bvm-controls" aria-label="Choose image and text">
+          <label htmlFor="bvm-template">Image template</label>
+          <select id="bvm-template" value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
+            {templates.length ? templates.map((item) => (
+              <option value={item.id} key={item.id}>{item.title}</option>
+            )) : <option value={templateId}>Loading template…</option>}
+          </select>
+
+          <label htmlFor="bvm-proverb">Proverb or custom text</label>
+          <select id="bvm-proverb" value={proverbId} onChange={(event) => setProverbId(event.target.value)}>
+            {KJV_PROVERB_PRESETS.map((item) => (
+              <option value={item.id} key={item.id}>{item.reference}</option>
+            ))}
+            <option value={CUSTOM_ID}>Write my own text</option>
+          </select>
+
+          {proverbId === CUSTOM_ID ? (
+            <textarea
+              value={customText}
+              onChange={(event) => setCustomText(event.target.value)}
+              placeholder="Enter the words you want on your design"
+              rows={5}
+              maxLength={500}
+            />
+          ) : null}
+
+          <button type="button" onClick={startDesign} disabled={!template || !selectedText}>
+            Select a Product
+          </button>
+          <p className="bvm-help">You can adjust the text, mask, placement, and image in Tools after selecting a product.</p>
+        </section>
+      </div>
+    </main>
+  );
+}

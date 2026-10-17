@@ -5,11 +5,13 @@ Handles video screenshot capture functionality
 """
 
 import cv2
+import math
 import numpy as np
 import re
 import requests
 import tempfile
 import os
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from urllib.parse import urlparse
 import logging
 
@@ -1032,6 +1034,223 @@ def _draw_print_overlay_text(draw, text, font, fill, center_x, center_y, font_px
         )
 
 
+def _load_overlay_font(text_font, font_px):
+    font_paths = []
+    if str(text_font or "").strip().lower() == "im fell english":
+        font_paths.append(os.path.join(
+            os.path.dirname(__file__),
+            "static",
+            "fonts",
+            "IMFellEnglish-Regular.ttf",
+        ))
+    if os.name == "nt":
+        font_dir = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
+        font_map = {
+            "Arial": "arial.ttf",
+            "Helvetica": "arial.ttf",
+            "Georgia": "georgia.ttf",
+            "Times New Roman": "times.ttf",
+            "Verdana": "verdana.ttf",
+            "Courier New": "cour.ttf",
+        }
+        font_paths.append(os.path.join(font_dir, font_map.get(text_font, "arial.ttf")))
+    else:
+        if text_font in ("Georgia", "Times New Roman"):
+            font_paths.append("/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf")
+        font_paths.extend([
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        ])
+    for font_path in font_paths:
+        if os.path.isfile(font_path):
+            try:
+                return ImageFont.truetype(font_path, max(1, int(font_px)))
+            except Exception:
+                continue
+    return ImageFont.load_default()
+
+
+def _normalized_text_safe_area(value):
+    source = value if isinstance(value, dict) else {}
+
+    def bounded(key, fallback, minimum, maximum):
+        try:
+            number = float(source.get(key, fallback))
+        except (TypeError, ValueError):
+            number = fallback
+        return max(minimum, min(maximum, number))
+
+    x = bounded("x", 8, 0, 95)
+    y = bounded("y", 25, 0, 95)
+    return {
+        "x": x,
+        "y": y,
+        "width": bounded("width", 84, 5, 100 - x),
+        "height": bounded("height", 50, 5, 100 - y),
+    }
+
+
+def _text_width(draw, text, font):
+    box = draw.textbbox((0, 0), text, font=font)
+    return max(0, box[2] - box[0])
+
+
+def _wrap_print_text(draw, text, font, max_width):
+    lines = []
+    for paragraph in str(text or "").strip().splitlines():
+        words = paragraph.strip().split()
+        line = ""
+        for word in words:
+            pieces = [word]
+            if _text_width(draw, word, font) > max_width:
+                pieces = []
+                piece = ""
+                for character in word:
+                    candidate = piece + character
+                    if piece and _text_width(draw, candidate, font) > max_width:
+                        pieces.append(piece)
+                        piece = character
+                    else:
+                        piece = candidate
+                if piece:
+                    pieces.append(piece)
+            for piece in pieces:
+                candidate = f"{line} {piece}".strip()
+                if line and _text_width(draw, candidate, font) > max_width:
+                    lines.append(line)
+                    line = piece
+                else:
+                    line = candidate
+        if line:
+            lines.append(line)
+    return lines
+
+
+def _draw_print_text_mask(
+    pil_image,
+    text,
+    text_font,
+    text_color,
+    text_size,
+    safe_area,
+    mask_color,
+    mask_opacity,
+):
+    """Draw auto-wrapped text over a soft borderless rounded mask."""
+    rgba = pil_image.convert("RGBA")
+    width, height = rgba.size
+    area = _normalized_text_safe_area(safe_area)
+    left = int(round(width * area["x"] / 100.0))
+    top = int(round(height * area["y"] / 100.0))
+    area_width = max(1, int(round(width * area["width"] / 100.0)))
+    area_height = max(1, int(round(height * area["height"] / 100.0)))
+    padding_x = max(4, int(round(area_width * 0.10)))
+    padding_y = max(4, int(round(area_height * 0.16)))
+    available_width = max(1, area_width - padding_x * 2)
+    available_height = max(1, area_height - padding_y * 2)
+    initial_font_px = max(
+        12,
+        min(600, int((float(text_size or 24) / 100.0) * min(width, height) * 0.22)),
+    )
+    min_font_px = max(12, int(initial_font_px * 0.36))
+    measure = ImageDraw.Draw(rgba)
+    font_px = initial_font_px
+    line_height = 1.25
+    lines = []
+    font = _load_overlay_font(text_font, font_px)
+    while font_px >= min_font_px:
+        font = _load_overlay_font(text_font, font_px)
+        lines = _wrap_print_text(measure, text, font, available_width)
+        if lines and len(lines) * font_px * line_height <= available_height:
+            break
+        font_px -= max(1, int(math.ceil(font_px / 40.0)))
+    if not lines:
+        return pil_image
+
+    actual_line_height = font_px * line_height
+    total_height = len(lines) * actual_line_height
+    measured_width = min(
+        available_width,
+        max([_text_width(measure, line, font) for line in lines] + [font_px]),
+    )
+    center_x = left + area_width / 2.0
+    center_y = top + area_height / 2.0
+    text_center_y = center_y + min(padding_y * 0.65, font_px * 0.9)
+    mask_width = max(2, min(width, int(round(measured_width + padding_x * 2.4))))
+    mask_height = max(2, min(height, int(round(total_height + padding_y * 1.2))))
+
+    overlay = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
+    opacity = max(0, min(100, int(round(float(mask_opacity or 0))))) / 100.0
+    color = (48, 47, 42) if str(mask_color or "").lower() == "charcoal" else (255, 248, 230)
+    if opacity > 0:
+        feather = max(2, int(round(min(mask_width, mask_height) * 0.045)))
+        margin = feather * 3
+        local_size = (mask_width + margin * 2, mask_height + margin * 2)
+        alpha_image = Image.new("L", local_size, 0)
+        alpha_draw = ImageDraw.Draw(alpha_image)
+        corner_radius = max(1, int(round(min(mask_height * 0.2, mask_width * 0.08))))
+        alpha_draw.rounded_rectangle(
+            (margin, margin, margin + mask_width, margin + mask_height),
+            radius=corner_radius,
+            fill=int(round(opacity * 255)),
+        )
+        alpha_image = alpha_image.filter(ImageFilter.GaussianBlur(radius=feather))
+        patch = Image.new("RGBA", local_size, color + (0,))
+        patch.putalpha(alpha_image)
+        box_left = int(round(center_x - mask_width / 2.0)) - margin
+        box_top = int(round(text_center_y - mask_height / 2.0)) - margin
+        overlay.alpha_composite(patch, (box_left, box_top))
+
+    draw = ImageDraw.Draw(overlay)
+    fill = _parse_overlay_hex_color(text_color, "RGBA")
+    first_y = text_center_y - ((len(lines) - 1) * actual_line_height) / 2.0
+    for index, line in enumerate(lines):
+        _draw_centered_text(
+            draw,
+            (int(round(center_x)), int(round(first_y + index * actual_line_height))),
+            line,
+            font,
+            fill,
+        )
+    result = Image.alpha_composite(rgba, overlay)
+    return result if pil_image.mode == "RGBA" else result.convert("RGB")
+
+
+def _fade_print_image_under_text(pil_image, offset_x=50, offset_y=50):
+    """Lower artwork alpha only around the text while preserving the rest."""
+    rgba = pil_image.convert("RGBA")
+    width, height = rgba.size
+    center_x = width * _percent_0_100(offset_x, 50) / 100.0
+    center_y = height * _percent_0_100(offset_y, 50) / 100.0
+    radius_x = max(1.0, width * 0.44)
+    radius_y = max(1.0, height * 0.40)
+    left = max(0, int(math.floor(center_x - radius_x)))
+    top = max(0, int(math.floor(center_y - radius_y)))
+    right = min(width, int(math.ceil(center_x + radius_x)))
+    bottom = min(height, int(math.ceil(center_y + radius_y)))
+    if right <= left or bottom <= top:
+        return rgba
+
+    pixels = np.array(rgba, dtype=np.uint8)
+    grid_y, grid_x = np.ogrid[top:bottom, left:right]
+    distance = np.sqrt(
+        ((grid_x - center_x) / radius_x) ** 2
+        + ((grid_y - center_y) / radius_y) ** 2
+    )
+    fade_strength = np.where(
+        distance <= 0.72,
+        1.0,
+        np.clip(1.0 - ((distance - 0.72) / 0.28), 0.0, 1.0),
+    )
+    alpha = pixels[top:bottom, left:right, 3].astype(np.float32)
+    pixels[top:bottom, left:right, 3] = np.asarray(
+        np.round(alpha * (1.0 - fade_strength)),
+        dtype=np.uint8,
+    )
+    return Image.fromarray(pixels, mode="RGBA")
+
+
 def _as_bgr(image):
     if image is None:
         return None
@@ -1203,7 +1422,7 @@ def _pet_bowl_print_strip(image, print_dpi=300):
     return _encode_print_jpeg(canvas, print_dpi, width, height)
 
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, inner_frame_color=None, image_opacity=100, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0, pet_bowl_strip=False, pet_bandana_print=False, bandana_crop_image=None):
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, inner_frame_color=None, image_opacity=100, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0, pet_bowl_strip=False, pet_bandana_print=False, bandana_crop_image=None, text_mask_enabled=False, text_mask_opacity=85, text_mask_color='cream', text_safe_area=None, text_image_fade_enabled=False):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -1733,57 +1952,53 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             # Draw text overlay if enabled (after all other effects)
             if text_enabled and text_content and text_content.strip():
                 try:
-                    draw = ImageDraw.Draw(pil_image)
+                    if text_image_fade_enabled and not text_mask_enabled:
+                        pil_image = _fade_print_image_under_text(
+                            pil_image,
+                            text_offset_x,
+                            text_offset_y,
+                        )
                     width, height = pil_image.size
-                    # Headline-style: text_size 100 = ~22% of image min dimension (match frontend)
-                    min_dim = min(width, height)
-                    font_px = max(12, min(300, int((text_size / 100.0) * min_dim * 0.22)))
-                    # Try to load font; fallback to default
-                    font_paths = []
-                    if os.name == 'nt':  # Windows
-                        font_dir = os.path.join(os.environ.get('WINDIR', 'C:\\Windows'), 'Fonts')
-                        font_map = {'Arial': 'arial.ttf', 'Helvetica': 'arial.ttf', 'Georgia': 'georgia.ttf',
-                                    'Times New Roman': 'times.ttf', 'Verdana': 'verdana.ttf', 'Courier New': 'cour.ttf'}
-                        fname = font_map.get(text_font, 'arial.ttf')
-                        font_paths.append(os.path.join(font_dir, fname))
-                    else:
-                        for d in ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', '/usr/share/fonts/TTF/DejaVuSans.ttf']:
-                            if os.path.isfile(d):
-                                font_paths.append(d)
-                                break
-                    font = None
-                    for fp in font_paths:
-                        if os.path.isfile(fp):
-                            try:
-                                font = ImageFont.truetype(fp, font_px)
-                                break
-                            except Exception:
-                                continue
-                    if font is None:
-                        font = ImageFont.load_default()
-                    fill_tuple = _parse_overlay_hex_color(
-                        text_color, "RGB" if pil_image.mode == "RGB" else "RGBA"
-                    )
                     ox = _percent_0_100(text_offset_x, 50)
                     oy = _percent_0_100(text_offset_y, 50)
-                    center_x = int(round(width * ox / 100.0))
-                    center_y = int(round(height * oy / 100.0))
-                    _draw_print_overlay_text(
-                        draw,
-                        text_content,
-                        font,
-                        fill_tuple,
-                        center_x,
-                        center_y,
-                        font_px,
-                        _overlay_text_direction(text_direction),
-                    )
+                    if text_mask_enabled:
+                        pil_image = _draw_print_text_mask(
+                            pil_image,
+                            text_content,
+                            text_font,
+                            text_color,
+                            text_size,
+                            text_safe_area,
+                            text_mask_color,
+                            text_mask_opacity,
+                        )
+                    else:
+                        draw = ImageDraw.Draw(pil_image)
+                        min_dim = min(width, height)
+                        font_px = max(12, min(300, int((text_size / 100.0) * min_dim * 0.22)))
+                        font = _load_overlay_font(text_font, font_px)
+                        fill_tuple = _parse_overlay_hex_color(
+                            text_color, "RGB" if pil_image.mode == "RGB" else "RGBA"
+                        )
+                        center_x = int(round(width * ox / 100.0))
+                        center_y = int(round(height * oy / 100.0))
+                        _draw_print_overlay_text(
+                            draw,
+                            text_content,
+                            font,
+                            fill_tuple,
+                            center_x,
+                            center_y,
+                            font_px,
+                            _overlay_text_direction(text_direction),
+                        )
                     logger.info(
-                        "Text overlay applied successfully color=%s pos=%s/%s dir=%s",
+                        "Text overlay applied successfully color=%s pos=%s/%s dir=%s mask=%s",
                         text_color,
                         ox,
                         oy,
                         _overlay_text_direction(text_direction),
+                        bool(text_mask_enabled),
                     )
                 except Exception as text_err:
                     logger.warning("Could not apply text overlay: %s", str(text_err))

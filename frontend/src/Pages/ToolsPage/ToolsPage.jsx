@@ -14,10 +14,13 @@ import { bakeArtworkForWrap, browsePresetHasPixelEdits, roundedRectFeatherFactor
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
 import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isGreetingCardProduct, isJigsawPuzzleProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petBandanaPrintFile, petBowlPrintStrip, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
+import { BIBLE_VERSE_TEMPLATES, formatProverbDesignText, KJV_PROVERB_PRESETS, isBibleVerseMerchStorefront, textPositionDefaults } from '../../data/bibleVerseMerch';
+import { clampTextMaskOpacity, drawTextMask, normalizeTextMaskColor, normalizeTextSafeArea, TEXT_MASK_COLORS } from '../../utils/textMask';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
 const TEXT_TOOL_GOOGLE_FONTS = [
+  'IM FELL English',
   'Permanent Marker',
   'Orbitron',
   'Bebas Neue',
@@ -26,7 +29,7 @@ const TEXT_TOOL_GOOGLE_FONTS = [
   'Long Cang',
   'Pacifico'
 ];
-const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Orbitron:wght@400;700&family=Bebas+Neue&family=Creepster&family=Dela+Gothic+One&family=Long+Cang&family=Pacifico&display=swap';
+const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=IM+Fell+English&family=Permanent+Marker&family=Orbitron:wght@400;700&family=Bebas+Neue&family=Creepster&family=Dela+Gothic+One&family=Long+Cang&family=Pacifico&display=swap';
 
 // Women's / men's / kids garments that use a chest print on a framed mockup photo.
 // All-over, swim, and leggings stay on their existing paths.
@@ -667,10 +670,10 @@ function parseCssHex(hex) {
   return [r, g, b];
 }
 
-/** Multiply opaque white-blank mockup pixels by a Printful swatch. Keeps the mint print box.
+/** Multiply opaque white-blank mockup pixels by a Printful swatch and remove the legacy print guide.
  *  The preview is about 200px wide. A full-size PNG (long sleeve is ~1000px)
  *  freezes phones and, for light colors, becomes a solid square. */
-function tintMockupCanvas(img, hex) {
+function tintMockupCanvas(img, hex, removePrintBox = false) {
   const rgb = parseCssHex(hex);
   const nw = img?.naturalWidth || 0;
   const nh = img?.naturalHeight || 0;
@@ -687,13 +690,94 @@ function tintMockupCanvas(img, hex) {
   ctx.drawImage(img, 0, 0, w, h);
   const imageData = ctx.getImageData(0, 0, w, h);
   const data = imageData.data;
+  const sourcePixels = removePrintBox ? new Uint8ClampedArray(data) : null;
   const [tr, tg, tb] = rgb;
+  let box = null;
+  if (removePrintBox) {
+    let minX = w;
+    let minY = h;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        const index = (y * w + x) * 4;
+        if (data[index + 3] >= 20 && isPrintBoxPixel(data[index], data[index + 1], data[index + 2])) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+    if (maxX > minX && maxY > minY) box = { minX, minY, maxX, maxY };
+  }
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] < 20) continue;
     if (isPrintBoxPixel(data[i], data[i + 1], data[i + 2])) continue;
     data[i] = Math.round((data[i] * tr) / 255);
     data[i + 1] = Math.round((data[i + 1] * tg) / 255);
     data[i + 2] = Math.round((data[i + 2] * tb) / 255);
+  }
+  if (box) {
+    const guideWidth = Math.max(1, box.maxX - box.minX);
+    const guideHeight = Math.max(1, box.maxY - box.minY);
+    const featherX = Math.max(16, Math.round(guideWidth * 0.18));
+    const featherY = Math.max(16, Math.round(guideHeight * 0.18));
+    const centerX = (box.minX + box.maxX) / 2;
+    const centerY = (box.minY + box.maxY) / 2;
+    const radiusX = guideWidth / 2 + featherX;
+    const radiusY = guideHeight / 2 + featherY;
+    const targetMinX = Math.max(0, Math.floor(centerX - radiusX));
+    const targetMaxX = Math.min(w - 1, Math.ceil(centerX + radiusX));
+    const targetMinY = Math.max(0, Math.floor(centerY - radiusY));
+    const targetMaxY = Math.min(h - 1, Math.ceil(centerY + radiusY));
+    const sourceStartY = Math.min(h - 1, box.maxY + featherY + 2);
+    const sourceEndY = Math.min(
+      h - 1,
+      sourceStartY + Math.max(1, Math.floor((h - sourceStartY) * 0.72))
+    );
+    for (let y = targetMinY; y <= targetMaxY; y += 1) {
+      const verticalProgress = Math.max(0, Math.min(1, (y - box.minY) / guideHeight));
+      const sampleY = Math.round(
+        sourceEndY - verticalProgress * (sourceEndY - sourceStartY)
+      );
+      const replacement = [0, 0, 0, 0];
+      let replacementCount = 0;
+      for (let sourceY = Math.max(0, sampleY - 4); sourceY <= Math.min(h - 1, sampleY + 4); sourceY += 2) {
+        for (let sourceX = box.minX; sourceX <= box.maxX; sourceX += 3) {
+          const sourceIndex = (sourceY * w + sourceX) * 4;
+          if (sourcePixels[sourceIndex + 3] < 200) continue;
+          replacement[0] += sourcePixels[sourceIndex];
+          replacement[1] += sourcePixels[sourceIndex + 1];
+          replacement[2] += sourcePixels[sourceIndex + 2];
+          replacement[3] += sourcePixels[sourceIndex + 3];
+          replacementCount += 1;
+        }
+      }
+      if (!replacementCount) continue;
+      const replacementR = (replacement[0] / replacementCount) * tr / 255;
+      const replacementG = (replacement[1] / replacementCount) * tg / 255;
+      const replacementB = (replacement[2] / replacementCount) * tb / 255;
+      const replacementAlpha = replacement[3] / replacementCount;
+      for (let x = targetMinX; x <= targetMaxX; x += 1) {
+        const normalizedX = Math.abs(x - centerX) / radiusX;
+        const normalizedY = Math.abs(y - centerY) / radiusY;
+        const edgeDistance = ((normalizedX ** 4) + (normalizedY ** 4)) ** 0.25;
+        if (edgeDistance >= 1) continue;
+        const index = (y * w + x) * 4;
+        if (sourcePixels[index + 3] < 200) continue;
+        const edgeBlend = edgeDistance <= 0.9
+          ? 1
+          : 1 - ((edgeDistance - 0.9) / 0.1);
+        const blend = edgeBlend * edgeBlend * (3 - 2 * edgeBlend);
+        data[index] = Math.round(data[index] * (1 - blend) + replacementR * blend);
+        data[index + 1] = Math.round(data[index + 1] * (1 - blend) + replacementG * blend);
+        data[index + 2] = Math.round(data[index + 2] * (1 - blend) + replacementB * blend);
+        data[index + 3] = Math.round(
+          data[index + 3] * (1 - blend) + replacementAlpha * blend
+        );
+      }
+    }
   }
   ctx.putImageData(imageData, 0, 0);
   return canvas;
@@ -1841,6 +1925,13 @@ const EDITOR_SLOT_DEFAULTS = {
   textOffsetX: 50,
   textOffsetY: 50,
   textDirection: 'horizontal',
+  textMaskEnabled: false,
+  textMaskOpacity: 85,
+  textMaskColor: 'cream',
+  textPlacement: 'center',
+  textSafeArea: { x: 8, y: 25, width: 84, height: 50 },
+  selectedProverbId: '',
+  selectedProverbTemplateId: '',
   imageOffsetX: 0,
   imageOffsetY: 0,
   screenshotScale: 100,
@@ -1886,6 +1977,36 @@ function drawOverlayText(ctx, {
   ctx.restore();
 }
 
+function artworkTextFadeStyle(enabled, offsetX = 50, offsetY = 50) {
+  if (!enabled) return {};
+  const mask = `radial-gradient(ellipse 44% 40% at ${offsetX}% ${offsetY}%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 72%, rgba(0,0,0,1) 100%)`;
+  return {
+    WebkitMaskImage: mask,
+    maskImage: mask,
+  };
+}
+
+function fadeCanvasArtworkUnderText(ctx, offsetX = 50, offsetY = 50) {
+  if (!ctx?.canvas) return;
+  const width = ctx.canvas.width;
+  const height = ctx.canvas.height;
+  const radiusX = Math.max(1, width * 0.44);
+  const radiusY = Math.max(1, height * 0.4);
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.translate(width * offsetX / 100, height * offsetY / 100);
+  ctx.scale(radiusX, radiusY);
+  const fade = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+  fade.addColorStop(0, 'rgba(0,0,0,1)');
+  fade.addColorStop(0.72, 'rgba(0,0,0,1)');
+  fade.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = fade;
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function overlayTextFontPx(textSize, width, height) {
   const minDim = Math.min(Number(width) || 0, Number(height) || 0);
   if (!(minDim > 0)) return 12;
@@ -1903,11 +2024,87 @@ function ToolsLiveText({
   direction,
   boxWidth,
   boxHeight,
+  maskEnabled = false,
+  maskOpacity = 85,
+  maskColor = 'cream',
+  safeArea,
 }) {
   const text = String(content || '').trim();
-  if (!enabled || !text || !(boxWidth > 0) || !(boxHeight > 0)) return null;
   const vertical = normalizeTextDirection(direction) === 'vertical';
-  const fontSize = overlayTextFontPx(size, boxWidth, boxHeight);
+  const normalizedArea = normalizeTextSafeArea(safeArea);
+  const requestedFontSize = overlayTextFontPx(size, boxWidth, boxHeight);
+  const maskCanvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = maskCanvasRef.current;
+    if (!canvas || !enabled || !text || !maskEnabled || vertical || !(boxWidth > 0) || !(boxHeight > 0)) return;
+    let cancelled = false;
+    const pixelRatio = Math.min(4, Math.max(3, (window.devicePixelRatio || 1) * 2));
+    const renderMask = () => {
+      if (cancelled || !canvas.isConnected) return;
+      canvas.width = Math.max(1, Math.round(boxWidth * pixelRatio));
+      canvas.height = Math.max(1, Math.round(boxHeight * pixelRatio));
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawTextMask(ctx, {
+        text,
+        fontFamily: font || 'Arial',
+        textColor: color || '#000000',
+        fontSize: requestedFontSize * pixelRatio,
+        minFontSize: Math.max(4 * pixelRatio, requestedFontSize * pixelRatio * 0.36),
+        lineHeight: 1.2,
+        safeArea: normalizedArea,
+        maskEnabled: true,
+        maskOpacity,
+        maskColor,
+      });
+    };
+    renderMask();
+    if (document.fonts?.load) {
+      const fontWeight = String(font || '').toLowerCase() === 'im fell english' ? '' : 'bold ';
+      document.fonts.load(`${fontWeight}16px "${font || 'Arial'}"`).then(renderMask).catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    boxHeight,
+    boxWidth,
+    color,
+    enabled,
+    font,
+    maskColor,
+    maskEnabled,
+    maskOpacity,
+    normalizedArea.height,
+    normalizedArea.width,
+    normalizedArea.x,
+    normalizedArea.y,
+    requestedFontSize,
+    text,
+    vertical,
+  ]);
+
+  if (!enabled || !text || !(boxWidth > 0) || !(boxHeight > 0)) return null;
+  if (maskEnabled && !vertical) {
+    return (
+      <canvas
+        ref={maskCanvasRef}
+        aria-hidden="true"
+        className="tools-live-text tools-live-text--mask"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          zIndex: 4,
+        }}
+      />
+    );
+  }
+
+  const fontSize = requestedFontSize;
   const lines = text.split('\n');
   return (
     <div
@@ -1915,8 +2112,8 @@ function ToolsLiveText({
       className={`tools-live-text${vertical ? ' is-vertical' : ''}`}
       style={{
         position: 'absolute',
-        left: `${Number(offsetX) || 0}%`,
-        top: `${Number(offsetY) || 0}%`,
+        left: `${Number(offsetX) || 50}%`,
+        top: `${Number(offsetY) || 50}%`,
         transform: 'translate(-50%, -50%)',
         color: color || '#000000',
         fontFamily: `"${font || 'Arial'}", Arial, sans-serif`,
@@ -1924,7 +2121,13 @@ function ToolsLiveText({
         fontWeight: 'bold',
         lineHeight: 1.2,
         textAlign: 'center',
-        whiteSpace: vertical ? 'normal' : 'pre',
+        whiteSpace: vertical ? 'normal' : 'pre-wrap',
+        overflowWrap: 'anywhere',
+        width: vertical ? 'auto' : `${normalizedArea.width}%`,
+        maxHeight: `${normalizedArea.height}%`,
+        boxSizing: 'border-box',
+        padding: 0,
+        background: 'transparent',
         pointerEvents: 'none',
         display: vertical ? 'flex' : 'block',
         flexDirection: vertical ? 'row' : undefined,
@@ -2026,6 +2229,10 @@ function hydrateSlotsFromCart(slots) {
     cartNow.forEach((item, i) => {
       const fromCart = editorSlotFromCartItem(item);
       if (!fromCart) return;
+      if (isBibleVerseMerchStorefront(getSubdomain()) && item?.toolSettings?.selectedProverbTemplateId) {
+        next[i] = fromCart;
+        return;
+      }
       const shot = item.originalScreenshot || item.screenshot || item.selected_screenshot || '';
       if (!savedMatchesSourcePreview(next[i], shot, shot)) {
         next[i] = fromCart;
@@ -2034,6 +2241,61 @@ function hydrateSlotsFromCart(slots) {
   } catch {
     /* ignore */
   }
+  return next;
+}
+
+function migrateBibleVerseCartItems(cartItems) {
+  if (!isBibleVerseMerchStorefront(getSubdomain()) || !Array.isArray(cartItems)) return cartItems;
+  let changed = false;
+  const next = cartItems.map((item) => {
+    const templateId = item?.toolSettings?.selectedProverbTemplateId;
+    const template = BIBLE_VERSE_TEMPLATES.find((candidate) => candidate.id === templateId);
+    if (!template) return item;
+    const templateUrl = new URL(template.imageUrl, window.location.origin).toString();
+    const placement = textPositionDefaults(template.recommendedTextPosition);
+    const preset = KJV_PROVERB_PRESETS.find((candidate) => candidate.id === item?.toolSettings?.selectedProverbId);
+    const needsDesignUpgrade = Number(item?.toolSettings?.bibleVerseDesignVersion || 0) < 17;
+    const settings = {
+      ...(item.toolSettings || {}),
+      ...(needsDesignUpgrade ? {
+        bibleVerseDesignVersion: 17,
+        imageOpacity: 100,
+        textContent: formatProverbDesignText(preset) || item.toolSettings?.textContent || '',
+        textFont: 'IM FELL English',
+        textSize: 28,
+        textOffsetX: placement.offsetX,
+        textOffsetY: placement.offsetY,
+        textPlacement: placement.position,
+        textSafeArea: template.recommendedTextSafeArea,
+        textMaskEnabled: true,
+        textMaskOpacity: template.recommendedMaskOpacity,
+        textMaskColor: template.recommendedMaskColor,
+        screenshotScale: ARTWORK_ZOOM_MAX,
+      } : {}),
+      screenshot: templateUrl,
+      editedImageUrl: '',
+      printQualityImageUrl: '',
+      printQualityMeta: null,
+      shirtFillColor: '',
+      frameEnabled: false,
+      featherEdge: 0,
+      cornerRadius: 0,
+      featherFadeEnabled: false,
+      featherFadeColor: 'transparent',
+      sourceScreenshot: slotSourceKey(templateUrl),
+    };
+    const migrated = {
+      ...item,
+      screenshot: templateUrl,
+      selected_screenshot: templateUrl,
+      originalScreenshot: templateUrl,
+      displayScreenshot: template.imageUrl,
+      toolSettings: settings,
+    };
+    if (JSON.stringify(migrated) !== JSON.stringify(item)) changed = true;
+    return migrated;
+  });
+  if (changed) writeCartItems(next);
   return next;
 }
 
@@ -2079,7 +2341,21 @@ function getInitialEditorSlot() {
     const { index } = getInitialCartPrintFit();
     if (index == null || index < 0) return null;
     const slots = readEditorSlots();
-    return slots[index] || slots[String(index)] || null;
+    const slot = slots[index] || slots[String(index)] || null;
+    if (
+      slot
+      && isBibleVerseMerchStorefront(getSubdomain())
+      && slot.selectedProverbTemplateId
+      && Number(slot.bibleVerseDesignVersion || 0) < 17
+    ) {
+      return {
+        ...slot,
+        bibleVerseDesignVersion: 17,
+        textMaskEnabled: true,
+        screenshotScale: ARTWORK_ZOOM_MAX,
+      };
+    }
+    return slot;
   } catch {
     return null;
   }
@@ -2205,6 +2481,10 @@ const ProductPreviewWithDrag = ({
   textOffsetX = 50,
   textOffsetY = 50,
   textDirection = 'horizontal',
+  textMaskEnabled = false,
+  textMaskOpacity = 85,
+  textMaskColor = 'cream',
+  textSafeArea,
   onTextPositionChange,
   featherEdge,
   cornerRadius,
@@ -2231,6 +2511,7 @@ const ProductPreviewWithDrag = ({
   litePreview = false,
   shirtFillHint = '',
   garmentTintColor = '',
+  forceTransparentArtwork = false,
 }) => {
   const containerRef = useRef(null);
   const productImageRef = useRef(null);
@@ -2244,7 +2525,9 @@ const ProductPreviewWithDrag = ({
   const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 0, height: 0 });
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
   const [detectedPrintBox, setDetectedPrintBox] = useState(null);
-  const [shirtFillColor, setShirtFillColor] = useState(() => String(garmentTintColor || shirtFillHint || ''));
+  const [shirtFillColor, setShirtFillColor] = useState(() => (
+    forceTransparentArtwork ? '' : String(garmentTintColor || shirtFillHint || '')
+  ));
   const [tintedMockupSrc, setTintedMockupSrc] = useState('');
   const [mockupSrc, setMockupSrc] = useState(productImage);
   const [mockupReady, setMockupReady] = useState(false);
@@ -2262,6 +2545,10 @@ const ProductPreviewWithDrag = ({
   }, [productImage, mockupSrc, tintedMockupSrc]);
 
   useEffect(() => {
+    if (forceTransparentArtwork) {
+      setShirtFillColor('');
+      return;
+    }
     const tint = String(garmentTintColor || '').trim();
     if (tint) {
       setShirtFillColor(tint);
@@ -2270,12 +2557,12 @@ const ProductPreviewWithDrag = ({
     const hint = String(shirtFillHint || '');
     if (!hint) return;
     setShirtFillColor((prev) => prev || hint);
-  }, [shirtFillHint, garmentTintColor]);
+  }, [shirtFillHint, garmentTintColor, forceTransparentArtwork]);
 
   useEffect(() => {
-    const tint = String(garmentTintColor || '').trim();
+    const tint = String(garmentTintColor || '#ffffff').trim();
     const src = String(productImage || '').trim();
-    if (!tint || !src) {
+    if (!src) {
       setTintedMockupSrc('');
       return undefined;
     }
@@ -2289,7 +2576,7 @@ const ProductPreviewWithDrag = ({
         if (cancelled) return;
         let canvas = null;
         try {
-          canvas = tintMockupCanvas(img, tint);
+          canvas = tintMockupCanvas(img, tint, true);
         } catch {
           canvas = null;
         }
@@ -2762,6 +3049,11 @@ const ProductPreviewWithDrag = ({
     if (src && !isPrintfulMockupUrl(src)) {
       const fillKey = `${src}|${name}`;
       const applyFill = (fill) => {
+        if (forceTransparentArtwork) {
+          setShirtFillColor('');
+          if (onShirtFillChange) onShirtFillChange('');
+          return;
+        }
         const tint = String(garmentTintColor || '').trim();
         const next = tint || fill;
         if (!next) return;
@@ -3190,6 +3482,11 @@ const ProductPreviewWithDrag = ({
                         touchAction: 'pinch-zoom',
                         filter: blackAndWhiteStyle(blackAndWhite, bwIntensity),
                         opacity: imageOpacityCss(imageOpacity),
+                        ...artworkTextFadeStyle(
+                          forceTransparentArtwork && textEnabled && !textMaskEnabled,
+                          textOffsetX,
+                          textOffsetY
+                        ),
                       }}
                       onLoad={(event) => {
                         delete event.currentTarget.dataset.previewRetryCount;
@@ -3223,6 +3520,10 @@ const ProductPreviewWithDrag = ({
                   direction={textDirection}
                   boxWidth={scaledWidth}
                   boxHeight={scaledHeight}
+                  maskEnabled={textMaskEnabled}
+                  maskOpacity={textMaskOpacity}
+                  maskColor={textMaskColor}
+                  safeArea={textSafeArea}
                 />
               </div>
             );
@@ -3270,6 +3571,10 @@ function ScreenshotPreviewPane({
   textOffsetX = 50,
   textOffsetY = 50,
   textDirection = 'horizontal',
+  textMaskEnabled = false,
+  textMaskOpacity = 85,
+  textMaskColor = 'cream',
+  textSafeArea,
   nudgeEnabled = false,
   onImageOffsetChange,
 }) {
@@ -3326,8 +3631,24 @@ function ScreenshotPreviewPane({
     sourceHeight,
   });
   const fadeBg = overlayFeatherFadeBackground(featherFadeEnabled, featherFadeColor);
-  const visStyle = overlayVisBoxStylePercent(vis, boxW, boxH);
+  const useBoxFill = !isHatProduct(productName) && !artworkLayout?.rotate;
+  const visStyle = useBoxFill
+    ? { position: 'absolute', inset: 0, width: '100%', height: '100%' }
+    : overlayVisBoxStylePercent(vis, boxW, boxH);
   const zoomImgStyle = artworkImageOffsetStylePercent(artworkLayout, vis);
+  const zoom = Math.max(0.25, (Number(screenshotScale) || 100) / 100);
+  const boxFillStyle = {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    maxWidth: 'none',
+    maxHeight: 'none',
+    objectFit: 'cover',
+    objectPosition: `${posX}% ${posY}%`,
+    transform: zoom === 1 ? undefined : `scale(${zoom})`,
+    transformOrigin: `${posX}% ${posY}%`,
+  };
   const fill = { position: 'absolute', inset: 0 };
   const nudgePuzzle = nudgeEnabled && typeof onImageOffsetChange === 'function';
   const onNudgePointerDown = (event) => {
@@ -3400,15 +3721,15 @@ function ScreenshotPreviewPane({
             <img
               src={src}
               alt="Screenshot Preview"
-              className={artworkLayout ? 'is-artwork-zoom' : undefined}
+              className={useBoxFill ? 'product-preview-overlay-portrait' : (artworkLayout ? 'is-artwork-zoom' : undefined)}
               style={{
-                ...(zoomImgStyle ? { ...zoomImgStyle, objectFit: 'fill' } : {
+                ...(useBoxFill ? boxFillStyle : (zoomImgStyle ? { ...zoomImgStyle, objectFit: 'fill' } : {
                   ...fill,
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover',
                   objectPosition: `${posX}% ${posY}%`,
-                }),
+                })),
                 display: 'block',
                 filter: blackAndWhiteStyle(blackAndWhite, bwIntensity),
                 opacity: imageOpacityCss(imageOpacity),
@@ -3438,6 +3759,10 @@ function ScreenshotPreviewPane({
           direction={textDirection}
           boxWidth={boxW}
           boxHeight={boxH}
+          maskEnabled={textMaskEnabled}
+          maskOpacity={textMaskOpacity}
+          maskColor={textMaskColor}
+          safeArea={textSafeArea}
         />
       </div>
     </div>
@@ -3733,6 +4058,7 @@ const ToolsPage = () => {
   const leftColumnRef = useRef(null);
   const containerRef = useRef(null);
   const backBtnRef = useRef(null);
+  const bibleVerseMerch = isBibleVerseMerchStorefront(getSubdomain());
   
   const initialEditorSlot = getInitialEditorSlot() || {};
   const [selectedImage, setSelectedImage] = useState(null);
@@ -3752,13 +4078,39 @@ const ToolsPage = () => {
   const [bwIntensity, setBwIntensity] = useState(() => clampBwIntensity(initialEditorSlot.bwIntensity));
   const [imageOpacity, setImageOpacity] = useState(() => clampImageOpacity(initialEditorSlot.imageOpacity));
   const [textEnabled, setTextEnabled] = useState(() => Boolean(initialEditorSlot.textEnabled));
-  const [textContent, setTextContent] = useState(() => initialEditorSlot.textContent || '');
+  const [textContent, setTextContent] = useState(() => {
+    if (bibleVerseMerch && initialEditorSlot.selectedProverbId) {
+      const preset = KJV_PROVERB_PRESETS.find((item) => item.id === initialEditorSlot.selectedProverbId);
+      return formatProverbDesignText(preset) || initialEditorSlot.textContent || '';
+    }
+    return initialEditorSlot.textContent || '';
+  });
   const [textFont, setTextFont] = useState(() => initialEditorSlot.textFont || 'Arial');
   const [textColor, setTextColor] = useState(() => initialEditorSlot.textColor || '#000000');
   const [textSize, setTextSize] = useState(() => initialEditorSlot.textSize ?? 24);
   const [textOffsetX, setTextOffsetX] = useState(() => initialEditorSlot.textOffsetX ?? 50);
   const [textOffsetY, setTextOffsetY] = useState(() => initialEditorSlot.textOffsetY ?? 50);
   const [textDirection, setTextDirection] = useState(() => normalizeTextDirection(initialEditorSlot.textDirection));
+  const [textMaskEnabled, setTextMaskEnabled] = useState(() => Boolean(initialEditorSlot.textMaskEnabled));
+  const [textMaskOpacity, setTextMaskOpacity] = useState(() => clampTextMaskOpacity(initialEditorSlot.textMaskOpacity));
+  const [textMaskColor, setTextMaskColor] = useState(() => normalizeTextMaskColor(initialEditorSlot.textMaskColor));
+  const [textPlacement, setTextPlacement] = useState(() => (
+    ['top', 'bottom'].includes(initialEditorSlot.textPlacement) ? initialEditorSlot.textPlacement : 'center'
+  ));
+  const [textSafeArea, setTextSafeArea] = useState(() => normalizeTextSafeArea(initialEditorSlot.textSafeArea));
+  const [selectedProverbId, setSelectedProverbId] = useState(() => initialEditorSlot.selectedProverbId || '');
+  const [selectedProverbTemplateId, setSelectedProverbTemplateId] = useState(
+    () => initialEditorSlot.selectedProverbTemplateId || ''
+  );
+  const [proverbTemplateAvailability, setProverbTemplateAvailability] = useState({});
+
+  useEffect(() => {
+    if (!bibleVerseMerch || !selectedProverbId) return;
+    const preset = KJV_PROVERB_PRESETS.find((item) => item.id === selectedProverbId);
+    const formatted = formatProverbDesignText(preset);
+    if (formatted && formatted !== textContent) setTextContent(formatted);
+  }, [bibleVerseMerch, selectedProverbId, textContent]);
+
   const [printAreaFit, setPrintAreaFit] = useState(() => initialEditorSlot.printAreaFit || getInitialCartPrintFit().fit);
   const [imageOrientation, setImageOrientation] = useState(() => (
     initialEditorSlot.imageOrientation === 'landscape' ? 'landscape' : 'portrait'
@@ -3781,9 +4133,16 @@ const ToolsPage = () => {
   }, []);
   const [printBoxFillColor, setPrintBoxFillColor] = useState('');
   const handleShirtFillChange = useCallback((color) => {
+    if (bibleVerseMerch) {
+      setPrintBoxFillColor('');
+      return;
+    }
     const next = String(color || '');
     setPrintBoxFillColor((prev) => (prev === next ? prev : next));
-  }, []);
+  }, [bibleVerseMerch]);
+  useEffect(() => {
+    if (bibleVerseMerch) setPrintBoxFillColor('');
+  }, [bibleVerseMerch]);
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [upgradeFailed, setUpgradeFailed] = useState(false);
   const upgradeTriggeredRef = useRef(false); // Track if we've already triggered an upgrade for this image
@@ -4016,6 +4375,28 @@ const ToolsPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  useEffect(() => {
+    if (!bibleVerseMerch || typeof window === 'undefined') return undefined;
+    let cancelled = false;
+    BIBLE_VERSE_TEMPLATES.forEach((template) => {
+      const probe = new Image();
+      probe.onload = () => {
+        if (!cancelled) {
+          setProverbTemplateAvailability((current) => ({ ...current, [template.id]: true }));
+        }
+      };
+      probe.onerror = () => {
+        if (!cancelled) {
+          setProverbTemplateAvailability((current) => ({ ...current, [template.id]: false }));
+        }
+      };
+      probe.src = template.imageUrl;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bibleVerseMerch]);
+
   const buildLiveEditLog = (productOverride = null) => {
     const product = productOverride || (
       selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null
@@ -4056,6 +4437,13 @@ const ToolsPage = () => {
       textOffsetX,
       textOffsetY,
       textDirection,
+      textMaskEnabled,
+      textMaskOpacity,
+      textMaskColor,
+      textPlacement,
+      textSafeArea,
+      selectedProverbId,
+      selectedProverbTemplateId,
       printAreaFit,
       imageOrientation,
       imageOffsetX,
@@ -4094,6 +4482,13 @@ const ToolsPage = () => {
       textOffsetX,
       textOffsetY,
       textDirection,
+      textMaskEnabled,
+      textMaskOpacity,
+      textMaskColor,
+      textPlacement,
+      textSafeArea,
+      selectedProverbId,
+      selectedProverbTemplateId,
       screenshotScale,
       selectedProductName,
       printAreaFit,
@@ -4138,17 +4533,35 @@ const ToolsPage = () => {
     setImageOpacity(clampImageOpacity(saved.imageOpacity));
     if (skipRectEdits) setFeatherFadeColor('transparent');
     if (typeof saved.textEnabled === 'boolean') setTextEnabled(saved.textEnabled);
-    if (typeof saved.textContent === 'string') setTextContent(saved.textContent);
+    if (typeof saved.textContent === 'string') {
+      const savedPreset = bibleVerseMerch && saved.selectedProverbId
+        ? KJV_PROVERB_PRESETS.find((item) => item.id === saved.selectedProverbId)
+        : null;
+      setTextContent(formatProverbDesignText(savedPreset) || saved.textContent);
+    }
     if (saved.textFont) setTextFont(saved.textFont);
     if (saved.textColor) setTextColor(saved.textColor);
     if (typeof saved.textSize === 'number') setTextSize(saved.textSize);
     if (typeof saved.textOffsetX === 'number') setTextOffsetX(saved.textOffsetX);
     if (typeof saved.textOffsetY === 'number') setTextOffsetY(saved.textOffsetY);
     setTextDirection(normalizeTextDirection(saved.textDirection));
+    if (typeof saved.textMaskEnabled === 'boolean') setTextMaskEnabled(saved.textMaskEnabled);
+    setTextMaskOpacity(clampTextMaskOpacity(saved.textMaskOpacity));
+    setTextMaskColor(normalizeTextMaskColor(saved.textMaskColor));
+    if (['top', 'center', 'bottom'].includes(saved.textPlacement)) {
+      setTextPlacement(saved.textPlacement);
+    }
+    setTextSafeArea(normalizeTextSafeArea(saved.textSafeArea));
+    setSelectedProverbId(saved.selectedProverbId || '');
+    setSelectedProverbTemplateId(saved.selectedProverbTemplateId || '');
     if (typeof saved.imageOffsetX === 'number') setImageOffsetX(saved.imageOffsetX);
     if (typeof saved.imageOffsetY === 'number') setImageOffsetY(saved.imageOffsetY);
     if (typeof saved.screenshotScale === 'number') setScreenshotScale(clampArtworkZoom(saved.screenshotScale));
-    if (saved.shirtFillColor) setPrintBoxFillColor(saved.shirtFillColor);
+    if (bibleVerseMerch) {
+      setPrintBoxFillColor('');
+    } else if (saved.shirtFillColor) {
+      setPrintBoxFillColor(saved.shirtFillColor);
+    }
   };
 
   const persistEditorSlotsNow = (opts = {}) => {
@@ -4189,6 +4602,13 @@ const ToolsPage = () => {
       textOffsetX: slot.textOffsetX,
       textOffsetY: slot.textOffsetY,
       textDirection: normalizeTextDirection(slot.textDirection),
+      textMaskEnabled: Boolean(slot.textMaskEnabled),
+      textMaskOpacity: clampTextMaskOpacity(slot.textMaskOpacity),
+      textMaskColor: normalizeTextMaskColor(slot.textMaskColor),
+      textPlacement: ['top', 'center', 'bottom'].includes(slot.textPlacement) ? slot.textPlacement : 'center',
+      textSafeArea: normalizeTextSafeArea(slot.textSafeArea),
+      selectedProverbId: slot.selectedProverbId || '',
+      selectedProverbTemplateId: slot.selectedProverbTemplateId || '',
       printAreaFit: slot.printAreaFit,
       imageOrientation: slot.imageOrientation,
       selectedProductName: slot.selectedProductName,
@@ -4283,6 +4703,8 @@ const ToolsPage = () => {
   // every Tools visit and when iOS restores the page from bfcache.
   useEffect(() => {
     resyncMerchSessionFromStorage();
+    migrateBibleVerseCartItems(readCartItems({ ignoreMemory: true }) || []);
+    resyncMerchSessionFromStorage();
     entrySelectRef.current = true;
     cartIdentityRef.current = '';
     cartCountRef.current = 0;
@@ -4335,7 +4757,7 @@ const ToolsPage = () => {
       selectedCartProductIndex,
     });
     syncLiveEditorToCartItem(idx);
-  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, searchParams]);
+  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textPlacement, textSafeArea, selectedProverbId, selectedProverbTemplateId, searchParams]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -4463,7 +4885,7 @@ const ToolsPage = () => {
         if (entrySelectRef.current) {
           resyncMerchSessionFromStorage();
         }
-        const cartItems = readCartItems();
+        const cartItems = migrateBibleVerseCartItems(readCartItems());
         if (cartItems && cartItems.length > 0) {
           // Filter items that have screenshots, preserving original cart index
           const productsWithScreenshots = cartItems
@@ -4491,14 +4913,15 @@ const ToolsPage = () => {
               filteredIndex // Also store filtered index for dropdown
             }));
           
-          setCartProducts(productsWithScreenshots);
-          
           // Newest cart item wins and resets preview after an add.
           // Editing a specific item still honors tools_focus_cart_index.
           if (productsWithScreenshots.length > 0) {
             const lastIndex = productsWithScreenshots.length - 1;
             const identity = cartIdentity(productsWithScreenshots);
             const identityChanged = identity !== cartIdentityRef.current;
+            setCartProducts((current) => (
+              cartIdentity(current) === identity ? current : productsWithScreenshots
+            ));
             cartIdentityRef.current = identity;
             const previousCount = cartCountRef.current;
             const addedWhileOpen = productsWithScreenshots.length > previousCount && previousCount > 0;
@@ -5700,6 +6123,14 @@ const ToolsPage = () => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.restore();
       }
+      if (
+        bibleVerseMerch
+        && selectedProverbTemplateId
+        && textEnabled
+        && !textMaskEnabled
+      ) {
+        fadeCanvasArtworkUnderText(ctx, textOffsetX, textOffsetY);
+      }
 
       // Paint the frame on the visible artwork (print box when zoomed in / 100%).
       if (frameEnabled) {
@@ -5742,20 +6173,37 @@ const ToolsPage = () => {
         if (cancelled) return;
         const minDim = Math.min(canvas.width, canvas.height);
         const fontSize = Math.max(12, Math.min(300, Math.round((textSize / 100) * minDim * 0.22)));
-        drawOverlayText(ctx, {
-          text: textContent,
-          fontFamily: textFont,
-          color: textColor,
-          fontSize,
-          centerX: (canvas.width * textOffsetX) / 100,
-          centerY: (canvas.height * textOffsetY) / 100,
-          direction: normalizeTextDirection(textDirection),
-        });
+        if (textMaskEnabled) {
+          drawTextMask(ctx, {
+            text: textContent,
+            fontFamily: textFont,
+            textColor,
+            fontSize,
+            minFontSize: Math.max(12, Math.round(fontSize * 0.36)),
+            safeArea: textSafeArea,
+            maskEnabled: true,
+            maskColor: textMaskColor,
+            maskOpacity: textMaskOpacity,
+          });
+        } else {
+          drawOverlayText(ctx, {
+            text: textContent,
+            fontFamily: textFont,
+            color: textColor,
+            fontSize,
+            centerX: (canvas.width * textOffsetX) / 100,
+            centerY: (canvas.height * textOffsetY) / 100,
+            direction: normalizeTextDirection(textDirection),
+          });
+        }
       }
 
       // Convert to data URL (capped jpeg so Apply Edits does not freeze checkout)
       const dataUrl = exportPreviewDataUrl(canvas, {
-        keepAlpha: isTransparentFeatherFade(featherFadeEnabled, featherFadeColor) && !printBoxFillColor,
+        keepAlpha: (
+          (isTransparentFeatherFade(featherFadeEnabled, featherFadeColor) && !printBoxFillColor)
+          || (bibleVerseMerch && Boolean(selectedProverbTemplateId))
+        ),
       });
       if (!dataUrl) return;
       if (cancelled) return;
@@ -5778,7 +6226,7 @@ const ToolsPage = () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textSafeArea, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height, bibleVerseMerch, selectedProverbTemplateId]);
 
   const mugPreviewProduct = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
   const mugPreviewName = mugPreviewProduct?.name || selectedProductName || '';
@@ -6370,7 +6818,7 @@ const ToolsPage = () => {
       return;
     }
     const orderId = searchParams.get('order_id') || '';
-    const baseName = orderId ? 'screenmerch-' + orderId : 'screenmerch-print-ready';
+    const baseName = orderId ? 'screenmerch-' + orderId : 'screenmerch-design';
     const filename = baseName + '.png';
 
     const doDownload = (blob) => {
@@ -6506,14 +6954,25 @@ const ToolsPage = () => {
         frame_color: frameColor,
         frame_width: frameWidth,
         double_frame: false,
-        text_enabled: false,
-        text_content: '',
+        text_enabled: Boolean(textEnabled && String(textContent || '').trim()),
+        text_content: textContent,
         text_font: textFont,
         text_color: textColor,
         text_size: textSize,
         text_offset_x: textOffsetX,
         text_offset_y: textOffsetY,
-        add_white_background: true
+        text_direction: textDirection,
+        text_mask_enabled: Boolean(textMaskEnabled),
+        text_mask_opacity: textMaskOpacity,
+        text_mask_color: textMaskColor,
+        text_safe_area: normalizeTextSafeArea(textSafeArea),
+        text_image_fade_enabled: Boolean(
+          bibleVerseMerch && selectedProverbTemplateId && textEnabled && !textMaskEnabled
+        ),
+        add_white_background: (
+          textMaskEnabled
+          || (bibleVerseMerch && selectedProverbTemplateId && textEnabled)
+        ) ? false : true
       };
       if (selectedProductName && printAreaFit === 'product') {
         try {
@@ -6647,6 +7106,13 @@ const ToolsPage = () => {
         textOffsetX,
         textOffsetY,
         textDirection,
+        textMaskEnabled,
+        textMaskOpacity,
+        textMaskColor,
+        textPlacement,
+        textSafeArea,
+        selectedProverbId,
+        selectedProverbTemplateId,
         printAreaFit,
         imageOrientation,
         imageOffsetX,
@@ -6694,6 +7160,13 @@ const ToolsPage = () => {
         textOffsetX,
         textOffsetY,
         textDirection,
+        textMaskEnabled,
+        textMaskOpacity,
+        textMaskColor,
+        textPlacement,
+        textSafeArea,
+        selectedProverbId,
+        selectedProverbTemplateId,
         printAreaFit,
         imageOrientation,
         imageOffsetX,
@@ -6900,6 +7373,99 @@ const ToolsPage = () => {
     setFeatherFadeColor(choice === 'black' ? 'black' : 'white');
     setFeatherFadeEnabled(true);
     setFeatherEdge((prev) => (prev > 0 ? prev : 20));
+  };
+
+  const applyTextPlacement = (position, safeAreaOverride = null) => {
+    const defaults = textPositionDefaults(position);
+    setTextPlacement(defaults.position);
+    setTextOffsetX(defaults.offsetX);
+    setTextOffsetY(defaults.offsetY);
+    setTextSafeArea(normalizeTextSafeArea(safeAreaOverride || defaults.safeArea));
+  };
+
+  const applyProverbPreset = (presetId) => {
+    const preset = KJV_PROVERB_PRESETS.find((item) => item.id === presetId);
+    setSelectedProverbId(preset?.id || '');
+    if (!preset) return;
+    setTextEnabled(true);
+    setTextDirection('horizontal');
+    setTextFont('IM FELL English');
+    setTextContent(formatProverbDesignText(preset));
+    setTextMaskEnabled(true);
+    setImageOpacity(100);
+    setTextMaskColor('cream');
+    resetTextDesign(selectedProverbTemplateId);
+  };
+
+  const resetTextDesign = (templateId = selectedProverbTemplateId) => {
+    const template = BIBLE_VERSE_TEMPLATES.find((item) => item.id === templateId);
+    const placement = template?.recommendedTextPosition || 'center';
+    applyTextPlacement(placement, template?.recommendedTextSafeArea);
+    setTextFont('IM FELL English');
+    setTextSize(28);
+    setTextColor(template?.recommendedTextColor || '#30291f');
+    setTextMaskEnabled(true);
+    setImageOpacity(100);
+    setTextMaskOpacity(template?.recommendedMaskOpacity ?? 85);
+    setTextMaskColor(normalizeTextMaskColor(template?.recommendedMaskColor));
+    setScreenshotScale(ARTWORK_ZOOM_MAX);
+    setTextDirection('horizontal');
+  };
+
+  const applyBibleTemplate = (template) => {
+    if (!template || proverbTemplateAvailability[template.id] !== true) return;
+    const absoluteUrl = typeof window === 'undefined'
+      ? template.imageUrl
+      : new URL(template.imageUrl, window.location.origin).toString();
+    setSelectedProverbTemplateId(template.id);
+    setImageUrl(absoluteUrl);
+    setSelectedImage(absoluteUrl);
+    setEditedImageUrl('');
+    resetTextDesign(template.id);
+
+    const selectedProduct = selectedCartProductIndex != null
+      ? cartProducts[selectedCartProductIndex]
+      : null;
+    const cartIndex = selectedProduct?.originalCartIndex;
+    if (Number.isInteger(cartIndex)) {
+      const items = readCartItems();
+      if (items[cartIndex]) {
+        const updated = items.map((item, index) => (
+          index === cartIndex
+            ? {
+                ...item,
+                originalScreenshot: absoluteUrl,
+                screenshot: absoluteUrl,
+                selected_screenshot: absoluteUrl,
+                displayScreenshot: absoluteUrl,
+                edited: false,
+                toolSettings: {
+                  ...(item.toolSettings || {}),
+                  selectedProverbTemplateId: template.id,
+                },
+              }
+            : item
+        ));
+        writeCartItems(updated);
+      }
+    }
+    setCartProducts((items) => items.map((item, index) => (
+      index === selectedCartProductIndex
+        ? {
+            ...item,
+            originalScreenshot: absoluteUrl,
+            screenshot: absoluteUrl,
+            displayScreenshot: absoluteUrl,
+            toolSettings: {
+              ...(item.toolSettings || {}),
+              selectedProverbTemplateId: template.id,
+            },
+          }
+        : item
+    )));
+    const pending = { ...readPendingMerchData() };
+    pending.selected_screenshot = absoluteUrl;
+    savePendingMerchData(pending);
   };
 
   const switchToCartSlot = (newIndex) => {
@@ -7280,6 +7846,10 @@ const ToolsPage = () => {
                                   textOffsetX={textOffsetX}
                                   textOffsetY={textOffsetY}
                                   textDirection={textDirection}
+                                  textMaskEnabled={textMaskEnabled}
+                                  textMaskOpacity={textMaskOpacity}
+                                  textMaskColor={textMaskColor}
+                                  textSafeArea={textSafeArea}
                                   nudgeEnabled={wrapKind === 'puzzle' || wrapKind === 'apron' || wrapKind === 'card' || toteFaceWrap}
                                   onImageOffsetChange={wrapKind === 'puzzle' || wrapKind === 'apron' || wrapKind === 'card' || toteFaceWrap ? (x, y) => {
                                     setImageOffsetX(x);
@@ -7541,6 +8111,10 @@ const ToolsPage = () => {
                                   textOffsetX={textOffsetX}
                                   textOffsetY={textOffsetY}
                                   textDirection={textDirection}
+                                  textMaskEnabled={textMaskEnabled}
+                                  textMaskOpacity={textMaskOpacity}
+                                  textMaskColor={textMaskColor}
+                                  textSafeArea={textSafeArea}
                                 />
                               </div>
                               {previewNotice}
@@ -7579,6 +8153,10 @@ const ToolsPage = () => {
                               textOffsetX={textOffsetX}
                               textOffsetY={textOffsetY}
                               textDirection={textDirection}
+                              textMaskEnabled={textMaskEnabled}
+                              textMaskOpacity={textMaskOpacity}
+                              textMaskColor={textMaskColor}
+                              textSafeArea={textSafeArea}
                               onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                               featherEdge={overlayFeather}
                               cornerRadius={overlayCorner}
@@ -7602,6 +8180,7 @@ const ToolsPage = () => {
                               featherFadeColor={featherFadeColor}
                               onOverlayBoxChange={handleOverlayBoxChange}
                               onShirtFillChange={handleShirtFillChange}
+                              forceTransparentArtwork={bibleVerseMerch && Boolean(selectedProverbTemplateId)}
                             />
                           );
                         } else {
@@ -7672,6 +8251,10 @@ const ToolsPage = () => {
                             textOffsetX={textOffsetX}
                             textOffsetY={textOffsetY}
                             textDirection={textDirection}
+                            textMaskEnabled={textMaskEnabled}
+                            textMaskOpacity={textMaskOpacity}
+                            textMaskColor={textMaskColor}
+                            textSafeArea={textSafeArea}
                             onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                             featherEdge={overlayFeather}
                             cornerRadius={overlayCorner}
@@ -7696,6 +8279,7 @@ const ToolsPage = () => {
                             onOverlayBoxChange={handleOverlayBoxChange}
                             onShirtFillChange={handleShirtFillChange}
                             garmentTintColor={garmentTintColor}
+                            forceTransparentArtwork={bibleVerseMerch && Boolean(selectedProverbTemplateId)}
                           />
                         );
                       }
@@ -8091,9 +8675,56 @@ const ToolsPage = () => {
                   </>
                 )}
 
+                {bibleVerseMerch && (
+                  <div className="tool-control-group proverb-template-control">
+                    <h3>Bible Verse Design</h3>
+                    <p className="tool-description">
+                      Choose any KJV proverb and combine it with your selected image. Template slots become available automatically when their PNG files are added.
+                    </p>
+                    <div className="form-group">
+                      <label htmlFor="proverb-preset">Proverb:</label>
+                      <select
+                        id="proverb-preset"
+                        value={selectedProverbId}
+                        onChange={(event) => applyProverbPreset(event.target.value)}
+                      >
+                        <option value="">Custom text</option>
+                        {KJV_PROVERB_PRESETS.map((preset) => (
+                          <option key={preset.id} value={preset.id}>{preset.reference}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="proverb-template-grid" aria-label="Christian image templates">
+                      {BIBLE_VERSE_TEMPLATES.map((template) => {
+                        const available = proverbTemplateAvailability[template.id] === true;
+                        return (
+                          <button
+                            key={template.id}
+                            type="button"
+                            className={`proverb-template-card${selectedProverbTemplateId === template.id ? ' is-selected' : ''}`}
+                            disabled={!available}
+                            onClick={() => applyBibleTemplate(template)}
+                            title={available ? `Use ${template.title}` : `Add ${template.imageUrl} to enable this template`}
+                          >
+                            {available ? (
+                              <img src={template.imageUrl} alt="" />
+                            ) : (
+                              <span className="proverb-template-number">
+                                {template.id.slice(-2)}
+                              </span>
+                            )}
+                            <span>{template.title}</span>
+                            {!available && <small>PNG coming soon</small>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="tool-control-group">
-                  <h3>Text</h3>
-                  <p className="tool-description">Add text to your creation with custom font, color, size and direction</p>
+                  <h3>Text Design</h3>
+                  <p className="tool-description">Place custom multiline text over any selected image</p>
                   <div className="checkbox-control">
                     <label>
                       <input
@@ -8138,11 +8769,31 @@ const ToolsPage = () => {
                         <label>Text:</label>
                         <textarea
                           value={textContent}
-                          onChange={(e) => setTextContent(e.target.value)}
+                          onChange={(e) => {
+                            setSelectedProverbId('');
+                            setTextContent(e.target.value);
+                          }}
                           placeholder="Enter text to overlay"
-                          rows={2}
+                          rows={4}
                           style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
                         />
+                      </div>
+                      <div className="select-control" style={{ marginTop: '0.75rem' }}>
+                        <h4 style={{ margin: '0 0 0.45rem', fontWeight: 'bold' }}>Placement:</h4>
+                        <div className="tools-text-direction">
+                          {['top', 'center', 'bottom'].map((position) => (
+                            <label key={position}>
+                              <input
+                                type="radio"
+                                name="textPlacement"
+                                value={position}
+                                checked={textPlacement === position}
+                                onChange={() => applyTextPlacement(position)}
+                              />
+                              <span>{position.charAt(0).toUpperCase() + position.slice(1)}</span>
+                            </label>
+                          ))}
+                        </div>
                       </div>
                       <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
                         <label style={{ minWidth: '80px' }}>Font:</label>
@@ -8152,6 +8803,7 @@ const ToolsPage = () => {
                           style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', maxWidth: '100%' }}
                         >
                           <optgroup label="Classic">
+                            <option value="IM FELL English">IM FELL English (Old Bible)</option>
                             <option value="Arial">Arial</option>
                             <option value="Helvetica">Helvetica</option>
                             <option value="Georgia">Georgia</option>
@@ -8175,10 +8827,58 @@ const ToolsPage = () => {
                         <input
                           type="color"
                           value={textColor}
+                          onInput={(e) => setTextColor(e.currentTarget.value)}
                           onChange={(e) => setTextColor(e.target.value)}
                           className="color-picker"
                         />
                         <span className="color-value" style={{ wordBreak: 'break-all' }}>{textColor}</span>
+                      </div>
+                      <div className="checkbox-control" style={{ marginTop: '0.75rem' }}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={textMaskEnabled}
+                            onChange={(event) => {
+                              setTextMaskEnabled(event.target.checked);
+                              if (event.target.checked) applyTextPlacement(textPlacement);
+                            }}
+                          />
+                          Feathered text background
+                        </label>
+                      </div>
+                      <div className="feather-fade-choices text-mask-color-choices" role="group" aria-label="Text background color">
+                        {Object.entries(TEXT_MASK_COLORS).map(([value, details]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            className={`feather-fade-choice${textMaskEnabled && textMaskColor === value ? ' is-active' : ''}`}
+                            onClick={() => {
+                              setTextMaskEnabled(true);
+                              setTextMaskColor(value);
+                            }}
+                          >
+                            <span
+                              className="feather-fade-swatch"
+                              style={{ background: details.hex }}
+                            />
+                            {details.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="slider-control" style={{ marginTop: '0.5rem' }}>
+                        <label>Background opacity:</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={textMaskOpacity}
+                          onChange={(event) => {
+                            setTextMaskEnabled(true);
+                            setTextMaskOpacity(clampTextMaskOpacity(event.target.value));
+                          }}
+                          className="slider"
+                        />
+                        <span className="slider-value">{textMaskOpacity}%</span>
                       </div>
                       <div className="slider-control" style={{ marginTop: '0.5rem' }}>
                         <label>Size (headline scale):</label>
@@ -8208,31 +8908,41 @@ const ToolsPage = () => {
                         </div>
                         <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>Slider or type 12–200: 100+ = headline size</small>
                       </div>
-                      <div className="slider-control" style={{ marginTop: '0.5rem' }}>
-                        <label>Horizontal position:</label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={textOffsetX}
-                          onChange={(e) => setTextOffsetX(parseInt(e.target.value, 10))}
-                          className="slider"
-                        />
-                        <span className="slider-value">{textOffsetX}%</span>
-                      </div>
-                      <div className="slider-control" style={{ marginTop: '0.5rem' }}>
-                        <label>Vertical position:</label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={textOffsetY}
-                          onChange={(e) => setTextOffsetY(parseInt(e.target.value, 10))}
-                          className="slider"
-                        />
-                        <span className="slider-value">{textOffsetY}%</span>
-                      </div>
-                      <small style={{ color: '#666', display: 'block', marginTop: '6px' }}>Or drag the product mockup to move the image and text together.</small>
+                      {!textMaskEnabled && (
+                        <>
+                          <div className="slider-control" style={{ marginTop: '0.5rem' }}>
+                            <label>Horizontal position:</label>
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={textOffsetX}
+                              onChange={(e) => setTextOffsetX(parseInt(e.target.value, 10))}
+                              className="slider"
+                            />
+                            <span className="slider-value">{textOffsetX}%</span>
+                          </div>
+                          <div className="slider-control" style={{ marginTop: '0.5rem' }}>
+                            <label>Vertical position:</label>
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={textOffsetY}
+                              onChange={(e) => setTextOffsetY(parseInt(e.target.value, 10))}
+                              className="slider"
+                            />
+                            <span className="slider-value">{textOffsetY}%</span>
+                          </div>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        className="tools-text-reset"
+                        onClick={() => resetTextDesign()}
+                      >
+                        Reset to recommended settings
+                      </button>
                     </>
                   )}
                 </div>
@@ -8350,6 +9060,10 @@ const ToolsPage = () => {
                             textOffsetX={textOffsetX}
                             textOffsetY={textOffsetY}
                             textDirection={textDirection}
+                            textMaskEnabled={textMaskEnabled}
+                            textMaskOpacity={textMaskOpacity}
+                            textMaskColor={textMaskColor}
+                            textSafeArea={textSafeArea}
                           />
                         );
                       })()}
@@ -8509,6 +9223,15 @@ const ToolsPage = () => {
                     onClick={resetEditor}
                   >
                     Reset
+                  </button>
+                  <button
+                    type="button"
+                    className="download-design-btn"
+                    onClick={handleDownload}
+                    disabled={!editedImageUrl && !imageUrl}
+                    title="Save the finished artwork to your computer"
+                  >
+                    Download Design
                   </button>
                   <button
                     type="button"

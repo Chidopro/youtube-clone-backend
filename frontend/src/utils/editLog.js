@@ -72,6 +72,13 @@ export function buildEditLog({
   textOffsetX = 50,
   textOffsetY = 50,
   textDirection = 'horizontal',
+  textMaskEnabled = false,
+  textMaskOpacity = 85,
+  textMaskColor = 'cream',
+  textPlacement = 'center',
+  textSafeArea = null,
+  selectedProverbId = '',
+  selectedProverbTemplateId = '',
   printAreaFit = 'none',
   imageOrientation = 'portrait',
   imageOffsetX = 0,
@@ -125,6 +132,13 @@ export function buildEditLog({
     textOffsetX: asNumber(textOffsetX, 50),
     textOffsetY: asNumber(textOffsetY, 50),
     textDirection: String(textDirection || '').toLowerCase() === 'vertical' ? 'vertical' : 'horizontal',
+    textMaskEnabled: Boolean(textOn && textMaskEnabled),
+    textMaskOpacity: Math.max(0, Math.min(100, Math.round(asNumber(textMaskOpacity, 85)))),
+    textMaskColor: String(textMaskColor || '').toLowerCase() === 'charcoal' ? 'charcoal' : 'cream',
+    textPlacement: ['top', 'bottom'].includes(textPlacement) ? textPlacement : 'center',
+    textSafeArea: textSafeArea && typeof textSafeArea === 'object' ? { ...textSafeArea } : null,
+    selectedProverbId: String(selectedProverbId || ''),
+    selectedProverbTemplateId: String(selectedProverbTemplateId || ''),
     printAreaFit: printAreaFit || 'none',
     imageOrientation: imageOrientation === 'landscape' ? 'landscape' : 'portrait',
     imageOffsetX: asNumber(imageOffsetX),
@@ -223,6 +237,12 @@ export function formatEditLogLines(log) {
       label: 'Text',
       value: `"${shown}" · ${String(log.textDirection || '').toLowerCase() === 'vertical' ? 'vertical' : 'horizontal'} · ${log.textFont || 'Arial'} · ${log.textColor || '#000'} · ${asNumber(log.textSize, 24)}px · pos ${asNumber(log.textOffsetX, 50)}%, ${asNumber(log.textOffsetY, 50)}%`,
     });
+    if (log.textMaskEnabled) {
+      lines.push({
+        label: 'Text background',
+        value: `${log.textMaskColor === 'charcoal' ? 'Soft charcoal' : 'Warm cream'} · ${Math.round(asNumber(log.textMaskOpacity, 85))}% · ${log.textPlacement || 'center'}`,
+      });
+    }
   }
   return lines;
 }
@@ -261,6 +281,13 @@ export function editLogFromToolSettings(ts) {
     textOffsetX: ts.textOffsetX,
     textOffsetY: ts.textOffsetY,
     textDirection: ts.textDirection,
+    textMaskEnabled: ts.textMaskEnabled,
+    textMaskOpacity: ts.textMaskOpacity,
+    textMaskColor: ts.textMaskColor,
+    textPlacement: ts.textPlacement,
+    textSafeArea: ts.textSafeArea,
+    selectedProverbId: ts.selectedProverbId,
+    selectedProverbTemplateId: ts.selectedProverbTemplateId,
     printAreaFit: ts.printAreaFit,
     imageOrientation: ts.imageOrientation,
     imageOffsetX: ts.imageOffsetX || ts.offsetX,

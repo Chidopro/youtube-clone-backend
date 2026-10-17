@@ -311,6 +311,53 @@ class TestOverlayTextColorAndPosition(unittest.TestCase):
         self.assertGreater(max(top.getextrema()[0][1], top.getextrema()[1][1], top.getextrema()[2][1]), 200)
         self.assertLess(max(mid.getextrema()[0][1], mid.getextrema()[1][1], mid.getextrema()[2][1]), 180)
 
+    def test_feathered_text_mask_supports_all_placements_and_long_text(self):
+        import base64
+        import io
+        from PIL import Image
+
+        src = np.zeros((300, 240, 3), dtype=np.uint8)
+        src[:] = (120, 80, 30)
+        ok, buf = cv2.imencode('.png', src)
+        self.assertTrue(ok)
+        data_url = 'data:image/png;base64,' + base64.b64encode(buf.tobytes()).decode('ascii')
+        text = (
+            'Trust in the LORD with all thine heart; and lean not unto thine '
+            'own understanding. In all thy ways acknowledge him.'
+        )
+        areas = (
+            {'x': 10, 'y': 5, 'width': 80, 'height': 30},
+            {'x': 10, 'y': 35, 'width': 80, 'height': 30},
+            {'x': 10, 'y': 65, 'width': 80, 'height': 30},
+        )
+        for area in areas:
+            result = process_thumbnail_for_print(
+                data_url,
+                print_dpi=72,
+                preserve_edits=True,
+                fit_mode='preserve',
+                add_white_background=False,
+                text_enabled=True,
+                text_content=text,
+                text_font='Georgia',
+                text_color='#30291f',
+                text_size=42,
+                text_mask_enabled=True,
+                text_mask_opacity=85,
+                text_mask_color='cream',
+                text_safe_area=area,
+            )
+            self.assertTrue(result.get('success'), result.get('error'))
+            raw = result['screenshot'].split(',', 1)[1]
+            image = Image.open(io.BytesIO(base64.b64decode(raw))).convert('RGB')
+            self.assertGreaterEqual(image.width, 240)
+            self.assertGreaterEqual(image.height, 300)
+            self.assertAlmostEqual(image.width / image.height, 240 / 300, delta=0.01)
+            self.assertEqual(image.getpixel((0, 0)), (30, 80, 120))
+            center_x = int(image.width * (area['x'] + area['width'] / 2) / 100)
+            center_y = int(image.height * (area['y'] + area['height'] / 2) / 100)
+            self.assertNotEqual(image.getpixel((center_x, center_y)), (30, 80, 120))
+
 
 class TestToolsFrameWidthScale(unittest.TestCase):
     def test_slider_px_scale_by_min_side(self):

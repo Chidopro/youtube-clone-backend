@@ -12,6 +12,8 @@ import { fetchPublicFavoriteLists, fetchPublicFavoritesByList, favoriteCardThumb
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
 import { apiJoin } from '../../config/apiConfig';
 import { sortVideosForPlay } from '../../utils/videoPlayOrder';
+import { isBibleVerseMerchStorefront } from '../../data/bibleVerseMerch';
+import BibleVerseMerchLanding from '../Favorites/BibleVerseMerchLanding';
 
 const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [videos, setVideos] = useState([]);
@@ -339,6 +341,10 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
       }
     }
   }, [creatorSettings?.primary_color, creatorSettings?.secondary_color]);
+
+  if (isBibleVerseMerchStorefront(getSubdomain())) {
+    return <BibleVerseMerchLanding />;
+  }
 
   return (
     <>

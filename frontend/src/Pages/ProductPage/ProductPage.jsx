@@ -1326,6 +1326,13 @@ const ProductPage = ({ sidebar }) => {
       // Include video metadata in cart item (screenshot_timestamp for email/Print Quality)
       ...filledVideoMetadata
     };
+    const pendingBibleVerseDesign = (readPendingMerchData() || {}).bibleVerseDesign;
+    if (pendingBibleVerseDesign && typeof pendingBibleVerseDesign === 'object') {
+      item.toolSettings = {
+        ...(item.toolSettings || {}),
+        ...pendingBibleVerseDesign,
+      };
+    }
     if (pendingOrientation) {
       item.imageOrientation = pendingOrientation;
       item.image_orientation = pendingOrientation;
@@ -1952,6 +1959,13 @@ const ProductPage = ({ sidebar }) => {
   const showAutoEditPresets = !creatorMode && !isShopCatalog && !showVideoThumbLabel && getSelectImageCount() <= 1 && Boolean(browsePreviewSrc || browseSourceUrl);
   const showDesktopEditPresets = showAutoEditPresets && isDesktopLayout;
   const presetImageSrc = browsePreviewSrc || browseSourceUrl;
+  const pendingBibleDesign = (readPendingMerchData() || {}).bibleVerseDesign;
+  const selectedImageZoom = pendingBibleDesign?.selectedProverbTemplateId
+    ? Math.max(100, Math.min(150, Number(pendingBibleDesign.screenshotScale) || 150))
+    : 100;
+  const selectedImageZoomStyle = selectedImageZoom > 100
+    ? { transform: `scale(${selectedImageZoom / 100})`, transformOrigin: 'center center' }
+    : undefined;
 
   return (
     <div className={`container product-page${isShopCatalog ? ' product-page--shop-catalog' : ''}${!creatorMode && !isShopCatalog ? ' product-page--choose' : ''}${sidebar ? '' : ' large-container'}${category ? ` product-page--${String(category).trim().toLowerCase()}` : ''}`}>
@@ -2188,6 +2202,7 @@ const ProductPage = ({ sidebar }) => {
                         className="screenshot-image"
                         fetchPriority="high"
                         decoding="async"
+                        style={selectedImageZoomStyle}
                       />
                       {showAutoEditPresets ? (
                         <InlineStillCrop
@@ -2260,6 +2275,7 @@ const ProductPage = ({ sidebar }) => {
                             className="screenshot-image"
                             fetchPriority={selectedScreenshot === index ? 'high' : 'auto'}
                             decoding="async"
+                            style={selectedImageZoomStyle}
                           />
                           {showAutoEditPresets && index === 0 && !thumbnailUrl ? (
                             <InlineStillCrop
@@ -2309,15 +2325,16 @@ const ProductPage = ({ sidebar }) => {
                         src={presetImageSrc}
                         alt={preset.label}
                         className="screenshot-image"
-                        style={
-                          preset.id === 'bw'
+                        style={{
+                          ...(selectedImageZoomStyle || {}),
+                          ...(preset.id === 'bw'
                             ? { filter: blackAndWhiteCssFilter(true, selectedEditPreset === 'bw' ? bwIntensity : BW_INTENSITY_DEFAULT) }
                             : (preset.id === 'feather'
                               ? featherPresetMaskStyle
                               : (preset.id === 'radius' && radiusPreviewPx > 0
                                 ? { borderRadius: radiusPreviewPx }
-                                : undefined))
-                        }
+                                : {}))),
+                        }}
                       />
                       {preset.id === 'frame' ? (
                         <span className="screenshot-preset-frame-mat" aria-hidden="true" />
