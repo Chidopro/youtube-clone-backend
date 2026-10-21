@@ -10,12 +10,14 @@ import { markMerchIntentStarted, savePendingMerchData } from '../../utils/merchS
 import './BibleVerseMerchLanding.css';
 
 const CUSTOM_ID = 'custom';
+const FEATURED_HOMEPAGE_TEMPLATE_ID = 'bvm-template-30';
+const FEATURED_HOMEPAGE_VERSE_ID = 'isaiah-11-6';
 
 export default function BibleVerseMerchLanding() {
   const navigate = useNavigate();
   const [availableTemplateIds, setAvailableTemplateIds] = useState([]);
-  const [templateId, setTemplateId] = useState(BIBLE_VERSE_TEMPLATES[0]?.id || '');
-  const [proverbId, setProverbId] = useState(KJV_PROVERB_PRESETS[0]?.id || CUSTOM_ID);
+  const [templateId, setTemplateId] = useState(FEATURED_HOMEPAGE_TEMPLATE_ID);
+  const [proverbId, setProverbId] = useState(FEATURED_HOMEPAGE_VERSE_ID);
   const [customText, setCustomText] = useState('');
 
   useEffect(() => {
@@ -44,6 +46,7 @@ export default function BibleVerseMerchLanding() {
   );
   const template = BIBLE_VERSE_TEMPLATES.find((item) => item.id === templateId)
     || BIBLE_VERSE_TEMPLATES[0];
+  const showFeaturedHomepageText = template?.id === FEATURED_HOMEPAGE_TEMPLATE_ID;
   const proverb = KJV_PROVERB_PRESETS.find((item) => item.id === proverbId);
   const selectedText = proverbId === CUSTOM_ID
     ? customText.trim()
@@ -70,6 +73,7 @@ export default function BibleVerseMerchLanding() {
         textEnabled: true,
         textContent: designText,
         textFont: 'IM FELL English',
+        textBold: true,
         textColor: template.recommendedTextColor,
         textSize: 28,
         textOffsetX: placement.offsetX,
@@ -99,17 +103,19 @@ export default function BibleVerseMerchLanding() {
 
       <div className="bvm-builder">
         <section className="bvm-preview-panel" aria-label="Design preview">
-          <div className="bvm-preview">
+          <div className={`bvm-preview${template?.id === 'bvm-template-23' ? ' bvm-preview--full-image' : ''}`}>
             {template ? <img src={template.imageUrl} alt={template.title} /> : null}
-            <div className={`bvm-preview-copy bvm-preview-copy--${template?.recommendedTextPosition || 'center'}`}>
-              <div
-                className={`bvm-preview-mask bvm-preview-mask--${template?.recommendedMaskColor || 'cream'}`}
-                style={{ color: template?.recommendedTextColor || '#6f42c1' }}
-              >
-                <span>{displayText}</span>
-                {proverb?.reference ? <strong>{proverb.reference}</strong> : null}
+            {showFeaturedHomepageText ? (
+              <div className={`bvm-preview-copy bvm-preview-copy--${template?.recommendedTextPosition || 'center'}`}>
+                <div
+                  className={`bvm-preview-mask bvm-preview-mask--${template?.recommendedMaskColor || 'cream'}`}
+                  style={{ color: '#6f42c1' }}
+                >
+                  <span>{displayText}</span>
+                  {proverb?.reference ? <strong>{proverb.reference}</strong> : null}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </section>
 

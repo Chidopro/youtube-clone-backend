@@ -978,10 +978,19 @@ def _parse_overlay_hex_color(text_color, mode="RGB"):
     return (0, 0, 0) if mode == "RGB" else (0, 0, 0, 255)
 
 
-def _draw_centered_text(draw, xy, text, font, fill):
+def _draw_centered_text(draw, xy, text, font, fill, bold=False):
     x, y = xy
+    stroke_width = max(1, int(round(getattr(font, "size", 12) * 0.018))) if bold else 0
     try:
-        draw.text((x, y), text, font=font, fill=fill, anchor="mm")
+        draw.text(
+            (x, y),
+            text,
+            font=font,
+            fill=fill,
+            anchor="mm",
+            stroke_width=stroke_width,
+            stroke_fill=fill,
+        )
         return
     except TypeError:
         pass
@@ -1000,7 +1009,7 @@ def _draw_centered_text(draw, xy, text, font, fill):
     draw.text((x - tw // 2, y - th // 2), text, font=font, fill=fill)
 
 
-def _draw_print_overlay_text(draw, text, font, fill, center_x, center_y, font_px, direction):
+def _draw_print_overlay_text(draw, text, font, fill, center_x, center_y, font_px, direction, bold=False):
     """Match ToolsPage drawOverlayText: center at percent coords, optional vertical stack."""
     lines = str(text).strip().split("\n")
     if not lines:
@@ -1021,6 +1030,7 @@ def _draw_print_overlay_text(draw, text, font, fill, center_x, center_y, font_px
                     ch,
                     font,
                     fill,
+                    bold,
                 )
         return
     start_y = center_y - (len(lines) - 1) * line_height / 2.0
@@ -1031,6 +1041,7 @@ def _draw_print_overlay_text(draw, text, font, fill, center_x, center_y, font_px
             line,
             font,
             fill,
+            bold,
         )
 
 
@@ -1136,6 +1147,9 @@ def _draw_print_text_mask(
     safe_area,
     mask_color,
     mask_opacity,
+    text_bold=True,
+    text_offset_x=None,
+    text_offset_y=None,
 ):
     """Draw auto-wrapped text over a soft borderless rounded mask."""
     rgba = pil_image.convert("RGBA")
@@ -1174,9 +1188,23 @@ def _draw_print_text_mask(
         available_width,
         max([_text_width(measure, line, font) for line in lines] + [font_px]),
     )
-    center_x = left + area_width / 2.0
-    center_y = top + area_height / 2.0
-    text_center_y = center_y + min(padding_y * 0.65, font_px * 0.9)
+    has_offset_x = text_offset_x is not None
+    has_offset_y = text_offset_y is not None
+    center_x = (
+        width * _percent_0_100(text_offset_x, 50) / 100.0
+        if has_offset_x
+        else left + area_width / 2.0
+    )
+    center_y = (
+        height * _percent_0_100(text_offset_y, 50) / 100.0
+        if has_offset_y
+        else top + area_height / 2.0
+    )
+    text_center_y = (
+        center_y
+        if has_offset_y
+        else center_y + min(padding_y * 0.65, font_px * 0.9)
+    )
     mask_width = max(2, min(width, int(round(measured_width + padding_x * 2.4))))
     mask_height = max(2, min(height, int(round(total_height + padding_y * 1.2))))
 
@@ -1212,6 +1240,7 @@ def _draw_print_text_mask(
             line,
             font,
             fill,
+            text_bold,
         )
     result = Image.alpha_composite(rgba, overlay)
     return result if pil_image.mode == "RGBA" else result.convert("RGB")
@@ -1422,7 +1451,7 @@ def _pet_bowl_print_strip(image, print_dpi=300):
     return _encode_print_jpeg(canvas, print_dpi, width, height)
 
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, inner_frame_color=None, image_opacity=100, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0, pet_bowl_strip=False, pet_bandana_print=False, bandana_crop_image=None, text_mask_enabled=False, text_mask_opacity=85, text_mask_color='cream', text_safe_area=None, text_image_fade_enabled=False):
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, inner_frame_color=None, image_opacity=100, text_enabled=False, text_content='', text_font='Arial', text_bold=True, text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0, pet_bowl_strip=False, pet_bandana_print=False, bandana_crop_image=None, text_mask_enabled=False, text_mask_opacity=85, text_mask_color='cream', text_safe_area=None, text_image_fade_enabled=False):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -1971,6 +2000,9 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                             text_safe_area,
                             text_mask_color,
                             text_mask_opacity,
+                            text_bold,
+                            text_offset_x,
+                            text_offset_y,
                         )
                     else:
                         draw = ImageDraw.Draw(pil_image)
@@ -1991,6 +2023,7 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                             center_y,
                             font_px,
                             _overlay_text_direction(text_direction),
+                            text_bold,
                         )
                     logger.info(
                         "Text overlay applied successfully color=%s pos=%s/%s dir=%s mask=%s",

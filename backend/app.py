@@ -5166,6 +5166,7 @@ def process_thumbnail_print_quality():
         text_enabled = data.get("text_enabled", False)
         text_content = (data.get("text_content") or "").strip()
         text_font = data.get("text_font", "Arial")
+        text_bold = str(data.get("text_bold", True)).strip().lower() not in ("false", "0", "no", "off")
         text_color = data.get("text_color", "#000000")
         try:
             text_size = int(data.get("text_size", 24))
@@ -5264,6 +5265,7 @@ def process_thumbnail_print_quality():
             text_enabled=text_enabled and bool(text_content),
             text_content=text_content,
             text_font=text_font,
+            text_bold=text_bold,
             text_color=text_color,
             text_size=text_size,
             text_offset_x=text_offset_x,

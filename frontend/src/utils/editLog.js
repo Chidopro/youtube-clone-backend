@@ -67,6 +67,7 @@ export function buildEditLog({
   textEnabled = false,
   textContent = '',
   textFont = 'Arial',
+  textBold = true,
   textColor = '#000000',
   textSize = 24,
   textOffsetX = 50,
@@ -128,6 +129,7 @@ export function buildEditLog({
     textEnabled: textOn,
     textContent: textOn ? String(textContent) : '',
     textFont: textFont || 'Arial',
+    textBold: textBold !== false,
     textColor: textColor || '#000000',
     textSize: asNumber(textSize, 24),
     textOffsetX: asNumber(textOffsetX, 50),
@@ -240,7 +242,7 @@ export function formatEditLogLines(log) {
     const shown = snippet.length > 60 ? `${snippet.slice(0, 57)}...` : snippet;
     lines.push({
       label: 'Text',
-      value: `"${shown}" · ${String(log.textDirection || '').toLowerCase() === 'vertical' ? 'vertical' : 'horizontal'} · ${log.textFont || 'Arial'} · ${log.textColor || '#000'} · ${asNumber(log.textSize, 24)}px · pos ${asNumber(log.textOffsetX, 50)}%, ${asNumber(log.textOffsetY, 50)}%`,
+      value: `"${shown}" · ${String(log.textDirection || '').toLowerCase() === 'vertical' ? 'vertical' : 'horizontal'} · ${log.textFont || 'Arial'} · ${log.textBold === false ? 'regular' : 'bold'} · ${log.textColor || '#000'} · ${asNumber(log.textSize, 24)}px · pos ${asNumber(log.textOffsetX, 50)}%, ${asNumber(log.textOffsetY, 50)}%`,
     });
     if (log.textMaskEnabled) {
       lines.push({
@@ -281,6 +283,7 @@ export function editLogFromToolSettings(ts) {
     textEnabled: ts.textEnabled,
     textContent: ts.textContent,
     textFont: ts.textFont,
+    textBold: ts.textBold,
     textColor: ts.textColor,
     textSize: ts.textSize,
     textOffsetX: ts.textOffsetX,

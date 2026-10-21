@@ -1943,6 +1943,7 @@ const EDITOR_SLOT_DEFAULTS = {
   textEnabled: false,
   textContent: '',
   textFont: 'Arial',
+  textBold: true,
   textColor: '#000000',
   textSize: 24,
   textOffsetX: 50,
@@ -1968,6 +1969,7 @@ function normalizeTextDirection(value) {
 function drawOverlayText(ctx, {
   text,
   fontFamily,
+  bold = true,
   color,
   fontSize,
   centerX,
@@ -1975,7 +1977,7 @@ function drawOverlayText(ctx, {
   direction,
 }) {
   ctx.save();
-  ctx.font = `${fontSize}px "${fontFamily}", Arial, sans-serif`;
+  ctx.font = `${bold ? 'bold ' : ''}${fontSize}px "${fontFamily}", Arial, sans-serif`;
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -2041,6 +2043,7 @@ function ToolsLiveText({
   enabled,
   content,
   font,
+  bold = true,
   color,
   size,
   offsetX = 50,
@@ -2073,6 +2076,7 @@ function ToolsLiveText({
       drawTextMask(ctx, {
         text,
         fontFamily: font || 'Arial',
+        fontBold: bold,
         textColor: color || '#000000',
         fontSize: requestedFontSize * pixelRatio,
         minFontSize: Math.max(4 * pixelRatio, requestedFontSize * pixelRatio * 0.36),
@@ -2081,11 +2085,13 @@ function ToolsLiveText({
         maskEnabled: true,
         maskOpacity,
         maskColor,
+        offsetX,
+        offsetY,
       });
     };
     renderMask();
     if (document.fonts?.load) {
-      const fontWeight = String(font || '').toLowerCase() === 'im fell english' ? '' : 'bold ';
+      const fontWeight = bold ? 'bold ' : '';
       document.fonts.load(`${fontWeight}16px "${font || 'Arial'}"`).then(renderMask).catch(() => {});
     }
     return () => {
@@ -2094,6 +2100,7 @@ function ToolsLiveText({
   }, [
     boxHeight,
     boxWidth,
+    bold,
     color,
     enabled,
     font,
@@ -2104,6 +2111,8 @@ function ToolsLiveText({
     normalizedArea.width,
     normalizedArea.x,
     normalizedArea.y,
+    offsetX,
+    offsetY,
     requestedFontSize,
     text,
     vertical,
@@ -2136,13 +2145,13 @@ function ToolsLiveText({
       className={`tools-live-text${vertical ? ' is-vertical' : ''}`}
       style={{
         position: 'absolute',
-        left: `${Number(offsetX) || 50}%`,
-        top: `${Number(offsetY) || 50}%`,
+        left: `${Number.isFinite(Number(offsetX)) ? Number(offsetX) : 50}%`,
+        top: `${Number.isFinite(Number(offsetY)) ? Number(offsetY) : 50}%`,
         transform: 'translate(-50%, -50%)',
         color: color || '#000000',
         fontFamily: `"${font || 'Arial'}", Arial, sans-serif`,
         fontSize: `${fontSize}px`,
-        fontWeight: 'bold',
+        fontWeight: bold ? 700 : 400,
         lineHeight: 1.2,
         textAlign: 'center',
         whiteSpace: vertical ? 'normal' : 'pre-wrap',
@@ -2291,6 +2300,7 @@ function migrateBibleVerseCartItems(cartItems) {
         imageOpacity: 100,
         textContent: formatProverbDesignText(preset) || item.toolSettings?.textContent || '',
         textFont: 'IM FELL English',
+        textBold: true,
         textSize: 28,
         textOffsetX: placement.offsetX,
         textOffsetY: placement.offsetY,
@@ -2509,6 +2519,7 @@ const ProductPreviewWithDrag = ({
   textEnabled,
   textContent = '',
   textFont = 'Arial',
+  textBold = true,
   textColor = '#000000',
   textSize = 24,
   textOffsetX = 50,
@@ -3547,6 +3558,7 @@ const ProductPreviewWithDrag = ({
                   enabled={textEnabled}
                   content={textContent}
                   font={textFont}
+                  bold={textBold}
                   color={textColor}
                   size={textSize}
                   offsetX={textOffsetX}
@@ -3601,6 +3613,7 @@ function ScreenshotPreviewPane({
   textEnabled = false,
   textContent = '',
   textFont = 'Arial',
+  textBold = true,
   textColor = '#000000',
   textSize = 24,
   textOffsetX = 50,
@@ -3788,6 +3801,7 @@ function ScreenshotPreviewPane({
           enabled={textEnabled}
           content={textContent}
           font={textFont}
+          bold={textBold}
           color={textColor}
           size={textSize}
           offsetX={textOffsetX}
@@ -4122,6 +4136,7 @@ const ToolsPage = () => {
     return initialEditorSlot.textContent || '';
   });
   const [textFont, setTextFont] = useState(() => initialEditorSlot.textFont || 'Arial');
+  const [textBold, setTextBold] = useState(() => initialEditorSlot.textBold !== false);
   const [textColor, setTextColor] = useState(() => initialEditorSlot.textColor || '#000000');
   const [textSize, setTextSize] = useState(() => initialEditorSlot.textSize ?? 24);
   const [textOffsetX, setTextOffsetX] = useState(() => initialEditorSlot.textOffsetX ?? 50);
@@ -4312,34 +4327,6 @@ const ToolsPage = () => {
     };
   }, []);
 
-  useEffect(() => {
-    let startX = 0;
-    let startY = 0;
-    const onTouchStart = (e) => {
-      if (!e.touches?.[0]) return;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-    };
-    const onTouchMove = (e) => {
-      if (!e.touches?.[0]) return;
-      const el = e.target;
-      if (el?.closest?.('input[type="range"], select, .preview-image-wrapper, .preview-image-wrapper-compact')) {
-        return;
-      }
-      const dx = Math.abs(e.touches[0].clientX - startX);
-      const dy = Math.abs(e.touches[0].clientY - startY);
-      if (dx > dy && dx > 6) {
-        e.preventDefault();
-      }
-    };
-    document.addEventListener('touchstart', onTouchStart, { passive: true });
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    return () => {
-      document.removeEventListener('touchstart', onTouchStart);
-      document.removeEventListener('touchmove', onTouchMove);
-    };
-  }, []);
-
   // Ensure Google Fonts stylesheet is loaded and preload fringe fonts so canvas can use them
   useEffect(() => {
     let cancelled = false;
@@ -4473,6 +4460,7 @@ const ToolsPage = () => {
       textEnabled,
       textContent,
       textFont,
+      textBold,
       textColor,
       textSize,
       textOffsetX,
@@ -4519,6 +4507,7 @@ const ToolsPage = () => {
       textEnabled,
       textContent,
       textFont,
+      textBold,
       textColor,
       textSize,
       textOffsetX,
@@ -4587,6 +4576,7 @@ const ToolsPage = () => {
       setTextContent(formatProverbDesignText(savedPreset) || saved.textContent);
     }
     if (saved.textFont) setTextFont(saved.textFont);
+    setTextBold(saved.textBold !== false);
     if (saved.textColor) setTextColor(saved.textColor);
     if (typeof saved.textSize === 'number') setTextSize(saved.textSize);
     if (typeof saved.textOffsetX === 'number') setTextOffsetX(saved.textOffsetX);
@@ -4645,6 +4635,7 @@ const ToolsPage = () => {
       textEnabled: slot.textEnabled,
       textContent: slot.textContent,
       textFont: slot.textFont,
+      textBold: slot.textBold !== false,
       textColor: slot.textColor,
       textSize: slot.textSize,
       textOffsetX: slot.textOffsetX,
@@ -4817,7 +4808,7 @@ const ToolsPage = () => {
       selectedCartProductIndex,
     });
     syncLiveEditorToCartItem(idx);
-  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, printPlacement, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textPlacement, textSafeArea, selectedProverbId, selectedProverbTemplateId, searchParams]);
+  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, printPlacement, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, textFont, textBold, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textPlacement, textSafeArea, selectedProverbId, selectedProverbTemplateId, searchParams]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -6224,7 +6215,7 @@ const ToolsPage = () => {
         if (typeof document !== 'undefined' && document.fonts) {
           try {
             await document.fonts.ready;
-            const loadPromise = document.fonts.load(`16px "${textFont}"`);
+            const loadPromise = document.fonts.load(`${textBold ? 'bold ' : ''}16px "${textFont}"`);
             await Promise.race([loadPromise, new Promise((r) => setTimeout(r, 3000))]);
           } catch (_) {
             // Fallback font will be used
@@ -6237,6 +6228,7 @@ const ToolsPage = () => {
           drawTextMask(ctx, {
             text: textContent,
             fontFamily: textFont,
+            fontBold: textBold,
             textColor,
             fontSize,
             minFontSize: Math.max(12, Math.round(fontSize * 0.36)),
@@ -6244,11 +6236,14 @@ const ToolsPage = () => {
             maskEnabled: true,
             maskColor: textMaskColor,
             maskOpacity: textMaskOpacity,
+            offsetX: textOffsetX,
+            offsetY: textOffsetY,
           });
         } else {
           drawOverlayText(ctx, {
             text: textContent,
             fontFamily: textFont,
+            bold: textBold,
             color: textColor,
             fontSize,
             centerX: (canvas.width * textOffsetX) / 100,
@@ -6286,7 +6281,7 @@ const ToolsPage = () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textSafeArea, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height, bibleVerseMerch, selectedProverbTemplateId]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textBold, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textSafeArea, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height, bibleVerseMerch, selectedProverbTemplateId]);
 
   const mugPreviewProduct = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
   const mugPreviewName = mugPreviewProduct?.name || selectedProductName || '';
@@ -6903,22 +6898,89 @@ const ToolsPage = () => {
     };
 
     setDownloadingProductPreview(true);
+    let restorePreview = () => {};
     try {
       if (document.fonts?.ready) await document.fonts.ready;
+      let bakedPreview = editedImageUrlRef.current || editedImageUrl || '';
+      if (!bakedPreview && textEnabled && String(textContent || '').trim()) {
+        const deadline = Date.now() + 2500;
+        while (Date.now() < deadline && !editedImageUrlRef.current) {
+          await new Promise((resolve) => window.setTimeout(resolve, 80));
+        }
+        bakedPreview = editedImageUrlRef.current || '';
+      }
+
+      const liveOverlay = preview.querySelector('.product-preview-overlay');
+      if (liveOverlay && bakedPreview) {
+        let overlayHost = liveOverlay.parentElement;
+        while (overlayHost?.parentElement && overlayHost.parentElement !== preview) {
+          overlayHost = overlayHost.parentElement;
+        }
+        if (overlayHost?.parentElement === preview) {
+          const previewRect = preview.getBoundingClientRect();
+          const hostRect = overlayHost.getBoundingClientRect();
+          const originalHostStyle = overlayHost.getAttribute('style');
+          const children = Array.from(overlayHost.children);
+          const previousVisibility = children.map((child) => child.style.visibility);
+          const flattenedArtwork = new Image();
+          flattenedArtwork.alt = '';
+          flattenedArtwork.setAttribute('aria-hidden', 'true');
+          flattenedArtwork.style.cssText = [
+            'position:absolute',
+            'inset:0',
+            'width:100%',
+            'height:100%',
+            'max-width:none',
+            'max-height:none',
+            'object-fit:fill',
+            'display:block',
+            'pointer-events:none',
+            'z-index:99',
+          ].join(';');
+          flattenedArtwork.src = bakedPreview;
+          await new Promise((resolve, reject) => {
+            flattenedArtwork.onload = resolve;
+            flattenedArtwork.onerror = reject;
+          });
+
+          overlayHost.style.position = 'absolute';
+          overlayHost.style.left = `${hostRect.left - previewRect.left}px`;
+          overlayHost.style.top = `${hostRect.top - previewRect.top}px`;
+          overlayHost.style.width = `${hostRect.width}px`;
+          overlayHost.style.height = `${hostRect.height}px`;
+          overlayHost.style.transform = 'none';
+          children.forEach((child) => {
+            child.style.visibility = 'hidden';
+          });
+          overlayHost.appendChild(flattenedArtwork);
+          restorePreview = () => {
+            flattenedArtwork.remove();
+            children.forEach((child, index) => {
+              child.style.visibility = previousVisibility[index];
+            });
+            if (originalHostStyle == null) overlayHost.removeAttribute('style');
+            else overlayHost.setAttribute('style', originalHostStyle);
+          };
+        }
+      }
+
       const canvas = await html2canvas(preview, {
         backgroundColor: null,
         useCORS: true,
         allowTaint: false,
         logging: false,
         imageTimeout: 15000,
-        scale: Math.max(2, Math.min(3, window.devicePixelRatio || 1)),
+        scale: Math.max(3, Math.min(4, window.devicePixelRatio || 1)),
       });
+      restorePreview();
+      restorePreview = () => {};
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       doDownload(blob);
     } catch (error) {
       console.error('Product preview download failed:', error);
       alert('Download failed. Please wait for the product preview to finish loading and try again.');
     } finally {
+      restorePreview();
       setDownloadingProductPreview(false);
     }
   };
@@ -7020,6 +7082,7 @@ const ToolsPage = () => {
         text_enabled: Boolean(textEnabled && String(textContent || '').trim()),
         text_content: textContent,
         text_font: textFont,
+        text_bold: textBold,
         text_color: textColor,
         text_size: textSize,
         text_offset_x: textOffsetX,
@@ -7166,6 +7229,7 @@ const ToolsPage = () => {
         textEnabled,
         textContent,
         textFont,
+        textBold,
         textColor,
         textSize,
         textOffsetX,
@@ -7222,6 +7286,7 @@ const ToolsPage = () => {
         textEnabled,
         textContent,
         textFont,
+        textBold,
         textColor,
         textSize,
         textOffsetX,
@@ -7461,6 +7526,7 @@ const ToolsPage = () => {
     setTextEnabled(true);
     setTextDirection('horizontal');
     setTextFont('IM FELL English');
+    setTextBold(true);
     setTextContent(formatProverbDesignText(preset));
     setTextMaskEnabled(true);
     setImageOpacity(100);
@@ -7473,6 +7539,7 @@ const ToolsPage = () => {
     const placement = template?.recommendedTextPosition || 'center';
     applyTextPlacement(placement, template?.recommendedTextSafeArea);
     setTextFont('IM FELL English');
+    setTextBold(true);
     setTextSize(28);
     setTextColor(template?.recommendedTextColor || '#30291f');
     setTextMaskEnabled(true);
@@ -7913,6 +7980,7 @@ const ToolsPage = () => {
                                   textEnabled={textEnabled}
                                   textContent={textContent}
                                   textFont={textFont}
+                                  textBold={textBold}
                                   textColor={textColor}
                                   textSize={textSize}
                                   textOffsetX={textOffsetX}
@@ -8179,6 +8247,7 @@ const ToolsPage = () => {
                                   textEnabled={textEnabled}
                                   textContent={textContent}
                                   textFont={textFont}
+                                  textBold={textBold}
                                   textColor={textColor}
                                   textSize={textSize}
                                   textOffsetX={textOffsetX}
@@ -8221,6 +8290,7 @@ const ToolsPage = () => {
                               textEnabled={textEnabled}
                               textContent={textContent}
                               textFont={textFont}
+                              textBold={textBold}
                               textColor={textColor}
                               textSize={textSize}
                               textOffsetX={textOffsetX}
@@ -8320,6 +8390,7 @@ const ToolsPage = () => {
                             textEnabled={textEnabled}
                             textContent={textContent}
                             textFont={textFont}
+                            textBold={textBold}
                             textColor={textColor}
                             textSize={textSize}
                             textOffsetX={textOffsetX}
@@ -8773,7 +8844,7 @@ const ToolsPage = () => {
                   <div className="tool-control-group proverb-template-control">
                     <h3>Bible Verse Design</h3>
                     <p className="tool-description">
-                      Choose any KJV proverb and combine it with your selected image. Template slots become available automatically when their PNG files are added.
+                      Choose any KJV proverb and combine it with an available image.
                     </p>
                     <div className="form-group">
                       <label htmlFor="proverb-preset">Proverb:</label>
@@ -8789,29 +8860,20 @@ const ToolsPage = () => {
                       </select>
                     </div>
                     <div className="proverb-template-grid" aria-label="Christian image templates">
-                      {BIBLE_VERSE_TEMPLATES.map((template) => {
-                        const available = proverbTemplateAvailability[template.id] === true;
-                        return (
+                      {BIBLE_VERSE_TEMPLATES
+                        .filter((template) => proverbTemplateAvailability[template.id] === true)
+                        .map((template) => (
                           <button
                             key={template.id}
                             type="button"
                             className={`proverb-template-card${selectedProverbTemplateId === template.id ? ' is-selected' : ''}`}
-                            disabled={!available}
                             onClick={() => applyBibleTemplate(template)}
-                            title={available ? `Use ${template.title}` : `Add ${template.imageUrl} to enable this template`}
+                            title={`Use ${template.title}`}
                           >
-                            {available ? (
-                              <img src={template.imageUrl} alt="" />
-                            ) : (
-                              <span className="proverb-template-number">
-                                {template.id.slice(-2)}
-                              </span>
-                            )}
+                            <img src={template.imageUrl} alt="" />
                             <span>{template.title}</span>
-                            {!available && <small>PNG coming soon</small>}
                           </button>
-                        );
-                      })}
+                        ))}
                     </div>
                   </div>
                 )}
@@ -8935,6 +8997,16 @@ const ToolsPage = () => {
                           </optgroup>
                         </select>
                       </div>
+                      <div className="checkbox-control" style={{ marginTop: '0.5rem' }}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={textBold}
+                            onChange={(event) => setTextBold(event.target.checked)}
+                          />
+                          <span>Bold text</span>
+                        </label>
+                      </div>
                       <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
                         <label style={{ minWidth: '80px' }}>Color:</label>
                         <input
@@ -9021,34 +9093,30 @@ const ToolsPage = () => {
                         </div>
                         <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>Slider or type 12–200: 100+ = headline size</small>
                       </div>
-                      {!textMaskEnabled && (
-                        <>
-                          <div className="slider-control" style={{ marginTop: '0.5rem' }}>
-                            <label>Horizontal position:</label>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={textOffsetX}
-                              onChange={(e) => setTextOffsetX(parseInt(e.target.value, 10))}
-                              className="slider"
-                            />
-                            <span className="slider-value">{textOffsetX}%</span>
-                          </div>
-                          <div className="slider-control" style={{ marginTop: '0.5rem' }}>
-                            <label>Vertical position:</label>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={textOffsetY}
-                              onChange={(e) => setTextOffsetY(parseInt(e.target.value, 10))}
-                              className="slider"
-                            />
-                            <span className="slider-value">{textOffsetY}%</span>
-                          </div>
-                        </>
-                      )}
+                      <div className="slider-control" style={{ marginTop: '0.5rem' }}>
+                        <label>Horizontal position:</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={textOffsetX}
+                          onChange={(e) => setTextOffsetX(parseInt(e.target.value, 10))}
+                          className="slider"
+                        />
+                        <span className="slider-value">{textOffsetX}%</span>
+                      </div>
+                      <div className="slider-control" style={{ marginTop: '0.5rem' }}>
+                        <label>Vertical position:</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={textOffsetY}
+                          onChange={(e) => setTextOffsetY(parseInt(e.target.value, 10))}
+                          className="slider"
+                        />
+                        <span className="slider-value">{textOffsetY}%</span>
+                      </div>
                       <button
                         type="button"
                         className="tools-text-reset"
@@ -9169,6 +9237,7 @@ const ToolsPage = () => {
                             textEnabled={textEnabled}
                             textContent={textContent}
                             textFont={textFont}
+                            textBold={textBold}
                             textColor={textColor}
                             textSize={textSize}
                             textOffsetX={textOffsetX}

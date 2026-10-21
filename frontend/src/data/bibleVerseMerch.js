@@ -13,14 +13,26 @@ const TEMPLATE_TITLES = [
   ['rays-over-meadow', 'Rays Over the Meadow', 'center'],
   ['ancient-stone-path', 'Ancient Stone Path', 'top'],
   ['cedars-and-sky', 'Cedars and Sky', 'center'],
-  ['ocean-sunrise', 'Ocean Sunrise', 'top'],
+  ['ocean-sunrise', 'Golden Horizon Lighthouse', 'top'],
   ['mountain-lake', 'Mountain Lake', 'center'],
   ['desert-in-bloom', 'Desert in Bloom', 'top'],
   ['shepherd-country', 'Shepherd Country', 'top'],
-  ['dove-in-clouds', 'Dove in the Clouds', 'bottom'],
+  ['dove-in-clouds', 'Heavenly Dove', 'bottom'],
   ['mustard-tree', 'Mustard Tree', 'top'],
   ['vineyard-morning', 'Vineyard Morning', 'top'],
   ['cross-of-light', 'Cross of Light', 'bottom'],
+  ['blacksmith-forge', 'Blacksmith Forge', 'top', '#fff8e6', 'charcoal'],
+  ['radiant-mountain-reflection', 'Radiant Mountain Reflection', 'top', '#fff8e6', 'charcoal'],
+  ['rusty-anchor-golden-sunrise', 'Rusty Anchor at Golden Sunrise', 'top', '#fff8e6', 'charcoal'],
+  ['open-bible-mountain-lake', 'Open Bible Over a Golden Mountain Lake', 'top', '#fff8e6', 'charcoal'],
+  ['majestic-lion', 'Majestic Lion', 'top', '#fff8e6', 'charcoal'],
+  ['lion-golden-shadow', 'Majestic Lion in Golden Shadow', 'center', '#fff8e6', 'charcoal'],
+  ['golden-light-rustic-workshop', 'Golden Light in the Rustic Workshop', 'center', '#fff8e6', 'charcoal'],
+  ['rusty-anchor-stormy-sunbeams', 'Rusty Anchor Beneath Stormy Sunbeams', 'top', '#fff8e6', 'charcoal'],
+  ['sunrise-empty-tomb', 'Sunrise Beyond the Empty Tomb', 'top', '#fff8e6', 'charcoal'],
+  ['lion-lamb-golden-sunset', 'Lion and Lamb at Golden Sunset', 'top', '#fff8e6', 'charcoal'],
+  ['guiding-star-nativity', 'Guiding Star Over the Nativity', 'bottom', '#fff8e6', 'charcoal'],
+  ['jesus-healing-pool', 'Jesus Healing by the Pool', 'bottom', '#fff8e6', 'charcoal'],
 ];
 
 const SAFE_AREAS = {
@@ -30,21 +42,26 @@ const SAFE_AREAS = {
 };
 
 export const BIBLE_VERSE_TEMPLATES = TEMPLATE_TITLES.map(
-  ([slug, title, recommendedTextPosition], index) => ({
+  ([slug, title, recommendedTextPosition, textColorOverride, maskColorOverride], index) => ({
     id: `bvm-template-${String(index + 1).padStart(2, '0')}`,
     imageUrl: `/proverb-templates/${String(index + 1).padStart(2, '0')}-${slug}.png`,
     title,
     recommendedTextPosition,
     recommendedTextSafeArea: SAFE_AREAS[recommendedTextPosition],
-    recommendedTextColor: index === 0
-      ? '#6f42c1'
-      : (recommendedTextPosition === 'bottom' ? '#fff8e6' : '#30291f'),
-    recommendedMaskColor: recommendedTextPosition === 'bottom' ? 'charcoal' : 'cream',
+    recommendedTextColor: textColorOverride
+      || (recommendedTextPosition === 'bottom' ? '#fff8e6' : '#30291f'),
+    recommendedMaskColor: maskColorOverride
+      || (recommendedTextPosition === 'bottom' ? 'charcoal' : 'cream'),
     recommendedMaskOpacity: 0,
   })
 );
 
 export const KJV_PROVERB_PRESETS = [
+  {
+    id: 'isaiah-11-6',
+    reference: 'Isaiah 11:6',
+    text: 'The wolf also shall dwell with the lamb, and the leopard shall lie down with the kid; and the calf and the young lion and the fatling together; and a little child shall lead them.',
+  },
   {
     id: 'proverbs-3-5-6',
     reference: 'Proverbs 3:5–6',

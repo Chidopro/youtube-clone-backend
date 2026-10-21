@@ -74,6 +74,7 @@ export function wrapCanvasText(ctx, text, maxWidth) {
 export function drawTextMask(ctx, {
   text,
   fontFamily = 'Georgia',
+  fontBold,
   textColor = '#30291f',
   fontSize = 84,
   minFontSize = 18,
@@ -82,6 +83,8 @@ export function drawTextMask(ctx, {
   maskEnabled = false,
   maskColor = 'cream',
   maskOpacity = 0,
+  offsetX,
+  offsetY,
 }) {
   const value = String(text || '').trim();
   if (!value || !ctx?.canvas) return null;
@@ -101,7 +104,9 @@ export function drawTextMask(ctx, {
   const availableHeight = Math.max(1, area.height - paddingY * 2);
   let fittedSize = Math.max(minFontSize, Number(fontSize) || 84);
   let lines = [];
-  const fontWeight = String(fontFamily || '').toLowerCase() === 'im fell english' ? '' : 'bold ';
+  const fontWeight = typeof fontBold === 'boolean'
+    ? (fontBold ? 'bold ' : '')
+    : (String(fontFamily || '').toLowerCase() === 'im fell english' ? '' : 'bold ');
 
   ctx.save();
   while (fittedSize >= minFontSize) {
@@ -120,9 +125,17 @@ export function drawTextMask(ctx, {
     availableWidth,
     Math.max(...lines.map((line) => ctx.measureText(line).width), fittedSize)
   );
-  const centerX = area.x + area.width / 2;
-  const centerY = area.y + area.height / 2;
-  const textCenterY = centerY + Math.min(paddingY * 0.65, fittedSize * 0.9);
+  const hasOffsetX = Number.isFinite(Number(offsetX));
+  const hasOffsetY = Number.isFinite(Number(offsetY));
+  const centerX = hasOffsetX
+    ? canvasWidth * Math.max(0, Math.min(100, Number(offsetX))) / 100
+    : area.x + area.width / 2;
+  const centerY = hasOffsetY
+    ? canvasHeight * Math.max(0, Math.min(100, Number(offsetY))) / 100
+    : area.y + area.height / 2;
+  const textCenterY = hasOffsetY
+    ? centerY
+    : centerY + Math.min(paddingY * 0.65, fittedSize * 0.9);
 
   if (maskEnabled && clampTextMaskOpacity(maskOpacity) > 0) {
     const color = TEXT_MASK_COLORS[normalizeTextMaskColor(maskColor)].rgb.join(',');
