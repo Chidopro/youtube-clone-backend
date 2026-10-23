@@ -4,6 +4,7 @@ import {
   BIBLE_VERSE_TEMPLATES,
   formatProverbDesignText,
   KJV_PROVERB_PRESETS,
+  recommendedScriptureHighlight,
   textPositionDefaults,
 } from '../../data/bibleVerseMerch';
 import { markMerchIntentStarted, savePendingMerchData } from '../../utils/merchSession';
@@ -11,7 +12,9 @@ import './BibleVerseMerchLanding.css';
 
 const CUSTOM_ID = 'custom';
 const FEATURED_HOMEPAGE_TEMPLATE_ID = 'bvm-template-30';
-const FEATURED_HOMEPAGE_VERSE_ID = 'isaiah-11-6';
+const FEATURED_HOMEPAGE_VERSE_ID = 'revelation-5-12';
+const FEATURED_HOMEPAGE_TEXT_COLOR = '#ffffff';
+const FEATURED_HOMEPAGE_MASK_OPACITY = 0;
 
 export default function BibleVerseMerchLanding() {
   const navigate = useNavigate();
@@ -47,6 +50,7 @@ export default function BibleVerseMerchLanding() {
   const template = BIBLE_VERSE_TEMPLATES.find((item) => item.id === templateId)
     || BIBLE_VERSE_TEMPLATES[0];
   const showFeaturedHomepageText = template?.id === FEATURED_HOMEPAGE_TEMPLATE_ID;
+  const featuredHomepageDesign = showFeaturedHomepageText && proverbId === FEATURED_HOMEPAGE_VERSE_ID;
   const proverb = KJV_PROVERB_PRESETS.find((item) => item.id === proverbId);
   const selectedText = proverbId === CUSTOM_ID
     ? customText.trim()
@@ -68,24 +72,33 @@ export default function BibleVerseMerchLanding() {
       creatorName: 'Bible Verse Merch',
       screenshot_timestamp: '0:00',
       bibleVerseDesign: {
-        bibleVerseDesignVersion: 18,
+        bibleVerseDesignVersion: 19,
         imageOpacity: 100,
-        textEnabled: true,
-        textContent: designText,
+        textEnabled: !featuredHomepageDesign,
+        textContent: featuredHomepageDesign ? '' : designText,
+        scriptureStyle: 'classic',
+        scriptureReference: featuredHomepageDesign ? '' : (proverb?.reference || ''),
+        scriptureHighlight: featuredHomepageDesign ? '' : recommendedScriptureHighlight(proverb),
         textFont: 'IM FELL English',
         textBold: true,
-        textColor: template.recommendedTextColor,
-        textSize: 28,
+        textColor: featuredHomepageDesign
+          ? FEATURED_HOMEPAGE_TEXT_COLOR
+          : template.recommendedTextColor,
+        textSize: featuredHomepageDesign ? 70 : 38,
         textOffsetX: placement.offsetX,
         textOffsetY: placement.offsetY,
         textDirection: 'horizontal',
-        textMaskEnabled: true,
-        textMaskOpacity: template.recommendedMaskOpacity,
-        textMaskColor: template.recommendedMaskColor,
+        textMaskEnabled: !featuredHomepageDesign,
+        textMaskOpacity: featuredHomepageDesign
+          ? FEATURED_HOMEPAGE_MASK_OPACITY
+          : template.recommendedMaskOpacity,
+        textMaskColor: featuredHomepageDesign
+          ? 'cream'
+          : template.recommendedMaskColor,
         screenshotScale: 150,
         textPlacement: placement.position,
         textSafeArea: template.recommendedTextSafeArea,
-        selectedProverbId: proverbId === CUSTOM_ID ? '' : proverbId,
+        selectedProverbId: featuredHomepageDesign || proverbId === CUSTOM_ID ? '' : proverbId,
         selectedProverbTemplateId: template.id,
       },
     });
@@ -103,15 +116,34 @@ export default function BibleVerseMerchLanding() {
 
       <div className="bvm-builder">
         <section className="bvm-preview-panel" aria-label="Design preview">
-          <div className={`bvm-preview${template?.id === 'bvm-template-23' ? ' bvm-preview--full-image' : ''}`}>
+          <div className={`bvm-preview${template?.id === 'bvm-template-23' ? ' bvm-preview--full-image' : ''}${
+            featuredHomepageDesign ? ' bvm-preview--featured-zoom' : ''
+          }`}>
             {template ? <img src={template.imageUrl} alt={template.title} /> : null}
             {showFeaturedHomepageText ? (
-              <div className={`bvm-preview-copy bvm-preview-copy--${template?.recommendedTextPosition || 'center'}`}>
+              <div className={`bvm-preview-copy bvm-preview-copy--${template?.recommendedTextPosition || 'center'}${
+                featuredHomepageDesign ? ' bvm-preview-copy--featured' : ''
+              }`}>
                 <div
-                  className={`bvm-preview-mask bvm-preview-mask--${template?.recommendedMaskColor || 'cream'}`}
-                  style={{ color: '#6f42c1' }}
+                  className={`bvm-preview-mask bvm-preview-mask--${
+                    featuredHomepageDesign ? 'cream' : (template?.recommendedMaskColor || 'cream')
+                  }${featuredHomepageDesign ? ' bvm-preview-mask--featured' : ''}`}
+                  style={{ color: featuredHomepageDesign ? FEATURED_HOMEPAGE_TEXT_COLOR : template.recommendedTextColor }}
                 >
-                  <span>{displayText}</span>
+                  {featuredHomepageDesign ? (
+                    <>
+                      <span className="bvm-preview-scripture-body">Saying with a loud voice,</span>
+                      <span className="bvm-preview-scripture-highlight">
+                        Worthy is the<br />Lamb
+                      </span>
+                      <span className="bvm-preview-scripture-body">
+                        that was slain to receive power, and riches, and wisdom, and strength,
+                        and honour, and glory, and blessing.
+                      </span>
+                    </>
+                  ) : (
+                    <span>{displayText}</span>
+                  )}
                   {proverb?.reference ? <strong>{proverb.reference}</strong> : null}
                 </div>
               </div>

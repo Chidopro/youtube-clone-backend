@@ -41,10 +41,19 @@ const SAFE_AREAS = {
   bottom: { x: 10, y: 58, width: 80, height: 35 },
 };
 
+const FULL_FRAME_REPLACEMENTS = new Set([
+  'mountain-sunrise',
+  'peaceful-river',
+  'sunlit-forest-path',
+  'mountain-lake',
+]);
+
 export const BIBLE_VERSE_TEMPLATES = TEMPLATE_TITLES.map(
   ([slug, title, recommendedTextPosition, textColorOverride, maskColorOverride], index) => ({
     id: `bvm-template-${String(index + 1).padStart(2, '0')}`,
-    imageUrl: `/proverb-templates/${String(index + 1).padStart(2, '0')}-${slug}.png`,
+    imageUrl: `/proverb-templates/${String(index + 1).padStart(2, '0')}-${slug}.png${
+      FULL_FRAME_REPLACEMENTS.has(slug) ? '?v=2' : ''
+    }`,
     title,
     recommendedTextPosition,
     recommendedTextSafeArea: SAFE_AREAS[recommendedTextPosition],
@@ -58,9 +67,17 @@ export const BIBLE_VERSE_TEMPLATES = TEMPLATE_TITLES.map(
 
 export const KJV_PROVERB_PRESETS = [
   {
+    id: 'revelation-5-12',
+    reference: 'Revelation 5:12',
+    text: 'Saying with a loud voice, Worthy is the Lamb that was slain to receive power, and riches, and wisdom, and strength, and honour, and glory, and blessing.',
+    highlight: 'Worthy is the Lamb',
+    preserveCase: true,
+  },
+  {
     id: 'isaiah-11-6',
     reference: 'Isaiah 11:6',
     text: 'The wolf also shall dwell with the lamb, and the leopard shall lie down with the kid; and the calf and the young lion and the fatling together; and a little child shall lead them.',
+    highlight: 'The wolf also shall dwell with the lamb',
   },
   {
     id: 'proverbs-3-5-6',
@@ -166,12 +183,18 @@ export const KJV_PROVERB_PRESETS = [
 
 export function formatProverbDesignText(preset) {
   if (!preset) return '';
-  const verse = String(preset.text || '')
-    .replace(/\s*;\s*/g, ', ')
-    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
-    .trim();
-  const reference = String(preset.reference || '').trim();
-  return [verse, reference].filter(Boolean).join('\n');
+  const text = String(preset.text || '').replace(/\s*;\s*/g, ', ').trim();
+  return preset.preserveCase
+    ? text
+    : text.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
+export function recommendedScriptureHighlight(preset) {
+  const explicit = String(preset?.highlight || '').trim();
+  if (explicit) return explicit;
+  const verse = formatProverbDesignText(preset);
+  const firstClause = verse.split(/[,:;.!?]/)[0]?.trim() || verse;
+  return firstClause.split(/\s+/).slice(0, 10).join(' ');
 }
 
 export function isBibleVerseMerchStorefront(subdomain) {

@@ -358,6 +358,39 @@ class TestOverlayTextColorAndPosition(unittest.TestCase):
             center_y = int(image.height * (area['y'] + area['height'] / 2) / 100)
             self.assertNotEqual(image.getpixel((center_x, center_y)), (30, 80, 120))
 
+    def test_scripture_styles_keep_reference_and_selected_phrase_at_print_resolution(self):
+        import base64
+
+        src = np.zeros((360, 300, 3), dtype=np.uint8)
+        src[:] = (120, 80, 30)
+        ok, buf = cv2.imencode('.png', src)
+        self.assertTrue(ok)
+        data_url = 'data:image/png;base64,' + base64.b64encode(buf.tobytes()).decode('ascii')
+        verse = (
+            'The wolf also shall dwell with the lamb, and the leopard shall lie '
+            'down with the kid, and the calf and the young lion together.'
+        )
+        for style in ('classic', 'highlighted', 'minimal'):
+            result = process_thumbnail_for_print(
+                data_url,
+                print_dpi=72,
+                preserve_edits=True,
+                fit_mode='preserve',
+                add_white_background=False,
+                text_enabled=True,
+                text_content=verse,
+                scripture_style=style,
+                scripture_reference='Isaiah 11:6',
+                scripture_highlight='The wolf also shall dwell with the lamb',
+                text_font='Georgia',
+                text_color='#fff8e6',
+                text_size=42,
+                text_mask_enabled=False,
+                text_mask_opacity=90,
+                text_safe_area={'x': 5, 'y': 5, 'width': 90, 'height': 48},
+            )
+            self.assertTrue(result.get('success'), result.get('error'))
+
 
 class TestToolsFrameWidthScale(unittest.TestCase):
     def test_slider_px_scale_by_min_side(self):

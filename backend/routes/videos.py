@@ -669,6 +669,11 @@ def process_thumbnail_print_quality():
         image_opacity = max(0, min(100, image_opacity))
         text_enabled = data.get("text_enabled", False)
         text_content = (data.get("text_content") or "").strip()
+        scripture_style = str(data.get("scripture_style") or "classic").strip().lower()
+        if scripture_style not in ("highlighted", "minimal"):
+            scripture_style = "classic"
+        scripture_reference = str(data.get("scripture_reference") or "").strip()
+        scripture_highlight = str(data.get("scripture_highlight") or "").strip()
         text_font = data.get("text_font", "Arial")
         text_bold = str(data.get("text_bold", True)).strip().lower() not in ("false", "0", "no", "off")
         text_color = data.get("text_color", "#000000")
@@ -763,6 +768,9 @@ def process_thumbnail_print_quality():
             image_opacity=image_opacity,
             text_enabled=text_enabled and bool(text_content),
             text_content=text_content,
+            scripture_style=scripture_style,
+            scripture_reference=scripture_reference,
+            scripture_highlight=scripture_highlight,
             text_font=text_font,
             text_bold=text_bold,
             text_color=text_color,

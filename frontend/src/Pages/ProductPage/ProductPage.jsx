@@ -38,7 +38,6 @@ import {
 } from '../../utils/regionalAvailability';
 import { peekDisplaySrc, prepareDisplaySrc } from '../../utils/displaySrc';
 import InlineStillCrop from '../../Components/InlineStillCrop/InlineStillCrop';
-import { drawTextMask } from '../../utils/textMask';
 import './ProductPage.css';
 
 const BROWSE_EDIT_ORIGINAL = {
@@ -74,75 +73,6 @@ const BROWSE_EDIT_PRESETS = [
 ];
 
 const BROWSE_FEATHER_EDGE = BROWSE_EDIT_PRESETS.find((p) => p.id === 'feather')?.settings?.featherEdge || 38;
-
-function SelectedImageDesignOverlay({ design }) {
-  const canvasRef = useRef(null);
-  const text = String(design?.textContent || '').trim();
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !design?.textEnabled || !text) return undefined;
-    let cancelled = false;
-
-    const render = () => {
-      if (cancelled || !canvas.isConnected) return;
-      const width = canvas.clientWidth;
-      const height = canvas.clientHeight;
-      if (!(width > 0) || !(height > 0)) return;
-      const pixelRatio = Math.min(4, Math.max(3, (window.devicePixelRatio || 1) * 2));
-      canvas.width = Math.max(1, Math.round(width * pixelRatio));
-      canvas.height = Math.max(1, Math.round(height * pixelRatio));
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const requestedFontSize = Math.max(
-        8,
-        Math.min(120, (Number(design.textSize) || 24) / 100 * Math.min(width, height) * 0.22)
-      );
-      drawTextMask(ctx, {
-        text,
-        fontFamily: design.textFont || 'Arial',
-        fontBold: design.textBold !== false,
-        textColor: design.textColor || '#000000',
-        fontSize: requestedFontSize * pixelRatio,
-        minFontSize: Math.max(4 * pixelRatio, requestedFontSize * pixelRatio * 0.36),
-        lineHeight: 1.2,
-        safeArea: design.textSafeArea,
-        maskEnabled: Boolean(design.textMaskEnabled),
-        maskOpacity: design.textMaskOpacity,
-        maskColor: design.textMaskColor,
-        offsetX: design.textOffsetX,
-        offsetY: design.textOffsetY,
-      });
-    };
-
-    render();
-    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(render) : null;
-    observer?.observe(canvas);
-    if (document.fonts?.load) {
-      document.fonts.load(`${design.textBold !== false ? 'bold ' : ''}16px "${design.textFont || 'Arial'}"`).then(render).catch(() => {});
-    }
-    return () => {
-      cancelled = true;
-      observer?.disconnect();
-    };
-  }, [
-    design?.textColor,
-    design?.textEnabled,
-    design?.textFont,
-    design?.textBold,
-    design?.textMaskColor,
-    design?.textMaskEnabled,
-    design?.textMaskOpacity,
-    design?.textOffsetX,
-    design?.textOffsetY,
-    design?.textSafeArea,
-    design?.textSize,
-    text,
-  ]);
-
-  if (!design?.textEnabled || !text) return null;
-  return <canvas ref={canvasRef} className="selected-image-design-overlay" aria-hidden="true" />;
-}
 
 function isHatsCategory(cat) {
   return String(cat || '').toLowerCase().trim() === 'hats';
@@ -2280,7 +2210,6 @@ const ProductPage = ({ sidebar }) => {
                         decoding="async"
                         style={selectedImageStyle}
                       />
-                      <SelectedImageDesignOverlay design={pendingBibleDesign} />
                       {showAutoEditPresets ? (
                         <InlineStillCrop
                           sourceUrl={browseSourceUrl || thumbnailUrl}
@@ -2354,7 +2283,6 @@ const ProductPage = ({ sidebar }) => {
                             decoding="async"
                             style={selectedImageStyle}
                           />
-                          <SelectedImageDesignOverlay design={pendingBibleDesign} />
                           {showAutoEditPresets && index === 0 && !thumbnailUrl ? (
                             <InlineStillCrop
                               sourceUrl={browseSourceUrl || screenshot}

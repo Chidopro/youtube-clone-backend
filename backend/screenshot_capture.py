@@ -1110,31 +1110,45 @@ def _text_width(draw, text, font):
 def _wrap_print_text(draw, text, font, max_width):
     lines = []
     for paragraph in str(text or "").strip().splitlines():
-        words = paragraph.strip().split()
-        line = ""
-        for word in words:
-            pieces = [word]
-            if _text_width(draw, word, font) > max_width:
-                pieces = []
-                piece = ""
-                for character in word:
-                    candidate = piece + character
-                    if piece and _text_width(draw, candidate, font) > max_width:
-                        pieces.append(piece)
-                        piece = character
-                    else:
-                        piece = candidate
-                if piece:
-                    pieces.append(piece)
-            for piece in pieces:
-                candidate = f"{line} {piece}".strip()
-                if line and _text_width(draw, candidate, font) > max_width:
-                    lines.append(line)
-                    line = piece
+        words = []
+        for word in paragraph.strip().split():
+            if _text_width(draw, word, font) <= max_width:
+                words.append(word)
+                continue
+            piece = ""
+            for character in word:
+                candidate = piece + character
+                if piece and _text_width(draw, candidate, font) > max_width:
+                    words.append(piece)
+                    piece = character
                 else:
-                    line = candidate
-        if line:
-            lines.append(line)
+                    piece = candidate
+            if piece:
+                words.append(piece)
+        count = len(words)
+        if not count:
+            continue
+        costs = [float("inf")] * (count + 1)
+        next_break = [count] * count
+        costs[count] = 0.0
+        for start in range(count - 1, -1, -1):
+            line = ""
+            for end in range(start, count):
+                line = f"{line} {words[end]}".strip()
+                width = _text_width(draw, line, font)
+                if width > max_width and end > start:
+                    break
+                slack = max(0.0, max_width - width)
+                multiplier = 0.18 if end == count - 1 else 1.0
+                penalty = multiplier * slack * slack + costs[end + 1]
+                if penalty < costs[start]:
+                    costs[start] = penalty
+                    next_break[start] = end + 1
+        start = 0
+        while start < count:
+            end = max(start + 1, next_break[start])
+            lines.append(" ".join(words[start:end]))
+            start = end
     return lines
 
 
@@ -1150,6 +1164,9 @@ def _draw_print_text_mask(
     text_bold=True,
     text_offset_x=None,
     text_offset_y=None,
+    scripture_style="classic",
+    scripture_reference="",
+    scripture_highlight="",
 ):
     """Draw auto-wrapped text over a soft borderless rounded mask."""
     rgba = pil_image.convert("RGBA")
@@ -1159,35 +1176,100 @@ def _draw_print_text_mask(
     top = int(round(height * area["y"] / 100.0))
     area_width = max(1, int(round(width * area["width"] / 100.0)))
     area_height = max(1, int(round(height * area["height"] / 100.0)))
-    padding_x = max(4, int(round(area_width * 0.10)))
-    padding_y = max(4, int(round(area_height * 0.16)))
+    padding_x = max(4, int(round(area_width * 0.075)))
+    padding_y = max(4, int(round(area_height * 0.11)))
     available_width = max(1, area_width - padding_x * 2)
     available_height = max(1, area_height - padding_y * 2)
     initial_font_px = max(
         12,
         min(600, int((float(text_size or 24) / 100.0) * min(width, height) * 0.22)),
     )
-    min_font_px = max(12, int(initial_font_px * 0.36))
+    min_font_px = max(12, int(initial_font_px * 0.62))
     measure = ImageDraw.Draw(rgba)
     font_px = initial_font_px
-    line_height = 1.25
-    lines = []
-    font = _load_overlay_font(text_font, font_px)
+    line_height = 1.32
+    style = str(scripture_style or "").strip().lower()
+    if style not in ("highlighted", "minimal"):
+        style = "classic"
+    verse = str(text or "").strip()
+    reference = str(scripture_reference or "").strip()
+    phrase = str(scripture_highlight or "").strip()
+    sections = []
+    if style == "minimal":
+        sections = [(phrase or verse, 1.12, True, "highlight")]
+    elif style == "highlighted" and phrase:
+        index = verse.lower().find(phrase.lower())
+        if index >= 0:
+            selected = verse[index:index + len(phrase)]
+            after = verse[index + len(phrase):]
+            punctuation = re.match(r"^\s*([,;:.!?])", after)
+            if punctuation:
+                selected += punctuation.group(1)
+                after = after[punctuation.end():]
+            sections = [
+                (verse[:index].strip(), 0.72, False, "body"),
+                (selected, 1.04, True, "highlight"),
+                (after.strip(), 0.72, False, "body"),
+            ]
+            sections = [section for section in sections if section[0]]
+    if not sections:
+        sections = [(verse, 1.0, bool(text_bold), "body")]
+
+    def build_layout(base_size):
+        rows = []
+        height_used = 0.0
+        widest = 0
+        for section_index, (section_text, scale, section_bold, kind) in enumerate(sections):
+            section_size = max(int(round(min_font_px * 0.72)), int(round(base_size * scale)))
+            section_font = _load_overlay_font(text_font, section_size)
+            section_lines = _wrap_print_text(measure, section_text, section_font, available_width)
+            before = base_size * 0.24 if section_index > 0 else 0.0
+            for line_index, line in enumerate(section_lines):
+                row_before = before if line_index == 0 else 0.0
+                row_height = section_size * line_height
+                rows.append({
+                    "text": line,
+                    "size": section_size,
+                    "font": section_font,
+                    "bold": bool(section_bold),
+                    "height": row_height,
+                    "before": row_before,
+                    "kind": kind,
+                })
+                height_used += row_before + row_height
+                widest = max(widest, _text_width(measure, line, section_font))
+        if reference:
+            reference_size = max(int(round(min_font_px * 0.68)), int(round(base_size * 0.58)))
+            reference_font = _load_overlay_font(text_font, reference_size)
+            reference_text = f"{reference} · excerpt" if style == "minimal" else reference
+            reference_lines = _wrap_print_text(measure, reference_text, reference_font, available_width)
+            for line_index, line in enumerate(reference_lines):
+                before = base_size * 0.42 if line_index == 0 else 0.0
+                row_height = reference_size * 1.2
+                rows.append({
+                    "text": line,
+                    "size": reference_size,
+                    "font": reference_font,
+                    "bold": False,
+                    "height": row_height,
+                    "before": before,
+                    "kind": "reference",
+                })
+                height_used += before + row_height
+                widest = max(widest, _text_width(measure, line, reference_font))
+        return rows, height_used, widest
+
+    rows, total_height, measured_width = build_layout(font_px)
     while font_px >= min_font_px:
-        font = _load_overlay_font(text_font, font_px)
-        lines = _wrap_print_text(measure, text, font, available_width)
-        if lines and len(lines) * font_px * line_height <= available_height:
+        rows, total_height, measured_width = build_layout(font_px)
+        if rows and total_height <= available_height:
             break
         font_px -= max(1, int(math.ceil(font_px / 40.0)))
-    if not lines:
+    font_px = max(min_font_px, font_px)
+    rows, total_height, measured_width = build_layout(font_px)
+    if not rows:
         return pil_image
-
-    actual_line_height = font_px * line_height
-    total_height = len(lines) * actual_line_height
-    measured_width = min(
-        available_width,
-        max([_text_width(measure, line, font) for line in lines] + [font_px]),
-    )
+    measured_width = min(available_width, max(measured_width, font_px))
     has_offset_x = text_offset_x is not None
     has_offset_y = text_offset_y is not None
     center_x = (
@@ -1205,8 +1287,8 @@ def _draw_print_text_mask(
         if has_offset_y
         else center_y + min(padding_y * 0.65, font_px * 0.9)
     )
-    mask_width = max(2, min(width, int(round(measured_width + padding_x * 2.4))))
-    mask_height = max(2, min(height, int(round(total_height + padding_y * 1.2))))
+    mask_width = max(2, min(width, int(round(measured_width + padding_x * 2.2))))
+    mask_height = max(2, min(height, int(round(total_height + padding_y * 1.5))))
 
     overlay = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
     opacity = max(0, min(100, int(round(float(mask_opacity or 0))))) / 100.0
@@ -1232,16 +1314,19 @@ def _draw_print_text_mask(
 
     draw = ImageDraw.Draw(overlay)
     fill = _parse_overlay_hex_color(text_color, "RGBA")
-    first_y = text_center_y - ((len(lines) - 1) * actual_line_height) / 2.0
-    for index, line in enumerate(lines):
+    cursor_y = text_center_y - total_height / 2.0
+    for row in rows:
+        cursor_y += row["before"]
+        line_y = cursor_y + row["height"] / 2.0
         _draw_centered_text(
             draw,
-            (int(round(center_x)), int(round(first_y + index * actual_line_height))),
-            line,
-            font,
+            (int(round(center_x)), int(round(line_y))),
+            row["text"],
+            row["font"],
             fill,
-            text_bold,
+            row["bold"],
         )
+        cursor_y += row["height"]
     result = Image.alpha_composite(rgba, overlay)
     return result if pil_image.mode == "RGBA" else result.convert("RGB")
 
@@ -1451,7 +1536,7 @@ def _pet_bowl_print_strip(image, print_dpi=300):
     return _encode_print_jpeg(canvas, print_dpi, width, height)
 
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, inner_frame_color=None, image_opacity=100, text_enabled=False, text_content='', text_font='Arial', text_bold=True, text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0, pet_bowl_strip=False, pet_bandana_print=False, bandana_crop_image=None, text_mask_enabled=False, text_mask_opacity=85, text_mask_color='cream', text_safe_area=None, text_image_fade_enabled=False):
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, inner_frame_color=None, image_opacity=100, text_enabled=False, text_content='', text_font='Arial', text_bold=True, text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=True, print_area_width=None, print_area_height=None, image_orientation=None, fit_mode=None, preserve_edits=False, feather_fade_color='white', text_direction='horizontal', frame_source_width=0, frame_source_height=0, pet_bowl_strip=False, pet_bandana_print=False, bandana_crop_image=None, text_mask_enabled=False, text_mask_opacity=85, text_mask_color='cream', text_safe_area=None, text_image_fade_enabled=False, scripture_style='classic', scripture_reference='', scripture_highlight=''):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -1990,7 +2075,11 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                     width, height = pil_image.size
                     ox = _percent_0_100(text_offset_x, 50)
                     oy = _percent_0_100(text_offset_y, 50)
-                    if text_mask_enabled:
+                    if (
+                        text_mask_enabled
+                        or str(scripture_reference or "").strip()
+                        or str(scripture_style or "").strip().lower() in ("highlighted", "minimal")
+                    ):
                         pil_image = _draw_print_text_mask(
                             pil_image,
                             text_content,
@@ -1999,10 +2088,13 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                             text_size,
                             text_safe_area,
                             text_mask_color,
-                            text_mask_opacity,
+                            text_mask_opacity if text_mask_enabled else 0,
                             text_bold,
                             text_offset_x,
                             text_offset_y,
+                            scripture_style,
+                            scripture_reference,
+                            scripture_highlight,
                         )
                     else:
                         draw = ImageDraw.Draw(pil_image)

@@ -15,8 +15,8 @@ import { bakeArtworkForWrap, browsePresetHasPixelEdits, roundedRectFeatherFactor
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
 import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isGreetingCardProduct, isJigsawPuzzleProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petBandanaPrintFile, petBowlPrintStrip, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
-import { BIBLE_VERSE_TEMPLATES, formatProverbDesignText, KJV_PROVERB_PRESETS, isBibleVerseMerchStorefront, textPositionDefaults } from '../../data/bibleVerseMerch';
-import { clampTextMaskOpacity, drawTextMask, normalizeTextMaskColor, normalizeTextSafeArea, TEXT_MASK_COLORS } from '../../utils/textMask';
+import { BIBLE_VERSE_TEMPLATES, formatProverbDesignText, KJV_PROVERB_PRESETS, isBibleVerseMerchStorefront, recommendedScriptureHighlight, textPositionDefaults } from '../../data/bibleVerseMerch';
+import { clampTextMaskOpacity, drawTextMask, normalizeScriptureStyle, normalizeTextMaskColor, normalizeTextSafeArea, TEXT_MASK_COLORS } from '../../utils/textMask';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -85,6 +85,7 @@ const PORTRAIT_COVER_Y = 26;
 
 const ARTWORK_ZOOM_MIN = 50;
 const ARTWORK_ZOOM_MAX = 150;
+const CUSTOM_PROVERB_ID = 'custom';
 const QUICK_TEXT_COLORS = [
   { name: 'Black', value: '#111111' },
   { name: 'White', value: '#ffffff' },
@@ -1942,6 +1943,9 @@ const EDITOR_SLOT_DEFAULTS = {
   imageOpacity: IMAGE_OPACITY_DEFAULT,
   textEnabled: false,
   textContent: '',
+  scriptureStyle: 'classic',
+  scriptureReference: '',
+  scriptureHighlight: '',
   textFont: 'Arial',
   textBold: true,
   textColor: '#000000',
@@ -2003,45 +2007,25 @@ function drawOverlayText(ctx, {
   ctx.restore();
 }
 
-function artworkTextFadeStyle(enabled, offsetX = 50, offsetY = 50) {
-  if (!enabled) return {};
-  const mask = `radial-gradient(ellipse 44% 40% at ${offsetX}% ${offsetY}%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 72%, rgba(0,0,0,1) 100%)`;
-  return {
-    WebkitMaskImage: mask,
-    maskImage: mask,
-  };
-}
-
-function fadeCanvasArtworkUnderText(ctx, offsetX = 50, offsetY = 50) {
-  if (!ctx?.canvas) return;
-  const width = ctx.canvas.width;
-  const height = ctx.canvas.height;
-  const radiusX = Math.max(1, width * 0.44);
-  const radiusY = Math.max(1, height * 0.4);
-  ctx.save();
-  ctx.globalCompositeOperation = 'destination-out';
-  ctx.translate(width * offsetX / 100, height * offsetY / 100);
-  ctx.scale(radiusX, radiusY);
-  const fade = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-  fade.addColorStop(0, 'rgba(0,0,0,1)');
-  fade.addColorStop(0.72, 'rgba(0,0,0,1)');
-  fade.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = fade;
-  ctx.beginPath();
-  ctx.arc(0, 0, 1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
 function overlayTextFontPx(textSize, width, height) {
   const minDim = Math.min(Number(width) || 0, Number(height) || 0);
   if (!(minDim > 0)) return 12;
   return Math.max(8, Math.min(120, Math.round((Number(textSize) || 24) / 100 * minDim * 0.22)));
 }
 
+function recommendedScriptureSize(text) {
+  const length = String(text || '').trim().length;
+  if (length <= 80) return 42;
+  if (length <= 150) return 38;
+  return 35;
+}
+
 function ToolsLiveText({
   enabled,
   content,
+  scriptureStyle = 'classic',
+  scriptureReference = '',
+  scriptureHighlight = '',
   font,
   bold = true,
   color,
@@ -2055,16 +2039,26 @@ function ToolsLiveText({
   maskOpacity = 85,
   maskColor = 'cream',
   safeArea,
+  onFitChange,
 }) {
   const text = String(content || '').trim();
   const vertical = normalizeTextDirection(direction) === 'vertical';
   const normalizedArea = normalizeTextSafeArea(safeArea);
   const requestedFontSize = overlayTextFontPx(size, boxWidth, boxHeight);
   const maskCanvasRef = useRef(null);
+  const useCanvasTypography = !vertical && (
+    maskEnabled
+    || Boolean(String(scriptureReference || '').trim())
+    || normalizeScriptureStyle(scriptureStyle) !== 'classic'
+  );
 
   useEffect(() => {
+    if (!useCanvasTypography) {
+      onFitChange?.(true);
+      return undefined;
+    }
     const canvas = maskCanvasRef.current;
-    if (!canvas || !enabled || !text || !maskEnabled || vertical || !(boxWidth > 0) || !(boxHeight > 0)) return;
+    if (!canvas || !enabled || !text || !useCanvasTypography || !(boxWidth > 0) || !(boxHeight > 0)) return;
     let cancelled = false;
     const pixelRatio = Math.min(4, Math.max(3, (window.devicePixelRatio || 1) * 2));
     const renderMask = () => {
@@ -2073,21 +2067,25 @@ function ToolsLiveText({
       canvas.height = Math.max(1, Math.round(boxHeight * pixelRatio));
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawTextMask(ctx, {
+      const result = drawTextMask(ctx, {
         text,
+        reference: scriptureReference,
+        scriptureStyle,
+        highlight: scriptureHighlight,
         fontFamily: font || 'Arial',
         fontBold: bold,
         textColor: color || '#000000',
         fontSize: requestedFontSize * pixelRatio,
-        minFontSize: Math.max(4 * pixelRatio, requestedFontSize * pixelRatio * 0.36),
-        lineHeight: 1.2,
+        minFontSize: Math.max(4 * pixelRatio, requestedFontSize * pixelRatio * 0.62),
+        lineHeight: 1.32,
         safeArea: normalizedArea,
-        maskEnabled: true,
+        maskEnabled,
         maskOpacity,
         maskColor,
         offsetX,
         offsetY,
       });
+      onFitChange?.(result?.fits !== false);
     };
     renderMask();
     if (document.fonts?.load) {
@@ -2114,12 +2112,17 @@ function ToolsLiveText({
     offsetX,
     offsetY,
     requestedFontSize,
+    scriptureHighlight,
+    scriptureReference,
+    scriptureStyle,
     text,
     vertical,
+    onFitChange,
+    useCanvasTypography,
   ]);
 
   if (!enabled || !text || !(boxWidth > 0) || !(boxHeight > 0)) return null;
-  if (maskEnabled && !vertical) {
+  if (useCanvasTypography) {
     return (
       <canvas
         ref={maskCanvasRef}
@@ -2292,24 +2295,23 @@ function migrateBibleVerseCartItems(cartItems) {
     const templateUrl = new URL(template.imageUrl, window.location.origin).toString();
     const placement = textPositionDefaults(template.recommendedTextPosition);
     const preset = KJV_PROVERB_PRESETS.find((candidate) => candidate.id === item?.toolSettings?.selectedProverbId);
-    const needsDesignUpgrade = Number(item?.toolSettings?.bibleVerseDesignVersion || 0) < 18;
+    const needsDesignUpgrade = Number(item?.toolSettings?.bibleVerseDesignVersion || 0) < 19;
     const settings = {
       ...(item.toolSettings || {}),
       ...(needsDesignUpgrade ? {
-        bibleVerseDesignVersion: 18,
-        imageOpacity: 100,
+        bibleVerseDesignVersion: 19,
         textContent: formatProverbDesignText(preset) || item.toolSettings?.textContent || '',
+        scriptureStyle: 'classic',
+        scriptureReference: preset?.reference || '',
+        scriptureHighlight: recommendedScriptureHighlight(preset),
         textFont: 'IM FELL English',
         textBold: true,
-        textSize: 28,
+        textSize: 38,
         textOffsetX: placement.offsetX,
         textOffsetY: placement.offsetY,
         textPlacement: placement.position,
         textSafeArea: template.recommendedTextSafeArea,
-        textMaskEnabled: true,
-        textMaskOpacity: 0,
-        textMaskColor: template.recommendedMaskColor,
-        screenshotScale: ARTWORK_ZOOM_MAX,
+        textMaskColor: item.toolSettings?.textMaskColor || template.recommendedMaskColor,
       } : {}),
       screenshot: templateUrl,
       editedImageUrl: '',
@@ -2385,14 +2387,17 @@ function getInitialEditorSlot() {
       slot
       && isBibleVerseMerchStorefront(getSubdomain())
       && slot.selectedProverbTemplateId
-      && Number(slot.bibleVerseDesignVersion || 0) < 18
+      && Number(slot.bibleVerseDesignVersion || 0) < 19
     ) {
+      const preset = KJV_PROVERB_PRESETS.find((item) => item.id === slot.selectedProverbId);
       const upgraded = {
         ...slot,
-        bibleVerseDesignVersion: 18,
-        textMaskEnabled: true,
-        textMaskOpacity: 0,
-        screenshotScale: ARTWORK_ZOOM_MAX,
+        bibleVerseDesignVersion: 19,
+        scriptureStyle: 'classic',
+        scriptureReference: preset?.reference || '',
+        scriptureHighlight: recommendedScriptureHighlight(preset),
+        textContent: formatProverbDesignText(preset) || slot.textContent || '',
+        textSize: Math.max(38, Number(slot.textSize) || 0),
       };
       slots[index] = upgraded;
       writeEditorSlots(slots);
@@ -2518,6 +2523,10 @@ const ProductPreviewWithDrag = ({
   onOffsetChange,
   textEnabled,
   textContent = '',
+  scriptureStyle = 'classic',
+  scriptureReference = '',
+  scriptureHighlight = '',
+  onScriptureFitChange,
   textFont = 'Arial',
   textBold = true,
   textColor = '#000000',
@@ -3527,11 +3536,6 @@ const ProductPreviewWithDrag = ({
                         touchAction: 'pinch-zoom',
                         filter: blackAndWhiteStyle(blackAndWhite, bwIntensity),
                         opacity: imageOpacityCss(imageOpacity),
-                        ...artworkTextFadeStyle(
-                          forceTransparentArtwork && textEnabled && !textMaskEnabled,
-                          textOffsetX,
-                          textOffsetY
-                        ),
                       }}
                       onLoad={(event) => {
                         delete event.currentTarget.dataset.previewRetryCount;
@@ -3557,6 +3561,10 @@ const ProductPreviewWithDrag = ({
                 <ToolsLiveText
                   enabled={textEnabled}
                   content={textContent}
+                  scriptureStyle={scriptureStyle}
+                  scriptureReference={scriptureReference}
+                  scriptureHighlight={scriptureHighlight}
+                  onFitChange={onScriptureFitChange}
                   font={textFont}
                   bold={textBold}
                   color={textColor}
@@ -3612,6 +3620,10 @@ function ScreenshotPreviewPane({
   printBoxFillColor = '',
   textEnabled = false,
   textContent = '',
+  scriptureStyle = 'classic',
+  scriptureReference = '',
+  scriptureHighlight = '',
+  onScriptureFitChange,
   textFont = 'Arial',
   textBold = true,
   textColor = '#000000',
@@ -3800,6 +3812,10 @@ function ScreenshotPreviewPane({
         <ToolsLiveText
           enabled={textEnabled}
           content={textContent}
+          scriptureStyle={scriptureStyle}
+          scriptureReference={scriptureReference}
+          scriptureHighlight={scriptureHighlight}
+          onFitChange={onScriptureFitChange}
           font={textFont}
           bold={textBold}
           color={textColor}
@@ -4135,6 +4151,22 @@ const ToolsPage = () => {
     }
     return initialEditorSlot.textContent || '';
   });
+  const initialScripturePreset = KJV_PROVERB_PRESETS.find(
+    (item) => item.id === initialEditorSlot.selectedProverbId
+  );
+  const [scriptureStyle, setScriptureStyle] = useState(
+    () => normalizeScriptureStyle(initialEditorSlot.scriptureStyle)
+  );
+  const [scriptureReference, setScriptureReference] = useState(
+    () => initialEditorSlot.scriptureReference || initialScripturePreset?.reference || ''
+  );
+  const [scriptureHighlight, setScriptureHighlight] = useState(
+    () => initialEditorSlot.scriptureHighlight || recommendedScriptureHighlight(initialScripturePreset)
+  );
+  const [scriptureFits, setScriptureFits] = useState(true);
+  const handleScriptureFitChange = useCallback((fits) => {
+    setScriptureFits((current) => (current === Boolean(fits) ? current : Boolean(fits)));
+  }, []);
   const [textFont, setTextFont] = useState(() => initialEditorSlot.textFont || 'Arial');
   const [textBold, setTextBold] = useState(() => initialEditorSlot.textBold !== false);
   const [textColor, setTextColor] = useState(() => initialEditorSlot.textColor || '#000000');
@@ -4149,7 +4181,10 @@ const ToolsPage = () => {
     ['top', 'bottom'].includes(initialEditorSlot.textPlacement) ? initialEditorSlot.textPlacement : 'center'
   ));
   const [textSafeArea, setTextSafeArea] = useState(() => normalizeTextSafeArea(initialEditorSlot.textSafeArea));
-  const [selectedProverbId, setSelectedProverbId] = useState(() => initialEditorSlot.selectedProverbId || '');
+  const [selectedProverbId, setSelectedProverbId] = useState(() => (
+    initialEditorSlot.selectedProverbId
+    || (bibleVerseMerch ? (KJV_PROVERB_PRESETS[0]?.id || '') : '')
+  ));
   const [selectedProverbTemplateId, setSelectedProverbTemplateId] = useState(
     () => initialEditorSlot.selectedProverbTemplateId || ''
   );
@@ -4160,7 +4195,9 @@ const ToolsPage = () => {
     const preset = KJV_PROVERB_PRESETS.find((item) => item.id === selectedProverbId);
     const formatted = formatProverbDesignText(preset);
     if (formatted && formatted !== textContent) setTextContent(formatted);
-  }, [bibleVerseMerch, selectedProverbId, textContent]);
+    if (preset?.reference && preset.reference !== scriptureReference) setScriptureReference(preset.reference);
+    if (!scriptureHighlight) setScriptureHighlight(recommendedScriptureHighlight(preset));
+  }, [bibleVerseMerch, selectedProverbId, scriptureHighlight, scriptureReference, textContent]);
 
   const [printAreaFit, setPrintAreaFit] = useState(() => initialEditorSlot.printAreaFit || getInitialCartPrintFit().fit);
   const [imageOrientation, setImageOrientation] = useState(() => (
@@ -4459,6 +4496,9 @@ const ToolsPage = () => {
       featherFadeColor,
       textEnabled,
       textContent,
+      scriptureStyle,
+      scriptureReference,
+      scriptureHighlight,
       textFont,
       textBold,
       textColor,
@@ -4506,6 +4546,9 @@ const ToolsPage = () => {
       shirtFillColor: printBoxFillColor || '',
       textEnabled,
       textContent,
+      scriptureStyle,
+      scriptureReference,
+      scriptureHighlight,
       textFont,
       textBold,
       textColor,
@@ -4522,7 +4565,7 @@ const ToolsPage = () => {
       selectedProverbTemplateId,
       bibleVerseDesignVersion: (
         bibleVerseMerch && selectedProverbTemplateId
-          ? 18
+          ? 19
           : Number(prev.bibleVerseDesignVersion || 0)
       ),
       screenshotScale,
@@ -4575,6 +4618,9 @@ const ToolsPage = () => {
         : null;
       setTextContent(formatProverbDesignText(savedPreset) || saved.textContent);
     }
+    setScriptureStyle(normalizeScriptureStyle(saved.scriptureStyle));
+    setScriptureReference(saved.scriptureReference || '');
+    setScriptureHighlight(saved.scriptureHighlight || '');
     if (saved.textFont) setTextFont(saved.textFont);
     setTextBold(saved.textBold !== false);
     if (saved.textColor) setTextColor(saved.textColor);
@@ -4634,6 +4680,9 @@ const ToolsPage = () => {
       shirtFillColor: slot.shirtFillColor || '',
       textEnabled: slot.textEnabled,
       textContent: slot.textContent,
+      scriptureStyle: normalizeScriptureStyle(slot.scriptureStyle),
+      scriptureReference: slot.scriptureReference || '',
+      scriptureHighlight: slot.scriptureHighlight || '',
       textFont: slot.textFont,
       textBold: slot.textBold !== false,
       textColor: slot.textColor,
@@ -4808,7 +4857,7 @@ const ToolsPage = () => {
       selectedCartProductIndex,
     });
     syncLiveEditorToCartItem(idx);
-  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, printPlacement, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, textFont, textBold, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textPlacement, textSafeArea, selectedProverbId, selectedProverbTemplateId, searchParams]);
+  }, [selectedCartProductIndex, cartProducts, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, printPlacement, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, printBoxFillColor, textEnabled, textContent, scriptureStyle, scriptureReference, scriptureHighlight, textFont, textBold, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textPlacement, textSafeArea, selectedProverbId, selectedProverbTemplateId, searchParams]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -6174,15 +6223,6 @@ const ToolsPage = () => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.restore();
       }
-      if (
-        bibleVerseMerch
-        && selectedProverbTemplateId
-        && textEnabled
-        && !textMaskEnabled
-      ) {
-        fadeCanvasArtworkUnderText(ctx, textOffsetX, textOffsetY);
-      }
-
       // Paint the frame on the visible artwork (print box when zoomed in / 100%).
       if (frameEnabled) {
         let ringVis;
@@ -6224,16 +6264,23 @@ const ToolsPage = () => {
         if (cancelled) return;
         const minDim = Math.min(canvas.width, canvas.height);
         const fontSize = Math.max(12, Math.min(300, Math.round((textSize / 100) * minDim * 0.22)));
-        if (textMaskEnabled) {
+        if (
+          textMaskEnabled
+          || scriptureReference
+          || normalizeScriptureStyle(scriptureStyle) !== 'classic'
+        ) {
           drawTextMask(ctx, {
             text: textContent,
+            reference: scriptureReference,
+            scriptureStyle,
+            highlight: scriptureHighlight,
             fontFamily: textFont,
             fontBold: textBold,
             textColor,
             fontSize,
-            minFontSize: Math.max(12, Math.round(fontSize * 0.36)),
+            minFontSize: Math.max(12, Math.round(fontSize * 0.62)),
             safeArea: textSafeArea,
-            maskEnabled: true,
+            maskEnabled: textMaskEnabled,
             maskColor: textMaskColor,
             maskOpacity: textMaskOpacity,
             offsetX: textOffsetX,
@@ -6281,7 +6328,7 @@ const ToolsPage = () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, textEnabled, textContent, textFont, textBold, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textSafeArea, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height, bibleVerseMerch, selectedProverbTemplateId]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, textEnabled, textContent, scriptureStyle, scriptureReference, scriptureHighlight, textFont, textBold, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textSafeArea, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height, bibleVerseMerch, selectedProverbTemplateId]);
 
   const mugPreviewProduct = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
   const mugPreviewName = mugPreviewProduct?.name || selectedProductName || '';
@@ -7081,6 +7128,9 @@ const ToolsPage = () => {
         double_frame: false,
         text_enabled: Boolean(textEnabled && String(textContent || '').trim()),
         text_content: textContent,
+        scripture_style: normalizeScriptureStyle(scriptureStyle),
+        scripture_reference: scriptureReference,
+        scripture_highlight: scriptureHighlight,
         text_font: textFont,
         text_bold: textBold,
         text_color: textColor,
@@ -7092,9 +7142,7 @@ const ToolsPage = () => {
         text_mask_opacity: textMaskOpacity,
         text_mask_color: textMaskColor,
         text_safe_area: normalizeTextSafeArea(textSafeArea),
-        text_image_fade_enabled: Boolean(
-          bibleVerseMerch && selectedProverbTemplateId && textEnabled && !textMaskEnabled
-        ),
+        text_image_fade_enabled: false,
         add_white_background: (
           textMaskEnabled
           || (bibleVerseMerch && selectedProverbTemplateId && textEnabled)
@@ -7228,6 +7276,9 @@ const ToolsPage = () => {
         featherFadeColor,
         textEnabled,
         textContent,
+        scriptureStyle,
+        scriptureReference,
+        scriptureHighlight,
         textFont,
         textBold,
         textColor,
@@ -7242,7 +7293,7 @@ const ToolsPage = () => {
         textSafeArea,
         selectedProverbId,
         selectedProverbTemplateId,
-        ...(bibleVerseMerch && selectedProverbTemplateId ? { bibleVerseDesignVersion: 18 } : {}),
+        ...(bibleVerseMerch && selectedProverbTemplateId ? { bibleVerseDesignVersion: 19 } : {}),
         printAreaFit,
         imageOrientation,
         printPlacement,
@@ -7285,6 +7336,9 @@ const ToolsPage = () => {
         shirtFillColor: printBoxFillColor || '',
         textEnabled,
         textContent,
+        scriptureStyle,
+        scriptureReference,
+        scriptureHighlight,
         textFont,
         textBold,
         textColor,
@@ -7299,7 +7353,7 @@ const ToolsPage = () => {
         textSafeArea,
         selectedProverbId,
         selectedProverbTemplateId,
-        ...(bibleVerseMerch && selectedProverbTemplateId ? { bibleVerseDesignVersion: 18 } : {}),
+        ...(bibleVerseMerch && selectedProverbTemplateId ? { bibleVerseDesignVersion: 19 } : {}),
         printAreaFit,
         imageOrientation,
         printPlacement,
@@ -7521,32 +7575,47 @@ const ToolsPage = () => {
 
   const applyProverbPreset = (presetId) => {
     const preset = KJV_PROVERB_PRESETS.find((item) => item.id === presetId);
-    setSelectedProverbId(preset?.id || '');
-    if (!preset) return;
+    setSelectedProverbId(preset?.id || (presetId === CUSTOM_PROVERB_ID ? CUSTOM_PROVERB_ID : ''));
+    if (!preset) {
+      setScriptureReference('');
+      setScriptureHighlight('');
+      setScriptureStyle('classic');
+      return;
+    }
+    resetTextDesign(selectedProverbTemplateId);
     setTextEnabled(true);
     setTextDirection('horizontal');
     setTextFont('IM FELL English');
     setTextBold(true);
     setTextContent(formatProverbDesignText(preset));
-    setTextMaskEnabled(true);
-    setImageOpacity(100);
-    setTextMaskColor('cream');
-    resetTextDesign(selectedProverbTemplateId);
+    setScriptureStyle('classic');
+    setScriptureReference(preset.reference || '');
+    setScriptureHighlight(recommendedScriptureHighlight(preset));
+    setTextSize(recommendedScriptureSize(preset.text));
+  };
+
+  const applyScriptureStyle = (value) => {
+    const nextStyle = normalizeScriptureStyle(value);
+    if (
+      nextStyle !== 'classic'
+      && !scriptureHighlight
+      && selectedProverbId
+    ) {
+      const preset = KJV_PROVERB_PRESETS.find((item) => item.id === selectedProverbId);
+      setScriptureHighlight(recommendedScriptureHighlight(preset));
+    }
+    setScriptureStyle(nextStyle);
   };
 
   const resetTextDesign = (templateId = selectedProverbTemplateId) => {
     const template = BIBLE_VERSE_TEMPLATES.find((item) => item.id === templateId);
     const placement = template?.recommendedTextPosition || 'center';
     applyTextPlacement(placement, template?.recommendedTextSafeArea);
+    setScriptureStyle('classic');
     setTextFont('IM FELL English');
     setTextBold(true);
-    setTextSize(28);
+    setTextSize(recommendedScriptureSize(textContent));
     setTextColor(template?.recommendedTextColor || '#30291f');
-    setTextMaskEnabled(true);
-    setImageOpacity(100);
-    setTextMaskOpacity(template?.recommendedMaskOpacity ?? 0);
-    setTextMaskColor(normalizeTextMaskColor(template?.recommendedMaskColor));
-    setScreenshotScale(ARTWORK_ZOOM_MAX);
     setTextDirection('horizontal');
   };
 
@@ -7979,6 +8048,10 @@ const ToolsPage = () => {
                                   boxWidth={240}
                                   textEnabled={textEnabled}
                                   textContent={textContent}
+                                  scriptureStyle={scriptureStyle}
+                                  scriptureReference={scriptureReference}
+                                  scriptureHighlight={scriptureHighlight}
+                                  onScriptureFitChange={handleScriptureFitChange}
                                   textFont={textFont}
                                   textBold={textBold}
                                   textColor={textColor}
@@ -8246,6 +8319,10 @@ const ToolsPage = () => {
                                   boxWidth={240}
                                   textEnabled={textEnabled}
                                   textContent={textContent}
+                                  scriptureStyle={scriptureStyle}
+                                  scriptureReference={scriptureReference}
+                                  scriptureHighlight={scriptureHighlight}
+                                  onScriptureFitChange={handleScriptureFitChange}
                                   textFont={textFont}
                                   textBold={textBold}
                                   textColor={textColor}
@@ -8289,6 +8366,10 @@ const ToolsPage = () => {
                               }}
                               textEnabled={textEnabled}
                               textContent={textContent}
+                              scriptureStyle={scriptureStyle}
+                              scriptureReference={scriptureReference}
+                              scriptureHighlight={scriptureHighlight}
+                              onScriptureFitChange={handleScriptureFitChange}
                               textFont={textFont}
                               textBold={textBold}
                               textColor={textColor}
@@ -8389,6 +8470,10 @@ const ToolsPage = () => {
                             }}
                             textEnabled={textEnabled}
                             textContent={textContent}
+                            scriptureStyle={scriptureStyle}
+                            scriptureReference={scriptureReference}
+                            scriptureHighlight={scriptureHighlight}
+                            onScriptureFitChange={handleScriptureFitChange}
                             textFont={textFont}
                             textBold={textBold}
                             textColor={textColor}
@@ -8846,19 +8931,7 @@ const ToolsPage = () => {
                     <p className="tool-description">
                       Choose any KJV proverb and combine it with an available image.
                     </p>
-                    <div className="form-group">
-                      <label htmlFor="proverb-preset">Proverb:</label>
-                      <select
-                        id="proverb-preset"
-                        value={selectedProverbId}
-                        onChange={(event) => applyProverbPreset(event.target.value)}
-                      >
-                        <option value="">Custom text</option>
-                        {KJV_PROVERB_PRESETS.map((preset) => (
-                          <option key={preset.id} value={preset.id}>{preset.reference}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <h4 className="proverb-template-section-label">Images:</h4>
                     <div className="proverb-template-grid" aria-label="Christian image templates">
                       {BIBLE_VERSE_TEMPLATES
                         .filter((template) => proverbTemplateAvailability[template.id] === true)
@@ -8875,21 +8948,55 @@ const ToolsPage = () => {
                           </button>
                         ))}
                     </div>
+                    <div className="form-group proverb-template-verse-select">
+                      <label className="proverb-template-verse-heading" htmlFor="proverb-preset">Bible Verse</label>
+                      <select
+                        id="proverb-preset"
+                        value={selectedProverbId}
+                        onChange={(event) => applyProverbPreset(event.target.value)}
+                      >
+                        {KJV_PROVERB_PRESETS.map((preset) => (
+                          <option key={preset.id} value={preset.id}>{preset.reference}</option>
+                        ))}
+                        <option value={CUSTOM_PROVERB_ID}>Custom text</option>
+                      </select>
+                    </div>
                   </div>
                 )}
 
                 <div className="tool-control-group">
                   <h3>Text Design</h3>
                   <p className="tool-description">Place custom multiline text over any selected image</p>
-                  <div className="checkbox-control">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={textEnabled}
-                        onChange={(e) => setTextEnabled(e.target.checked)}
-                      />
-                      Add Text
-                    </label>
+                  <div className="tools-add-text-placement-row">
+                    <div className="checkbox-control">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={textEnabled}
+                          onChange={(e) => setTextEnabled(e.target.checked)}
+                        />
+                        Add Text
+                      </label>
+                    </div>
+                    {textEnabled && (
+                      <div className="tools-add-text-placement">
+                        <h4>Placement:</h4>
+                        <div className="tools-text-direction">
+                          {['top', 'center', 'bottom'].map((position) => (
+                            <label key={position}>
+                              <input
+                                type="radio"
+                                name="textPlacement"
+                                value={position}
+                                checked={textPlacement === position}
+                                onChange={() => applyTextPlacement(position)}
+                              />
+                              <span>{position.charAt(0).toUpperCase() + position.slice(1)}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {textEnabled && (
                     <>
@@ -8926,52 +9033,57 @@ const ToolsPage = () => {
                         <textarea
                           value={textContent}
                           onChange={(e) => {
-                            setSelectedProverbId('');
+                            setSelectedProverbId(CUSTOM_PROVERB_ID);
+                            setScriptureReference('');
+                            setScriptureHighlight('');
                             setTextContent(e.target.value);
+                          }}
+                          onSelect={(event) => {
+                            const input = event.currentTarget;
+                            const selection = input.value.slice(input.selectionStart, input.selectionEnd).trim();
+                            if (selection) setScriptureHighlight(selection);
                           }}
                           placeholder="Enter text to overlay"
                           rows={4}
                           style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
                         />
                       </div>
-                      <div className="tools-text-placement-color-row">
-                        <div className="select-control tools-text-placement-control">
-                          <h4 style={{ margin: '0 0 0.45rem', fontWeight: 'bold' }}>Placement:</h4>
-                          <div className="tools-text-direction">
-                            {['top', 'center', 'bottom'].map((position) => (
-                              <label key={position}>
-                                <input
-                                  type="radio"
-                                  name="textPlacement"
-                                  value={position}
-                                  checked={textPlacement === position}
-                                  onChange={() => applyTextPlacement(position)}
-                                />
-                                <span>{position.charAt(0).toUpperCase() + position.slice(1)}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="tools-quick-text-colors" role="group" aria-label="Quick text colors">
-                          <span className="tools-quick-text-colors-label">Quick colors:</span>
-                          <div className="tools-quick-text-colors-grid">
-                            {QUICK_TEXT_COLORS.map((color) => (
+                      {bibleVerseMerch && (
+                        <div className="select-control" style={{ marginTop: '0.75rem' }}>
+                          <span className="scripture-style-label">
+                            Scripture Style:
+                          </span>
+                          <div className="scripture-style-buttons" role="group" aria-label="Scripture Style">
+                            {[
+                              ['classic', 'Classic'],
+                              ['highlighted', 'Highlighted'],
+                              ['minimal', 'Minimal'],
+                            ].map(([value, label]) => (
                               <button
-                                key={color.value}
+                                key={value}
                                 type="button"
-                                className={`tools-quick-text-color${textColor.toLowerCase() === color.value ? ' is-selected' : ''}`}
-                                style={{ '--quick-text-color': color.value }}
-                                aria-label={`${color.name} text`}
-                                aria-pressed={textColor.toLowerCase() === color.value}
-                                title={color.name}
-                                onClick={() => setTextColor(color.value)}
-                              />
+                                className={`scripture-style-button${scriptureStyle === value ? ' is-selected' : ''}`}
+                                aria-pressed={scriptureStyle === value}
+                                onClick={() => applyScriptureStyle(value)}
+                              >
+                                {label}
+                              </button>
                             ))}
                           </div>
+                          {scriptureStyle !== 'classic' && (
+                            <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+                              Select words in the Text box to choose the emphasized phrase.
+                            </small>
+                          )}
+                          {!scriptureFits && (
+                            <small className="scripture-fit-warning" role="status">
+                              This passage needs more room. Increase the text area, reduce the size, or choose Highlighted or Minimal.
+                            </small>
+                          )}
                         </div>
-                      </div>
-                      <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-                        <label style={{ minWidth: '80px' }}>Font:</label>
+                      )}
+                      <div className="color-control tools-font-control">
+                        <label>Font:</label>
                         <select
                           value={textFont}
                           onChange={(e) => setTextFont(e.target.value)}
@@ -8997,26 +9109,47 @@ const ToolsPage = () => {
                           </optgroup>
                         </select>
                       </div>
-                      <div className="checkbox-control" style={{ marginTop: '0.5rem' }}>
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={textBold}
-                            onChange={(event) => setTextBold(event.target.checked)}
-                          />
-                          <span>Bold text</span>
-                        </label>
-                      </div>
-                      <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-                        <label style={{ minWidth: '80px' }}>Color:</label>
-                        <input
-                          type="color"
-                          value={textColor}
-                          onInput={(e) => setTextColor(e.currentTarget.value)}
-                          onChange={(e) => setTextColor(e.target.value)}
-                          className="color-picker"
-                        />
-                        <span className="color-value" style={{ wordBreak: 'break-all' }}>{textColor}</span>
+                      <div className="tools-text-bold-color-row">
+                        <div className="tools-text-bold-color-controls">
+                          <div className="checkbox-control">
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={textBold}
+                                onChange={(event) => setTextBold(event.target.checked)}
+                              />
+                              <span>Bold text</span>
+                            </label>
+                          </div>
+                          <div className="color-control tools-text-color-control">
+                            <label>Color:</label>
+                            <input
+                              type="color"
+                              value={textColor}
+                              onInput={(e) => setTextColor(e.currentTarget.value)}
+                              onChange={(e) => setTextColor(e.target.value)}
+                              className="color-picker"
+                            />
+                            <span className="color-value" style={{ wordBreak: 'break-all' }}>{textColor}</span>
+                          </div>
+                        </div>
+                        <div className="tools-quick-text-colors" role="group" aria-label="Quick text colors">
+                          <span className="tools-quick-text-colors-label">Quick colors:</span>
+                          <div className="tools-quick-text-colors-grid">
+                            {QUICK_TEXT_COLORS.map((color) => (
+                              <button
+                                key={color.value}
+                                type="button"
+                                className={`tools-quick-text-color${textColor.toLowerCase() === color.value ? ' is-selected' : ''}`}
+                                style={{ '--quick-text-color': color.value }}
+                                aria-label={`${color.name} text`}
+                                aria-pressed={textColor.toLowerCase() === color.value}
+                                title={color.name}
+                                onClick={() => setTextColor(color.value)}
+                              />
+                            ))}
+                          </div>
+                        </div>
                       </div>
                       <div className="checkbox-control" style={{ marginTop: '0.75rem' }}>
                         <label>
@@ -9025,7 +9158,10 @@ const ToolsPage = () => {
                             checked={textMaskEnabled}
                             onChange={(event) => {
                               setTextMaskEnabled(event.target.checked);
-                              if (event.target.checked) applyTextPlacement(textPlacement);
+                              if (event.target.checked) {
+                                setTextMaskOpacity(30);
+                                applyTextPlacement(textPlacement);
+                              }
                             }}
                           />
                           Feathered text background
@@ -9236,6 +9372,10 @@ const ToolsPage = () => {
                             printBoxFillColor={printBoxFillColor}
                             textEnabled={textEnabled}
                             textContent={textContent}
+                            scriptureStyle={scriptureStyle}
+                            scriptureReference={scriptureReference}
+                            scriptureHighlight={scriptureHighlight}
+                            onScriptureFitChange={handleScriptureFitChange}
                             textFont={textFont}
                             textBold={textBold}
                             textColor={textColor}

@@ -1103,6 +1103,14 @@ body.tools-page-active .site-footer {
   text-align: right;
 }
 
+.scripture-fit-warning {
+  display: block;
+  margin-top: 7px;
+  color: #9a3412;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .bw-intensity-control {
   margin-top: 0.75rem;
 }
@@ -1149,6 +1157,42 @@ body.tools-page-active .site-footer {
   color: #333;
 }
 
+.tools-add-text-placement-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 0.5rem;
+}
+
+.tools-add-text-placement-row .checkbox-control {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.tools-add-text-placement {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tools-add-text-placement h4 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.tools-add-text-placement .tools-text-direction {
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+.tools-add-text-placement .tools-text-direction label {
+  font-size: 0.85rem;
+}
+
 .tools-text-placement-color-row {
   display: flex;
   align-items: flex-start;
@@ -1163,15 +1207,53 @@ body.tools-page-active .site-footer {
 }
 
 .tools-quick-text-colors {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   flex: 0 0 auto;
+}
+
+.tools-quick-text-colors--standalone {
+  margin-top: 0.75rem;
+}
+
+.tools-font-control {
+  flex-wrap: wrap;
+  gap: 6px !important;
+  margin-top: 0.5rem !important;
+}
+
+.tools-text-bold-color-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 0.5rem;
+}
+
+.tools-text-bold-color-controls {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tools-text-bold-color-controls .checkbox-control {
+  margin-top: 0;
+}
+
+.tools-text-color-control {
+  flex-wrap: wrap;
+  gap: 0.5rem !important;
+  margin-top: 0.5rem !important;
 }
 
 .tools-quick-text-colors-label {
   display: block;
-  margin-bottom: 6px;
+  margin: 0;
   color: #333;
-  font-size: 0.8rem;
+  font-size: 1rem;
   font-weight: 700;
+  line-height: 22px;
+  white-space: nowrap;
 }
 
 .tools-quick-text-colors-grid {
@@ -1238,6 +1320,22 @@ body.tools-page-active .site-footer {
 }
 
 @media (max-width: 640px) {
+  .tools-add-text-placement-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .tools-add-text-placement {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tools-text-bold-color-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
   .tools-text-placement-color-row {
     flex-direction: column;
     gap: 12px;
@@ -1647,11 +1745,64 @@ body.tools-page-active .site-footer {
   background: #fff;
 }
 
+.proverb-template-section-label {
+  margin: 12px 0 0;
+  font-size: 0.95rem;
+}
+
 .proverb-template-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 8px;
+}
+
+.proverb-template-verse-select {
+  margin-top: 16px;
+}
+
+.proverb-template-control .proverb-template-verse-heading {
+  display: block;
+  margin: 0 0 0.5rem;
+  color: #333;
+  font-size: 1.3rem !important;
+  font-weight: 600 !important;
+}
+
+.scripture-style-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-weight: 700;
+}
+
+.scripture-style-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scripture-style-button {
+  min-width: 0;
+  border: 1px solid #a1a1aa;
+  border-radius: 6px;
+  padding: 9px 5px;
+  background: #fff;
+  color: #27272a;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.scripture-style-button:hover {
+  background: #f4f4f5;
+}
+
+.scripture-style-button.is-selected {
+  border-color: #18181b;
+  background: #18181b;
+  color: #fff;
+  box-shadow: 0 0 0 1px #18181b;
 }
 
 .proverb-template-card {
