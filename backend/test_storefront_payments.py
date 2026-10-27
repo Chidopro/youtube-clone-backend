@@ -81,6 +81,13 @@ class StorefrontPaymentsTest(unittest.TestCase):
             (True, "newcreator"),
         )
 
+    def test_platform_storefront_uses_separate_payment_settings(self):
+        origin = "https://bibleversemerch.screenmerch.com"
+        self.assertEqual(
+            storefront_payments_allowed(origin, _Client([], stripe_enabled=True)),
+            (True, "bibleversemerch"),
+        )
+
     def test_offline_storefront_blocks_checkout_without_deleting_settings(self):
         client = _Client(
             [{"id": "creator-id"}],

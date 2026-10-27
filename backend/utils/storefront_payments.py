@@ -9,6 +9,9 @@ PAYMENTS_DISABLED_MESSAGE = (
 _SETTINGS_BUCKET = "creator-logos"
 _ENABLED_MARKER = "stripe-enabled.png"
 _OFFLINE_MARKER = "storefront-offline.png"
+_PLATFORM_STOREFRONT_SETTINGS_IDS = {
+    "bibleversemerch": "platform-bibleversemerch",
+}
 
 
 def _marker_bytes():
@@ -127,8 +130,9 @@ def storefront_payments_allowed(origin, supabase_client):
             .execute()
         )
         row = result.data[0] if result.data else None
-        if not row or not storefront_online(row.get("id"), supabase_client):
+        settings_id = row.get("id") if row else _PLATFORM_STOREFRONT_SETTINGS_IDS.get(subdomain)
+        if not settings_id or not storefront_online(settings_id, supabase_client):
             return False, subdomain
-        return storefront_stripe_enabled(row.get("id"), supabase_client), subdomain
+        return storefront_stripe_enabled(settings_id, supabase_client), subdomain
     except Exception:
         return False, subdomain
