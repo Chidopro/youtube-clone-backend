@@ -1298,8 +1298,7 @@ def _draw_print_text_mask(
         if reference:
             reference_size = max(int(round(min_font_px * 0.68)), int(round(base_size * 0.58)))
             reference_font = _load_overlay_font(text_font, reference_size)
-            reference_text = f"{reference} · excerpt" if style == "minimal" else reference
-            reference_lines = _wrap_print_text(measure, reference_text, reference_font, available_width)
+            reference_lines = _wrap_print_text(measure, reference, reference_font, available_width)
             for line_index, line in enumerate(reference_lines):
                 before = base_size * 0.42 if line_index == 0 else 0.0
                 row_height = reference_size * 1.2

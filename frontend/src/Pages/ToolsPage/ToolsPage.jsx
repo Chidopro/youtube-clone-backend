@@ -7534,7 +7534,6 @@ const ToolsPage = () => {
       writeCartItems(updatedCart);
       if (selectedCartProductIndex !== null) {
         slotStateRef.current[selectedCartProductIndex] = captureLiveEditorSlot(selectedCartProductIndex, {
-          ...EDITOR_SLOT_DEFAULTS,
           sourceScreenshot: slotSourceKey(bakedShot || imageUrl),
           imageOrientation,
           blackAndWhite,

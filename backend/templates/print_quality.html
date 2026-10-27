@@ -189,6 +189,13 @@
             line-height: 1.15;
             text-align: center;
         }
+        .live-preview-scripture-reference {
+            display: block;
+            margin-top: 0.42em;
+            font-size: 58%;
+            font-weight: normal;
+            line-height: 1.2;
+        }
         .live-preview-text.is-vertical {
             display: flex;
             flex-direction: row;
@@ -1070,7 +1077,7 @@
             });
         }
 
-        function renderLivePreviewText(el, text, direction) {
+        function renderLivePreviewText(el, text, direction, scriptureReference) {
             el.classList.toggle('is-vertical', direction === 'vertical');
             if (direction === 'vertical') {
                 var lines = String(text || '').split('\n');
@@ -1082,7 +1089,12 @@
                     }).join('') + '</span>';
                 }).join('');
             } else {
-                el.textContent = text;
+                el.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+                if (scriptureReference) {
+                    el.innerHTML += '<span class="live-preview-scripture-reference">'
+                        + escapeHtml(scriptureReference)
+                        + '</span>';
+                }
             }
         }
 
@@ -1097,6 +1109,7 @@
             var fadeBlack = !!(document.getElementById('featherFadeBlack') && document.getElementById('featherFadeBlack').classList.contains('is-active'));
             var colorText = document.getElementById('textColorText') && document.getElementById('textColorText').value;
             var colorPicker = document.getElementById('textColor') && document.getElementById('textColor').value;
+            var storedText = mergedToolValues(currentToolSettings);
             return {
                 edgeFeather: edgeFeather,
                 featherEdge: edgeFeather ? (parseInt(document.getElementById('featherRadius').value, 10) || 0) : 0,
@@ -1115,7 +1128,9 @@
                 textSize: Math.max(12, Math.min(200, parseInt(textSizeInput ? textSizeInput.value : 24, 10) || 24)),
                 textOffsetX: parsePercentInput(document.getElementById('textOffsetX'), 50),
                 textOffsetY: parsePercentInput(document.getElementById('textOffsetY'), 50),
-                textDirection: selectedTextDirection()
+                textDirection: selectedTextDirection(),
+                textBold: storedText.textBold,
+                scriptureReference: storedText.scriptureReference
             };
         }
 
@@ -1250,8 +1265,9 @@
                     textEl.style.top = s.textOffsetY + '%';
                     textEl.style.fontSize = fontSize + 'px';
                     textEl.style.fontFamily = s.textFont;
+                    textEl.style.fontWeight = s.textBold ? 'bold' : 'normal';
                     textEl.style.color = s.textColor;
-                    renderLivePreviewText(textEl, s.textContent, s.textDirection);
+                    renderLivePreviewText(textEl, s.textContent, s.textDirection, s.scriptureReference);
                 } else {
                     textEl.style.display = 'none';
                     textEl.classList.remove('is-vertical');
@@ -1542,6 +1558,13 @@
             var textOffsetX = finiteNum(log.textOffsetX, ts.textOffsetX);
             var textOffsetY = finiteNum(log.textOffsetY, ts.textOffsetY);
             var textSize = finiteNum(log.textSize, ts.textSize);
+            var textBoldValue = log.textBold != null ? log.textBold : ts.textBold;
+            var scriptureStyle = firstNonEmpty(log.scriptureStyle, ts.scriptureStyle).toLowerCase();
+            if (scriptureStyle !== 'highlighted' && scriptureStyle !== 'minimal') scriptureStyle = 'classic';
+            var textMaskEnabledValue = log.textMaskEnabled != null
+                ? log.textMaskEnabled
+                : ts.textMaskEnabled;
+            var textMaskOpacity = finiteNum(log.textMaskOpacity, ts.textMaskOpacity);
             return {
                 frameEnabled: isToolFlagOn(ts.frameEnabled) || isToolFlagOn(log.frameEnabled),
                 frameColor: log.frameColor || ts.frameColor || '#FF0000',
@@ -1554,11 +1577,26 @@
                 textEnabled: (isToolFlagOn(ts.textEnabled) || isToolFlagOn(log.textEnabled)) && !!textContent,
                 textContent: textContent,
                 textFont: firstNonEmpty(log.textFont, ts.textFont) || 'Arial',
+                textBold: textBoldValue == null ? true : isToolFlagOn(textBoldValue),
                 textColor: normalizeHexColor(firstNonEmpty(log.textColor, ts.textColor), '#000000'),
                 textSize: textSize != null ? textSize : 24,
                 textOffsetX: textOffsetX != null ? textOffsetX : 50,
                 textOffsetY: textOffsetY != null ? textOffsetY : 50,
-                textDirection: normalizeTextDirection(firstNonEmpty(log.textDirection, ts.textDirection))
+                textDirection: normalizeTextDirection(firstNonEmpty(log.textDirection, ts.textDirection)),
+                scriptureStyle: scriptureStyle,
+                scriptureReference: firstNonEmpty(log.scriptureReference, ts.scriptureReference),
+                scriptureHighlight: firstNonEmpty(log.scriptureHighlight, ts.scriptureHighlight),
+                textMaskEnabled: isToolFlagOn(textMaskEnabledValue),
+                textMaskOpacity: textMaskOpacity != null ? Math.max(0, Math.min(100, textMaskOpacity)) : 0,
+                textMaskColor: firstNonEmpty(log.textMaskColor, ts.textMaskColor).toLowerCase() === 'charcoal'
+                    ? 'charcoal'
+                    : 'cream',
+                textSafeArea: (log.textSafeArea && typeof log.textSafeArea === 'object')
+                    ? log.textSafeArea
+                    : ((ts.textSafeArea && typeof ts.textSafeArea === 'object') ? ts.textSafeArea : null),
+                textImageFadeEnabled: isToolFlagOn(
+                    log.textImageFadeEnabled != null ? log.textImageFadeEnabled : ts.textImageFadeEnabled
+                )
             };
         }
 
@@ -2343,6 +2381,7 @@
             const textOffsetX = parsePercentInput(document.getElementById('textOffsetX'), 50);
             const textOffsetY = parsePercentInput(document.getElementById('textOffsetY'), 50);
             const textDirection = selectedTextDirection();
+            const savedTypography = mergedToolValues(currentToolSettings);
             const dpi = parseInt(document.getElementById('dpi').value);
             let frameSource = frameScaleSourceSize();
             if (!(frameSource.width > 0) && originalScreenshot) {
@@ -2371,11 +2410,22 @@
                     text_enabled: textEnabled && !!textContent,
                     text_content: textContent || '',
                     text_font: textFont,
+                    text_bold: savedTypography.textBold,
                     text_color: textColor,
                     text_size: textSize,
                     text_offset_x: textOffsetX,
                     text_offset_y: textOffsetY,
                     text_direction: textDirection,
+                    scripture_style: savedTypography.scriptureStyle,
+                    scripture_reference: savedTypography.scriptureReference,
+                    scripture_highlight: savedTypography.scriptureStyle === 'minimal'
+                        ? textContent
+                        : savedTypography.scriptureHighlight,
+                    text_mask_enabled: savedTypography.textMaskEnabled,
+                    text_mask_opacity: savedTypography.textMaskOpacity,
+                    text_mask_color: savedTypography.textMaskColor,
+                    text_safe_area: savedTypography.textSafeArea,
+                    text_image_fade_enabled: savedTypography.textImageFadeEnabled,
                     add_white_background: !!(document.getElementById('featherFadeEnabled') && document.getElementById('featherFadeEnabled').checked && featherValue > 0),
                     feather_fade_color: (document.getElementById('featherFadeBlack') && document.getElementById('featherFadeBlack').classList.contains('is-active')) ? 'black' : 'white'
                 };
