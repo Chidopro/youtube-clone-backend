@@ -12,19 +12,12 @@ _OFFLINE_MARKER = "storefront-offline.png"
 _PLATFORM_STOREFRONT_SETTINGS_IDS = {
     "bibleversemerch": "platform-bibleversemerch",
 }
-_PLATFORM_STOREFRONT_CREATOR_NAMES = {
-    "bibleversemerch": "Bible Verse Merch",
-}
 
 
 def _marker_bytes():
     return base64.b64decode(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
     )
-
-
-def platform_storefront_creator_name(subdomain):
-    return _PLATFORM_STOREFRONT_CREATOR_NAMES.get(str(subdomain or "").strip().lower())
 
 
 def storefront_stripe_enabled(user_id, supabase_client):

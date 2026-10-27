@@ -19,7 +19,6 @@ from utils.stripe_tax_checkout import (
 )
 from utils.storefront_payments import (
     PAYMENTS_DISABLED_MESSAGE,
-    platform_storefront_creator_name,
     storefront_payments_allowed,
 )
 import logging
@@ -471,8 +470,6 @@ def _record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=N
                     if creator_result.data and len(creator_result.data) > 0:
                         creator_user_id = creator_result.data[0]['id']
                         creator_name = creator_result.data[0].get('display_name', creator_name)
-                    else:
-                        creator_name = platform_storefront_creator_name(subdomain) or creator_name
         except Exception:
             pass
     

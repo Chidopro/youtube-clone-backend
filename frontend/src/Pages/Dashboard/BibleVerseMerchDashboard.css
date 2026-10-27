@@ -1,0 +1,139 @@
+.bvm-dashboard,
+.bvm-dashboard-state {
+  width: min(1120px, calc(100% - 32px));
+  min-height: 55vh;
+  margin: 32px auto 56px;
+  color: #30291f;
+}
+
+.bvm-dashboard-state {
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+}
+
+.bvm-dashboard-state--error {
+  color: #b42318;
+}
+
+.bvm-dashboard-heading {
+  margin-bottom: 24px;
+}
+
+.bvm-dashboard-heading p {
+  margin: 0 0 5px;
+  color: #786443;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.bvm-dashboard-heading h1 {
+  margin: 0 0 8px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.bvm-dashboard-heading span {
+  color: #6b6258;
+}
+
+.bvm-dashboard-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.bvm-dashboard-summary article,
+.bvm-dashboard-panel {
+  border: 1px solid #ddd4c6;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 7px 22px rgba(57, 45, 29, 0.08);
+}
+
+.bvm-dashboard-summary article {
+  min-width: 0;
+  padding: 18px;
+}
+
+.bvm-dashboard-summary span {
+  display: block;
+  min-height: 34px;
+  color: #6b6258;
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.bvm-dashboard-summary strong {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  overflow-wrap: anywhere;
+}
+
+.bvm-dashboard-panel {
+  margin-top: 18px;
+  padding: 20px;
+}
+
+.bvm-dashboard-panel h2 {
+  margin: 0 0 14px;
+  font-size: 1.15rem;
+}
+
+.bvm-dashboard-list {
+  border-top: 1px solid #e7e0d6;
+}
+
+.bvm-dashboard-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px 2px;
+  border-bottom: 1px solid #e7e0d6;
+}
+
+.bvm-dashboard-row span {
+  min-width: 0;
+}
+
+.bvm-dashboard-row small {
+  display: block;
+  margin-top: 3px;
+  color: #786f65;
+}
+
+.bvm-dashboard-row strong {
+  flex: 0 0 auto;
+}
+
+.bvm-dashboard-empty {
+  margin: 0;
+  color: #6b6258;
+}
+
+@media (max-width: 850px) {
+  .bvm-dashboard-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .bvm-dashboard,
+  .bvm-dashboard-state {
+    width: min(100% - 24px, 1120px);
+    margin-top: 20px;
+  }
+
+  .bvm-dashboard-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .bvm-dashboard-summary span {
+    min-height: 0;
+  }
+}

@@ -91,7 +91,7 @@ from utils.stripe_checkout import (
     session_shipping_cost_usd,
     session_tax_usd,
 )
-from utils.storefront_payments import platform_storefront_creator_name, storefront_online
+from utils.storefront_payments import storefront_online
 from utils.stripe_tax_checkout import (
     apply_automatic_tax_to_checkout_session,
     fulfillment_tax_product_data,
@@ -14752,9 +14752,6 @@ def get_analytics():
         channel_id = request.args.get('channel_id')
         scope = (request.args.get('scope') or '').strip().lower()
         platform_wide = False
-        platform_storefront = False
-        storefront_subdomain = ""
-        storefront_creator_name = None
         if scope in ('all', 'platform'):
             err, code = _require_master_admin()
             if err is not None:
@@ -14766,14 +14763,56 @@ def get_analytics():
             if err is not None:
                 return err, code
             storefront_subdomain = (request.args.get("subdomain") or "").strip().lower()
-            storefront_creator_name = platform_storefront_creator_name(storefront_subdomain)
-            if not storefront_creator_name:
+            if storefront_subdomain != "bibleversemerch":
                 return jsonify({"error": "Unsupported platform storefront"}), 400
-            platform_storefront = True
-            user_id = None
+            client_to_use = supabase_admin if supabase_admin else supabase
+            if not client_to_use:
+                return jsonify({"error": "Database unavailable"}), 503
+            result = (
+                client_to_use.table("orders")
+                .select("order_id,cart,total_amount,status,created_at,subdomain")
+                .eq("subdomain", storefront_subdomain)
+                .execute()
+            )
+            completed_statuses = {"paid", "processing", "completed", "fulfilled", "shipped"}
+            orders = []
+            seen_order_ids = set()
+            for row in result.data or []:
+                status = str(row.get("status") or "").strip().lower()
+                if status not in completed_statuses:
+                    continue
+                order_id = str(row.get("order_id") or "").strip()
+                if order_id and order_id in seen_order_ids:
+                    continue
+                if order_id:
+                    seen_order_ids.add(order_id)
+                cart = row.get("cart") or []
+                if isinstance(cart, str):
+                    try:
+                        cart = json.loads(cart)
+                    except Exception:
+                        cart = []
+                if not isinstance(cart, list):
+                    cart = []
+                orders.append({
+                    "order_id": order_id,
+                    "cart": cart,
+                    "status": status,
+                    "created_at": row.get("created_at") or "N/A",
+                    "total_value": float(row.get("total_amount") or 0),
+                    "subdomain": storefront_subdomain,
+                })
+            payload = _analytics_payload_from_orders(
+                orders, product_source_label="Bible Verse Merch"
+            )
+            payload.update({
+                "platform_wide": False,
+                "storefront_subdomain": storefront_subdomain,
+            })
+            return jsonify(payload), 200
         
         # Validate user_id is provided for precise tracking
-        if not platform_wide and not platform_storefront and not user_id:
+        if not platform_wide and not user_id:
             logger.warning("⚠️ Analytics request missing user_id - returning empty data for security")
             return jsonify({
                 'total_sales': 0,
@@ -14786,13 +14825,7 @@ def get_analytics():
                 'videos_with_sales': []
             })
         
-        logger.info(
-            "📊 Analytics request - User ID: %s, Channel ID: %s, platform_wide=%s, storefront=%s",
-            user_id,
-            channel_id,
-            platform_wide,
-            storefront_subdomain or None,
-        )
+        logger.info(f"📊 Analytics request - User ID: {user_id}, Channel ID: {channel_id}, platform_wide={platform_wide}")
         
         # Sales table is the source of truth; order_store only fills gaps (no double-count)
         all_orders = []
@@ -14813,9 +14846,6 @@ def get_analytics():
             if user_id:
                 query = query.eq('user_id', user_id)
                 logger.info(f"✅ PRECISE TRACKING: Filtering sales by user_id: {user_id}")
-            elif platform_storefront:
-                query = query.ilike("creator_name", storefront_creator_name)
-                logger.info("✅ PLATFORM STOREFRONT: Filtering sales for %s", storefront_subdomain)
             elif platform_wide:
                 logger.info("✅ MASTER ADMIN: Loading sales for all storefronts")
             elif channel_id:
@@ -14858,15 +14888,7 @@ def get_analytics():
         
         # In-memory checkouts not yet persisted (skip if fingerprint already in sales)
         for order_id, order_data in order_store.items():
-            if platform_storefront:
-                order_subdomain = str(order_data.get("subdomain") or "").strip().lower()
-                order_creator_name = str(order_data.get("creator_name") or "").strip().lower()
-                if (
-                    order_subdomain != storefront_subdomain
-                    and order_creator_name != str(storefront_creator_name or "").strip().lower()
-                ):
-                    continue
-            elif user_id:
+            if user_id:
                 order_uid = str(order_data.get('user_id') or '')
                 if order_uid and order_uid != str(user_id):
                     continue
@@ -14912,7 +14934,7 @@ def get_analytics():
         clock_date = _analytics_clock_date(sales_rows, freeze_to_latest)
 
         payout_summary = _analytics_payout_fields_from_sales(
-            sales_rows, None if (platform_wide or platform_storefront) else user_id
+            sales_rows, None if platform_wide else user_id
         )
         if user_id and not platform_wide:
             from utils.payout import screenmerch_pending_fields
@@ -15073,7 +15095,6 @@ def get_analytics():
             ],
             'payout_summary': payout_summary,
             'platform_wide': platform_wide,
-            'storefront_subdomain': storefront_subdomain or None,
         }
         
         return jsonify(analytics_data)

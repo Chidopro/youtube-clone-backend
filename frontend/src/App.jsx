@@ -8,6 +8,7 @@ import Upload from "./Pages/Upload/Upload";
 import Profile from "./Pages/Profile/Profile";
 import ApproveSubscription from "./Pages/ApproveSubscription/ApproveSubscription";
 import Dashboard from "./Pages/Dashboard/Dashboard";
+import BibleVerseMerchDashboard from "./Pages/Dashboard/BibleVerseMerchDashboard";
 import ChannelInvites from "./Pages/ChannelInvites/ChannelInvites";
 import SubscriptionTiers from "./Pages/SubscriptionTiers/SubscriptionTiers";
 import SubscriptionSuccess from "./Pages/SubscriptionSuccess/SubscriptionSuccess";
@@ -43,6 +44,7 @@ import DemoDashboard from "./Pages/DemoDashboard/DemoDashboard";
 import UmbrellaJoin from "./Pages/UmbrellaJoin/UmbrellaJoin";
 import { CreatorProvider, useCreator } from "./contexts/CreatorContext";
 import { getSubdomain, isCreatorStorefrontHostname } from "./utils/subdomainService";
+import { isBibleVerseMerchStorefront } from "./data/bibleVerseMerch";
 
 const StorefrontAvailabilityGate = ({ children }) => {
   const { currentCreator, storefrontChecked } = useCreator();
@@ -322,7 +324,14 @@ const App = () => {
                 <Route path="/upload" element={<Upload sidebar={sidebar} />} />
                 <Route path="/profile/:username" element={<Profile sidebar={sidebar} />} />
                 <Route path="/approve-subscription" element={<ApproveSubscription />} />
-                <Route path="/dashboard" element={<Dashboard sidebar={sidebar} />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    isBibleVerseMerchStorefront(getSubdomain())
+                      ? <BibleVerseMerchDashboard />
+                      : <Dashboard sidebar={sidebar} />
+                  }
+                />
                 <Route path="/demo/dashboard" element={<DemoDashboard sidebar={sidebar} />} />
                 <Route path="/channel-invites" element={<ChannelInvites />} />
                 <Route path="/subscription-tiers" element={<SubscriptionTiers />} />
