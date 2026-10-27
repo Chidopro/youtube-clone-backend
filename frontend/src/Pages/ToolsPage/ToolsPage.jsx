@@ -2297,11 +2297,24 @@ function migrateBibleVerseCartItems(cartItems) {
     const templateUrl = new URL(template.imageUrl, window.location.origin).toString();
     const placement = textPositionDefaults(template.recommendedTextPosition);
     const preset = KJV_PROVERB_PRESETS.find((candidate) => candidate.id === item?.toolSettings?.selectedProverbId);
-    const needsDesignUpgrade = Number(item?.toolSettings?.bibleVerseDesignVersion || 0) < 19;
+    const needsDesignUpgrade = Number(item?.toolSettings?.bibleVerseDesignVersion || 0) < 20;
+    const legacyFeaturedSelection = (
+      templateId === 'bvm-template-30'
+      && !item?.toolSettings?.selectedProverbId
+      && !String(item?.toolSettings?.textContent || '').trim()
+    );
+    const effectivePreset = legacyFeaturedSelection
+      ? KJV_PROVERB_PRESETS.find((candidate) => candidate.id === 'revelation-5-12')
+      : preset;
+    const repairMissingFeaturedText = (
+      templateId === 'bvm-template-30'
+      && (legacyFeaturedSelection || item?.toolSettings?.selectedProverbId === 'revelation-5-12')
+      && item?.toolSettings?.textEnabled !== true
+    );
     const settings = {
       ...(item.toolSettings || {}),
       ...(needsDesignUpgrade ? {
-        bibleVerseDesignVersion: 19,
+        bibleVerseDesignVersion: 20,
         textContent: formatProverbDesignText(preset) || item.toolSettings?.textContent || '',
         scriptureStyle: 'classic',
         scriptureReference: preset?.reference || '',
@@ -2314,6 +2327,13 @@ function migrateBibleVerseCartItems(cartItems) {
         textPlacement: placement.position,
         textSafeArea: template.recommendedTextSafeArea,
         textMaskColor: item.toolSettings?.textMaskColor || template.recommendedMaskColor,
+      } : {}),
+      ...(repairMissingFeaturedText ? {
+        textEnabled: true,
+        textContent: formatProverbDesignText(effectivePreset) || item.toolSettings?.textContent || '',
+        scriptureReference: effectivePreset?.reference || '',
+        scriptureHighlight: recommendedScriptureHighlight(effectivePreset),
+        selectedProverbId: effectivePreset?.id || item.toolSettings?.selectedProverbId || '',
       } : {}),
       screenshot: templateUrl,
       editedImageUrl: '',
@@ -2389,12 +2409,12 @@ function getInitialEditorSlot() {
       slot
       && isBibleVerseMerchStorefront(getSubdomain())
       && slot.selectedProverbTemplateId
-      && Number(slot.bibleVerseDesignVersion || 0) < 19
+      && Number(slot.bibleVerseDesignVersion || 0) < 20
     ) {
       const preset = KJV_PROVERB_PRESETS.find((item) => item.id === slot.selectedProverbId);
       const upgraded = {
         ...slot,
-        bibleVerseDesignVersion: 19,
+        bibleVerseDesignVersion: 20,
         scriptureStyle: 'classic',
         scriptureReference: preset?.reference || '',
         scriptureHighlight: recommendedScriptureHighlight(preset),
@@ -4604,7 +4624,7 @@ const ToolsPage = () => {
       selectedProverbTemplateId,
       bibleVerseDesignVersion: (
         bibleVerseMerch && selectedProverbTemplateId
-          ? 19
+          ? 20
           : Number(prev.bibleVerseDesignVersion || 0)
       ),
       screenshotScale,
@@ -7341,7 +7361,7 @@ const ToolsPage = () => {
         textSafeArea,
         selectedProverbId,
         selectedProverbTemplateId,
-        ...(bibleVerseMerch && selectedProverbTemplateId ? { bibleVerseDesignVersion: 19 } : {}),
+        ...(bibleVerseMerch && selectedProverbTemplateId ? { bibleVerseDesignVersion: 20 } : {}),
         printAreaFit,
         imageOrientation,
         printPlacement,
@@ -7401,7 +7421,7 @@ const ToolsPage = () => {
         textSafeArea,
         selectedProverbId,
         selectedProverbTemplateId,
-        ...(bibleVerseMerch && selectedProverbTemplateId ? { bibleVerseDesignVersion: 19 } : {}),
+        ...(bibleVerseMerch && selectedProverbTemplateId ? { bibleVerseDesignVersion: 20 } : {}),
         printAreaFit,
         imageOrientation,
         printPlacement,

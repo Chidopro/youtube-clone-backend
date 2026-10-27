@@ -18,7 +18,6 @@ const CUSTOM_ID = 'custom';
 const FEATURED_HOMEPAGE_TEMPLATE_ID = 'bvm-template-30';
 const FEATURED_HOMEPAGE_VERSE_ID = 'revelation-5-12';
 const FEATURED_HOMEPAGE_TEXT_COLOR = '#ffffff';
-const FEATURED_HOMEPAGE_MASK_OPACITY = 0;
 
 export default function BibleVerseMerchLanding() {
   const navigate = useNavigate();
@@ -105,29 +104,23 @@ export default function BibleVerseMerchLanding() {
       creatorName: 'Bible Verse Merch',
       screenshot_timestamp: '0:00',
       bibleVerseDesign: {
-        bibleVerseDesignVersion: 19,
+        bibleVerseDesignVersion: 20,
         imageOpacity: 100,
         textEnabled: true,
         textContent: designText,
-        scriptureStyle: featuredHomepageDesign ? 'highlighted' : 'classic',
+        scriptureStyle: 'classic',
         scriptureReference: proverb?.reference || '',
         scriptureHighlight: recommendedScriptureHighlight(proverb),
         textFont: 'IM FELL English',
         textBold: true,
-        textColor: featuredHomepageDesign
-          ? FEATURED_HOMEPAGE_TEXT_COLOR
-          : template.recommendedTextColor,
-        textSize: featuredHomepageDesign ? 70 : 38,
+        textColor: template.recommendedTextColor,
+        textSize: 38,
         textOffsetX: placement.offsetX,
         textOffsetY: placement.offsetY,
         textDirection: 'horizontal',
         textMaskEnabled: !featuredHomepageDesign,
-        textMaskOpacity: featuredHomepageDesign
-          ? FEATURED_HOMEPAGE_MASK_OPACITY
-          : template.recommendedMaskOpacity,
-        textMaskColor: featuredHomepageDesign
-          ? 'cream'
-          : template.recommendedMaskColor,
+        textMaskOpacity: template.recommendedMaskOpacity,
+        textMaskColor: template.recommendedMaskColor,
         screenshotScale: 150,
         textPlacement: placement.position,
         textSafeArea: template.recommendedTextSafeArea,
