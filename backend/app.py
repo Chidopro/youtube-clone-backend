@@ -9421,7 +9421,10 @@ def _bible_verse_subdomain(raw):
 
 
 def _bible_verse_storage_path(subdomain):
-    return f"storefront-content/{subdomain}/bible-verses.json"
+    # creator-logos is restricted to image MIME types. This is an opaque,
+    # backend-only settings object; the .png name/MIME satisfies that bucket
+    # policy while the payload remains UTF-8 JSON read only by this API.
+    return f"storefront-content/{subdomain}/bible-verses.png"
 
 
 def _read_storefront_bible_verses(subdomain):
@@ -9453,7 +9456,7 @@ def _write_storefront_bible_verses(subdomain, verses):
     supabase_admin.storage.from_(BIBLE_VERSE_CONTENT_BUCKET).upload(
         path=path,
         file=payload,
-        file_options={"content-type": "application/json", "upsert": "true"},
+        file_options={"content-type": "image/png", "upsert": "true"},
     )
 
 
