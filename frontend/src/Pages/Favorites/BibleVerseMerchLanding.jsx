@@ -107,11 +107,11 @@ export default function BibleVerseMerchLanding() {
       bibleVerseDesign: {
         bibleVerseDesignVersion: 19,
         imageOpacity: 100,
-        textEnabled: !featuredHomepageDesign,
-        textContent: featuredHomepageDesign ? '' : designText,
-        scriptureStyle: 'classic',
-        scriptureReference: featuredHomepageDesign ? '' : (proverb?.reference || ''),
-        scriptureHighlight: featuredHomepageDesign ? '' : recommendedScriptureHighlight(proverb),
+        textEnabled: true,
+        textContent: designText,
+        scriptureStyle: featuredHomepageDesign ? 'highlighted' : 'classic',
+        scriptureReference: proverb?.reference || '',
+        scriptureHighlight: recommendedScriptureHighlight(proverb),
         textFont: 'IM FELL English',
         textBold: true,
         textColor: featuredHomepageDesign
@@ -131,7 +131,7 @@ export default function BibleVerseMerchLanding() {
         screenshotScale: 150,
         textPlacement: placement.position,
         textSafeArea: template.recommendedTextSafeArea,
-        selectedProverbId: featuredHomepageDesign || proverbId === CUSTOM_ID ? '' : proverbId,
+        selectedProverbId: proverbId === CUSTOM_ID ? '' : proverbId,
         selectedProverbTemplateId: template.id,
       },
     });
