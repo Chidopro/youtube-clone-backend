@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BIBLE_VERSE_MERCH_SUBDOMAIN,
   BIBLE_VERSE_TEMPLATES,
   formatProverbDesignText,
   KJV_PROVERB_PRESETS,
   recommendedScriptureHighlight,
   textPositionDefaults,
 } from '../../data/bibleVerseMerch';
+import { fetchStorefrontBibleVerses, mergeBibleVersePresets } from '../../utils/bibleVersesApi';
 import { markMerchIntentStarted, savePendingMerchData } from '../../utils/merchSession';
 import './BibleVerseMerchLanding.css';
 
@@ -22,6 +24,7 @@ export default function BibleVerseMerchLanding() {
   const [templateId, setTemplateId] = useState(FEATURED_HOMEPAGE_TEMPLATE_ID);
   const [proverbId, setProverbId] = useState(FEATURED_HOMEPAGE_VERSE_ID);
   const [customText, setCustomText] = useState('');
+  const [proverbPresets, setProverbPresets] = useState(KJV_PROVERB_PRESETS);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +46,18 @@ export default function BibleVerseMerchLanding() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchStorefrontBibleVerses(BIBLE_VERSE_MERCH_SUBDOMAIN).then(({ ok, data }) => {
+      if (!cancelled && ok) {
+        setProverbPresets(mergeBibleVersePresets(KJV_PROVERB_PRESETS, data.verses));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const templates = useMemo(
     () => BIBLE_VERSE_TEMPLATES.filter((template) => availableTemplateIds.includes(template.id)),
     [availableTemplateIds]
@@ -51,7 +66,7 @@ export default function BibleVerseMerchLanding() {
     || BIBLE_VERSE_TEMPLATES[0];
   const showFeaturedHomepageText = template?.id === FEATURED_HOMEPAGE_TEMPLATE_ID;
   const featuredHomepageDesign = showFeaturedHomepageText && proverbId === FEATURED_HOMEPAGE_VERSE_ID;
-  const proverb = KJV_PROVERB_PRESETS.find((item) => item.id === proverbId);
+  const proverb = proverbPresets.find((item) => item.id === proverbId);
   const selectedText = proverbId === CUSTOM_ID
     ? customText.trim()
     : String(proverb?.text || '').replace(/\s*;\s*/g, ', ');
@@ -161,7 +176,7 @@ export default function BibleVerseMerchLanding() {
 
           <label htmlFor="bvm-proverb">Proverb or custom text</label>
           <select id="bvm-proverb" value={proverbId} onChange={(event) => setProverbId(event.target.value)}>
-            {KJV_PROVERB_PRESETS.map((item) => (
+            {proverbPresets.map((item) => (
               <option value={item.id} key={item.id}>{item.reference}</option>
             ))}
             <option value={CUSTOM_ID}>Write my own text</option>

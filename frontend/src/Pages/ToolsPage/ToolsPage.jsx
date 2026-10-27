@@ -16,6 +16,7 @@ import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwInt
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
 import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isGreetingCardProduct, isJigsawPuzzleProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petBandanaPrintFile, petBowlPrintStrip, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
 import { BIBLE_VERSE_TEMPLATES, formatProverbDesignText, KJV_PROVERB_PRESETS, isBibleVerseMerchStorefront, recommendedScriptureHighlight, textPositionDefaults } from '../../data/bibleVerseMerch';
+import { fetchStorefrontBibleVerses, mergeBibleVersePresets, saveStorefrontBibleVerse } from '../../utils/bibleVersesApi';
 import { clampTextMaskOpacity, drawTextMask, normalizeScriptureStyle, normalizeTextMaskColor, normalizeTextSafeArea, TEXT_MASK_COLORS } from '../../utils/textMask';
 import './ToolsPage.css';
 
@@ -4189,15 +4190,34 @@ const ToolsPage = () => {
     () => initialEditorSlot.selectedProverbTemplateId || ''
   );
   const [proverbTemplateAvailability, setProverbTemplateAvailability] = useState({});
+  const [proverbPresets, setProverbPresets] = useState(KJV_PROVERB_PRESETS);
+  const [canEditProverbs, setCanEditProverbs] = useState(false);
+  const [proverbEditorOpen, setProverbEditorOpen] = useState(false);
+  const [proverbEditor, setProverbEditor] = useState({ id: '', reference: '', text: '', highlight: '' });
+  const [proverbEditorStatus, setProverbEditorStatus] = useState('');
+  const [proverbEditorSaving, setProverbEditorSaving] = useState(false);
 
   useEffect(() => {
     if (!bibleVerseMerch || !selectedProverbId) return;
-    const preset = KJV_PROVERB_PRESETS.find((item) => item.id === selectedProverbId);
+    const preset = proverbPresets.find((item) => item.id === selectedProverbId);
     const formatted = formatProverbDesignText(preset);
     if (formatted && formatted !== textContent) setTextContent(formatted);
     if (preset?.reference && preset.reference !== scriptureReference) setScriptureReference(preset.reference);
     if (!scriptureHighlight) setScriptureHighlight(recommendedScriptureHighlight(preset));
-  }, [bibleVerseMerch, selectedProverbId, scriptureHighlight, scriptureReference, textContent]);
+  }, [bibleVerseMerch, proverbPresets, selectedProverbId, scriptureHighlight, scriptureReference, textContent]);
+
+  useEffect(() => {
+    if (!bibleVerseMerch) return undefined;
+    let cancelled = false;
+    fetchStorefrontBibleVerses(getSubdomain()).then(({ ok, data }) => {
+      if (cancelled || !ok) return;
+      setProverbPresets(mergeBibleVersePresets(KJV_PROVERB_PRESETS, data.verses));
+      setCanEditProverbs(Boolean(data.can_edit));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bibleVerseMerch]);
 
   const [printAreaFit, setPrintAreaFit] = useState(() => initialEditorSlot.printAreaFit || getInitialCartPrintFit().fit);
   const [imageOrientation, setImageOrientation] = useState(() => (
@@ -4614,7 +4634,7 @@ const ToolsPage = () => {
     if (typeof saved.textEnabled === 'boolean') setTextEnabled(saved.textEnabled);
     if (typeof saved.textContent === 'string') {
       const savedPreset = bibleVerseMerch && saved.selectedProverbId
-        ? KJV_PROVERB_PRESETS.find((item) => item.id === saved.selectedProverbId)
+        ? proverbPresets.find((item) => item.id === saved.selectedProverbId)
         : null;
       setTextContent(formatProverbDesignText(savedPreset) || saved.textContent);
     }
@@ -7574,7 +7594,7 @@ const ToolsPage = () => {
   };
 
   const applyProverbPreset = (presetId) => {
-    const preset = KJV_PROVERB_PRESETS.find((item) => item.id === presetId);
+    const preset = proverbPresets.find((item) => item.id === presetId);
     setSelectedProverbId(preset?.id || (presetId === CUSTOM_PROVERB_ID ? CUSTOM_PROVERB_ID : ''));
     if (!preset) {
       setScriptureReference('');
@@ -7601,10 +7621,60 @@ const ToolsPage = () => {
       && !scriptureHighlight
       && selectedProverbId
     ) {
-      const preset = KJV_PROVERB_PRESETS.find((item) => item.id === selectedProverbId);
+      const preset = proverbPresets.find((item) => item.id === selectedProverbId);
       setScriptureHighlight(recommendedScriptureHighlight(preset));
     }
     setScriptureStyle(nextStyle);
+  };
+
+  const openProverbEditor = (mode) => {
+    const selected = proverbPresets.find((item) => item.id === selectedProverbId);
+    setProverbEditorStatus('');
+    setProverbEditor(mode === 'edit' && selected
+      ? {
+          id: selected.id,
+          reference: selected.reference || '',
+          text: selected.text || '',
+          highlight: selected.highlight || '',
+        }
+      : { id: '', reference: '', text: '', highlight: '' });
+    setProverbEditorOpen(true);
+  };
+
+  const saveProverbEditor = async () => {
+    const reference = proverbEditor.reference.trim();
+    const text = proverbEditor.text.trim();
+    const highlight = proverbEditor.highlight.trim();
+    if (!reference || !text) {
+      setProverbEditorStatus('Reference and complete verse are required.');
+      return;
+    }
+    if (highlight && !text.toLowerCase().includes(highlight.toLowerCase())) {
+      setProverbEditorStatus('The highlighted phrase must appear in the complete verse.');
+      return;
+    }
+    setProverbEditorSaving(true);
+    setProverbEditorStatus('');
+    const result = await saveStorefrontBibleVerse(getSubdomain(), {
+      id: proverbEditor.id || undefined,
+      reference,
+      text,
+      highlight,
+    });
+    setProverbEditorSaving(false);
+    if (!result.ok || !result.data?.verse) {
+      setProverbEditorStatus(result.data?.error || 'Could not save this verse.');
+      return;
+    }
+    const saved = result.data.verse;
+    setProverbPresets((current) => mergeBibleVersePresets(current, [saved]));
+    setProverbEditorOpen(false);
+    setSelectedProverbId(saved.id);
+    setTextEnabled(true);
+    setTextContent(formatProverbDesignText(saved));
+    setScriptureReference(saved.reference || '');
+    setScriptureHighlight(recommendedScriptureHighlight(saved));
+    setTextSize(recommendedScriptureSize(saved.text));
   };
 
   const resetTextDesign = (templateId = selectedProverbTemplateId) => {
@@ -8955,11 +9025,83 @@ const ToolsPage = () => {
                         value={selectedProverbId}
                         onChange={(event) => applyProverbPreset(event.target.value)}
                       >
-                        {KJV_PROVERB_PRESETS.map((preset) => (
+                        {proverbPresets.map((preset) => (
                           <option key={preset.id} value={preset.id}>{preset.reference}</option>
                         ))}
                         <option value={CUSTOM_PROVERB_ID}>Custom text</option>
                       </select>
+                      {canEditProverbs && (
+                        <div className="proverb-owner-actions">
+                          <button type="button" onClick={() => openProverbEditor('add')}>
+                            Add Verse
+                          </button>
+                          {selectedProverbId !== CUSTOM_PROVERB_ID && (
+                            <button type="button" onClick={() => openProverbEditor('edit')}>
+                              Edit Selected
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {proverbEditorOpen && canEditProverbs && (
+                        <div className="proverb-owner-editor">
+                          <h4>{proverbEditor.id ? 'Edit Bible Verse' : 'Add Bible Verse'}</h4>
+                          <label htmlFor="proverb-editor-reference">Reference</label>
+                          <input
+                            id="proverb-editor-reference"
+                            type="text"
+                            maxLength={120}
+                            value={proverbEditor.reference}
+                            onChange={(event) => setProverbEditor((current) => ({
+                              ...current,
+                              reference: event.target.value,
+                            }))}
+                            placeholder="Example: Psalm 23:1"
+                          />
+                          <label htmlFor="proverb-editor-text">Complete verse</label>
+                          <textarea
+                            id="proverb-editor-text"
+                            rows={5}
+                            maxLength={1200}
+                            value={proverbEditor.text}
+                            onChange={(event) => setProverbEditor((current) => ({
+                              ...current,
+                              text: event.target.value,
+                            }))}
+                          />
+                          <label htmlFor="proverb-editor-highlight">Highlighted phrase</label>
+                          <input
+                            id="proverb-editor-highlight"
+                            type="text"
+                            maxLength={300}
+                            value={proverbEditor.highlight}
+                            onChange={(event) => setProverbEditor((current) => ({
+                              ...current,
+                              highlight: event.target.value,
+                            }))}
+                            placeholder="Optional phrase from the complete verse"
+                          />
+                          {proverbEditorStatus && (
+                            <p className="proverb-owner-editor-status" role="alert">{proverbEditorStatus}</p>
+                          )}
+                          <div className="proverb-owner-editor-buttons">
+                            <button
+                              type="button"
+                              onClick={saveProverbEditor}
+                              disabled={proverbEditorSaving}
+                            >
+                              {proverbEditorSaving ? 'Saving…' : 'Save Verse'}
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => setProverbEditorOpen(false)}
+                              disabled={proverbEditorSaving}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

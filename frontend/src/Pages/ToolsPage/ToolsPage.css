@@ -1769,6 +1769,77 @@ body.tools-page-active .site-footer {
   font-weight: 600 !important;
 }
 
+.proverb-owner-actions,
+.proverb-owner-editor-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.proverb-owner-actions button,
+.proverb-owner-editor-buttons button {
+  border: 1px solid #18181b;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #18181b;
+  color: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.proverb-owner-editor {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.proverb-owner-editor h4 {
+  margin: 0 0 2px;
+}
+
+.proverb-owner-editor label {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.proverb-owner-editor input,
+.proverb-owner-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #a1a1aa;
+  border-radius: 5px;
+  padding: 8px;
+  background: #fff;
+  color: #18181b;
+  font: inherit;
+}
+
+.proverb-owner-editor textarea {
+  resize: vertical;
+}
+
+.proverb-owner-editor-status {
+  margin: 2px 0 0;
+  color: #b42318;
+  font-size: 0.78rem;
+}
+
+.proverb-owner-editor-buttons button.secondary {
+  background: #fff;
+  color: #18181b;
+}
+
+.proverb-owner-editor-buttons button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .scripture-style-label {
   display: block;
   margin-bottom: 0.45rem;

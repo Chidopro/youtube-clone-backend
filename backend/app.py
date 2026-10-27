@@ -9409,6 +9409,177 @@ def _cf_is_storefront_owner(user_id, subdomain=None):
     return True
 
 
+BIBLE_VERSE_CONTENT_BUCKET = "creator-logos"
+BIBLE_VERSE_PLATFORM_STOREFRONTS = frozenset({"bibleversemerch"})
+
+
+def _bible_verse_subdomain(raw):
+    subdomain = str(raw or "").strip().lower()
+    if not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", subdomain):
+        return None
+    return subdomain
+
+
+def _bible_verse_storage_path(subdomain):
+    return f"storefront-content/{subdomain}/bible-verses.json"
+
+
+def _read_storefront_bible_verses(subdomain):
+    """Read owner overrides/additions from durable Supabase object storage."""
+    if not supabase_admin:
+        return []
+    try:
+        payload = supabase_admin.storage.from_(BIBLE_VERSE_CONTENT_BUCKET).download(
+            _bible_verse_storage_path(subdomain)
+        )
+        decoded = json.loads(bytes(payload).decode("utf-8"))
+        rows = decoded.get("verses", []) if isinstance(decoded, dict) else []
+        return rows if isinstance(rows, list) else []
+    except Exception as exc:
+        # A storefront without saved overrides is the normal initial state.
+        logger.debug("No saved Bible verses for %s: %s", subdomain, exc)
+        return []
+
+
+def _write_storefront_bible_verses(subdomain, verses):
+    if not supabase_admin:
+        raise RuntimeError("Server not configured")
+    path = _bible_verse_storage_path(subdomain)
+    payload = json.dumps(
+        {"version": 1, "verses": verses, "updated_at": datetime.now(timezone.utc).isoformat()},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    supabase_admin.storage.from_(BIBLE_VERSE_CONTENT_BUCKET).upload(
+        path=path,
+        file=payload,
+        file_options={"content-type": "application/json", "upsert": "true"},
+    )
+
+
+def _strict_authenticated_users_id():
+    """Authenticate a real session token without the trusted-origin ID fallback."""
+    token = _active_session_token()
+    session_user_id = _resolve_session_token(token) if token else None
+    if not session_user_id:
+        return None
+    return _resolve_users_table_user_id(session_user_id)
+
+
+def _can_manage_storefront_bible_verses(user_id, subdomain):
+    if not user_id or not supabase_admin:
+        return False
+    result = (
+        supabase_admin.table("users")
+        .select("id, role, subdomain, is_admin, admin_role")
+        .eq("id", str(user_id))
+        .limit(1)
+        .execute()
+    )
+    user = (result.data or [None])[0]
+    if not user:
+        return False
+    user_subdomain = str(user.get("subdomain") or "").strip().lower()
+    owns_storefront = user.get("role") == "creator" and user_subdomain == subdomain
+    is_admin = bool(user.get("is_admin")) or str(user.get("admin_role") or "").strip().lower() in {
+        "master_admin",
+        "admin",
+    }
+    if subdomain in BIBLE_VERSE_PLATFORM_STOREFRONTS:
+        return is_admin
+    return owns_storefront or is_admin
+
+
+def _public_bible_verse(row):
+    if not isinstance(row, dict):
+        return None
+    verse_id = str(row.get("id") or "").strip()
+    reference = str(row.get("reference") or "").strip()
+    text = str(row.get("text") or "").strip()
+    if not verse_id or not reference or not text:
+        return None
+    return {
+        "id": verse_id,
+        "reference": reference,
+        "text": text,
+        "highlight": str(row.get("highlight") or "").strip(),
+        "preserveCase": bool(row.get("preserveCase", True)),
+        "ownerSaved": True,
+    }
+
+
+@app.route("/api/storefront-bible-verses", methods=["GET", "POST", "OPTIONS"])
+def storefront_bible_verses():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    subdomain = _bible_verse_subdomain(
+        request.args.get("subdomain")
+        or ((request.get_json(silent=True) or {}).get("subdomain") if request.method == "POST" else "")
+    )
+    if not subdomain:
+        return jsonify({"success": False, "error": "A valid subdomain is required"}), 400
+
+    if request.method == "GET":
+        user_id = _strict_authenticated_users_id()
+        verses = [
+            clean for clean in (_public_bible_verse(row) for row in _read_storefront_bible_verses(subdomain))
+            if clean
+        ]
+        return jsonify(
+            {
+                "success": True,
+                "verses": verses,
+                "can_edit": _can_manage_storefront_bible_verses(user_id, subdomain),
+            }
+        ), 200
+
+    user_id = _strict_authenticated_users_id()
+    if not user_id:
+        return jsonify({"success": False, "error": "Authentication required"}), 401
+    if not _can_manage_storefront_bible_verses(user_id, subdomain):
+        return jsonify({"success": False, "error": "Only the storefront owner can edit this list"}), 403
+
+    data = request.get_json(silent=True) or {}
+    reference = str(data.get("reference") or "").strip()
+    text = str(data.get("text") or "").strip()
+    highlight = str(data.get("highlight") or "").strip()
+    verse_id = str(data.get("id") or "").strip()
+    if not reference or not text:
+        return jsonify({"success": False, "error": "Reference and complete verse are required"}), 400
+    if len(reference) > 120 or len(text) > 1200 or len(highlight) > 300:
+        return jsonify({"success": False, "error": "Verse content is too long"}), 400
+    if highlight and highlight.lower() not in text.lower():
+        return jsonify({"success": False, "error": "Highlighted phrase must appear in the complete verse"}), 400
+    if verse_id and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,99}", verse_id):
+        return jsonify({"success": False, "error": "Invalid verse id"}), 400
+    if not verse_id:
+        verse_id = f"saved-{uuid.uuid4().hex[:16]}"
+
+    verses = _read_storefront_bible_verses(subdomain)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    saved = {
+        "id": verse_id,
+        "reference": reference,
+        "text": text,
+        "highlight": highlight,
+        "preserveCase": True,
+        "updated_at": now_iso,
+        "updated_by": str(user_id),
+    }
+    existing_index = next(
+        (index for index, row in enumerate(verses) if str(row.get("id") or "") == verse_id),
+        None,
+    )
+    if existing_index is None:
+        saved["created_at"] = now_iso
+        verses.append(saved)
+    else:
+        saved["created_at"] = verses[existing_index].get("created_at") or now_iso
+        verses[existing_index] = saved
+    _write_storefront_bible_verses(subdomain, verses)
+    return jsonify({"success": True, "verse": _public_bible_verse(saved)}), 200
+
+
 def _cf_approved_umbrella_membership(friend_id, channel_owner_id=None):
     """Approved umbrella row where user is the invited friend.
 
