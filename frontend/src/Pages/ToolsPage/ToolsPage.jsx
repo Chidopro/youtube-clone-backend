@@ -4233,10 +4233,16 @@ const ToolsPage = () => {
     if (!bibleVerseMerch || !selectedProverbId) return;
     const preset = proverbPresets.find((item) => item.id === selectedProverbId);
     const formatted = formatProverbDesignText(preset);
-    if (formatted && formatted !== textContent) setTextContent(formatted);
+    if (
+      scriptureStyle !== 'minimal'
+      && formatted
+      && formatted !== textContent
+    ) {
+      setTextContent(formatted);
+    }
     if (preset?.reference && preset.reference !== scriptureReference) setScriptureReference(preset.reference);
     if (!scriptureHighlight) setScriptureHighlight(recommendedScriptureHighlight(preset));
-  }, [bibleVerseMerch, proverbPresets, selectedProverbId, scriptureHighlight, scriptureReference, textContent]);
+  }, [bibleVerseMerch, proverbPresets, selectedProverbId, scriptureHighlight, scriptureReference, scriptureStyle, textContent]);
 
   useEffect(() => {
     if (!bibleVerseMerch) return undefined;
@@ -7674,13 +7680,17 @@ const ToolsPage = () => {
 
   const applyScriptureStyle = (value) => {
     const nextStyle = normalizeScriptureStyle(value);
-    if (
-      nextStyle !== 'classic'
-      && !scriptureHighlight
-      && selectedProverbId
-    ) {
-      const preset = proverbPresets.find((item) => item.id === selectedProverbId);
-      setScriptureHighlight(recommendedScriptureHighlight(preset));
+    const preset = selectedProverbId
+      ? proverbPresets.find((item) => item.id === selectedProverbId)
+      : null;
+    const recommendedHighlight = scriptureHighlight || recommendedScriptureHighlight(preset);
+    if (nextStyle !== 'classic' && recommendedHighlight) {
+      setScriptureHighlight(recommendedHighlight);
+    }
+    if (nextStyle === 'minimal') {
+      if (recommendedHighlight) setTextContent(recommendedHighlight);
+    } else if (preset) {
+      setTextContent(formatProverbDesignText(preset));
     }
     setScriptureStyle(nextStyle);
   };
