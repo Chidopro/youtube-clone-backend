@@ -91,7 +91,11 @@ from utils.stripe_checkout import (
     session_shipping_cost_usd,
     session_tax_usd,
 )
-from utils.storefront_payments import storefront_online
+from utils.storefront_payments import (
+    storefront_online,
+    storefront_stripe_enabled,
+    write_storefront_stripe_enabled,
+)
 from utils.stripe_tax_checkout import (
     apply_automatic_tax_to_checkout_session,
     fulfillment_tax_product_data,
@@ -9590,6 +9594,164 @@ def storefront_bible_verses():
         verses[existing_index] = saved
     _write_storefront_bible_verses(subdomain, verses)
     return jsonify({"success": True, "verse": _public_bible_verse(saved)}), 200
+
+
+def _platform_storefront_dashboard_path(subdomain):
+    return f"storefront-content/{subdomain}/dashboard-settings.png"
+
+
+def _platform_storefront_dashboard_defaults(subdomain):
+    return {
+        "subdomain": subdomain,
+        "display_name": "Bible Verse Merch",
+        "primary_color": "#ffffff",
+        "secondary_color": "#ffffff",
+        "header_opacity": 100,
+        "custom_logo_url": "/bibleverse-merch-logo.png",
+        "co_creators": [],
+        "payout_note": "Platform-owned storefront; no separate creator payout.",
+    }
+
+
+def _read_platform_storefront_dashboard(subdomain):
+    defaults = _platform_storefront_dashboard_defaults(subdomain)
+    if not supabase_admin:
+        return defaults
+    try:
+        payload = supabase_admin.storage.from_(BIBLE_VERSE_CONTENT_BUCKET).download(
+            _platform_storefront_dashboard_path(subdomain)
+        )
+        decoded = json.loads(bytes(payload).decode("utf-8"))
+        if not isinstance(decoded, dict):
+            return defaults
+        return {**defaults, **decoded, "subdomain": subdomain}
+    except Exception as exc:
+        logger.debug("No dashboard settings for %s: %s", subdomain, exc)
+        return defaults
+
+
+def _write_platform_storefront_dashboard(subdomain, settings):
+    if not supabase_admin or not supabase_url or not supabase_service_key:
+        raise RuntimeError("Server not configured")
+    payload = json.dumps(
+        {**settings, "subdomain": subdomain, "updated_at": datetime.now(timezone.utc).isoformat()},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    path = _platform_storefront_dashboard_path(subdomain)
+    response = requests.post(
+        f"{supabase_url.rstrip('/')}/storage/v1/object/{BIBLE_VERSE_CONTENT_BUCKET}/{quote(path, safe='/')}",
+        data=payload,
+        headers={
+            "apikey": supabase_service_key,
+            "Authorization": f"Bearer {supabase_service_key}",
+            "Content-Type": "image/png",
+            "x-upsert": "true",
+        },
+        timeout=20,
+    )
+    response.raise_for_status()
+
+
+def _clean_platform_co_creators(rows):
+    cleaned = []
+    seen = set()
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        email = str(row.get("email") or "").strip().lower()
+        name = str(row.get("name") or "").strip()
+        if not email or "@" not in email or len(email) > 254 or email in seen:
+            continue
+        seen.add(email)
+        cleaned.append({
+            "id": str(row.get("id") or f"church-{uuid.uuid4().hex[:12]}")[:80],
+            "name": name[:120] or email.split("@", 1)[0],
+            "email": email,
+            "status": "whitelisted",
+            "added_at": str(row.get("added_at") or datetime.now(timezone.utc).isoformat()),
+        })
+        if len(cleaned) >= 50:
+            break
+    return cleaned
+
+
+@app.route("/api/platform-storefront-dashboard", methods=["GET", "POST", "OPTIONS"])
+def platform_storefront_dashboard():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    data = request.get_json(silent=True) or {}
+    subdomain = _bible_verse_subdomain(
+        request.args.get("subdomain") or data.get("subdomain")
+    )
+    if subdomain not in BIBLE_VERSE_PLATFORM_STOREFRONTS:
+        return jsonify({"success": False, "error": "Unsupported platform storefront"}), 400
+
+    user_id = _strict_authenticated_users_id()
+    can_edit = _can_manage_storefront_bible_verses(user_id, subdomain)
+    settings = _read_platform_storefront_dashboard(subdomain)
+    settings["checkout_enabled"] = storefront_stripe_enabled(
+        f"platform-{subdomain}", supabase_admin
+    )
+
+    if request.method == "GET":
+        public_settings = {
+            key: settings.get(key)
+            for key in (
+                "subdomain",
+                "display_name",
+                "primary_color",
+                "secondary_color",
+                "header_opacity",
+                "custom_logo_url",
+                "checkout_enabled",
+            )
+        }
+        if can_edit:
+            public_settings["co_creators"] = settings.get("co_creators") or []
+            public_settings["payout_note"] = settings.get("payout_note") or ""
+        return jsonify({"success": True, "can_edit": can_edit, "settings": public_settings}), 200
+
+    if not user_id:
+        return jsonify({"success": False, "error": "Authentication required"}), 401
+    if not can_edit:
+        return jsonify({"success": False, "error": "Only the storefront administrator can save settings"}), 403
+
+    next_settings = dict(settings)
+    display_name = str(data.get("display_name", settings.get("display_name") or "")).strip()
+    if not display_name or len(display_name) > 120:
+        return jsonify({"success": False, "error": "A valid display name is required"}), 400
+    next_settings["display_name"] = display_name
+    for color_key in ("primary_color", "secondary_color"):
+        color = str(data.get(color_key, settings.get(color_key) or "")).strip().lower()
+        if not re.fullmatch(r"#[0-9a-f]{6}", color):
+            return jsonify({"success": False, "error": f"{color_key} must be a six-digit hex color"}), 400
+        next_settings[color_key] = color
+    try:
+        next_settings["header_opacity"] = max(
+            0, min(100, int(data.get("header_opacity", settings.get("header_opacity", 100))))
+        )
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "header_opacity must be between 0 and 100"}), 400
+    logo_url = str(data.get("custom_logo_url", settings.get("custom_logo_url") or "")).strip()
+    if len(logo_url) > 1000 or (logo_url and not (logo_url.startswith("/") or logo_url.startswith("https://"))):
+        return jsonify({"success": False, "error": "Logo URL must be HTTPS or a storefront path"}), 400
+    next_settings["custom_logo_url"] = logo_url
+    next_settings["co_creators"] = _clean_platform_co_creators(
+        data.get("co_creators", settings.get("co_creators") or [])
+    )
+    next_settings["payout_note"] = "Platform-owned storefront; no separate creator payout."
+
+    checkout_enabled = data.get("checkout_enabled", settings.get("checkout_enabled", False))
+    if not isinstance(checkout_enabled, bool):
+        return jsonify({"success": False, "error": "checkout_enabled must be true or false"}), 400
+    if not write_storefront_stripe_enabled(
+        f"platform-{subdomain}", checkout_enabled, supabase_admin
+    ):
+        return jsonify({"success": False, "error": "Could not save checkout status"}), 500
+    _write_platform_storefront_dashboard(subdomain, next_settings)
+    next_settings["checkout_enabled"] = checkout_enabled
+    return jsonify({"success": True, "settings": next_settings}), 200
 
 
 def _cf_approved_umbrella_membership(friend_id, channel_owner_id=None):

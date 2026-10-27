@@ -4,6 +4,8 @@ import { fetchPlatformBranding, peekCachedPlatformBrand } from '../utils/platfor
 import { fetchPublicFavoriteLists } from '../utils/favoriteListsApi';
 import { normalizeStorageUrl } from '../utils/storageUrl';
 import { supabase } from '../supabaseClient';
+import { isBibleVerseMerchStorefront } from '../data/bibleVerseMerch';
+import { fetchPlatformStorefrontDashboard } from '../utils/platformStorefrontDashboardApi';
 
 const CreatorContext = createContext(null);
 
@@ -29,6 +31,7 @@ export const CreatorProvider = ({ children }) => {
         hostname === 'screenmerch.com' ||
         hostname === 'www.screenmerch.com' ||
         hostname === 'localhost';
+      const requestedSubdomain = getSubdomain();
 
       if (isApex) {
         const cached = peekCachedPlatformBrand();
@@ -64,11 +67,38 @@ export const CreatorProvider = ({ children }) => {
         setLoading(false);
         return;
       }
+
+      if (isBibleVerseMerchStorefront(requestedSubdomain)) {
+        const result = await fetchPlatformStorefrontDashboard(requestedSubdomain);
+        const settings = result.ok ? result.data?.settings : null;
+        const next = settings
+          ? {
+              ...settings,
+              custom_logo_url: normalizeStorageUrl(settings.custom_logo_url) || settings.custom_logo_url,
+              personalization_enabled: true,
+              subdomain: requestedSubdomain,
+            }
+          : null;
+        setCurrentCreator({
+          id: `platform-${requestedSubdomain}`,
+          subdomain: requestedSubdomain,
+          display_name: settings?.display_name || 'Bible Verse Merch',
+          storefront_online: true,
+        });
+        setCreatorSettings(next);
+        if (next) {
+          rememberStorefrontBrand(next);
+          document.documentElement.style.setProperty('--primary-color', next.primary_color || '#ffffff');
+          document.documentElement.style.setProperty('--secondary-color', next.secondary_color || '#ffffff');
+        }
+        setLoading(false);
+        return;
+      }
       
       // Check if this is a screenmerch subdomain first (e.g., testcreator.screenmerch.com)
       // Custom domains won't end with .screenmerch.com
       if (hostname.endsWith('.screenmerch.com') || hostname === 'screenmerch.com') {
-        const subdomain = getSubdomain();
+        const subdomain = requestedSubdomain;
         if (subdomain) {
           creator = await getCreatorFromSubdomain(subdomain);
           if (!creator) {
