@@ -17,6 +17,59 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+_OPEN_FONT_URLS = {
+    "anton": "https://fonts.gstatic.com/s/anton/v27/1Ptgg87LROyAm0K0.ttf",
+    "bebas neue": "https://fonts.gstatic.com/s/bebasneue/v16/JTUSjIg69CK48gW7PXooxW4.ttf",
+    "caveat": "https://fonts.gstatic.com/s/caveat/v23/WnznHAc5bAfYB2QRah7pcpNvOx-pjfJ9SII.ttf",
+    "cinzel": "https://fonts.gstatic.com/s/cinzel/v26/8vIU7ww63mVu7gtR-kwKxNvkNOjw-tbnTYo.ttf",
+    "cormorant garamond": "https://fonts.gstatic.com/s/cormorantgaramond/v21/co3umX5slCNuHLi8bLeY9MK7whWMhyjypVO7abI26QOD_v86GnM.ttf",
+    "creepster": "https://fonts.gstatic.com/s/creepster/v13/AlZy_zVUqJz4yMrniH4hdQ.ttf",
+    "dela gothic one": "https://fonts.gstatic.com/s/delagothicone/v19/hESp6XxvMDRA-2eD0lXpDa6QkBAGRQ.ttf",
+    "great vibes": "https://fonts.gstatic.com/s/greatvibes/v21/RWmMoKWR9v4ksMfaWd_JN-XC.ttf",
+    "libre baskerville": "https://fonts.gstatic.com/s/librebaskerville/v24/kmKUZrc3Hgbbcjq75U4uslyuy4kn0olVQ-LglH6T17uj8Q4SCQ.ttf",
+    "long cang": "https://fonts.gstatic.com/s/longcang/v21/LYjAdGP8kkgoTec8zkRgrQ.ttf",
+    "medievalsharp": "https://fonts.gstatic.com/s/medievalsharp/v28/EvOJzAlL3oU5AQl2mP5KdgptAq8.ttf",
+    "orbitron": "https://fonts.gstatic.com/s/orbitron/v35/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyGy6xpg.ttf",
+    "oswald": "https://fonts.gstatic.com/s/oswald/v57/TK3_WkUHHAIjg75cFRf3bXL8LICs1_FvgUE.ttf",
+    "pacifico": "https://fonts.gstatic.com/s/pacifico/v23/FwZY7-Qmy14u9lezJ96A.ttf",
+    "permanent marker": "https://fonts.gstatic.com/s/permanentmarker/v16/Fh4uPib9Iyv2ucM6pGQMWimMp004Hao.ttf",
+    "playfair display": "https://fonts.gstatic.com/s/playfairdisplay/v40/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKdFvUDQ.ttf",
+    "uncial antiqua": "https://fonts.gstatic.com/s/uncialantiqua/v22/N0bM2S5WOex4OUbESzoESK-i-PfR.ttf",
+}
+_OPEN_FONT_PATHS = {}
+
+
+def _download_open_overlay_font(font_name):
+    normalized = str(font_name or "").strip().lower()
+    url = _OPEN_FONT_URLS.get(normalized)
+    if not url:
+        return ""
+    cached = _OPEN_FONT_PATHS.get(normalized)
+    if cached and os.path.isfile(cached):
+        return cached
+    target = os.path.join(
+        tempfile.gettempdir(),
+        "screenmerch-font-" + re.sub(r"[^a-z0-9]+", "-", normalized).strip("-") + ".ttf",
+    )
+    if os.path.isfile(target) and os.path.getsize(target) > 1000:
+        _OPEN_FONT_PATHS[normalized] = target
+        return target
+    try:
+        response = requests.get(url, timeout=12)
+        response.raise_for_status()
+        if len(response.content) <= 1000:
+            return ""
+        temporary = target + ".tmp"
+        with open(temporary, "wb") as font_file:
+            font_file.write(response.content)
+        os.replace(temporary, target)
+        _OPEN_FONT_PATHS[normalized] = target
+        return target
+    except Exception as exc:
+        logger.warning("Could not load open font %s: %s", font_name, exc)
+        return ""
+
+
 def _hex_to_bgr(hex_color, default=(0, 0, 255)):
     """Convert #RGB or #RRGGBB to OpenCV BGR. Falls back to default on bad input."""
     try:
@@ -1047,13 +1100,17 @@ def _draw_print_overlay_text(draw, text, font, fill, center_x, center_y, font_px
 
 def _load_overlay_font(text_font, font_px):
     font_paths = []
-    if str(text_font or "").strip().lower() == "im fell english":
+    normalized_font = str(text_font or "").strip().lower()
+    if normalized_font == "im fell english":
         font_paths.append(os.path.join(
             os.path.dirname(__file__),
             "static",
             "fonts",
             "IMFellEnglish-Regular.ttf",
         ))
+    open_font_path = _download_open_overlay_font(normalized_font)
+    if open_font_path:
+        font_paths.append(open_font_path)
     if os.name == "nt":
         font_dir = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
         font_map = {

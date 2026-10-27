@@ -24,6 +24,16 @@ import './ToolsPage.css';
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
 const TEXT_TOOL_GOOGLE_FONTS = [
   'IM FELL English',
+  'Libre Baskerville',
+  'Cinzel',
+  'Cormorant Garamond',
+  'Playfair Display',
+  'Uncial Antiqua',
+  'MedievalSharp',
+  'Great Vibes',
+  'Caveat',
+  'Oswald',
+  'Anton',
   'Permanent Marker',
   'Orbitron',
   'Bebas Neue',
@@ -32,7 +42,7 @@ const TEXT_TOOL_GOOGLE_FONTS = [
   'Long Cang',
   'Pacifico'
 ];
-const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=IM+Fell+English&family=Permanent+Marker&family=Orbitron:wght@400;700&family=Bebas+Neue&family=Creepster&family=Dela+Gothic+One&family=Long+Cang&family=Pacifico&display=swap';
+const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Caveat:wght@400;700&family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:wght@400;600;700&family=Creepster&family=Dela+Gothic+One&family=Great+Vibes&family=IM+Fell+English&family=Libre+Baskerville:wght@400;700&family=Long+Cang&family=MedievalSharp&family=Orbitron:wght@400;700&family=Oswald:wght@400;600;700&family=Pacifico&family=Playfair+Display:wght@400;600;700&family=Uncial+Antiqua&display=swap';
 
 // Women's / men's / kids garments that use a chest print on a framed mockup photo.
 // All-over, swim, and leggings stay on their existing paths.
@@ -9281,12 +9291,26 @@ const ToolsPage = () => {
                         >
                           <optgroup label="Classic">
                             <option value="IM FELL English">IM FELL English (Old Bible)</option>
+                            <option value="Libre Baskerville">Libre Baskerville</option>
+                            <option value="Cinzel">Cinzel (Roman inscription)</option>
+                            <option value="Cormorant Garamond">Cormorant Garamond</option>
+                            <option value="Playfair Display">Playfair Display</option>
                             <option value="Arial">Arial</option>
                             <option value="Helvetica">Helvetica</option>
                             <option value="Georgia">Georgia</option>
                             <option value="Times New Roman">Times New Roman</option>
                             <option value="Verdana">Verdana</option>
                             <option value="Courier New">Courier New</option>
+                          </optgroup>
+                          <optgroup label="Biblical &amp; decorative">
+                            <option value="Uncial Antiqua">Uncial Antiqua (Manuscript)</option>
+                            <option value="MedievalSharp">MedievalSharp</option>
+                            <option value="Great Vibes">Great Vibes (Elegant script)</option>
+                            <option value="Caveat">Caveat (Handwritten)</option>
+                          </optgroup>
+                          <optgroup label="Bold merchandise">
+                            <option value="Oswald">Oswald</option>
+                            <option value="Anton">Anton</option>
                           </optgroup>
                           <optgroup label="Fringe &amp; style">
                             <option value="Permanent Marker">Permanent Marker (Graffiti)</option>
