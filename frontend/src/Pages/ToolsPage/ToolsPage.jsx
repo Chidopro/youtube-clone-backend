@@ -5105,6 +5105,9 @@ const ToolsPage = () => {
             }
 
             const chosen = productsWithScreenshots[nextIndex];
+            const preserveIncomingBibleDesign = Boolean(
+              bibleVerseMerch && chosen?.toolSettings?.selectedProverbTemplateId
+            );
             if (identityChanged && chosen && !showNewest) {
               const slot = slotStateRef.current[nextIndex];
               if (slot && slot.sourceScreenshot && !slotMatchesCartShot(slot, chosen)) {
@@ -5113,7 +5116,7 @@ const ToolsPage = () => {
                 setEditedImageUrl('');
               }
             }
-            if (showNewest && chosen) {
+            if (showNewest && chosen && !preserveIncomingBibleDesign) {
               const existingSlot = slotStateRef.current[nextIndex];
               const sameShot = slotMatchesCartShot(existingSlot, chosen);
               if (!sameShot) {
@@ -5136,7 +5139,9 @@ const ToolsPage = () => {
             if (showNewest || nextIndex !== selectedCartProductIndexRef.current || forceEntry) {
               selectedCartProductIndexRef.current = nextIndex;
               setSelectedCartProductIndex(nextIndex);
-              const slot = !showNewest ? slotStateRef.current[nextIndex] : null;
+              const slot = (!showNewest || preserveIncomingBibleDesign)
+                ? slotStateRef.current[nextIndex]
+                : null;
               const matchedName = (slot && slot.selectedProductName) || matchPrintAreaProductName(chosen?.name) || '';
               if (matchedName) {
                 setSelectedProductName(matchedName);
@@ -5146,10 +5151,14 @@ const ToolsPage = () => {
                 setSelectedProductName('');
                 setPrintAreaFit((slot && slot.printAreaFit) || 'none');
               }
-              const settings = showNewest ? null : chosen?.toolSettings;
-              const savedSlot = !showNewest ? slotStateRef.current[nextIndex] : null;
+              const settings = (showNewest && !preserveIncomingBibleDesign)
+                ? null
+                : chosen?.toolSettings;
+              const savedSlot = (!showNewest || preserveIncomingBibleDesign)
+                ? slotStateRef.current[nextIndex]
+                : null;
               const restoreEdits = savedSlot || settings;
-              if (!showNewest && restoreEdits) {
+              if ((!showNewest || preserveIncomingBibleDesign) && restoreEdits) {
                 applySavedEditorFields(restoreEdits);
               }
               const sessionScale = savedSlot?.screenshotScale;
