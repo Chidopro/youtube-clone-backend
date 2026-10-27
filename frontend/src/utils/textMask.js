@@ -177,7 +177,7 @@ export function drawTextMask(ctx, {
       const referenceSize = Math.max(minFontSize * 0.68, baseSize * 0.58);
       height += baseSize * 0.42;
       ctx.font = `${referenceSize}px "${fontFamily}", Georgia, serif`;
-      const referenceLines = wrapCanvasText(ctx, style === 'minimal' ? `${ref} · excerpt` : ref, availableWidth);
+      const referenceLines = wrapCanvasText(ctx, ref, availableWidth);
       referenceLines.forEach((line) => {
         const rowHeight = referenceSize * 1.2;
         widest = Math.max(widest, ctx.measureText(line).width);
