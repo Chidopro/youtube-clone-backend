@@ -16,6 +16,7 @@ import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.js
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
+import { isBibleVerseMerchStorefront } from '../../data/bibleVerseMerch';
 import { DEMO_DASHBOARD_PATH, DEMO_STOREFRONT_SUBDOMAIN, isDemoStorefront, isDemoStorefrontVisitor, isRealStorefrontUser, readStoredUser, endDemoPreviewSession } from '../../utils/demoStorefront';
 import { DELUZION_SHOP_PRODUCTS, isPremadeShopfront } from '../../utils/shopCategories';
 import { patchShopCatalog } from '../../utils/shopCatalogApi';
@@ -665,6 +666,7 @@ function favoritePageNameTaken(pages, name, { ignoreListId } = {}) {
 }
 
 const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
+    const bibleVerseDashboard = isBibleVerseMerchStorefront(getSubdomain());
     const [user, setUser] = useState(() => {
         const stored = readStoredUser();
         return isRealStorefrontUser(stored) ? stored : null;
@@ -674,7 +676,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchParams] = useSearchParams();
-    const [activeTab, setActiveTab] = useState(demoPreviewFromRoute ? 'analytics' : 'favorites');
+    const [activeTab, setActiveTab] = useState(
+        demoPreviewFromRoute || bibleVerseDashboard ? 'analytics' : 'favorites'
+    );
     const [umbrellaOnly, setUmbrellaOnly] = useState(false);
     const [umbrellaChannelOwnerId, setUmbrellaChannelOwnerId] = useState('');
     const [umbrellaStorefrontSub, setUmbrellaStorefrontSub] = useState('');
@@ -701,6 +705,10 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
 
     // Open tab when URL has ?tab= (e.g. from navbar logo edit or FrameSnag "Add to Favorites")
     useEffect(() => {
+        if (bibleVerseDashboard) {
+            setActiveTab('analytics');
+            return;
+        }
         const tab = searchParams.get('tab');
         const listIdParam = (searchParams.get('list_id') || '').trim();
         if (listIdParam) {
@@ -717,7 +725,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             setActiveTab('favorites');
             setShowPasteHint(true); // Show "press Ctrl+V" hint when sent from FrameSnag
         }
-    }, [searchParams]);
+    }, [bibleVerseDashboard, searchParams]);
 
     useEffect(() => {
         if (!user?.id) {
@@ -2409,12 +2417,14 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                     Accept: 'application/json',
                     'Cache-Control': 'no-cache',
                 };
-                if (isMasterAdmin && email) {
+                if ((isMasterAdmin || bibleVerseDashboard) && email) {
                     headers['X-User-Email'] = email;
                 }
-                const qs = isMasterAdmin
-                    ? 'scope=all'
-                    : `user_id=${encodeURIComponent(user.id)}`;
+                const qs = bibleVerseDashboard
+                    ? 'scope=storefront&subdomain=bibleversemerch'
+                    : (isMasterAdmin
+                        ? 'scope=all'
+                        : `user_id=${encodeURIComponent(user.id)}`);
                 const response = await fetch(`${BACKEND_URL}/api/analytics?${qs}`, {
                     method: 'GET',
                     headers,
@@ -2712,8 +2722,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
     useEffect(() => {
         if (activeTab !== 'analytics' || !user?.id) return;
         if (!demoPreview && !umbrellaStatusReady) return;
+        if (bibleVerseDashboard && !isMasterAdmin) return;
         fetchAnalytics();
-    }, [activeTab, umbrellaOnly, umbrellaStatusReady, user?.id, isMasterAdmin, demoPreview]);
+    }, [activeTab, umbrellaOnly, umbrellaStatusReady, user?.id, isMasterAdmin, demoPreview, bibleVerseDashboard]);
 
 
 
@@ -2840,6 +2851,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
         <div className={`dashboard-container ${sidebar ? "" : " large-container"}`}>
             {/* Tab Navigation */}
             <div className="dashboard-tabs">
+                {!bibleVerseDashboard && (
                 <button 
                     className={`tab-button ${activeTab === 'favorites' ? 'active' : ''}`}
                     onClick={() => {
@@ -2848,13 +2860,14 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                 >
                     {umbrellaOnly ? 'Pages' : `⭐ Pages (${favoritePages.length})`}
                 </button>
+                )}
                 <button
                     className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
                     onClick={() => setActiveTab('analytics')}
                 >
                     📊 Analytics
                 </button>
-                {!umbrellaOnly && (
+                {!bibleVerseDashboard && !umbrellaOnly && (
                 <>
                 <button 
                     className={`tab-button ${activeTab === 'payout' ? 'active' : ''}`}
@@ -2883,7 +2896,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
             {/* Tab Content */}
             <div className="tab-content">
                 {/* Pages Tab */}
-                {activeTab === 'favorites' && (
+                {!bibleVerseDashboard && activeTab === 'favorites' && (
                     <div className="favorites-tab">
                         {!umbrellaOnly && (
                         <p className="paste-hint">
@@ -3460,8 +3473,8 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                         <div className="sales-analytics-section">
                             <div className={`section-header analytics-section-header${analyticsError || (isMasterAdmin && !umbrellaOnly) ? ' analytics-section-header--keep' : ''}`}>
                                 <div className="analytics-header-row">
-                                <h2>Sales Analytics Dashboard</h2>
-                                {isMasterAdmin && !umbrellaOnly ? (
+                                <h2>{bibleVerseDashboard ? 'Bible Verse Merch Analytics' : 'Sales Analytics Dashboard'}</h2>
+                                {isMasterAdmin && !umbrellaOnly && !bibleVerseDashboard ? (
                                 <div className="analytics-summary">
                                     <button 
                                         onClick={async () => {
@@ -3527,6 +3540,11 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                         Sales from shoppers who purchased from your storefront.
                                     </p>
                                 ) : null}
+                                {bibleVerseDashboard ? (
+                                    <p className="umbrella-analytics-intro">
+                                        Only purchases made through bibleversemerch.screenmerch.com appear here.
+                                    </p>
+                                ) : null}
                                 {analyticsError ? (
                                     <p className="umbrella-analytics-intro" role="alert">
                                         {analyticsError}
@@ -3540,7 +3558,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                 <div className="sales-chart-section">
                                     {/* Weekly Summary */}
                                     <div className="weekly-summary">
-                                        <h2 className="analytics-mobile-heading">Sales Analytics Dashboard</h2>
+                                        <h2 className="analytics-mobile-heading">
+                                            {bibleVerseDashboard ? 'Bible Verse Merch Analytics' : 'Sales Analytics Dashboard'}
+                                        </h2>
                                         <h4>Weekly summary</h4>
                                         {(() => {
                                             const ps = analyticsData.payout_summary || {};
@@ -3593,7 +3613,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                             );
                                             const netLabel = umbrellaOnly
                                                 ? 'Your payout'
-                                                : (isMasterAdmin ? 'Creator payouts' : 'Store Payout');
+                                                : (bibleVerseDashboard
+                                                    ? 'Store margin'
+                                                    : (isMasterAdmin ? 'Creator payouts' : 'Store Payout'));
                                             const latestScreenmerchPayout = sortPayoutsNewestFirst(screenmerchPayouts)[0];
                                             const latestPaidAmount = Number(latestScreenmerchPayout?.amount || 0);
                                             const latestPaidDate = formatPayoutDate(
@@ -3612,7 +3634,9 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                     ? `${money(COLLAB_SHARE_PER_ITEM - feePerItem)} per item after ${money(feePerItem)} storefront fee`
                                                     : '$6 per item')
                                                 : (isMasterAdmin
-                                                    ? 'Owed to storefront owners ($6/item)'
+                                                    ? (bibleVerseDashboard
+                                                        ? 'Bible Verse Merch share'
+                                                        : 'Owed to storefront owners ($6/item)')
                                                     : (pendingFromScreenmerch > 0
                                                         ? `Pending payout ${formatPayoutDate(nextPay)}`
                                                         : (latestPaidAmount > 0
@@ -3745,7 +3769,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                         </>
                                             );
                                         })()}
-                                        {isMasterAdmin && !umbrellaOnly ? (
+                                        {isMasterAdmin && !umbrellaOnly && !bibleVerseDashboard ? (
                                             <div className="collaborator-payout-panel owner-earnings-panel">
                                                 <h5>Storefront owner payments</h5>
                                                 <p className="hint">
