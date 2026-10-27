@@ -9445,7 +9445,7 @@ def _read_storefront_bible_verses(subdomain):
 
 
 def _write_storefront_bible_verses(subdomain, verses):
-    if not supabase_admin:
+    if not supabase_admin or not supabase_url or not supabase_service_key:
         raise RuntimeError("Server not configured")
     path = _bible_verse_storage_path(subdomain)
     payload = json.dumps(
@@ -9453,11 +9453,20 @@ def _write_storefront_bible_verses(subdomain, verses):
         ensure_ascii=False,
         separators=(",", ":"),
     ).encode("utf-8")
-    supabase_admin.storage.from_(BIBLE_VERSE_CONTENT_BUCKET).upload(
-        path=path,
-        file=payload,
-        file_options={"content-type": "image/png", "upsert": "true"},
+    # storage3 0.6 ignores its `upsert` file option and returns
+    # KeyAlreadyExists after the first save. The Storage API honors x-upsert.
+    response = requests.post(
+        f"{supabase_url.rstrip('/')}/storage/v1/object/{BIBLE_VERSE_CONTENT_BUCKET}/{quote(path, safe='/')}",
+        data=payload,
+        headers={
+            "apikey": supabase_service_key,
+            "Authorization": f"Bearer {supabase_service_key}",
+            "Content-Type": "image/png",
+            "x-upsert": "true",
+        },
+        timeout=20,
     )
+    response.raise_for_status()
 
 
 def _strict_authenticated_users_id():
