@@ -65,6 +65,29 @@ export const BIBLE_VERSE_TEMPLATES = TEMPLATE_TITLES.map(
   })
 );
 
+export function applyBibleVerseTemplateSettings(
+  templates = BIBLE_VERSE_TEMPLATES,
+  settings = {}
+) {
+  const hidden = new Set(settings.hidden_template_ids || []);
+  const overrides = settings.template_overrides || {};
+  return templates
+    .filter((template) => !hidden.has(template.id))
+    .map((template) => {
+      const override = overrides[template.id] || {};
+      const position = ['top', 'center', 'bottom'].includes(override.recommendedTextPosition)
+        ? override.recommendedTextPosition
+        : template.recommendedTextPosition;
+      return {
+        ...template,
+        title: String(override.title || '').trim() || template.title,
+        imageUrl: String(override.imageUrl || '').trim() || template.imageUrl,
+        recommendedTextPosition: position,
+        recommendedTextSafeArea: SAFE_AREAS[position],
+      };
+    });
+}
+
 export const KJV_PROVERB_PRESETS = [
   {
     id: 'revelation-5-12',

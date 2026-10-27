@@ -12,7 +12,11 @@ import {
   mergeBibleVersePresets,
   saveStorefrontBibleVerse,
 } from '../../utils/bibleVersesApi';
-import { BIBLE_VERSE_TEMPLATES, KJV_PROVERB_PRESETS } from '../../data/bibleVerseMerch';
+import {
+  applyBibleVerseTemplateSettings,
+  BIBLE_VERSE_TEMPLATES,
+  KJV_PROVERB_PRESETS,
+} from '../../data/bibleVerseMerch';
 import './BibleVerseMerchDashboard.css';
 
 const EMPTY_ANALYTICS = {
@@ -30,6 +34,8 @@ const DEFAULT_SETTINGS = {
   secondary_color: '#ffffff',
   header_opacity: 100,
   custom_logo_url: '/bibleverse-merch-logo.png',
+  hidden_template_ids: [],
+  template_overrides: {},
   checkout_enabled: true,
   co_creators: [],
   payout_note: 'Platform-owned storefront; no separate creator payout.',
@@ -69,6 +75,8 @@ export default function BibleVerseMerchDashboard() {
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
   const [verseEditor, setVerseEditor] = useState(null);
+  const [templateEditor, setTemplateEditor] = useState(null);
+  const [availableTemplateIds, setAvailableTemplateIds] = useState([]);
   const [churchDraft, setChurchDraft] = useState({ name: '', email: '' });
 
   useEffect(() => {
@@ -136,6 +144,29 @@ export default function BibleVerseMerchDashboard() {
     ),
     [analytics.products_sold]
   );
+  const configuredTemplates = useMemo(
+    () => applyBibleVerseTemplateSettings(BIBLE_VERSE_TEMPLATES, settings),
+    [settings]
+  );
+  const availableTemplates = useMemo(
+    () => configuredTemplates.filter((template) => availableTemplateIds.includes(template.id)),
+    [availableTemplateIds, configuredTemplates]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(configuredTemplates.map((template) => new Promise((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve(template.id);
+      image.onerror = () => resolve('');
+      image.src = template.imageUrl;
+    }))).then((ids) => {
+      if (!cancelled) setAvailableTemplateIds(ids.filter(Boolean));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [configuredTemplates]);
 
   const saveSettings = async (nextSettings, message) => {
     setSaving(true);
@@ -203,6 +234,40 @@ export default function BibleVerseMerchDashboard() {
     setStatus('Church added locally. Save the access list to keep it.');
   };
 
+  const saveTemplateEdit = async () => {
+    if (!templateEditor) return;
+    const title = templateEditor.title.trim();
+    const imageUrl = templateEditor.imageUrl.trim();
+    if (!title || !imageUrl) {
+      setStatus('Image title and source URL are required.');
+      return;
+    }
+    const next = {
+      ...settings,
+      template_overrides: {
+        ...(settings.template_overrides || {}),
+        [templateEditor.id]: {
+          title,
+          imageUrl,
+          recommendedTextPosition: templateEditor.recommendedTextPosition,
+        },
+      },
+    };
+    if (await saveSettings(next, `${title} updated.`)) setTemplateEditor(null);
+  };
+
+  const hideTemplate = async (template) => {
+    if (!window.confirm(`Remove ${template.title} from BibleVerseMerch?`)) return;
+    const next = {
+      ...settings,
+      hidden_template_ids: [...new Set([
+        ...(settings.hidden_template_ids || []),
+        template.id,
+      ])],
+    };
+    await saveSettings(next, `${template.title} removed from BibleVerseMerch.`);
+  };
+
   if (loading) {
     return <main className="bvm-dashboard-state">Loading Bible Verse Merch analytics…</main>;
   }
@@ -243,19 +308,69 @@ export default function BibleVerseMerchDashboard() {
             <div className="bvm-dashboard-panel-heading">
               <div>
                 <h2>Image templates</h2>
-                <p>{BIBLE_VERSE_TEMPLATES.length} isolated BibleVerseMerch artwork templates.</p>
+                <p>{availableTemplates.length} available BibleVerseMerch artwork templates.</p>
               </div>
               <button type="button" onClick={() => navigate('/tools')}>Open Tools</button>
             </div>
             <div className="bvm-dashboard-template-grid">
-              {BIBLE_VERSE_TEMPLATES.map((template) => (
+              {availableTemplates.map((template) => (
                 <article key={template.id}>
                   <img src={template.imageUrl} alt="" />
                   <strong>{template.title}</strong>
                   <span>{template.recommendedTextPosition} text placement</span>
+                  <div>
+                    <button type="button" onClick={() => setTemplateEditor({
+                      id: template.id,
+                      title: template.title,
+                      imageUrl: template.imageUrl,
+                      recommendedTextPosition: template.recommendedTextPosition,
+                    })}>
+                      Edit
+                    </button>
+                    <button type="button" className="secondary" onClick={() => hideTemplate(template)}>
+                      Delete
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
+            {templateEditor ? (
+              <div className="bvm-dashboard-editor">
+                <h3>Edit image</h3>
+                <label>
+                  Image title
+                  <input
+                    value={templateEditor.title}
+                    onChange={(event) => setTemplateEditor({ ...templateEditor, title: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Image source URL
+                  <input
+                    value={templateEditor.imageUrl}
+                    onChange={(event) => setTemplateEditor({ ...templateEditor, imageUrl: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Recommended text placement
+                  <select
+                    value={templateEditor.recommendedTextPosition}
+                    onChange={(event) => setTemplateEditor({
+                      ...templateEditor,
+                      recommendedTextPosition: event.target.value,
+                    })}
+                  >
+                    <option value="top">Top</option>
+                    <option value="center">Center</option>
+                    <option value="bottom">Bottom</option>
+                  </select>
+                </label>
+                <div>
+                  <button type="button" disabled={saving} onClick={saveTemplateEdit}>Save Image</button>
+                  <button type="button" className="secondary" onClick={() => setTemplateEditor(null)}>Cancel</button>
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <section className="bvm-dashboard-panel">

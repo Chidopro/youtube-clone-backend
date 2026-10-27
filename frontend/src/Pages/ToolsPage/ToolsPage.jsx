@@ -15,8 +15,9 @@ import { bakeArtworkForWrap, browsePresetHasPixelEdits, roundedRectFeatherFactor
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
 import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isGreetingCardProduct, isJigsawPuzzleProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petBandanaPrintFile, petBowlPrintStrip, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
-import { BIBLE_VERSE_TEMPLATES, formatProverbDesignText, KJV_PROVERB_PRESETS, isBibleVerseMerchStorefront, recommendedScriptureHighlight, textPositionDefaults } from '../../data/bibleVerseMerch';
+import { applyBibleVerseTemplateSettings, BIBLE_VERSE_TEMPLATES, formatProverbDesignText, KJV_PROVERB_PRESETS, isBibleVerseMerchStorefront, recommendedScriptureHighlight, textPositionDefaults } from '../../data/bibleVerseMerch';
 import { fetchStorefrontBibleVerses, mergeBibleVersePresets, saveStorefrontBibleVerse } from '../../utils/bibleVersesApi';
+import { fetchPlatformStorefrontDashboard } from '../../utils/platformStorefrontDashboardApi';
 import { clampTextMaskOpacity, drawTextMask, normalizeScriptureStyle, normalizeTextMaskColor, normalizeTextSafeArea, TEXT_MASK_COLORS } from '../../utils/textMask';
 import './ToolsPage.css';
 
@@ -4190,6 +4191,7 @@ const ToolsPage = () => {
     () => initialEditorSlot.selectedProverbTemplateId || ''
   );
   const [proverbTemplateAvailability, setProverbTemplateAvailability] = useState({});
+  const [proverbTemplates, setProverbTemplates] = useState(BIBLE_VERSE_TEMPLATES);
   const [proverbPresets, setProverbPresets] = useState(KJV_PROVERB_PRESETS);
   const [canEditProverbs, setCanEditProverbs] = useState(false);
   const [proverbEditorOpen, setProverbEditorOpen] = useState(false);
@@ -4213,6 +4215,22 @@ const ToolsPage = () => {
       if (cancelled || !ok) return;
       setProverbPresets(mergeBibleVersePresets(KJV_PROVERB_PRESETS, data.verses));
       setCanEditProverbs(Boolean(data.can_edit));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bibleVerseMerch]);
+
+  useEffect(() => {
+    if (!bibleVerseMerch) return undefined;
+    let cancelled = false;
+    fetchPlatformStorefrontDashboard(getSubdomain()).then(({ ok, data }) => {
+      if (!cancelled && ok) {
+        setProverbTemplates(applyBibleVerseTemplateSettings(
+          BIBLE_VERSE_TEMPLATES,
+          data.settings || {}
+        ));
+      }
     });
     return () => {
       cancelled = true;
@@ -4462,7 +4480,8 @@ const ToolsPage = () => {
   useEffect(() => {
     if (!bibleVerseMerch || typeof window === 'undefined') return undefined;
     let cancelled = false;
-    BIBLE_VERSE_TEMPLATES.forEach((template) => {
+    setProverbTemplateAvailability({});
+    proverbTemplates.forEach((template) => {
       const probe = new Image();
       probe.onload = () => {
         if (!cancelled) {
@@ -4479,7 +4498,7 @@ const ToolsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [bibleVerseMerch]);
+  }, [bibleVerseMerch, proverbTemplates]);
 
   const buildLiveEditLog = (productOverride = null) => {
     const product = productOverride || (
@@ -7678,7 +7697,7 @@ const ToolsPage = () => {
   };
 
   const resetTextDesign = (templateId = selectedProverbTemplateId) => {
-    const template = BIBLE_VERSE_TEMPLATES.find((item) => item.id === templateId);
+    const template = proverbTemplates.find((item) => item.id === templateId);
     const placement = template?.recommendedTextPosition || 'center';
     applyTextPlacement(placement, template?.recommendedTextSafeArea);
     setScriptureStyle('classic');
@@ -9003,7 +9022,7 @@ const ToolsPage = () => {
                     </p>
                     <h4 className="proverb-template-section-label">Images:</h4>
                     <div className="proverb-template-grid" aria-label="Christian image templates">
-                      {BIBLE_VERSE_TEMPLATES
+                      {proverbTemplates
                         .filter((template) => proverbTemplateAvailability[template.id] === true)
                         .map((template) => (
                           <button

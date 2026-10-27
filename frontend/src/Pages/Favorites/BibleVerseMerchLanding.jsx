@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BIBLE_VERSE_MERCH_SUBDOMAIN,
+  applyBibleVerseTemplateSettings,
   BIBLE_VERSE_TEMPLATES,
   formatProverbDesignText,
   KJV_PROVERB_PRESETS,
@@ -9,6 +10,7 @@ import {
   textPositionDefaults,
 } from '../../data/bibleVerseMerch';
 import { fetchStorefrontBibleVerses, mergeBibleVersePresets } from '../../utils/bibleVersesApi';
+import { fetchPlatformStorefrontDashboard } from '../../utils/platformStorefrontDashboardApi';
 import { markMerchIntentStarted, savePendingMerchData } from '../../utils/merchSession';
 import './BibleVerseMerchLanding.css';
 
@@ -25,11 +27,12 @@ export default function BibleVerseMerchLanding() {
   const [proverbId, setProverbId] = useState(FEATURED_HOMEPAGE_VERSE_ID);
   const [customText, setCustomText] = useState('');
   const [proverbPresets, setProverbPresets] = useState(KJV_PROVERB_PRESETS);
+  const [templateCatalog, setTemplateCatalog] = useState(BIBLE_VERSE_TEMPLATES);
 
   useEffect(() => {
     let cancelled = false;
     Promise.all(
-      BIBLE_VERSE_TEMPLATES.map((template) => new Promise((resolve) => {
+      templateCatalog.map((template) => new Promise((resolve) => {
         const image = new Image();
         image.onload = () => resolve(template.id);
         image.onerror = () => resolve('');
@@ -44,7 +47,7 @@ export default function BibleVerseMerchLanding() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [templateCatalog]);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,12 +61,27 @@ export default function BibleVerseMerchLanding() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchPlatformStorefrontDashboard(BIBLE_VERSE_MERCH_SUBDOMAIN).then(({ ok, data }) => {
+      if (!cancelled && ok) {
+        setTemplateCatalog(applyBibleVerseTemplateSettings(
+          BIBLE_VERSE_TEMPLATES,
+          data.settings || {}
+        ));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const templates = useMemo(
-    () => BIBLE_VERSE_TEMPLATES.filter((template) => availableTemplateIds.includes(template.id)),
-    [availableTemplateIds]
+    () => templateCatalog.filter((template) => availableTemplateIds.includes(template.id)),
+    [availableTemplateIds, templateCatalog]
   );
-  const template = BIBLE_VERSE_TEMPLATES.find((item) => item.id === templateId)
-    || BIBLE_VERSE_TEMPLATES[0];
+  const template = templateCatalog.find((item) => item.id === templateId)
+    || templateCatalog[0];
   const showFeaturedHomepageText = template?.id === FEATURED_HOMEPAGE_TEMPLATE_ID;
   const featuredHomepageDesign = showFeaturedHomepageText && proverbId === FEATURED_HOMEPAGE_VERSE_ID;
   const proverb = proverbPresets.find((item) => item.id === proverbId);

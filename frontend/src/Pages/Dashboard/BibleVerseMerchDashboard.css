@@ -181,6 +181,18 @@
   text-transform: capitalize;
 }
 
+.bvm-dashboard-template-grid article > div {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.bvm-dashboard-template-grid article button {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+}
+
 .bvm-dashboard-list {
   border-top: 1px solid #e7e0d6;
 }
@@ -243,6 +255,7 @@
 
 .bvm-dashboard-editor input:not([type='range']):not([type='color']),
 .bvm-dashboard-editor textarea,
+.bvm-dashboard-editor select,
 .bvm-dashboard-inline-form input {
   box-sizing: border-box;
   width: 100%;

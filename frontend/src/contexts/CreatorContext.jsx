@@ -74,7 +74,9 @@ export const CreatorProvider = ({ children }) => {
         const next = settings
           ? {
               ...settings,
-              custom_logo_url: normalizeStorageUrl(settings.custom_logo_url) || settings.custom_logo_url,
+              custom_logo_url: String(settings.custom_logo_url || '').startsWith('/')
+                ? settings.custom_logo_url
+                : (normalizeStorageUrl(settings.custom_logo_url) || settings.custom_logo_url),
               personalization_enabled: true,
               subdomain: requestedSubdomain,
             }

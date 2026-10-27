@@ -9608,6 +9608,8 @@ def _platform_storefront_dashboard_defaults(subdomain):
         "secondary_color": "#ffffff",
         "header_opacity": 100,
         "custom_logo_url": "/bibleverse-merch-logo.png",
+        "hidden_template_ids": [],
+        "template_overrides": {},
         "co_creators": [],
         "payout_note": "Platform-owned storefront; no separate creator payout.",
     }
@@ -9705,6 +9707,8 @@ def platform_storefront_dashboard():
                 "header_opacity",
                 "custom_logo_url",
                 "checkout_enabled",
+                "hidden_template_ids",
+                "template_overrides",
             )
         }
         if can_edit:
@@ -9737,6 +9741,33 @@ def platform_storefront_dashboard():
     if len(logo_url) > 1000 or (logo_url and not (logo_url.startswith("/") or logo_url.startswith("https://"))):
         return jsonify({"success": False, "error": "Logo URL must be HTTPS or a storefront path"}), 400
     next_settings["custom_logo_url"] = logo_url
+    hidden_template_ids = data.get(
+        "hidden_template_ids", settings.get("hidden_template_ids") or []
+    )
+    next_settings["hidden_template_ids"] = [
+        str(template_id)[:100]
+        for template_id in hidden_template_ids
+        if isinstance(template_id, str) and re.fullmatch(r"bvm-template-\d{2}", template_id)
+    ][:100]
+    raw_overrides = data.get(
+        "template_overrides", settings.get("template_overrides") or {}
+    )
+    clean_overrides = {}
+    if isinstance(raw_overrides, dict):
+        for template_id, override in raw_overrides.items():
+            if not re.fullmatch(r"bvm-template-\d{2}", str(template_id)) or not isinstance(override, dict):
+                continue
+            title = str(override.get("title") or "").strip()[:120]
+            image_url = str(override.get("imageUrl") or "").strip()[:1000]
+            placement = str(override.get("recommendedTextPosition") or "").strip().lower()
+            if image_url and not (image_url.startswith("/") or image_url.startswith("https://")):
+                continue
+            clean_overrides[str(template_id)] = {
+                "title": title,
+                "imageUrl": image_url,
+                "recommendedTextPosition": placement if placement in {"top", "center", "bottom"} else "",
+            }
+    next_settings["template_overrides"] = clean_overrides
     next_settings["co_creators"] = _clean_platform_co_creators(
         data.get("co_creators", settings.get("co_creators") or [])
     )
