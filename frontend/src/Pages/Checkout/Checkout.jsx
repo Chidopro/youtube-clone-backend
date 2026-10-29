@@ -1582,12 +1582,20 @@ const Checkout = () => {
                         }
                         textEnabled={Boolean(ts.textEnabled)}
                         textContent={ts.textContent || ''}
+                        scriptureStyle={ts.scriptureStyle || 'classic'}
+                        scriptureReference={ts.scriptureReference || ''}
+                        scriptureHighlight={ts.scriptureHighlight || ''}
                         textFont={ts.textFont}
+                        textBold={ts.textBold !== false}
                         textColor={ts.textColor}
                         textSize={ts.textSize}
                         textOffsetX={ts.textOffsetX}
                         textOffsetY={ts.textOffsetY}
                         textDirection={ts.textDirection}
+                        textMaskEnabled={Boolean(ts.textMaskEnabled)}
+                        textMaskOpacity={ts.textMaskOpacity}
+                        textMaskColor={ts.textMaskColor}
+                        textSafeArea={ts.textSafeArea}
                         litePreview
                         shirtFillHint={isHatItem ? '' : (ts.shirtFillColor || '')}
                         garmentTintColor={isHatItem ? '' : getWhiteBlankGarmentTint(item, item?.color)}

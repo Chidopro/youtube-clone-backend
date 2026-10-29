@@ -54,9 +54,15 @@
 .scripture-thumb-mask span,
 .scripture-thumb-mask strong {
   display: block;
-  font-family: 'IM FELL English', Georgia, 'Times New Roman', serif;
-  font-weight: 700;
+  font-family: inherit;
+  font-weight: 400;
   text-wrap: balance;
+}
+
+.scripture-thumb--bold .scripture-thumb-mask span,
+.scripture-thumb--bold .scripture-thumb-mask strong {
+  font-weight: 700;
+  -webkit-text-stroke: 0.018em currentColor;
 }
 
 .scripture-thumb-verse {
@@ -77,9 +83,35 @@
   line-height: 1.2;
 }
 
+.scripture-thumb--highlighted .scripture-thumb-mask {
+  padding: 2% 1%;
+}
+
+.scripture-thumb--highlighted .scripture-thumb-highlight {
+  margin: 0.22em auto;
+  font-size: clamp(14px, 8cqi, 42px);
+  line-height: 1.02;
+}
+
+.scripture-thumb--highlighted .scripture-thumb-body {
+  margin-top: 0.2em;
+  font-size: clamp(8px, 3.35cqi, 18px);
+  line-height: 1.16;
+}
+
+.scripture-thumb--minimal .scripture-thumb-mask {
+  padding-right: 7%;
+  padding-left: 7%;
+}
+
 .scripture-thumb-mask strong {
   margin-top: 0.45em;
   font-size: clamp(8px, 3.8cqi, 22px);
+}
+
+.scripture-thumb--highlighted .scripture-thumb-mask strong {
+  margin-top: 0.32em;
+  font-size: clamp(8px, 3.1cqi, 16px);
 }
 
 .scripture-thumb--featured .scripture-thumb-mask strong {

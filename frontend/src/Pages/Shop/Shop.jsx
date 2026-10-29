@@ -31,6 +31,8 @@ import {
   shopperSizeLabel,
 } from '../../utils/shopCategories';
 import { fetchShopCatalog } from '../../utils/shopCatalogApi';
+import { isBibleVerseMerchStorefront } from '../../data/bibleVerseMerch';
+import BibleVerseReadyMadeShop from './BibleVerseReadyMadeShop';
 import './Shop.css';
 
 function ShopTileThumb({ preview, emoji, thumbFit, nudge }) {
@@ -666,9 +668,14 @@ const Shop = ({ sidebar }) => {
   const navigate = useNavigate();
   const subdomain = getSubdomain();
   const designedShop = isPremadeShopfront(subdomain);
+  const readyMadeBibleVerseShop = isBibleVerseMerchStorefront(subdomain);
   const [usePersonalShop, setUsePersonalShop] = useState(designedShop);
 
   useEffect(() => {
+    if (readyMadeBibleVerseShop) {
+      setUsePersonalShop(false);
+      return undefined;
+    }
     if (designedShop) {
       setUsePersonalShop(true);
       return undefined;
@@ -684,7 +691,21 @@ const Shop = ({ sidebar }) => {
     return () => {
       cancelled = true;
     };
-  }, [designedShop, subdomain]);
+  }, [designedShop, readyMadeBibleVerseShop, subdomain]);
+
+  if (readyMadeBibleVerseShop) {
+    return (
+      <div className={`container shop-root ${sidebar ? '' : ' large-container'}`}>
+        <StorefrontFlowBanner />
+        <div className="shop-page shop-page--in-container">
+          <ShopToolbar title="Ready-Made Designs" onBack={() => navigate('/')} />
+          <div className="shop-body">
+            <BibleVerseReadyMadeShop />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (usePersonalShop) {
     return <PremadeShop sidebar={sidebar} personalOnly={!designedShop} />;

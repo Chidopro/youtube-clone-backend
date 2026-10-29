@@ -1,0 +1,122 @@
+.bvm-ready-shop {
+  --bvm-ready-ink: #30291f;
+  --bvm-ready-accent: #51422d;
+  color: var(--bvm-ready-ink);
+  padding: 6px 0 44px;
+}
+
+.bvm-ready-heading {
+  max-width: 720px;
+  margin: 0 auto 26px;
+  text-align: center;
+}
+
+.bvm-ready-heading h2 {
+  margin: 4px 0 8px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.8rem, 3vw, 2.75rem);
+  line-height: 1.1;
+}
+
+.bvm-ready-heading p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.bvm-ready-heading .bvm-ready-eyebrow {
+  color: #786443;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.bvm-ready-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.bvm-ready-card {
+  overflow: hidden;
+  border: 1px solid #ddd4c6;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(57, 45, 29, 0.1);
+}
+
+.bvm-ready-art {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 5 / 6;
+  background: #eee9df;
+  container-type: inline-size;
+}
+
+.bvm-ready-art > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bvm-ready-card-copy {
+  padding: 14px 16px 16px;
+}
+
+.bvm-ready-card-copy h3,
+.bvm-ready-card-copy p {
+  margin: 0;
+}
+
+.bvm-ready-card-copy h3 {
+  overflow: hidden;
+  min-height: 2.5em;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.bvm-ready-card-copy p {
+  margin-top: 4px;
+  color: #6b6258;
+  font-family: 'IM FELL English', Georgia, 'Times New Roman', serif;
+}
+
+.bvm-ready-card-copy button {
+  width: 100%;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 7px;
+  padding: 11px 14px;
+  background: var(--bvm-ready-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.bvm-ready-card-copy button:hover {
+  background: #382d1f;
+}
+
+.bvm-ready-card-copy button:focus-visible {
+  outline: 3px solid rgba(29, 79, 145, 0.4);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .bvm-ready-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .bvm-ready-shop {
+    padding-bottom: 28px;
+  }
+
+  .bvm-ready-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}

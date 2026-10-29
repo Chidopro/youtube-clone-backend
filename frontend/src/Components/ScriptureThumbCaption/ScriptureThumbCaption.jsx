@@ -17,9 +17,33 @@ function isLightColor(color) {
   return (r * 299 + g * 587 + b * 114) / 1000 > 160;
 }
 
+function highlightedVerseParts(text, highlight) {
+  const verse = String(text || '');
+  const phrase = String(highlight || '').trim();
+  if (!phrase) return null;
+  const index = verse.toLocaleLowerCase().indexOf(phrase.toLocaleLowerCase());
+  if (index < 0) return null;
+  let matched = verse.slice(index, index + phrase.length).trim();
+  let after = verse.slice(index + phrase.length).trim();
+  const punctuation = after.match(/^([,;:.!?]+)/)?.[1] || '';
+  if (punctuation) {
+    matched += punctuation;
+    after = after.slice(punctuation.length).trim();
+  }
+  return {
+    before: verse.slice(0, index).trim(),
+    highlight: matched,
+    after,
+  };
+}
+
 export default function ScriptureThumbCaption({
   text = '',
   reference = '',
+  highlight = '',
+  scriptureStyle = 'classic',
+  fontFamily = 'IM FELL English',
+  bold = true,
   color = '#fff8e6',
   position = 'center',
   mask = 'cream',
@@ -30,12 +54,19 @@ export default function ScriptureThumbCaption({
   if (!featured && !verse) return null;
   const place = ['top', 'center', 'bottom'].includes(position) ? position : 'center';
   const maskName = mask === 'charcoal' ? 'charcoal' : (mask === 'none' ? 'none' : 'cream');
+  const styleName = scriptureStyle === 'highlighted' ? 'highlighted' : (
+    scriptureStyle === 'minimal' ? 'minimal' : 'classic'
+  );
+  const parts = styleName === 'highlighted' ? highlightedVerseParts(verse, highlight) : null;
   return (
-    <div className={`scripture-thumb scripture-thumb--${place}${featured ? ' scripture-thumb--featured' : ''}`}>
+    <div className={`scripture-thumb scripture-thumb--${place} scripture-thumb--${styleName}${
+      bold ? ' scripture-thumb--bold' : ''
+    }${featured ? ' scripture-thumb--featured' : ''}`}>
       <div
         className={`scripture-thumb-mask scripture-thumb-mask--${maskName}`}
         style={{
           color,
+          fontFamily: `"${String(fontFamily || 'IM FELL English').replace(/"/g, '')}", Georgia, "Times New Roman", serif`,
           textShadow: isLightColor(color)
             ? '0 1px 2px rgba(0, 0, 0, 0.45)'
             : '0 1px 1px rgba(255, 248, 230, 0.35)',
@@ -50,6 +81,12 @@ export default function ScriptureThumbCaption({
               that was slain to receive power, and riches, and wisdom, and strength,
               and honour, and glory, and blessing.
             </span>
+          </>
+        ) : parts ? (
+          <>
+            {parts.before ? <span className="scripture-thumb-body">{parts.before}</span> : null}
+            <span className="scripture-thumb-highlight">{parts.highlight}</span>
+            {parts.after ? <span className="scripture-thumb-body">{parts.after}</span> : null}
           </>
         ) : (
           <span className="scripture-thumb-verse">{verse}</span>
@@ -69,9 +106,15 @@ export function ScriptureCaptionFromDesign({ design }) {
       featured={featured}
       text={text}
       reference={design.scriptureReference || ''}
+      highlight={design.scriptureHighlight || ''}
+      scriptureStyle={design.scriptureStyle || 'classic'}
+      fontFamily={design.textFont || 'IM FELL English'}
+      bold={design.textBold !== false}
       color={featured ? '#ffffff' : (design.textColor || '#fff8e6')}
       position={design.textPlacement || 'center'}
-      mask={featured ? 'none' : (design.textMaskColor || 'cream')}
+      mask={featured || design.textMaskEnabled === false
+        ? 'none'
+        : (design.textMaskColor || 'cream')}
     />
   );
 }
