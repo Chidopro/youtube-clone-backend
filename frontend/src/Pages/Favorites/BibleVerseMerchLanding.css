@@ -178,6 +178,89 @@
   font-weight: 700;
 }
 
+.bvm-proverb-picker {
+  position: relative;
+}
+
+.bvm-proverb-trigger {
+  width: 100%;
+  border: 1px solid #b9ad9b;
+  border-radius: 7px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2330291f' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 12px center;
+  color: #30291f;
+  font: inherit;
+  text-align: left;
+  padding: 11px 32px 11px 12px;
+  cursor: pointer;
+}
+
+.bvm-proverb-menu {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid #b9ad9b;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(57, 45, 29, 0.16);
+}
+
+.bvm-proverb-menu button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #30291f;
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.bvm-proverb-menu button:hover,
+.bvm-proverb-menu button:focus-visible,
+.bvm-proverb-menu button.is-selected {
+  background: #1d4f91;
+  color: #fff;
+}
+
+.bvm-proverb-hover {
+  position: absolute;
+  z-index: 21;
+  right: calc(100% + 16px);
+  width: min(360px, 46vw);
+  padding: 14px 16px;
+  border: 1px solid #ddd4c6;
+  border-radius: 10px;
+  background: #fffdf8;
+  box-shadow: 0 10px 28px rgba(57, 45, 29, 0.18);
+  pointer-events: none;
+}
+
+.bvm-proverb-hover strong,
+.bvm-proverb-hover p {
+  margin: 0;
+  font-family: var(--bvm-scripture-font);
+}
+
+.bvm-proverb-hover strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+
+.bvm-proverb-hover p {
+  font-size: 1.05rem;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
 .bvm-controls select,
 .bvm-controls textarea {
   width: 100%;
@@ -210,6 +293,34 @@
   opacity: 0.55;
 }
 
+.bvm-controls .bvm-proverb-trigger {
+  margin-top: 0;
+  border: 1px solid #b9ad9b;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2330291f' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 12px center;
+  color: #30291f;
+  font-weight: 500;
+  text-align: left;
+  padding: 11px 32px 11px 12px;
+}
+
+.bvm-controls .bvm-proverb-menu button {
+  margin-top: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #30291f;
+  font-weight: 500;
+  text-align: left;
+  padding: 8px 12px;
+}
+
+.bvm-controls .bvm-proverb-menu button:hover,
+.bvm-controls .bvm-proverb-menu button:focus-visible,
+.bvm-controls .bvm-proverb-menu button.is-selected {
+  background: #1d4f91;
+  color: #fff;
+  opacity: 1;
+}
+
 .bvm-help {
   margin: 2px 0 0;
   color: #6b6258;
@@ -238,5 +349,11 @@
   .bvm-preview-mask strong {
     font-weight: 800;
     -webkit-text-stroke: 0.35px currentColor;
+  }
+
+  .bvm-proverb-hover {
+    position: static;
+    width: auto;
+    margin-top: 8px;
   }
 }

@@ -1157,6 +1157,10 @@
   pointer-events: none;
 }
 
+.screenshot-scripture-host {
+  position: relative;
+}
+
 .screenshot-image {
   width: 100%;
   height: auto;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName, getProductPrintFilter } from '../../config/printAreaConfig';
+import { getPrintAreaConfig, getPrintAreaDimensions, getMaxPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName, getProductPrintFilter } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
 import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest, peekToolsPreviewNewest, rememberArtworkOrientation } from '../../utils/merchSession';
 import { isDemoStorefront } from '../../utils/demoStorefront';
@@ -7232,22 +7232,24 @@ const ToolsPage = () => {
           || (bibleVerseMerch && selectedProverbTemplateId && textEnabled)
         ) ? false : true
       };
-      if (selectedProductName && printAreaFit === 'product') {
-        try {
-          const dims = getPrintAreaDimensions(selectedProductName, fitProductSize, printPlacement);
-          if (dims && dims.width && dims.height) {
-            payload.print_area_width = dims.width;
-            payload.print_area_height = dims.height;
+      try {
+        const fitName = matchPrintAreaProductName(productLabel) || productLabel;
+        const shirtFile = fitName === 'T-Shirt' || fitName === 'Unisex T-Shirt';
+        const dims = shirtFile
+          ? getMaxPrintAreaDimensions(fitName, printPlacement)
+          : getPrintAreaDimensions(fitName, fitProductSize, printPlacement);
+        if (dims && dims.width && dims.height) {
+          let wIn = dims.width;
+          let hIn = dims.height;
+          if (orientation === 'landscape') {
+            const sized = overlaySizeForOrientation(wIn, hIn, 'landscape', fitName);
+            wIn = sized.width;
+            hIn = sized.height;
           }
-        } catch (_) {}
-      }
-      if (!originalShot) {
-        payload.preserve_edits = true;
-        payload.fit_mode = 'preserve';
-        delete payload.image_orientation;
-        delete payload.print_area_width;
-        delete payload.print_area_height;
-      }
+          payload.print_area_width = wIn;
+          payload.print_area_height = hIn;
+        }
+      } catch (_) {}
       const apiUrl = import.meta.env.DEV
         ? 'http://127.0.0.1:5000/api/process-thumbnail-print-quality'
         : apiJoin('/api/process-thumbnail-print-quality');

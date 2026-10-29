@@ -964,7 +964,8 @@ def _orientation_print_area(image_orientation, print_area_width, print_area_heig
         return width, height
     if ori == "portrait":
         if width <= 0 or height <= 0:
-            return 11.5, 13.8
+            # Bella 3001 large front. Same shape as 11.5×13.8, tall enough to fill it.
+            return 15, 18
         return width, height
     if width > 0 and height > 0:
         return width, height
@@ -1708,7 +1709,7 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             elif ori == "landscape":
                 target_aspect = 1.5
             elif ori == "portrait":
-                target_aspect = 11.5 / 13.8
+                target_aspect = 15 / 18
             if target_aspect:
                 before_h, before_w = image.shape[:2]
                 image = _cover_crop_to_aspect(image, target_aspect)

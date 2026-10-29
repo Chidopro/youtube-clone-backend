@@ -38,6 +38,7 @@ import {
 } from '../../utils/regionalAvailability';
 import { peekDisplaySrc, prepareDisplaySrc } from '../../utils/displaySrc';
 import InlineStillCrop from '../../Components/InlineStillCrop/InlineStillCrop';
+import { ScriptureCaptionFromDesign } from '../../Components/ScriptureThumbCaption/ScriptureThumbCaption';
 import './ProductPage.css';
 
 const BROWSE_EDIT_ORIGINAL = {
@@ -2183,6 +2184,7 @@ const ProductPage = ({ sidebar }) => {
                     className={`screenshot-item${showDesktopEditPresets ? ' screenshot-item--original' : ''}${showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${browseLayoutIsLandscape ? ' screenshot-item--landscape' : ''}${selectedScreenshot === 'thumbnail' && selectedEditPreset === 'original' ? ' selected' : ''}${browseCropping ? ' screenshot-item--cropping' : ''}`}
                   >
                     <div
+                      className="screenshot-scripture-host"
                       role="button"
                       tabIndex={0}
                       aria-label={showVideoThumbLabel ? 'Thumbnail' : 'Selected image'}
@@ -2210,6 +2212,7 @@ const ProductPage = ({ sidebar }) => {
                         decoding="async"
                         style={selectedImageStyle}
                       />
+                      {!showVideoThumbLabel ? <ScriptureCaptionFromDesign design={pendingBibleDesign} /> : null}
                       {showAutoEditPresets ? (
                         <InlineStillCrop
                           sourceUrl={browseSourceUrl || thumbnailUrl}
@@ -2256,6 +2259,7 @@ const ProductPage = ({ sidebar }) => {
                         className={`screenshot-item${showDesktopEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--original' : ''}${isFirstImage && showVideoThumbLabel ? ' screenshot-item--thumbnail' : ''}${browseLayoutIsLandscape ? ' screenshot-item--landscape' : ''}${selectedScreenshot === index && selectedEditPreset === 'original' ? ' selected' : ''}${browseCropping && showAutoEditPresets && index === 0 && !thumbnailUrl ? ' screenshot-item--cropping' : ''}`}
                       >
                         <div
+                          className="screenshot-scripture-host"
                           role="button"
                           tabIndex={0}
                           aria-label={label || 'Selected image'}
@@ -2283,6 +2287,7 @@ const ProductPage = ({ sidebar }) => {
                             decoding="async"
                             style={selectedImageStyle}
                           />
+                          {!showVideoThumbLabel ? <ScriptureCaptionFromDesign design={pendingBibleDesign} /> : null}
                           {showAutoEditPresets && index === 0 && !thumbnailUrl ? (
                             <InlineStillCrop
                               sourceUrl={browseSourceUrl || screenshot}
@@ -2324,6 +2329,7 @@ const ProductPage = ({ sidebar }) => {
                     onClick={() => applyBrowseEditPreset(preset.id, preset.settings)}
                   >
                     <div
+                      className="screenshot-scripture-host"
                       ref={preset.id === 'radius' ? setRadiusFrameNode : undefined}
                       style={preset.id === 'radius' && radiusPreviewPx > 0 ? { borderRadius: radiusPreviewPx } : undefined}
                     >
@@ -2342,6 +2348,7 @@ const ProductPage = ({ sidebar }) => {
                                 : {}))),
                         }}
                       />
+                      <ScriptureCaptionFromDesign design={pendingBibleDesign} />
                       {preset.id === 'frame' ? (
                         <span className="screenshot-preset-frame-mat" aria-hidden="true" />
                       ) : null}

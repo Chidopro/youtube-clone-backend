@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BIBLE_VERSE_MERCH_SUBDOMAIN,
@@ -12,6 +12,7 @@ import {
 import { fetchStorefrontBibleVerses, mergeBibleVersePresets } from '../../utils/bibleVersesApi';
 import { fetchPlatformStorefrontDashboard } from '../../utils/platformStorefrontDashboardApi';
 import { markMerchIntentStarted, savePendingMerchData } from '../../utils/merchSession';
+import ScriptureThumbCaption from '../../Components/ScriptureThumbCaption/ScriptureThumbCaption';
 import './BibleVerseMerchLanding.css';
 
 const CUSTOM_ID = 'custom';
@@ -27,6 +28,10 @@ export default function BibleVerseMerchLanding() {
   const [customText, setCustomText] = useState('');
   const [proverbPresets, setProverbPresets] = useState(KJV_PROVERB_PRESETS);
   const [templateCatalog, setTemplateCatalog] = useState(BIBLE_VERSE_TEMPLATES);
+  const [proverbMenuOpen, setProverbMenuOpen] = useState(false);
+  const [hoveredProverbId, setHoveredProverbId] = useState('');
+  const [hoveredProverbTop, setHoveredProverbTop] = useState(0);
+  const proverbPickerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,11 +89,35 @@ export default function BibleVerseMerchLanding() {
   const showFeaturedHomepageText = template?.id === FEATURED_HOMEPAGE_TEMPLATE_ID;
   const featuredHomepageDesign = showFeaturedHomepageText && proverbId === FEATURED_HOMEPAGE_VERSE_ID;
   const proverb = proverbPresets.find((item) => item.id === proverbId);
+  const hoveredProverb = proverbPresets.find((item) => item.id === hoveredProverbId);
+
+  useEffect(() => {
+    if (!proverbMenuOpen) return undefined;
+    const close = (event) => {
+      if (!proverbPickerRef.current?.contains(event.target)) setProverbMenuOpen(false);
+    };
+    const onKey = (event) => {
+      if (event.key === 'Escape') setProverbMenuOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [proverbMenuOpen]);
+
+  const showProverbPreview = (itemId, row) => {
+    setHoveredProverbId(itemId);
+    const picker = proverbPickerRef.current;
+    if (!picker || !row) return;
+    const top = row.getBoundingClientRect().top - picker.getBoundingClientRect().top;
+    setHoveredProverbTop(Math.max(0, top));
+  };
   const selectedText = proverbId === CUSTOM_ID
     ? customText.trim()
     : String(proverb?.text || '').replace(/\s*;\s*/g, ', ');
   const designText = proverbId === CUSTOM_ID ? selectedText : formatProverbDesignText(proverb);
-  const displayText = selectedText || 'Enter your own message';
 
   const startDesign = () => {
     if (!template || !selectedText) return;
@@ -126,6 +155,7 @@ export default function BibleVerseMerchLanding() {
         textSafeArea: template.recommendedTextSafeArea,
         selectedProverbId: proverbId === CUSTOM_ID ? '' : proverbId,
         selectedProverbTemplateId: template.id,
+        homepageFeaturedLayout: featuredHomepageDesign,
       },
     });
     navigate('/merchandise');
@@ -146,33 +176,31 @@ export default function BibleVerseMerchLanding() {
             featuredHomepageDesign ? ' bvm-preview--featured-zoom' : ''
           }`}>
             {template ? <img src={template.imageUrl} alt={template.title} /> : null}
-            {showFeaturedHomepageText ? (
-              <div className={`bvm-preview-copy bvm-preview-copy--${template?.recommendedTextPosition || 'center'}${
-                featuredHomepageDesign ? ' bvm-preview-copy--featured' : ''
-              }`}>
+            {featuredHomepageDesign ? (
+              <div className="bvm-preview-copy bvm-preview-copy--top bvm-preview-copy--featured">
                 <div
-                  className={`bvm-preview-mask bvm-preview-mask--${
-                    featuredHomepageDesign ? 'cream' : (template?.recommendedMaskColor || 'cream')
-                  }${featuredHomepageDesign ? ' bvm-preview-mask--featured' : ''}`}
-                  style={{ color: featuredHomepageDesign ? FEATURED_HOMEPAGE_TEXT_COLOR : template.recommendedTextColor }}
+                  className="bvm-preview-mask bvm-preview-mask--cream bvm-preview-mask--featured"
+                  style={{ color: FEATURED_HOMEPAGE_TEXT_COLOR }}
                 >
-                  {featuredHomepageDesign ? (
-                    <>
-                      <span className="bvm-preview-scripture-body">Saying with a loud voice,</span>
-                      <span className="bvm-preview-scripture-highlight">
-                        Worthy is the<br />Lamb
-                      </span>
-                      <span className="bvm-preview-scripture-body">
-                        that was slain to receive power, and riches, and wisdom, and strength,
-                        and honour, and glory, and blessing.
-                      </span>
-                    </>
-                  ) : (
-                    <span>{displayText}</span>
-                  )}
+                  <span className="bvm-preview-scripture-body">Saying with a loud voice,</span>
+                  <span className="bvm-preview-scripture-highlight">
+                    Worthy is the<br />Lamb
+                  </span>
+                  <span className="bvm-preview-scripture-body">
+                    that was slain to receive power, and riches, and wisdom, and strength,
+                    and honour, and glory, and blessing.
+                  </span>
                   {proverb?.reference ? <strong>{proverb.reference}</strong> : null}
                 </div>
               </div>
+            ) : designText ? (
+              <ScriptureThumbCaption
+                text={designText}
+                reference={proverb?.reference || ''}
+                color={template?.recommendedTextColor || '#fff8e6'}
+                position={template?.recommendedTextPosition || 'center'}
+                mask={template?.recommendedMaskColor || 'cream'}
+              />
             ) : null}
           </div>
         </section>
@@ -186,12 +214,68 @@ export default function BibleVerseMerchLanding() {
           </select>
 
           <label htmlFor="bvm-proverb">Proverb or custom text</label>
-          <select id="bvm-proverb" value={proverbId} onChange={(event) => setProverbId(event.target.value)}>
-            {proverbPresets.map((item) => (
-              <option value={item.id} key={item.id}>{item.reference}</option>
-            ))}
-            <option value={CUSTOM_ID}>Write my own text</option>
-          </select>
+          <div className="bvm-proverb-picker" ref={proverbPickerRef}>
+            <button
+              id="bvm-proverb"
+              type="button"
+              className="bvm-proverb-trigger"
+              aria-haspopup="listbox"
+              aria-expanded={proverbMenuOpen}
+              onClick={() => setProverbMenuOpen((open) => !open)}
+            >
+              {proverbId === CUSTOM_ID ? 'Write my own text' : (proverb?.reference || 'Choose a proverb')}
+            </button>
+            {proverbMenuOpen ? (
+              <div className="bvm-proverb-menu" role="listbox" aria-label="Proverbs">
+                {proverbPresets.map((item) => (
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={proverbId === item.id}
+                    className={proverbId === item.id ? 'is-selected' : ''}
+                    key={item.id}
+                    onMouseEnter={(event) => showProverbPreview(item.id, event.currentTarget)}
+                    onFocus={(event) => showProverbPreview(item.id, event.currentTarget)}
+                    onClick={() => {
+                      setProverbId(item.id);
+                      setProverbMenuOpen(false);
+                    }}
+                  >
+                    {item.reference}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={proverbId === CUSTOM_ID}
+                  className={proverbId === CUSTOM_ID ? 'is-selected' : ''}
+                  onMouseEnter={(event) => showProverbPreview(CUSTOM_ID, event.currentTarget)}
+                  onFocus={(event) => showProverbPreview(CUSTOM_ID, event.currentTarget)}
+                  onClick={() => {
+                    setProverbId(CUSTOM_ID);
+                    setProverbMenuOpen(false);
+                  }}
+                >
+                  Write my own text
+                </button>
+              </div>
+            ) : null}
+            {proverbMenuOpen && hoveredProverbId ? (
+              <div className="bvm-proverb-hover" style={{ top: hoveredProverbTop }} role="tooltip">
+                {hoveredProverb ? (
+                  <>
+                    <strong>{hoveredProverb.reference}</strong>
+                    <p>{formatProverbDesignText(hoveredProverb)}</p>
+                  </>
+                ) : (
+                  <>
+                    <strong>Write my own text</strong>
+                    <p>Type the words you want on the design.</p>
+                  </>
+                )}
+              </div>
+            ) : null}
+          </div>
 
           {proverbId === CUSTOM_ID ? (
             <textarea

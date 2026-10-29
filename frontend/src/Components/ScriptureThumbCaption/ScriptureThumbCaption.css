@@ -1,0 +1,88 @@
+@font-face {
+  font-family: 'IM FELL English';
+  src: url('/fonts/IMFellEnglish-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+.scripture-thumb {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  padding: 7% 8%;
+  pointer-events: none;
+  container-type: inline-size;
+}
+
+.scripture-thumb--top {
+  align-items: flex-start;
+  padding-top: 8%;
+}
+
+.scripture-thumb--center {
+  align-items: center;
+}
+
+.scripture-thumb--bottom {
+  align-items: flex-end;
+}
+
+.scripture-thumb--featured {
+  padding-right: 6%;
+  padding-left: 6%;
+}
+
+.scripture-thumb-mask {
+  width: 100%;
+  padding: 4% 2%;
+  text-align: center;
+  background: radial-gradient(ellipse at center, rgba(255, 248, 230, 0.16) 0%, rgba(255, 248, 230, 0.1) 58%, rgba(255, 248, 230, 0) 100%);
+}
+
+.scripture-thumb-mask--charcoal {
+  background: radial-gradient(ellipse at center, rgba(48, 41, 31, 0.2) 0%, rgba(48, 41, 31, 0.12) 58%, rgba(48, 41, 31, 0) 100%);
+}
+
+.scripture-thumb-mask--none {
+  padding: 0;
+  background: none;
+}
+
+.scripture-thumb-mask span,
+.scripture-thumb-mask strong {
+  display: block;
+  font-family: 'IM FELL English', Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.scripture-thumb-verse {
+  font-size: 1em;
+  line-height: 1.28;
+  white-space: pre-line;
+}
+
+.scripture-thumb-highlight {
+  font-size: clamp(16px, 13cqi, 80px);
+  line-height: 0.98;
+}
+
+.scripture-thumb-body {
+  width: min(92%, 760px);
+  margin: 0.35em auto 0;
+  font-size: clamp(9px, 4.2cqi, 24px);
+  line-height: 1.2;
+}
+
+.scripture-thumb-mask strong {
+  margin-top: 0.45em;
+  font-size: clamp(8px, 3.8cqi, 22px);
+}
+
+.scripture-thumb--featured .scripture-thumb-mask strong {
+  margin-top: 0.55em;
+  font-size: clamp(9px, 4cqi, 27px);
+}

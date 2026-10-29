@@ -183,10 +183,11 @@
         }
         .live-preview-frame { inset: 0; }
         .live-preview-text {
-            white-space: pre;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
             transform: translate(-50%, -50%);
             font-weight: bold;
-            line-height: 1.15;
+            line-height: 1.32;
             text-align: center;
         }
         .live-preview-scripture-reference {
@@ -601,7 +602,7 @@
                 <div class="form-group">
                     <label for="screenshotSizeSlider">Screenshot size: <span id="screenshotSizeValue">100</span>%</label>
                     <input type="range" id="screenshotSizeSlider" min="50" max="150" value="100" style="width: 100%;">
-                    <small style="color: #666;">Scale the image within the print area (100% = full print area).</small>
+                    <small style="color: #666;">Scale the image within the print area (100% = full print area). T-shirt downloads stay 15 × 18 inches so they fill the print area.</small>
                 </div>
             </div>
 
@@ -1258,16 +1259,40 @@
             }
             if (textEl) {
                 if (s.textEnabled) {
+                    var storedText = mergedToolValues(currentToolSettings);
+                    var area = storedText.textSafeArea || { x: 8, y: 25, width: 84, height: 50 };
+                    var areaW = Math.max(20, Math.min(100, Number(area.width) || 84));
+                    var areaH = Math.max(10, Math.min(100, Number(area.height) || 50));
                     var minDim = Math.min(w, h);
                     var fontSize = Math.max(8, Math.min(120, Math.round((s.textSize / 100) * minDim * 0.22)));
+                    var minFont = Math.max(8, Math.round(fontSize * 0.62));
                     textEl.style.display = 'block';
                     textEl.style.left = s.textOffsetX + '%';
                     textEl.style.top = s.textOffsetY + '%';
-                    textEl.style.fontSize = fontSize + 'px';
                     textEl.style.fontFamily = s.textFont;
                     textEl.style.fontWeight = s.textBold ? 'bold' : 'normal';
                     textEl.style.color = s.textColor;
+                    textEl.style.lineHeight = '1.32';
                     renderLivePreviewText(textEl, s.textContent, s.textDirection, s.scriptureReference);
+                    if (s.textDirection === 'vertical') {
+                        textEl.style.width = 'auto';
+                        textEl.style.maxWidth = 'none';
+                        textEl.style.fontSize = fontSize + 'px';
+                    } else {
+                        // Same inset the print file uses, so a long proverb wraps
+                        // instead of staying one clipped line.
+                        var innerW = areaW * 0.85;
+                        var maxBlock = h * (areaH * 0.78 / 100);
+                        textEl.style.width = innerW + '%';
+                        textEl.style.maxWidth = innerW + '%';
+                        textEl.style.fontSize = fontSize + 'px';
+                        var guard = 0;
+                        while (textEl.scrollHeight > maxBlock + 1 && fontSize > minFont && guard < 48) {
+                            fontSize = Math.max(minFont, fontSize - Math.max(1, Math.ceil(fontSize / 40)));
+                            textEl.style.fontSize = fontSize + 'px';
+                            guard++;
+                        }
+                    }
                 } else {
                     textEl.style.display = 'none';
                     textEl.classList.remove('is-vertical');
@@ -1465,19 +1490,36 @@
             if (!matched) return;
             sel.value = matched.name;
             sel.dispatchEvent(new Event('change'));
-            var sizeMatch = matchPrintAreaSize(matched, product.size);
             var sizeSelect = document.getElementById('fitSizeSelect');
-            if (sizeMatch && sizeSelect) {
-                sizeSelect.value = sizeMatch.label;
+            var largest = largestPrintSize(matched);
+            if (largest && largest.label && sizeSelect) {
+                sizeSelect.value = largest.label;
             }
         }
 
-        // Return { width, height } in inches for current fit product/size and screenshot scale, or null
+        function largestPrintSize(product) {
+            var best = null;
+            if (!product) return best;
+            if (product.width && product.height) best = { width: product.width, height: product.height, label: '' };
+            if (product.sizes && product.sizes.length) {
+                product.sizes.forEach(function(s) {
+                    if (!best || (s.width * s.height) > (best.width * best.height)) best = s;
+                });
+            }
+            return best;
+        }
+
+        // T-shirt files use the 15" × 18" area. A smaller file is too short to fill it.
         function getFitPrintAreaDimensions() {
             var productName = document.getElementById('fitProductSelect').value;
             if (!productName) return null;
             var product = printAreaProductsList.find(function(p) { return p.name === productName; });
             if (!product) return null;
+            var shirt = product.name === 'T-Shirt' || product.name === 'Unisex T-Shirt';
+            if (shirt) {
+                var large = largestPrintSize(product);
+                if (large && large.width && large.height) return { width: large.width, height: large.height };
+            }
             var w = product.width, h = product.height;
             var sizeSelect = document.getElementById('fitSizeSelect');
             if (sizeSelect && sizeSelect.options.length && product.sizes) {
@@ -1486,6 +1528,7 @@
                 if (s) { w = s.width; h = s.height; }
             }
             var scale = parseInt(document.getElementById('screenshotSizeSlider').value, 10) / 100;
+            if (!(scale > 0)) scale = 1;
             return { width: w * scale, height: h * scale };
         }
         
@@ -2117,13 +2160,6 @@
                 }
                 const cropArea = getCropArea();
                 if (cropArea) payload.crop_area = cropArea;
-                if (!originalShot) {
-                    payload.preserve_edits = true;
-                    payload.fit_mode = 'preserve';
-                    delete payload.image_orientation;
-                    delete payload.print_area_width;
-                    delete payload.print_area_height;
-                }
                 if (petBowlStrip) {
                     payload.pet_bowl_strip = true;
                     payload.preserve_edits = true;

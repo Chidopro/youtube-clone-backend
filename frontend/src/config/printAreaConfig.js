@@ -137,9 +137,11 @@ export const PRINT_AREA_CONFIG = {
     front: {
       sizes: {
         "XS-M": { width: 11.5, height: 13.8 },
-        "L-3XL": { width: 15, height: 18 }
+        // Printful's designer is the 15" × 18" large front. Smaller sizes
+        // downscale this same shape; the print file must be the large area.
+        "L-5XL": { width: 15, height: 18 }
       },
-      default: { width: 11.5, height: 13.8 }
+      default: { width: 15, height: 18 }
     },
     back: {
       default: { width: 12, height: 16 }
@@ -593,7 +595,7 @@ export const getPrintAreaDimensions = (productName, size = null, placement = 'fr
         } else {
           // Range match (e.g., "XS-S", "L-XL")
           // Simple check: if size is in the range
-          const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
+          const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
           const startIdx = sizeOrder.indexOf(sizes[0]);
           const endIdx = sizeOrder.indexOf(sizes[1]);
           const currentIdx = sizeOrder.indexOf(sizeUpper);
@@ -614,6 +616,30 @@ export const getPrintAreaDimensions = (productName, size = null, placement = 'fr
   // Legacy format (simple width/height)
   return { width: config.width, height: config.height };
 };
+
+/** Largest print box for this product. Print files use this so they fill the template. */
+export function getMaxPrintAreaDimensions(productName, placement = 'front') {
+  const name = matchPrintAreaProductName(productName) || String(productName || '').trim();
+  const config = PRINT_AREA_CONFIG[name];
+  if (!config) return null;
+  const placementConfig = config[placement] || config.front || null;
+  const candidates = [];
+  if (placementConfig?.default?.width && placementConfig?.default?.height) {
+    candidates.push(placementConfig.default);
+  }
+  if (placementConfig?.sizes) {
+    Object.values(placementConfig.sizes).forEach((dims) => {
+      if (dims?.width > 0 && dims?.height > 0) candidates.push(dims);
+    });
+  }
+  if (!candidates.length && config.width > 0 && config.height > 0) {
+    candidates.push({ width: config.width, height: config.height });
+  }
+  if (!candidates.length) return null;
+  return candidates.reduce((best, dims) => (
+    dims.width * dims.height > best.width * best.height ? dims : best
+  ));
+}
 
 // Helper function to calculate aspect ratio from dimensions
 export const getAspectRatio = (width, height) => {
