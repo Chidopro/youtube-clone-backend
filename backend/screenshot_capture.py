@@ -1237,14 +1237,11 @@ def _draw_print_text_mask(
     padding_x = max(4, int(round(area_width * 0.075)))
     padding_y = max(4, int(round(area_height * 0.11)))
     available_width = max(1, area_width - padding_x * 2)
-    available_height = max(1, area_height - padding_y * 2)
-    initial_font_px = max(
-        12,
-        min(600, int((float(text_size or 24) / 100.0) * min(width, height) * 0.22)),
+    font_px = max(
+        1,
+        int((float(text_size or 24) / 100.0) * min(width, height) * 0.22),
     )
-    min_font_px = max(12, int(initial_font_px * 0.62))
     measure = ImageDraw.Draw(rgba)
-    font_px = initial_font_px
     line_height = 1.32
     style = str(scripture_style or "").strip().lower()
     if style not in ("highlighted", "minimal"):
@@ -1278,7 +1275,10 @@ def _draw_print_text_mask(
         height_used = 0.0
         widest = 0
         for section_index, (section_text, scale, section_bold, kind) in enumerate(sections):
-            section_size = max(int(round(min_font_px * 0.72)), int(round(base_size * scale)))
+            # Scripture styles choose which sections may be emphasized, but the
+            # shopper's Bold text setting must be able to disable that emphasis.
+            section_bold = bool(text_bold and section_bold)
+            section_size = max(1, int(round(base_size * scale)))
             section_font = _load_overlay_font(text_font, section_size)
             section_lines = _wrap_print_text(measure, section_text, section_font, available_width)
             before = base_size * 0.24 if section_index > 0 else 0.0
@@ -1297,7 +1297,7 @@ def _draw_print_text_mask(
                 height_used += row_before + row_height
                 widest = max(widest, _text_width(measure, line, section_font))
         if reference:
-            reference_size = max(int(round(min_font_px * 0.68)), int(round(base_size * 0.58)))
+            reference_size = max(1, int(round(base_size * 0.58)))
             reference_font = _load_overlay_font(text_font, reference_size)
             reference_lines = _wrap_print_text(measure, reference, reference_font, available_width)
             for line_index, line in enumerate(reference_lines):
@@ -1316,13 +1316,6 @@ def _draw_print_text_mask(
                 widest = max(widest, _text_width(measure, line, reference_font))
         return rows, height_used, widest
 
-    rows, total_height, measured_width = build_layout(font_px)
-    while font_px >= min_font_px:
-        rows, total_height, measured_width = build_layout(font_px)
-        if rows and total_height <= available_height:
-            break
-        font_px -= max(1, int(math.ceil(font_px / 40.0)))
-    font_px = max(min_font_px, font_px)
     rows, total_height, measured_width = build_layout(font_px)
     if not rows:
         return pil_image
@@ -2156,7 +2149,7 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                     else:
                         draw = ImageDraw.Draw(pil_image)
                         min_dim = min(width, height)
-                        font_px = max(12, min(300, int((text_size / 100.0) * min_dim * 0.22)))
+                        font_px = max(1, int((float(text_size or 24) / 100.0) * min_dim * 0.22))
                         font = _load_overlay_font(text_font, font_px)
                         fill_tuple = _parse_overlay_hex_color(
                             text_color, "RGB" if pil_image.mode == "RGB" else "RGBA"

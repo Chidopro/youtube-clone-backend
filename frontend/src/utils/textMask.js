@@ -1,3 +1,5 @@
+import { overlayCanvasFont, overlayFontFauxBold } from './overlayFonts';
+
 export const TEXT_MASK_COLORS = {
   cream: { label: 'Warm cream', hex: '#fff8e6', rgb: [255, 248, 230] },
   charcoal: { label: 'Soft charcoal', hex: '#302f2a', rgb: [48, 47, 42] },
@@ -122,7 +124,6 @@ export function drawTextMask(ctx, {
   fontBold,
   textColor = '#30291f',
   fontSize = 84,
-  minFontSize = 18,
   lineHeight = 1.32,
   safeArea,
   maskEnabled = false,
@@ -151,7 +152,7 @@ export function drawTextMask(ctx, {
   const baseBold = typeof fontBold === 'boolean' ? fontBold : true;
   const sections = scriptureSections(value, style, highlight);
   const ref = String(reference || '').trim();
-  let fittedSize = Math.max(minFontSize, Number(fontSize) || 84);
+  const requestedSize = Math.max(1, Number(fontSize) || 84);
   let layout = [];
   let totalHeight = 0;
   let measuredWidth = 0;
@@ -161,9 +162,11 @@ export function drawTextMask(ctx, {
     let height = 0;
     let widest = 0;
     sections.forEach((section, sectionIndex) => {
-      const sectionSize = Math.max(minFontSize * 0.72, baseSize * section.scale);
-      const sectionBold = section.kind === 'highlight' ? true : (style === 'classic' ? baseBold : section.bold);
-      ctx.font = `${sectionBold ? 'bold ' : ''}${sectionSize}px "${fontFamily}", Georgia, serif`;
+      const sectionSize = Math.max(1, baseSize * section.scale);
+      // Scripture styles decide which sections may be emphasized, while the
+      // shopper's Bold text setting decides whether that emphasis uses bold.
+      const sectionBold = baseBold && section.bold;
+      ctx.font = overlayCanvasFont(fontFamily, sectionSize, sectionBold, 'Georgia, serif');
       const lines = wrapCanvasText(ctx, section.text, availableWidth);
       const rowHeight = sectionSize * lineHeight;
       if (sectionIndex > 0) height += baseSize * 0.24;
@@ -174,9 +177,9 @@ export function drawTextMask(ctx, {
       });
     });
     if (ref) {
-      const referenceSize = Math.max(minFontSize * 0.68, baseSize * 0.58);
+      const referenceSize = Math.max(1, baseSize * 0.58);
       height += baseSize * 0.42;
-      ctx.font = `${referenceSize}px "${fontFamily}", Georgia, serif`;
+      ctx.font = overlayCanvasFont(fontFamily, referenceSize, false, 'Georgia, serif');
       const referenceLines = wrapCanvasText(ctx, ref, availableWidth);
       referenceLines.forEach((line) => {
         const rowHeight = referenceSize * 1.2;
@@ -189,14 +192,10 @@ export function drawTextMask(ctx, {
   };
 
   ctx.save();
-  let candidate = buildLayout(fittedSize);
-  while (candidate.height > availableHeight && fittedSize > minFontSize) {
-    fittedSize = Math.max(minFontSize, fittedSize - Math.max(1, Math.ceil(fittedSize / 40)));
-    candidate = buildLayout(fittedSize);
-  }
+  const candidate = buildLayout(requestedSize);
   layout = candidate.rows;
   totalHeight = candidate.height;
-  measuredWidth = Math.min(availableWidth, Math.max(candidate.widest, fittedSize));
+  measuredWidth = Math.min(availableWidth, Math.max(candidate.widest, requestedSize));
   const fits = totalHeight <= availableHeight;
   const hasOffsetX = Number.isFinite(Number(offsetX));
   const hasOffsetY = Number.isFinite(Number(offsetY));
@@ -238,10 +237,11 @@ export function drawTextMask(ctx, {
   let cursorY = textCenterY - totalHeight / 2;
   layout.forEach((row, index) => {
     if (index > 0 && row.kind !== layout[index - 1].kind) {
-      cursorY += fittedSize * (row.kind === 'reference' ? 0.42 : 0.24);
+      cursorY += requestedSize * (row.kind === 'reference' ? 0.42 : 0.24);
     }
-    ctx.font = `${row.bold ? 'bold ' : ''}${row.size}px "${fontFamily}", Georgia, serif`;
-    ctx.lineWidth = Math.max(0.55, row.size * 0.01);
+    ctx.font = overlayCanvasFont(fontFamily, row.size, row.bold, 'Georgia, serif');
+    const fauxBold = overlayFontFauxBold(fontFamily, row.bold);
+    ctx.lineWidth = Math.max(fauxBold ? row.size * 0.045 : 0.55, row.size * 0.01);
     const lineY = cursorY + row.height / 2;
     ctx.strokeText(row.text, centerX, lineY);
     ctx.fillText(row.text, centerX, lineY);
@@ -251,7 +251,7 @@ export function drawTextMask(ctx, {
 
   return {
     lines: layout.map((row) => row.text),
-    fontSize: fittedSize,
+    fontSize: requestedSize,
     centerX,
     centerY: textCenterY,
     fits,

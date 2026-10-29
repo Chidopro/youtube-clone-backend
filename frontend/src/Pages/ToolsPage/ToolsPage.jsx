@@ -19,30 +19,8 @@ import { applyBibleVerseTemplateSettings, BIBLE_VERSE_TEMPLATES, formatProverbDe
 import { fetchStorefrontBibleVerses, mergeBibleVersePresets, saveStorefrontBibleVerse } from '../../utils/bibleVersesApi';
 import { fetchPlatformStorefrontDashboard } from '../../utils/platformStorefrontDashboardApi';
 import { clampTextMaskOpacity, drawTextMask, normalizeScriptureStyle, normalizeTextMaskColor, normalizeTextSafeArea, TEXT_MASK_COLORS } from '../../utils/textMask';
+import { GOOGLE_FONTS_STYLESHEET_URL, TEXT_FONT_GROUPS, TEXT_TOOL_GOOGLE_FONTS, overlayCanvasFont, overlayFontFauxBold, overlayFontLoadSpec, overlayFontSupportsBold } from '../../utils/overlayFonts';
 import './ToolsPage.css';
-
-// Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
-const TEXT_TOOL_GOOGLE_FONTS = [
-  'IM FELL English',
-  'Libre Baskerville',
-  'Cinzel',
-  'Cormorant Garamond',
-  'Playfair Display',
-  'Uncial Antiqua',
-  'MedievalSharp',
-  'Great Vibes',
-  'Caveat',
-  'Oswald',
-  'Anton',
-  'Permanent Marker',
-  'Orbitron',
-  'Bebas Neue',
-  'Creepster',
-  'Dela Gothic One',
-  'Long Cang',
-  'Pacifico'
-];
-const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Caveat:wght@400;700&family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:wght@400;600;700&family=Creepster&family=Dela+Gothic+One&family=Great+Vibes&family=IM+Fell+English&family=Libre+Baskerville:wght@400;700&family=Long+Cang&family=MedievalSharp&family=Orbitron:wght@400;700&family=Oswald:wght@400;600;700&family=Pacifico&family=Playfair+Display:wght@400;600;700&family=Uncial+Antiqua&display=swap';
 
 // Women's / men's / kids garments that use a chest print on a framed mockup photo.
 // All-over, swim, and leggings stay on their existing paths.
@@ -1992,11 +1970,20 @@ function drawOverlayText(ctx, {
   centerY,
   direction,
 }) {
+  const fauxBold = overlayFontFauxBold(fontFamily, bold);
   ctx.save();
-  ctx.font = `${bold ? 'bold ' : ''}${fontSize}px "${fontFamily}", Arial, sans-serif`;
+  ctx.font = overlayCanvasFont(fontFamily, fontSize, bold, 'Arial, sans-serif');
   ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineJoin = 'round';
+  ctx.miterLimit = 2;
+  ctx.lineWidth = fauxBold ? Math.max(1, fontSize * 0.045) : 0;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  const paint = (value, x, y) => {
+    if (fauxBold) ctx.strokeText(value, x, y);
+    ctx.fillText(value, x, y);
+  };
   const lines = String(text).trim().split('\n');
   const lineHeight = fontSize * 1.2;
   if (direction === 'vertical') {
@@ -2007,13 +1994,13 @@ function drawOverlayText(ctx, {
       if (!chars.length) return;
       const startY = centerY - (chars.length - 1) * lineHeight / 2;
       chars.forEach((ch, i) => {
-        ctx.fillText(ch, startX + col * colWidth, startY + i * lineHeight);
+        paint(ch, startX + col * colWidth, startY + i * lineHeight);
       });
     });
   } else {
     const startY = centerY - (lines.length - 1) * lineHeight / 2;
     lines.forEach((line, i) => {
-      ctx.fillText(line, centerX, startY + i * lineHeight);
+      paint(line, centerX, startY + i * lineHeight);
     });
   }
   ctx.restore();
@@ -2021,8 +2008,12 @@ function drawOverlayText(ctx, {
 
 function overlayTextFontPx(textSize, width, height) {
   const minDim = Math.min(Number(width) || 0, Number(height) || 0);
-  if (!(minDim > 0)) return 12;
-  return Math.max(8, Math.min(120, Math.round((Number(textSize) || 24) / 100 * minDim * 0.22)));
+  const scale = Number(textSize);
+  const requested = Number.isFinite(scale) ? scale : 24;
+  if (!(minDim > 0)) return Math.max(1, requested);
+  // Keep the fraction. Rounding to whole pixels made several slider values
+  // draw the exact same size on the product preview.
+  return Math.max(1, (requested / 100) * minDim * 0.22);
 }
 
 function recommendedScriptureSize(text) {
@@ -2088,7 +2079,6 @@ function ToolsLiveText({
         fontBold: bold,
         textColor: color || '#000000',
         fontSize: requestedFontSize * pixelRatio,
-        minFontSize: Math.max(4 * pixelRatio, requestedFontSize * pixelRatio * 0.62),
         lineHeight: 1.32,
         safeArea: normalizedArea,
         maskEnabled,
@@ -2099,13 +2089,20 @@ function ToolsLiveText({
       });
       onFitChange?.(result?.fits !== false);
     };
+    const redrawWhenFontsArrive = () => {
+      if (!cancelled) renderMask();
+    };
     renderMask();
+    document.fonts?.addEventListener?.('loadingdone', redrawWhenFontsArrive);
     if (document.fonts?.load) {
-      const fontWeight = bold ? 'bold ' : '';
-      document.fonts.load(`${fontWeight}16px "${font || 'Arial'}"`).then(renderMask).catch(() => {});
+      Promise.all([
+        document.fonts.load(overlayFontLoadSpec(font || 'Arial', false)),
+        document.fonts.load(overlayFontLoadSpec(font || 'Arial', bold)),
+      ]).then(redrawWhenFontsArrive).catch(() => {});
     }
     return () => {
       cancelled = true;
+      document.fonts?.removeEventListener?.('loadingdone', redrawWhenFontsArrive);
     };
   }, [
     boxHeight,
@@ -4425,7 +4422,7 @@ const ToolsPage = () => {
   const [printQualityMeta, setPrintQualityMeta] = useState(null); // { dimensions: { width, height, dpi }, file_size, format, quality }
   const [generating300Dpi, setGenerating300Dpi] = useState(false);
   const [downloadingProductPreview, setDownloadingProductPreview] = useState(false);
-  const customFontsReadyRef = useRef(false);
+  const [textFontsReady, setTextFontsReady] = useState(false);
 
   // Lock horizontal page pan on mobile so it doesn't fight mockup drag / sliders
   useLayoutEffect(() => {
@@ -4438,31 +4435,40 @@ const ToolsPage = () => {
     };
   }, []);
 
-  // Ensure Google Fonts stylesheet is loaded and preload fringe fonts so canvas can use them
+  // The site header already links a smaller Google Fonts sheet (fringe faces only).
+  // That used to skip this load, so Biblical & decorative faces never arrived and
+  // canvas drew every one of them with the same fallback serif.
   useEffect(() => {
     let cancelled = false;
     const ensureFonts = async () => {
-      if (typeof document === 'undefined' || !document.fonts) return;
-      const existing = document.querySelector(`link[href*="fonts.googleapis.com"][rel="stylesheet"]`);
-      if (!existing) {
+      if (typeof document === 'undefined') return;
+      if (!document.querySelector('link[data-text-tool-fonts="true"]')) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = GOOGLE_FONTS_STYLESHEET_URL;
+        link.setAttribute('data-text-tool-fonts', 'true');
         document.head.appendChild(link);
-        await new Promise((resolve, reject) => {
+        await new Promise((resolve) => {
           link.onload = resolve;
-          link.onerror = reject;
+          link.onerror = resolve;
         });
       }
       if (cancelled) return;
-      await document.fonts.ready;
-      if (cancelled) return;
-      await Promise.all(
-        TEXT_TOOL_GOOGLE_FONTS.map((family) =>
-          document.fonts.load(`16px "${family}"`)
-        )
-      ).catch(() => {});
-      if (!cancelled) customFontsReadyRef.current = true;
+      if (document.fonts?.load) {
+        try {
+          await document.fonts.ready;
+          await Promise.all(TEXT_TOOL_GOOGLE_FONTS.flatMap((family) => {
+            const loads = [document.fonts.load(overlayFontLoadSpec(family, false))];
+            if (overlayFontSupportsBold(family)) {
+              loads.push(document.fonts.load(overlayFontLoadSpec(family, true)));
+            }
+            return loads;
+          }));
+        } catch (_) {
+          // Fallback font will be used until a later redraw.
+        }
+      }
+      if (!cancelled) setTextFontsReady(true);
     };
     ensureFonts();
     return () => { cancelled = true; };
@@ -6336,18 +6342,23 @@ const ToolsPage = () => {
       // Apply text overlay if enabled (position: textOffsetX/Y are 0-100, 50 = center)
       if (textEnabled && textContent && textContent.trim()) {
         // Ensure font is loaded before drawing (required for Google/fringe fonts to show)
-        if (typeof document !== 'undefined' && document.fonts) {
+        if (typeof document !== 'undefined' && document.fonts?.load) {
           try {
             await document.fonts.ready;
-            const loadPromise = document.fonts.load(`${textBold ? 'bold ' : ''}16px "${textFont}"`);
-            await Promise.race([loadPromise, new Promise((r) => setTimeout(r, 3000))]);
+            const specs = [
+              overlayFontLoadSpec(textFont, false),
+              overlayFontLoadSpec(textFont, true),
+            ];
+            await Promise.race([
+              Promise.all(specs.map((spec) => document.fonts.load(spec))),
+              new Promise((r) => setTimeout(r, 3000)),
+            ]);
           } catch (_) {
             // Fallback font will be used
           }
         }
         if (cancelled) return;
-        const minDim = Math.min(canvas.width, canvas.height);
-        const fontSize = Math.max(12, Math.min(300, Math.round((textSize / 100) * minDim * 0.22)));
+        const fontSize = overlayTextFontPx(textSize, canvas.width, canvas.height);
         if (
           textMaskEnabled
           || scriptureReference
@@ -6362,7 +6373,6 @@ const ToolsPage = () => {
             fontBold: textBold,
             textColor,
             fontSize,
-            minFontSize: Math.max(12, Math.round(fontSize * 0.62)),
             safeArea: textSafeArea,
             maskEnabled: textMaskEnabled,
             maskColor: textMaskColor,
@@ -6412,7 +6422,7 @@ const ToolsPage = () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, textEnabled, textContent, scriptureStyle, scriptureReference, scriptureHighlight, textFont, textBold, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textSafeArea, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height, bibleVerseMerch, selectedProverbTemplateId]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, innerFrameColor, blackAndWhite, bwIntensity, imageOpacity, featherFadeEnabled, featherFadeColor, textEnabled, textContent, scriptureStyle, scriptureReference, scriptureHighlight, textFont, textBold, textColor, textSize, textOffsetX, textOffsetY, textDirection, textMaskEnabled, textMaskOpacity, textMaskColor, textSafeArea, printAreaFit, imageOffsetX, imageOffsetY, screenshotScale, printBoxFillColor, selectedProductName, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation, overlayBoxSize.width, overlayBoxSize.height, bibleVerseMerch, selectedProverbTemplateId, textFontsReady]);
 
   const mugPreviewProduct = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
   const mugPreviewName = mugPreviewProduct?.name || selectedProductName || '';
@@ -9064,117 +9074,6 @@ const ToolsPage = () => {
                   </>
                 )}
 
-                {bibleVerseMerch && (
-                  <div className="tool-control-group proverb-template-control">
-                    <h3>Bible Verse Design</h3>
-                    <p className="tool-description">
-                      Choose any KJV proverb and combine it with an available image.
-                    </p>
-                    <h4 className="proverb-template-section-label">Images:</h4>
-                    <div className="proverb-template-grid" aria-label="Christian image templates">
-                      {proverbTemplates
-                        .filter((template) => proverbTemplateAvailability[template.id] === true)
-                        .map((template) => (
-                          <button
-                            key={template.id}
-                            type="button"
-                            className={`proverb-template-card${selectedProverbTemplateId === template.id ? ' is-selected' : ''}`}
-                            onClick={() => applyBibleTemplate(template)}
-                            title={`Use ${template.title}`}
-                          >
-                            <img src={template.imageUrl} alt="" />
-                            <span>{template.title}</span>
-                          </button>
-                        ))}
-                    </div>
-                    <div className="form-group proverb-template-verse-select">
-                      <label className="proverb-template-verse-heading" htmlFor="proverb-preset">Bible Verse</label>
-                      <select
-                        id="proverb-preset"
-                        value={selectedProverbId}
-                        onChange={(event) => applyProverbPreset(event.target.value)}
-                      >
-                        {proverbPresets.map((preset) => (
-                          <option key={preset.id} value={preset.id}>{preset.reference}</option>
-                        ))}
-                        <option value={CUSTOM_PROVERB_ID}>Custom text</option>
-                      </select>
-                      {canEditProverbs && (
-                        <div className="proverb-owner-actions">
-                          <button type="button" onClick={() => openProverbEditor('add')}>
-                            Add Verse
-                          </button>
-                          {selectedProverbId !== CUSTOM_PROVERB_ID && (
-                            <button type="button" onClick={() => openProverbEditor('edit')}>
-                              Edit Selected
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      {proverbEditorOpen && canEditProverbs && (
-                        <div className="proverb-owner-editor">
-                          <h4>{proverbEditor.id ? 'Edit Bible Verse' : 'Add Bible Verse'}</h4>
-                          <label htmlFor="proverb-editor-reference">Reference</label>
-                          <input
-                            id="proverb-editor-reference"
-                            type="text"
-                            maxLength={120}
-                            value={proverbEditor.reference}
-                            onChange={(event) => setProverbEditor((current) => ({
-                              ...current,
-                              reference: event.target.value,
-                            }))}
-                            placeholder="Example: Psalm 23:1"
-                          />
-                          <label htmlFor="proverb-editor-text">Complete verse</label>
-                          <textarea
-                            id="proverb-editor-text"
-                            rows={5}
-                            maxLength={1200}
-                            value={proverbEditor.text}
-                            onChange={(event) => setProverbEditor((current) => ({
-                              ...current,
-                              text: event.target.value,
-                            }))}
-                          />
-                          <label htmlFor="proverb-editor-highlight">Highlighted phrase</label>
-                          <input
-                            id="proverb-editor-highlight"
-                            type="text"
-                            maxLength={300}
-                            value={proverbEditor.highlight}
-                            onChange={(event) => setProverbEditor((current) => ({
-                              ...current,
-                              highlight: event.target.value,
-                            }))}
-                            placeholder="Optional phrase from the complete verse"
-                          />
-                          {proverbEditorStatus && (
-                            <p className="proverb-owner-editor-status" role="alert">{proverbEditorStatus}</p>
-                          )}
-                          <div className="proverb-owner-editor-buttons">
-                            <button
-                              type="button"
-                              onClick={saveProverbEditor}
-                              disabled={proverbEditorSaving}
-                            >
-                              {proverbEditorSaving ? 'Saving…' : 'Save Verse'}
-                            </button>
-                            <button
-                              type="button"
-                              className="secondary"
-                              onClick={() => setProverbEditorOpen(false)}
-                              disabled={proverbEditorSaving}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 <div className="tool-control-group">
                   <h3>Text Design</h3>
                   <p className="tool-description">Place custom multiline text over any selected image</p>
@@ -9298,40 +9197,27 @@ const ToolsPage = () => {
                         <select
                           value={textFont}
                           onChange={(e) => setTextFont(e.target.value)}
-                          style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', maxWidth: '100%' }}
+                          style={{
+                            padding: '6px 8px',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            maxWidth: '100%',
+                            fontFamily: `"${textFont}", sans-serif`,
+                          }}
                         >
-                          <optgroup label="Classic">
-                            <option value="IM FELL English">IM FELL English (Old Bible)</option>
-                            <option value="Libre Baskerville">Libre Baskerville</option>
-                            <option value="Cinzel">Cinzel (Roman inscription)</option>
-                            <option value="Cormorant Garamond">Cormorant Garamond</option>
-                            <option value="Playfair Display">Playfair Display</option>
-                            <option value="Arial">Arial</option>
-                            <option value="Helvetica">Helvetica</option>
-                            <option value="Georgia">Georgia</option>
-                            <option value="Times New Roman">Times New Roman</option>
-                            <option value="Verdana">Verdana</option>
-                            <option value="Courier New">Courier New</option>
-                          </optgroup>
-                          <optgroup label="Biblical &amp; decorative">
-                            <option value="Uncial Antiqua">Uncial Antiqua (Manuscript)</option>
-                            <option value="MedievalSharp">MedievalSharp</option>
-                            <option value="Great Vibes">Great Vibes (Elegant script)</option>
-                            <option value="Caveat">Caveat (Handwritten)</option>
-                          </optgroup>
-                          <optgroup label="Bold merchandise">
-                            <option value="Oswald">Oswald</option>
-                            <option value="Anton">Anton</option>
-                          </optgroup>
-                          <optgroup label="Fringe &amp; style">
-                            <option value="Permanent Marker">Permanent Marker (Graffiti)</option>
-                            <option value="Orbitron">Orbitron (Metal)</option>
-                            <option value="Bebas Neue">Bebas Neue</option>
-                            <option value="Creepster">Creepster (Scary / Halloween)</option>
-                            <option value="Dela Gothic One">Dela Gothic One</option>
-                            <option value="Long Cang">Long Cang (Chinese brush)</option>
-                            <option value="Pacifico">Pacifico (Hawaiian / surf)</option>
-                          </optgroup>
+                          {TEXT_FONT_GROUPS.map((group) => (
+                            <optgroup key={group.label} label={group.label}>
+                              {group.options.map((option) => (
+                                <option
+                                  key={option.value}
+                                  value={option.value}
+                                  style={{ fontFamily: `"${option.value}", sans-serif` }}
+                                >
+                                  {option.label}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
                         </select>
                       </div>
                       <div className="tools-text-bold-color-row">
@@ -9432,8 +9318,8 @@ const ToolsPage = () => {
                           <input
                             type="range"
                             min="12"
-                            max="150"
-                            value={Math.min(150, Math.max(12, textSize))}
+                            max="200"
+                            value={Math.min(200, Math.max(12, textSize))}
                             onChange={(e) => setTextSize(parseInt(e.target.value, 10) || 24)}
                             className="slider"
                             style={{ flex: '1 1 120px', minWidth: '100px' }}
@@ -9488,6 +9374,117 @@ const ToolsPage = () => {
                     </>
                   )}
                 </div>
+
+                {bibleVerseMerch && (
+                  <div className="tool-control-group proverb-template-control">
+                    <h3>Bible Verse Design</h3>
+                    <p className="tool-description">
+                      Choose any KJV proverb and combine it with an available image.
+                    </p>
+                    <h4 className="proverb-template-section-label">Images:</h4>
+                    <div className="proverb-template-grid" aria-label="Christian image templates">
+                      {proverbTemplates
+                        .filter((template) => proverbTemplateAvailability[template.id] === true)
+                        .map((template) => (
+                          <button
+                            key={template.id}
+                            type="button"
+                            className={`proverb-template-card${selectedProverbTemplateId === template.id ? ' is-selected' : ''}`}
+                            onClick={() => applyBibleTemplate(template)}
+                            title={`Use ${template.title}`}
+                          >
+                            <img src={template.imageUrl} alt="" />
+                            <span>{template.title}</span>
+                          </button>
+                        ))}
+                    </div>
+                    <div className="form-group proverb-template-verse-select">
+                      <label className="proverb-template-verse-heading" htmlFor="proverb-preset">Bible Verse</label>
+                      <select
+                        id="proverb-preset"
+                        value={selectedProverbId}
+                        onChange={(event) => applyProverbPreset(event.target.value)}
+                      >
+                        {proverbPresets.map((preset) => (
+                          <option key={preset.id} value={preset.id}>{preset.reference}</option>
+                        ))}
+                        <option value={CUSTOM_PROVERB_ID}>Custom text</option>
+                      </select>
+                      {canEditProverbs && (
+                        <div className="proverb-owner-actions">
+                          <button type="button" onClick={() => openProverbEditor('add')}>
+                            Add Verse
+                          </button>
+                          {selectedProverbId !== CUSTOM_PROVERB_ID && (
+                            <button type="button" onClick={() => openProverbEditor('edit')}>
+                              Edit Selected
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {proverbEditorOpen && canEditProverbs && (
+                        <div className="proverb-owner-editor">
+                          <h4>{proverbEditor.id ? 'Edit Bible Verse' : 'Add Bible Verse'}</h4>
+                          <label htmlFor="proverb-editor-reference">Reference</label>
+                          <input
+                            id="proverb-editor-reference"
+                            type="text"
+                            maxLength={120}
+                            value={proverbEditor.reference}
+                            onChange={(event) => setProverbEditor((current) => ({
+                              ...current,
+                              reference: event.target.value,
+                            }))}
+                            placeholder="Example: Psalm 23:1"
+                          />
+                          <label htmlFor="proverb-editor-text">Complete verse</label>
+                          <textarea
+                            id="proverb-editor-text"
+                            rows={5}
+                            maxLength={1200}
+                            value={proverbEditor.text}
+                            onChange={(event) => setProverbEditor((current) => ({
+                              ...current,
+                              text: event.target.value,
+                            }))}
+                          />
+                          <label htmlFor="proverb-editor-highlight">Highlighted phrase</label>
+                          <input
+                            id="proverb-editor-highlight"
+                            type="text"
+                            maxLength={300}
+                            value={proverbEditor.highlight}
+                            onChange={(event) => setProverbEditor((current) => ({
+                              ...current,
+                              highlight: event.target.value,
+                            }))}
+                            placeholder="Optional phrase from the complete verse"
+                          />
+                          {proverbEditorStatus && (
+                            <p className="proverb-owner-editor-status" role="alert">{proverbEditorStatus}</p>
+                          )}
+                          <div className="proverb-owner-editor-buttons">
+                            <button
+                              type="button"
+                              onClick={saveProverbEditor}
+                              disabled={proverbEditorSaving}
+                            >
+                              {proverbEditorSaving ? 'Saving…' : 'Save Verse'}
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => setProverbEditorOpen(false)}
+                              disabled={proverbEditorSaving}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="tool-control-group">
                   <div className="framed-border-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
