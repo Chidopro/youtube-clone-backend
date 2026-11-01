@@ -20,6 +20,7 @@ import { fetchStorefrontBibleVerses, mergeBibleVersePresets, saveStorefrontBible
 import { fetchPlatformStorefrontDashboard } from '../../utils/platformStorefrontDashboardApi';
 import { clampTextMaskOpacity, drawTextMask, normalizeScriptureStyle, normalizeTextMaskColor, normalizeTextSafeArea, TEXT_MASK_COLORS } from '../../utils/textMask';
 import { GOOGLE_FONTS_STYLESHEET_URL, TEXT_FONT_GROUPS, TEXT_TOOL_GOOGLE_FONTS, overlayCanvasFont, overlayFontFauxBold, overlayFontLoadSpec, overlayFontSupportsBold } from '../../utils/overlayFonts';
+import OverlayFontPicker from '../../Components/OverlayFontPicker/OverlayFontPicker';
 import './ToolsPage.css';
 
 // Women's / men's / kids garments that use a chest print on a framed mockup photo.
@@ -9194,7 +9195,9 @@ const ToolsPage = () => {
                       )}
                       <div className="color-control tools-font-control">
                         <label>Font:</label>
+                        <OverlayFontPicker value={textFont} onChange={setTextFont} />
                         <select
+                          className="tools-font-native"
                           value={textFont}
                           onChange={(e) => setTextFont(e.target.value)}
                           style={{
