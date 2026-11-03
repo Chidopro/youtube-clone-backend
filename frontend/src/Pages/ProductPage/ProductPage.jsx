@@ -39,6 +39,7 @@ import {
 import { peekDisplaySrc, prepareDisplaySrc } from '../../utils/displaySrc';
 import InlineStillCrop from '../../Components/InlineStillCrop/InlineStillCrop';
 import { ScriptureCaptionFromDesign } from '../../Components/ScriptureThumbCaption/ScriptureThumbCaption';
+import { readyMadeImageFrameStyle, readyMadePresentation } from '../../data/bibleVerseReadyMade';
 import './ProductPage.css';
 
 const BROWSE_EDIT_ORIGINAL = {
@@ -1960,15 +1961,10 @@ const ProductPage = ({ sidebar }) => {
   const showAutoEditPresets = !creatorMode && !isShopCatalog && !showVideoThumbLabel && getSelectImageCount() <= 1 && Boolean(browsePreviewSrc || browseSourceUrl);
   const showDesktopEditPresets = showAutoEditPresets && isDesktopLayout;
   const presetImageSrc = browsePreviewSrc || browseSourceUrl;
-  const pendingBibleDesign = (readPendingMerchData() || {}).bibleVerseDesign;
-  const selectedImageZoom = pendingBibleDesign?.selectedProverbTemplateId
-    ? Math.max(100, Math.min(150, Number(pendingBibleDesign.screenshotScale) || 150))
-    : 100;
-  const selectedImageZoomStyle = selectedImageZoom > 100
-    ? { transform: `scale(${selectedImageZoom / 100})`, transformOrigin: 'center center' }
-    : undefined;
+  const pendingBibleDesign = readyMadePresentation((readPendingMerchData() || {}).bibleVerseDesign);
+  const selectedImageFrame = readyMadeImageFrameStyle(pendingBibleDesign) || {};
   const selectedImageStyle = {
-    ...(selectedImageZoomStyle || {}),
+    ...selectedImageFrame,
     ...(pendingBibleDesign?.selectedProverbTemplateId
       ? { opacity: Math.max(0, Math.min(100, Number(pendingBibleDesign.imageOpacity) || 100)) / 100 }
       : {}),
@@ -2338,7 +2334,7 @@ const ProductPage = ({ sidebar }) => {
                         alt={preset.label}
                         className="screenshot-image"
                         style={{
-                          ...(selectedImageZoomStyle || {}),
+                          ...selectedImageFrame,
                           ...(preset.id === 'bw'
                             ? { filter: blackAndWhiteCssFilter(true, selectedEditPreset === 'bw' ? bwIntensity : BW_INTENSITY_DEFAULT) }
                             : (preset.id === 'feather'

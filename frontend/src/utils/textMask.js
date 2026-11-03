@@ -20,6 +20,16 @@ export function clampTextMaskOpacity(value) {
   return Math.max(0, Math.min(100, Math.round(number)));
 }
 
+export function overlayTextFontPx(textSize, width, height) {
+  const minDim = Math.min(Number(width) || 0, Number(height) || 0);
+  const scale = Number(textSize);
+  const requested = Number.isFinite(scale) ? scale : 24;
+  if (!(minDim > 0)) return Math.max(1, requested);
+  // Keep the fraction. Rounding to whole pixels made several slider values
+  // draw the exact same size on the product preview.
+  return Math.max(1, (requested / 100) * minDim * 0.22);
+}
+
 export function normalizeTextSafeArea(area) {
   const source = area && typeof area === 'object' ? area : {};
   const clamp = (value, fallback, min, max) => {

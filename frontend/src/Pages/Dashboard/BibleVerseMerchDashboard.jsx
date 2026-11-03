@@ -15,6 +15,7 @@ import {
 import {
   applyBibleVerseTemplateSettings,
   BIBLE_VERSE_TEMPLATES,
+  displayBibleVerseTemplates,
   KJV_PROVERB_PRESETS,
 } from '../../data/bibleVerseMerch';
 import './BibleVerseMerchDashboard.css';
@@ -149,7 +150,9 @@ export default function BibleVerseMerchDashboard() {
     [settings]
   );
   const availableTemplates = useMemo(
-    () => configuredTemplates.filter((template) => availableTemplateIds.includes(template.id)),
+    () => displayBibleVerseTemplates(
+      configuredTemplates.filter((template) => availableTemplateIds.includes(template.id))
+    ),
     [availableTemplateIds, configuredTemplates]
   );
 

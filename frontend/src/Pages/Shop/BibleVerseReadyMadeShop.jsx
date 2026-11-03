@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ScriptureThumbCaption from '../../Components/ScriptureThumbCaption/ScriptureThumbCaption';
+import { ScripturePrintCaption } from '../../Components/ScriptureThumbCaption/ScriptureThumbCaption';
 import {
   BIBLE_VERSE_MERCH_SUBDOMAIN,
   BIBLE_VERSE_TEMPLATES,
@@ -8,12 +8,12 @@ import {
   applyBibleVerseTemplateSettings,
   formatProverbDesignText,
   recommendedScriptureHighlight,
-  textPositionDefaults,
 } from '../../data/bibleVerseMerch';
 import {
   BIBLE_VERSE_READY_MADE_DESIGNS,
   BIBLE_VERSE_READY_MADE_SAVED_VERSES,
   BIBLE_VERSE_READY_MADE_STYLE,
+  readyMadeDesignSettings,
   readyMadeDisplayText,
   recommendedReadyMadeTextSize,
 } from '../../data/bibleVerseReadyMade';
@@ -69,18 +69,20 @@ export default function BibleVerseReadyMadeShop() {
       if (!template || !verse || failedTemplateIds.includes(pairing.templateId)) return null;
       const displayText = readyMadeDisplayText(verse);
       const normalizedVerse = { ...verse, text: displayText };
+      const settings = readyMadeDesignSettings(pairing, template);
       return {
         ...pairing,
+        ...settings,
         template,
         verse: normalizedVerse,
         designText: formatProverbDesignText(normalizedVerse),
+        scriptureHighlight: recommendedScriptureHighlight(normalizedVerse),
       };
     }).filter(Boolean);
   }, [failedTemplateIds, templateCatalog, verseCatalog]);
 
   const selectDesign = (design) => {
     const { template, verse, designText } = design;
-    const placement = textPositionDefaults(template.recommendedTextPosition);
     const imageUrl = new URL(template.imageUrl, window.location.origin).toString();
     markMerchIntentStarted();
     savePendingMerchData({
@@ -94,25 +96,33 @@ export default function BibleVerseReadyMadeShop() {
       screenshot_timestamp: '0:00',
       bibleVerseDesign: {
         bibleVerseDesignVersion: 20,
+        readyMadeLayoutVersion: 6,
         readyMadeDesignId: design.id,
         imageOpacity: 100,
-        textEnabled: true,
-        textContent: designText,
-        scriptureReference: verse.reference,
-        scriptureHighlight: recommendedScriptureHighlight(verse),
-        textColor: template.recommendedTextColor,
-        textSize: recommendedReadyMadeTextSize(designText),
-        textOffsetX: placement.offsetX,
-        textOffsetY: placement.offsetY,
+        textEnabled: design.textEnabled !== false,
+        textContent: design.scriptureArtwork
+          ? ''
+          : (design.scriptureStyle === 'minimal'
+            ? (design.scriptureHighlight || designText)
+            : designText),
+        scriptureReference: design.scriptureArtwork || design.showReference === false ? '' : verse.reference,
+        scriptureHighlight: design.scriptureArtwork ? '' : design.scriptureHighlight,
+        textColor: design.textColor,
+        textSize: design.textSize || recommendedReadyMadeTextSize(designText),
+        textOffsetX: design.textOffsetX,
+        textOffsetY: design.textOffsetY,
         textDirection: 'horizontal',
         textMaskColor: template.recommendedMaskColor,
-        screenshotScale: 150,
-        textPlacement: placement.position,
-        textSafeArea: template.recommendedTextSafeArea,
-        selectedProverbId: verse.id,
+        screenshotScale: design.screenshotScale,
+        imageOffsetX: design.imageOffsetX,
+        imageOffsetY: design.imageOffsetY,
+        textPlacement: design.textPlacement,
+        textSafeArea: design.textSafeArea,
+        selectedProverbId: design.scriptureArtwork ? '' : verse.id,
         selectedProverbTemplateId: template.id,
         homepageFeaturedLayout: false,
         ...BIBLE_VERSE_READY_MADE_STYLE,
+        scriptureStyle: design.scriptureStyle,
       },
     });
     navigate('/merchandise');
@@ -130,29 +140,61 @@ export default function BibleVerseReadyMadeShop() {
       <div className="bvm-ready-grid">
         {designs.map((design) => {
           const { template, verse, designText } = design;
+          const zoomedOut = !design.mirrorPreview && design.screenshotScale < 100;
+          const imageShift = design.imageOffsetX
+            ? Math.max(0, Math.min(100, 50 + design.imageOffsetX / 2))
+            : null;
+          const previewZoom = Math.max(0.4, (Number(design.screenshotScale) || 100) / 100);
+          const previewX = Math.max(0, Math.min(100, 50 + (Number(design.imageOffsetX) || 0) / 2));
+          const previewY = Math.max(0, Math.min(100, 26 + (Number(design.imageOffsetY) || 0) / 2));
           return (
             <article className="bvm-ready-card" key={design.id}>
-              <div className="bvm-ready-art">
+              <div className={`bvm-ready-art${template.wideArtwork ? ' bvm-ready-art--wide' : ''}`}>
                 <img
                   src={template.imageUrl}
                   alt=""
                   loading="lazy"
                   decoding="async"
+                  style={design.mirrorPreview ? {
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: `${previewX}% ${previewY}%`,
+                    transform: previewZoom === 1 ? undefined : `scale(${previewZoom})`,
+                    transformOrigin: `${previewX}% ${previewY}%`,
+                  } : {
+                    ...(imageShift != null ? { objectPosition: `${imageShift}% 50%` } : {}),
+                    ...(zoomedOut ? {
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      width: `${design.screenshotScale}%`,
+                      height: `${design.screenshotScale}%`,
+                      objectFit: 'contain',
+                      transform: 'translate(-50%, -50%)',
+                    } : {}),
+                  }}
                   onError={() => setFailedTemplateIds((current) => (
                     current.includes(template.id) ? current : [...current, template.id]
                   ))}
                 />
-                <ScriptureThumbCaption
-                  text={designText}
-                  reference={verse.reference}
-                  highlight={recommendedScriptureHighlight(verse)}
-                  scriptureStyle="highlighted"
-                  fontFamily="IM FELL English"
-                  bold
-                  color={template.recommendedTextColor}
-                  position={template.recommendedTextPosition}
-                  mask="none"
-                />
+                {design.scriptureArtwork ? null : (
+                  <ScripturePrintCaption
+                    text={design.scriptureStyle === 'minimal'
+                      ? (design.scriptureHighlight || design.designText)
+                      : design.designText}
+                    reference={design.showReference ? verse.reference : ''}
+                    highlight={design.scriptureHighlight}
+                    scriptureStyle={design.scriptureStyle}
+                    fontFamily={BIBLE_VERSE_READY_MADE_STYLE.textFont}
+                    bold
+                    color={design.textColor}
+                    size={design.textSize || recommendedReadyMadeTextSize(design.designText)}
+                    offsetX={design.textOffsetX}
+                    offsetY={design.textOffsetY}
+                    safeArea={design.textSafeArea}
+                  />
+                )}
               </div>
               <div className="bvm-ready-card-copy">
                 <h3>{template.title}</h3>

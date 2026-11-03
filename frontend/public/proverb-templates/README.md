@@ -3,7 +3,7 @@
 Add template PNG files using these exact names:
 
 1. `01-mountain-sunrise.png`
-2. `02-peaceful-river.png`
+2. `02-rivers-of-living-water.jpg`
 3. `03-sunlit-forest-path.png`
 4. `04-still-waters.png`
 5. `05-wildflower-meadow.png`
@@ -34,6 +34,26 @@ Add template PNG files using these exact names:
 30. `30-lion-lamb-golden-sunset.png`
 31. `31-guiding-star-nativity.png`
 32. `32-jesus-healing-pool.png`
+33. `33-rivers-of-living-water-woman.jpg`
+34. `34-worthy-is-the-lamb.jpg`
+35. `35-peaceful-kingdom.jpg`
+36. `36-trust-in-the-lord.jpg`
+37. `37-strong-tower.jpg`
+38. `38-keep-thy-heart.jpg`
+39. `39-merry-heart.jpg`
+40. `40-merry-heart-ii.jpg`
+41. `41-soft-answer.jpg`
+42. `42-iron-sharpeneth-iron.jpg`
+43. `43-directeth-his-steps.jpg`
+44. `44-strength-and-honor.jpg`
+45. `45-strength-and-honor-ii.jpg`
+46. `46-strength-and-honor-iii.jpg`
+47. `47-rivers-of-living-water-iii.jpg`
+48. `48-keep-thy-heart-ii.jpg`
+49. `49-iron-sharpeneth-iron-ii.jpg`
+50. `50-directeth-his-steps-ii.jpg`
+51. `51-strong-tower-ii.jpg`
+52. `52-strength-and-honor-iv.jpg`
 
 Use portrait PNG, sRGB, 300 DPI, and keep important artwork inside the center 80%.
 The Bible Verse Merch template picker automatically enables each slot when its file exists.

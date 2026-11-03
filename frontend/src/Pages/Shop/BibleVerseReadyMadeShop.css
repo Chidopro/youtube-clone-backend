@@ -53,6 +53,10 @@
   container-type: inline-size;
 }
 
+.bvm-ready-art--wide {
+  aspect-ratio: 16 / 9;
+}
+
 .bvm-ready-art > img {
   width: 100%;
   height: 100%;

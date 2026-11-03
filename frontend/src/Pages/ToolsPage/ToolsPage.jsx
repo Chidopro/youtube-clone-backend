@@ -15,10 +15,11 @@ import { bakeArtworkForWrap, browsePresetHasPixelEdits, roundedRectFeatherFactor
 import { BW_INTENSITY_DEFAULT, blackAndWhiteCssFilter, blackAndWhiteStyle, bwIntensityLabel, clampBwIntensity } from '../../utils/blackAndWhiteFilter';
 import { IMAGE_OPACITY_DEFAULT, clampImageOpacity, imageOpacityCss, imageOpacityHasEdit } from '../../utils/imageOpacity';
 import { bandanaCropWindow, composePetBandanaCrop, composePetBowlBand, isCurvedBagProduct, isGreetingCardProduct, isJigsawPuzzleProduct, isPetBandanaProduct, isPetBowlProduct, isPrintfulWrapProduct, isTotePocketProduct, PET_BOWL_MAX_PHOTO_ASPECT, PET_BOWL_PANEL_COUNT, petBandanaPrintFile, petBowlPrintStrip, petWrapItemsNeedingPreview, printfulWrapKind, requestMugWrapMockup, uniqueMugWrapViews } from '../../utils/mugMockup';
-import { applyBibleVerseTemplateSettings, BIBLE_VERSE_TEMPLATES, formatProverbDesignText, KJV_PROVERB_PRESETS, isBibleVerseMerchStorefront, recommendedScriptureHighlight, textPositionDefaults } from '../../data/bibleVerseMerch';
+import { applyBibleVerseTemplateSettings, BIBLE_VERSE_TEMPLATES, displayBibleVerseTemplates, formatProverbDesignText, KJV_PROVERB_PRESETS, isBibleVerseMerchStorefront, recommendedScriptureHighlight, textPositionDefaults } from '../../data/bibleVerseMerch';
+import { BIBLE_VERSE_READY_MADE_DESIGNS, BIBLE_VERSE_READY_MADE_SAVED_VERSES, BIBLE_VERSE_READY_MADE_STYLE, readyMadeDesignSettings, readyMadeDisplayText } from '../../data/bibleVerseReadyMade';
 import { fetchStorefrontBibleVerses, mergeBibleVersePresets, saveStorefrontBibleVerse } from '../../utils/bibleVersesApi';
 import { fetchPlatformStorefrontDashboard } from '../../utils/platformStorefrontDashboardApi';
-import { clampTextMaskOpacity, drawTextMask, normalizeScriptureStyle, normalizeTextMaskColor, normalizeTextSafeArea, TEXT_MASK_COLORS } from '../../utils/textMask';
+import { clampTextMaskOpacity, drawTextMask, normalizeScriptureStyle, normalizeTextMaskColor, normalizeTextSafeArea, overlayTextFontPx, TEXT_MASK_COLORS } from '../../utils/textMask';
 import { GOOGLE_FONTS_STYLESHEET_URL, TEXT_FONT_GROUPS, TEXT_TOOL_GOOGLE_FONTS, overlayCanvasFont, overlayFontFauxBold, overlayFontLoadSpec, overlayFontSupportsBold } from '../../utils/overlayFonts';
 import OverlayFontPicker from '../../Components/OverlayFontPicker/OverlayFontPicker';
 import './ToolsPage.css';
@@ -74,7 +75,7 @@ function locksImageOffsetsInLandscape(productName, orientation) {
 /** Portrait cover: start at the helmet, not the sword/padding above it, so more of the legs stay in. */
 const PORTRAIT_COVER_Y = 26;
 
-const ARTWORK_ZOOM_MIN = 50;
+const ARTWORK_ZOOM_MIN = 40;
 const ARTWORK_ZOOM_MAX = 150;
 const CUSTOM_PROVERB_ID = 'custom';
 const QUICK_TEXT_COLORS = [
@@ -2007,16 +2008,6 @@ function drawOverlayText(ctx, {
   ctx.restore();
 }
 
-function overlayTextFontPx(textSize, width, height) {
-  const minDim = Math.min(Number(width) || 0, Number(height) || 0);
-  const scale = Number(textSize);
-  const requested = Number.isFinite(scale) ? scale : 24;
-  if (!(minDim > 0)) return Math.max(1, requested);
-  // Keep the fraction. Rounding to whole pixels made several slider values
-  // draw the exact same size on the product preview.
-  return Math.max(1, (requested / 100) * minDim * 0.22);
-}
-
 function recommendedScriptureSize(text) {
   const length = String(text || '').trim().length;
   if (length <= 80) return 42;
@@ -2319,8 +2310,46 @@ function migrateBibleVerseCartItems(cartItems) {
       && (legacyFeaturedSelection || item?.toolSettings?.selectedProverbId === 'revelation-5-12')
       && item?.toolSettings?.textEnabled !== true
     );
+    const readyMade = BIBLE_VERSE_READY_MADE_DESIGNS.find((design) => (
+      design.id === item?.toolSettings?.readyMadeDesignId
+    ));
+    const needsReadyMadeLayout = Boolean(
+      readyMade && template && Number(item?.toolSettings?.readyMadeLayoutVersion || 0) < 6
+    );
+    const readyMadeLayout = needsReadyMadeLayout ? readyMadeDesignSettings(readyMade, template) : null;
+    const readyMadeVerse = needsReadyMadeLayout
+      ? ([...KJV_PROVERB_PRESETS, ...BIBLE_VERSE_READY_MADE_SAVED_VERSES].find((candidate) => (
+        candidate.id === readyMade.verseId
+      )) || effectivePreset)
+      : effectivePreset;
+    const cleanedReadyMadeVerse = readyMadeVerse
+      ? { ...readyMadeVerse, text: readyMadeDisplayText(readyMadeVerse) }
+      : null;
+    const readyMadeHighlight = recommendedScriptureHighlight(cleanedReadyMadeVerse);
     const settings = {
       ...(item.toolSettings || {}),
+      ...(readyMadeLayout ? {
+        readyMadeLayoutVersion: 6,
+        scriptureStyle: readyMadeLayout.scriptureStyle,
+        textColor: readyMadeLayout.textColor,
+        textOffsetX: readyMadeLayout.textOffsetX,
+        textOffsetY: readyMadeLayout.textOffsetY,
+        textPlacement: readyMadeLayout.textPlacement,
+        textSafeArea: readyMadeLayout.textSafeArea,
+        screenshotScale: readyMadeLayout.screenshotScale,
+        imageOffsetX: readyMadeLayout.imageOffsetX,
+        imageOffsetY: readyMadeLayout.imageOffsetY,
+        textFont: BIBLE_VERSE_READY_MADE_STYLE.textFont,
+        textBold: BIBLE_VERSE_READY_MADE_STYLE.textBold,
+        selectedProverbId: cleanedReadyMadeVerse?.id || item.toolSettings?.selectedProverbId || '',
+        scriptureReference: readyMadeLayout.showReference === false
+          ? ''
+          : (cleanedReadyMadeVerse?.reference || item.toolSettings?.scriptureReference || ''),
+        textContent: readyMadeLayout.scriptureStyle === 'minimal'
+          ? (readyMadeHighlight || formatProverbDesignText(cleanedReadyMadeVerse) || item.toolSettings?.textContent || '')
+          : (formatProverbDesignText(cleanedReadyMadeVerse) || item.toolSettings?.textContent || ''),
+        scriptureHighlight: readyMadeHighlight || item.toolSettings?.scriptureHighlight || '',
+      } : {}),
       ...(needsDesignUpgrade ? {
         bibleVerseDesignVersion: 20,
         textContent: formatProverbDesignText(preset) || item.toolSettings?.textContent || '',
@@ -2342,6 +2371,17 @@ function migrateBibleVerseCartItems(cartItems) {
         scriptureReference: effectivePreset?.reference || '',
         scriptureHighlight: recommendedScriptureHighlight(effectivePreset),
         selectedProverbId: effectivePreset?.id || item.toolSettings?.selectedProverbId || '',
+      } : {}),
+      ...(template.scriptureArtwork ? {
+        textEnabled: false,
+        textContent: '',
+        scriptureHighlight: '',
+        scriptureReference: '',
+        textMaskEnabled: false,
+        screenshotScale: 100,
+        imageOffsetX: 0,
+        imageOffsetY: 0,
+        selectedProverbId: '',
       } : {}),
       screenshot: templateUrl,
       editedImageUrl: '',
@@ -4312,7 +4352,7 @@ const ToolsPage = () => {
   const [cartProducts, setCartProducts] = useState([]); // Store all cart products
   const [selectedCartProductIndex, setSelectedCartProductIndex] = useState(null); // Selected product index from cart
   const [productImageOffsets, setProductImageOffsets] = useState({}); // Store image offsets for each cart product {cartIndex: {x: 0, y: 0}}
-  const [screenshotScale, setScreenshotScale] = useState(100); // Screenshot size scale (percentage: 50-150%)
+  const [screenshotScale, setScreenshotScale] = useState(100); // Screenshot size scale (percentage: 40-150%)
   const [screenshotSizeInteracted, setScreenshotSizeInteracted] = useState(false); // Track if screenshot size has been adjusted
   const [productSelectClicked, setProductSelectClicked] = useState(() => Boolean(getInitialCartPrintFit().name)); // Track if product select has been clicked
   const [fitPreviewImageUrl, setFitPreviewImageUrl] = useState('');
@@ -4695,10 +4735,18 @@ const ToolsPage = () => {
     if (skipRectEdits) setFeatherFadeColor('transparent');
     if (typeof saved.textEnabled === 'boolean') setTextEnabled(saved.textEnabled);
     if (typeof saved.textContent === 'string') {
-      const savedPreset = bibleVerseMerch && saved.selectedProverbId
+      const savedPreset = bibleVerseMerch && saved.selectedProverbId && saved.textEnabled !== false
         ? proverbPresets.find((item) => item.id === saved.selectedProverbId)
         : null;
-      setTextContent(formatProverbDesignText(savedPreset) || saved.textContent);
+      const formatted = formatProverbDesignText(savedPreset);
+      const savedStyle = normalizeScriptureStyle(saved.scriptureStyle);
+      setTextContent(
+        saved.textEnabled === false
+          ? saved.textContent
+          : (savedStyle === 'minimal'
+            ? (saved.scriptureHighlight || saved.textContent)
+            : (formatted || saved.textContent))
+      );
     }
     setScriptureStyle(normalizeScriptureStyle(saved.scriptureStyle));
     setScriptureReference(saved.scriptureReference || '');
@@ -7670,6 +7718,8 @@ const ToolsPage = () => {
   };
 
   const applyProverbPreset = (presetId) => {
+    const activeTemplate = proverbTemplates.find((item) => item.id === selectedProverbTemplateId);
+    if (activeTemplate?.scriptureArtwork) return;
     const preset = proverbPresets.find((item) => item.id === presetId);
     setSelectedProverbId(preset?.id || (presetId === CUSTOM_PROVERB_ID ? CUSTOM_PROVERB_ID : ''));
     if (!preset) {
@@ -7779,6 +7829,16 @@ const ToolsPage = () => {
     setSelectedImage(absoluteUrl);
     setEditedImageUrl('');
     resetTextDesign(template.id);
+    if (template.scriptureArtwork) {
+      setTextEnabled(false);
+      setTextContent('');
+      setScriptureReference('');
+      setScriptureHighlight('');
+      setSelectedProverbId('');
+      setScreenshotScale(100);
+      setImageOffsetX(0);
+      setImageOffsetY(0);
+    }
 
     const selectedProduct = selectedCartProductIndex != null
       ? cartProducts[selectedCartProductIndex]
@@ -7799,6 +7859,16 @@ const ToolsPage = () => {
                 toolSettings: {
                   ...(item.toolSettings || {}),
                   selectedProverbTemplateId: template.id,
+                  ...(template.scriptureArtwork ? {
+                    textEnabled: false,
+                    textContent: '',
+                    scriptureReference: '',
+                    scriptureHighlight: '',
+                    selectedProverbId: '',
+                    screenshotScale: 100,
+                    imageOffsetX: 0,
+                    imageOffsetY: 0,
+                  } : {}),
                 },
               }
             : item
@@ -7816,6 +7886,16 @@ const ToolsPage = () => {
             toolSettings: {
               ...(item.toolSettings || {}),
               selectedProverbTemplateId: template.id,
+              ...(template.scriptureArtwork ? {
+                textEnabled: false,
+                textContent: '',
+                scriptureReference: '',
+                scriptureHighlight: '',
+                selectedProverbId: '',
+                screenshotScale: 100,
+                imageOffsetX: 0,
+                imageOffsetY: 0,
+              } : {}),
             },
           }
         : item
@@ -9386,7 +9466,7 @@ const ToolsPage = () => {
                     </p>
                     <h4 className="proverb-template-section-label">Images:</h4>
                     <div className="proverb-template-grid" aria-label="Christian image templates">
-                      {proverbTemplates
+                      {displayBibleVerseTemplates(proverbTemplates)
                         .filter((template) => proverbTemplateAvailability[template.id] === true)
                         .map((template) => (
                           <button
@@ -9401,6 +9481,9 @@ const ToolsPage = () => {
                           </button>
                         ))}
                     </div>
+                    {proverbTemplates.find((template) => template.id === selectedProverbTemplateId)?.scriptureArtwork ? (
+                      <p className="tool-description">This image already includes the scripture.</p>
+                    ) : (
                     <div className="form-group proverb-template-verse-select">
                       <label className="proverb-template-verse-heading" htmlFor="proverb-preset">Bible Verse</label>
                       <select
@@ -9486,6 +9569,7 @@ const ToolsPage = () => {
                         </div>
                       )}
                     </div>
+                    )}
                   </div>
                 )}
 

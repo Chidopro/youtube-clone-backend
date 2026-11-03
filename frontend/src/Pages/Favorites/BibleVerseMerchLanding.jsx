@@ -4,6 +4,7 @@ import {
   BIBLE_VERSE_MERCH_SUBDOMAIN,
   applyBibleVerseTemplateSettings,
   BIBLE_VERSE_TEMPLATES,
+  displayBibleVerseTemplates,
   formatProverbDesignText,
   KJV_PROVERB_PRESETS,
   recommendedScriptureHighlight,
@@ -81,7 +82,9 @@ export default function BibleVerseMerchLanding() {
   }, []);
 
   const templates = useMemo(
-    () => templateCatalog.filter((template) => availableTemplateIds.includes(template.id)),
+    () => displayBibleVerseTemplates(
+      templateCatalog.filter((template) => availableTemplateIds.includes(template.id))
+    ),
     [availableTemplateIds, templateCatalog]
   );
   const template = templateCatalog.find((item) => item.id === templateId)
@@ -119,8 +122,9 @@ export default function BibleVerseMerchLanding() {
     : String(proverb?.text || '').replace(/\s*;\s*/g, ', ');
   const designText = proverbId === CUSTOM_ID ? selectedText : formatProverbDesignText(proverb);
 
+  const finishedArt = template?.scriptureArtwork === true;
   const startDesign = () => {
-    if (!template || !selectedText) return;
+    if (!template || (!finishedArt && !selectedText)) return;
     const placement = textPositionDefaults(template.recommendedTextPosition);
     markMerchIntentStarted();
     savePendingMerchData({
@@ -129,17 +133,19 @@ export default function BibleVerseMerchLanding() {
       display_screenshot: template.imageUrl,
       screenshots: [template.imageUrl],
       thumbnail: template.imageUrl,
-      videoTitle: template.title,
+      videoTitle: finishedArt && template.includedReference
+        ? `${template.title} — ${template.includedReference}`
+        : template.title,
       creatorName: 'Bible Verse Merch',
       screenshot_timestamp: '0:00',
       bibleVerseDesign: {
         bibleVerseDesignVersion: 20,
         imageOpacity: 100,
-        textEnabled: true,
-        textContent: designText,
+        textEnabled: !finishedArt,
+        textContent: finishedArt ? '' : designText,
         scriptureStyle: 'classic',
-        scriptureReference: proverb?.reference || '',
-        scriptureHighlight: recommendedScriptureHighlight(proverb),
+        scriptureReference: finishedArt ? '' : (proverb?.reference || ''),
+        scriptureHighlight: finishedArt ? '' : recommendedScriptureHighlight(proverb),
         textFont: 'IM FELL English',
         textBold: true,
         textColor: template.recommendedTextColor,
@@ -147,15 +153,15 @@ export default function BibleVerseMerchLanding() {
         textOffsetX: placement.offsetX,
         textOffsetY: placement.offsetY,
         textDirection: 'horizontal',
-        textMaskEnabled: !featuredHomepageDesign,
+        textMaskEnabled: !finishedArt && !featuredHomepageDesign,
         textMaskOpacity: template.recommendedMaskOpacity,
         textMaskColor: template.recommendedMaskColor,
-        screenshotScale: 150,
+        screenshotScale: finishedArt ? 100 : 150,
         textPlacement: placement.position,
         textSafeArea: template.recommendedTextSafeArea,
-        selectedProverbId: proverbId === CUSTOM_ID ? '' : proverbId,
+        selectedProverbId: finishedArt || proverbId === CUSTOM_ID ? '' : proverbId,
         selectedProverbTemplateId: template.id,
-        homepageFeaturedLayout: featuredHomepageDesign,
+        homepageFeaturedLayout: finishedArt ? false : featuredHomepageDesign,
       },
     });
     navigate('/merchandise');
@@ -173,10 +179,12 @@ export default function BibleVerseMerchLanding() {
       <div className="bvm-builder">
         <section className="bvm-preview-panel" aria-label="Design preview">
           <div className={`bvm-preview${template?.id === 'bvm-template-23' ? ' bvm-preview--full-image' : ''}${
+            template?.wideArtwork ? ' bvm-preview--wide' : ''
+          }${
             featuredHomepageDesign ? ' bvm-preview--featured-zoom' : ''
           }`}>
             {template ? <img src={template.imageUrl} alt={template.title} /> : null}
-            {featuredHomepageDesign ? (
+            {!finishedArt && featuredHomepageDesign ? (
               <div className="bvm-preview-copy bvm-preview-copy--top bvm-preview-copy--featured">
                 <div
                   className="bvm-preview-mask bvm-preview-mask--cream bvm-preview-mask--featured"
@@ -193,7 +201,7 @@ export default function BibleVerseMerchLanding() {
                   {proverb?.reference ? <strong>{proverb.reference}</strong> : null}
                 </div>
               </div>
-            ) : designText ? (
+            ) : !finishedArt && designText ? (
               <ScriptureThumbCaption
                 text={designText}
                 reference={proverb?.reference || ''}
@@ -213,8 +221,8 @@ export default function BibleVerseMerchLanding() {
             )) : <option value={templateId}>Loading template…</option>}
           </select>
 
-          <label htmlFor="bvm-proverb">Proverb or custom text</label>
-          <div className="bvm-proverb-picker" ref={proverbPickerRef}>
+          {finishedArt ? null : <label htmlFor="bvm-proverb">Proverb or custom text</label>}
+          {finishedArt ? null : <div className="bvm-proverb-picker" ref={proverbPickerRef}>
             <button
               id="bvm-proverb"
               type="button"
@@ -275,9 +283,9 @@ export default function BibleVerseMerchLanding() {
                 )}
               </div>
             ) : null}
-          </div>
+          </div>}
 
-          {proverbId === CUSTOM_ID ? (
+          {!finishedArt && proverbId === CUSTOM_ID ? (
             <textarea
               value={customText}
               onChange={(event) => setCustomText(event.target.value)}
@@ -287,10 +295,14 @@ export default function BibleVerseMerchLanding() {
             />
           ) : null}
 
-          <button type="button" onClick={startDesign} disabled={!template || !selectedText}>
+          <button type="button" onClick={startDesign} disabled={!template || (!finishedArt && !selectedText)}>
             Select a Product
           </button>
-          <p className="bvm-help">You can adjust the text, mask, placement, and image in Tools after selecting a product.</p>
+          <p className="bvm-help">
+            {finishedArt
+              ? 'This design already includes the scripture. Choose a product to continue.'
+              : 'You can adjust the text, mask, placement, and image in Tools after selecting a product.'}
+          </p>
         </section>
       </div>
     </main>

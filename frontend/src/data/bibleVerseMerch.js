@@ -2,7 +2,7 @@ export const BIBLE_VERSE_MERCH_SUBDOMAIN = 'bibleversemerch';
 
 const TEMPLATE_TITLES = [
   ['mountain-sunrise', 'Mountain Sunrise', 'top'],
-  ['peaceful-river', 'Peaceful River', 'top'],
+  ['rivers-of-living-water', 'Rivers of Living Water', 'top'],
   ['sunlit-forest-path', 'Sunlit Forest Path', 'center'],
   ['still-waters', 'Still Waters', 'top'],
   ['wildflower-meadow', 'Wildflower Meadow', 'top'],
@@ -33,6 +33,26 @@ const TEMPLATE_TITLES = [
   ['lion-lamb-golden-sunset', 'Lion and Lamb at Golden Sunset', 'top', '#fff8e6', 'charcoal'],
   ['guiding-star-nativity', 'Guiding Star Over the Nativity', 'bottom', '#fff8e6', 'charcoal'],
   ['jesus-healing-pool', 'Jesus Healing by the Pool', 'bottom', '#fff8e6', 'charcoal'],
+  ['rivers-of-living-water-woman', 'Rivers of Living Water II', 'top'],
+  ['worthy-is-the-lamb', 'Worthy Is the Lamb', 'top'],
+  ['peaceful-kingdom', 'Peaceful Kingdom', 'top'],
+  ['trust-in-the-lord', 'Trust in the Lord', 'top'],
+  ['strong-tower', 'A Strong Tower', 'top'],
+  ['keep-thy-heart', 'Keep Thy Heart', 'top'],
+  ['merry-heart', 'A Merry Heart', 'top'],
+  ['merry-heart-ii', 'A Merry Heart II', 'top'],
+  ['soft-answer', 'A Soft Answer', 'top'],
+  ['iron-sharpeneth-iron', 'Iron Sharpeneth Iron', 'top'],
+  ['directeth-his-steps', 'Directeth His Steps', 'top'],
+  ['strength-and-honor', 'Strength and Honor', 'top'],
+  ['strength-and-honor-ii', 'Strength and Honor II', 'top'],
+  ['strength-and-honor-iii', 'Strength and Honor III', 'top'],
+  ['rivers-of-living-water-iii', 'Rivers of Living Water III', 'top'],
+  ['keep-thy-heart-ii', 'Keep Thy Heart II', 'top'],
+  ['iron-sharpeneth-iron-ii', 'Iron Sharpeneth Iron II', 'top'],
+  ['directeth-his-steps-ii', 'Directeth His Steps II', 'top'],
+  ['strong-tower-ii', 'A Strong Tower II', 'top'],
+  ['strength-and-honor-iv', 'Strength and Honor IV', 'top'],
 ];
 
 const SAFE_AREAS = {
@@ -43,18 +63,71 @@ const SAFE_AREAS = {
 
 const FULL_FRAME_REPLACEMENTS = new Set([
   'mountain-sunrise',
-  'peaceful-river',
   'sunlit-forest-path',
   'mountain-lake',
 ]);
 
+// These posters already include the verse, so the shop must not draw it again.
+const SCRIPTURE_ARTWORK = {
+  'rivers-of-living-water': 'John 7:38',
+  'rivers-of-living-water-woman': 'John 7:38',
+  'worthy-is-the-lamb': 'Revelation 5:12',
+  'peaceful-kingdom': 'Isaiah 11:6',
+  'trust-in-the-lord': 'Proverbs 3:5–6',
+  'strong-tower': 'Proverbs 18:10',
+  'keep-thy-heart': 'Proverbs 4:23',
+  'merry-heart': 'Proverbs 17:22',
+  'merry-heart-ii': 'Proverbs 17:22',
+  'soft-answer': 'Proverbs 15:1',
+  'iron-sharpeneth-iron': 'Proverbs 27:17',
+  'directeth-his-steps': 'Proverbs 16:9',
+  'strength-and-honor': 'Proverbs 31:25',
+  'strength-and-honor-ii': 'Proverbs 31:25',
+  'strength-and-honor-iii': 'Proverbs 31:25',
+  'rivers-of-living-water-iii': 'John 7:38',
+  'keep-thy-heart-ii': 'Proverbs 4:23',
+  'iron-sharpeneth-iron-ii': 'Proverbs 27:17',
+  'directeth-his-steps-ii': 'Proverbs 16:9',
+  'strong-tower-ii': 'Proverbs 18:10',
+  'strength-and-honor-iv': 'Proverbs 31:25',
+};
+
+const WIDE_SCRIPTURE_ARTWORK = new Set([
+  'directeth-his-steps-ii',
+]);
+
+const SHOP_LEAD_TEMPLATE_IDS = [
+  'bvm-template-47',
+  'bvm-template-48',
+  'bvm-template-49',
+  'bvm-template-50',
+  'bvm-template-51',
+  'bvm-template-52',
+  'bvm-template-41',
+  'bvm-template-42',
+  'bvm-template-43',
+  'bvm-template-44',
+  'bvm-template-45',
+  'bvm-template-46',
+  'bvm-template-34',
+  'bvm-template-35',
+  'bvm-template-36',
+  'bvm-template-37',
+  'bvm-template-38',
+  'bvm-template-39',
+  'bvm-template-40',
+];
+
 export const BIBLE_VERSE_TEMPLATES = TEMPLATE_TITLES.map(
   ([slug, title, recommendedTextPosition, textColorOverride, maskColorOverride], index) => ({
     id: `bvm-template-${String(index + 1).padStart(2, '0')}`,
-    imageUrl: `/proverb-templates/${String(index + 1).padStart(2, '0')}-${slug}.png${
-      FULL_FRAME_REPLACEMENTS.has(slug) ? '?v=2' : ''
-    }`,
+    imageUrl: `/proverb-templates/${String(index + 1).padStart(2, '0')}-${slug}.${
+      SCRIPTURE_ARTWORK[slug] ? 'jpg' : 'png'
+    }${FULL_FRAME_REPLACEMENTS.has(slug) ? '?v=2' : ''}`,
     title,
+    scriptureArtwork: Boolean(SCRIPTURE_ARTWORK[slug]),
+    wideArtwork: WIDE_SCRIPTURE_ARTWORK.has(slug),
+    includedReference: SCRIPTURE_ARTWORK[slug] || '',
     recommendedTextPosition,
     recommendedTextSafeArea: SAFE_AREAS[recommendedTextPosition],
     recommendedTextColor: textColorOverride
@@ -64,6 +137,26 @@ export const BIBLE_VERSE_TEMPLATES = TEMPLATE_TITLES.map(
     recommendedMaskOpacity: 0,
   })
 );
+
+export function displayBibleVerseTemplates(templates = []) {
+  const byId = new Map(templates.map((template) => [template.id, template]));
+  const lead = SHOP_LEAD_TEMPLATE_IDS.map((id) => byId.get(id)).filter(Boolean);
+  const rest = templates.filter((template) => (
+    !SHOP_LEAD_TEMPLATE_IDS.includes(template.id) && template.id !== 'bvm-template-33'
+  ));
+  const follow = byId.get('bvm-template-33');
+  const leadIndex = rest.findIndex((template) => template.id === 'bvm-template-02');
+  const paired = !follow
+    ? rest
+    : (leadIndex < 0
+      ? [...rest, follow]
+      : [
+        ...rest.slice(0, leadIndex + 1),
+        follow,
+        ...rest.slice(leadIndex + 1),
+      ]);
+  return [...lead, ...paired];
+}
 
 export function applyBibleVerseTemplateSettings(
   templates = BIBLE_VERSE_TEMPLATES,
@@ -95,6 +188,7 @@ export const KJV_PROVERB_PRESETS = [
     text: 'Saying with a loud voice, Worthy is the Lamb that was slain to receive power, and riches, and wisdom, and strength, and honour, and glory, and blessing.',
     highlight: 'Worthy is the Lamb',
     preserveCase: true,
+    cleanShopText: true,
   },
   {
     id: 'isaiah-11-6',
@@ -106,16 +200,19 @@ export const KJV_PROVERB_PRESETS = [
     id: 'proverbs-3-5-6',
     reference: 'Proverbs 3:5–6',
     text: 'Trust in the LORD with all thine heart; and lean not unto thine own understanding.\nIn all thy ways acknowledge him, and he shall direct thy paths.',
+    cleanShopText: true,
   },
   {
     id: 'proverbs-16-3',
     reference: 'Proverbs 16:3',
     text: 'Commit thy works unto the LORD, and thy thoughts shall be established.',
+    cleanShopText: true,
   },
   {
     id: 'proverbs-18-10',
     reference: 'Proverbs 18:10',
     text: 'The name of the LORD is a strong tower: the righteous runneth into it, and is safe.',
+    cleanShopText: true,
   },
   {
     id: 'proverbs-4-23',
@@ -136,26 +233,31 @@ export const KJV_PROVERB_PRESETS = [
     id: 'proverbs-27-17',
     reference: 'Proverbs 27:17',
     text: 'Iron sharpeneth iron; so a man sharpeneth the countenance of his friend.',
+    cleanShopText: true,
   },
   {
     id: 'proverbs-16-9',
     reference: 'Proverbs 16:9',
     text: "A man's heart deviseth his way: but the LORD directeth his steps.",
+    cleanShopText: true,
   },
   {
     id: 'proverbs-31-25',
     reference: 'Proverbs 31:25',
     text: 'Strength and honour are her clothing; and she shall rejoice in time to come.',
+    cleanShopText: true,
   },
   {
     id: 'proverbs-3-7',
     reference: 'Proverbs 3:7',
     text: 'Be not wise in thine own eyes: fear the LORD, and depart from evil.',
+    cleanShopText: true,
   },
   {
     id: 'proverbs-11-25',
     reference: 'Proverbs 11:25',
     text: 'The liberal soul shall be made fat: and he that watereth shall be watered also himself.',
+    cleanShopText: true,
   },
   {
     id: 'proverbs-12-25',
@@ -171,6 +273,7 @@ export const KJV_PROVERB_PRESETS = [
     id: 'proverbs-14-26',
     reference: 'Proverbs 14:26',
     text: 'In the fear of the LORD is strong confidence: and his children shall have a place of refuge.',
+    cleanShopText: true,
   },
   {
     id: 'proverbs-16-24',
@@ -196,26 +299,131 @@ export const KJV_PROVERB_PRESETS = [
     id: 'proverbs-27-19',
     reference: 'Proverbs 27:19',
     text: 'As in water face answereth to face, so the heart of man to man.',
+    cleanShopText: true,
   },
   {
     id: 'proverbs-31-30',
     reference: 'Proverbs 31:30',
     text: 'Favour is deceitful, and beauty is vain: but a woman that feareth the LORD, she shall be praised.',
+    cleanShopText: true,
+  },
+  {
+    id: 'luke-4-23',
+    reference: 'Luke 4:23',
+    text: 'Physician, heal thyself',
+    highlight: 'Physician, heal thyself',
+    preserveCase: true,
+    keepPunctuation: true,
+  },
+  {
+    id: 'john-11-25',
+    reference: 'John 11:25',
+    text: 'I am the resurrection and the life. Whoever believes in me, though he die, yet shall he live.',
+    highlight: 'I am the resurrection and the life',
+    preserveCase: true,
+    keepPunctuation: true,
+  },
+  {
+    id: '2-corinthians-9-15',
+    reference: '2 Corinthians 9:15',
+    text: 'Thanks be unto God for his unspeakable gift.',
+    highlight: 'Thanks be unto God for his unspeakable gift',
+    preserveCase: true,
+    keepPunctuation: true,
+  },
+  {
+    id: 'john-7-38',
+    reference: 'John 7:38',
+    text: 'Whoever believes in me, as Scripture has said, rivers of living water will flow from within them.',
+    highlight: 'Whoever believes in me, as Scripture has said, rivers of living water will flow from within them.',
+    preserveCase: true,
+    keepPunctuation: true,
+  },
+  {
+    id: 'psalm-119-105',
+    reference: 'Psalm 119:105',
+    text: 'Your word is a lamp for my feet, a light on my path.',
+    highlight: 'Your word is a lamp for my feet, a light on my path.',
+    preserveCase: true,
+    keepPunctuation: true,
+  },
+  {
+    id: 'isaiah-41-18',
+    reference: 'Isaiah 41:18',
+    text: 'I will make the wilderness a pool of water, and the dry land springs of water.',
+    highlight: 'I will make the wilderness a pool of water, and the dry land springs of water.',
+    preserveCase: true,
+    keepPunctuation: true,
+  },
+  {
+    id: 'luke-14-27',
+    reference: 'Luke 14:27',
+    text: 'And whoever does not carry their cross and follow me cannot be my disciple.',
+    highlight: 'And whoever does not carry their cross and follow me cannot be my disciple.',
+    preserveCase: true,
+    keepPunctuation: true,
+  },
+  {
+    id: 'psalm-36-6',
+    reference: 'Psalm 36:6',
+    text: 'Your righteousness is like the highest mountains, your justice like the great deep.',
+    highlight: 'Your righteousness is like the highest mountains, your justice like the great deep.',
+    preserveCase: true,
+    keepPunctuation: true,
+  },
+  {
+    id: 'hebrews-6-18',
+    reference: 'Hebrews 6:18',
+    text: 'We have this hope as an anchor for the soul, firm and secure.',
+    highlight: 'We have this hope as an anchor for the soul, firm and secure.',
+    preserveCase: true,
+    keepPunctuation: true,
+  },
+  {
+    id: '1-corinthians-15-58',
+    reference: '1 Corinthians 15:58',
+    text: 'Stand firm. Let nothing move you.',
+    highlight: 'Stand firm. Let nothing move you.',
+    preserveCase: true,
+    keepPunctuation: true,
   },
 ];
 
+function honorSpelling(text) {
+  return String(text || '').replace(/\bhonour\b/gi, (word) => {
+    if (word === word.toUpperCase()) return 'HONOR';
+    return word[0] === 'H' ? 'Honor' : 'honor';
+  });
+}
+
+function collapseVerseSpace(text) {
+  return String(text || '').replace(/[^\S\n]{2,}/g, ' ').replace(/ *\n */g, '\n').trim();
+}
+
+function stripShopPunctuation(text) {
+  return collapseVerseSpace(String(text || '').replace(/[^\S\n]*[,:;][^\S\n]*/g, ' '));
+}
+
+function titleCaseVerse(text) {
+  return String(text || '').replace(
+    /(^|[^A-Za-z0-9'])([a-z])/g,
+    (_, lead, letter) => lead + letter.toUpperCase()
+  );
+}
+
 export function formatProverbDesignText(preset) {
   if (!preset) return '';
-  const text = String(preset.text || '').replace(/\s*;\s*/g, ', ').trim();
-  return preset.preserveCase
-    ? text
-    : text.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+  let text = honorSpelling(String(preset.text || '').replace(/\s*;\s*/g, ', ')).trim();
+  text = preset.cleanShopText && !preset.keepPunctuation
+    ? stripShopPunctuation(text)
+    : collapseVerseSpace(text);
+  return preset.preserveCase ? text : titleCaseVerse(text);
 }
 
 export function recommendedScriptureHighlight(preset) {
   const explicit = String(preset?.highlight || '').trim();
-  if (explicit) return explicit;
-  const verse = formatProverbDesignText(preset);
+  if (explicit) return formatProverbDesignText({ ...preset, text: explicit });
+  const verse = formatProverbDesignText({ ...preset, cleanShopText: false });
   const firstClause = verse.split(/[,:;.!?]/)[0]?.trim() || verse;
   return firstClause.split(/\s+/).slice(0, 10).join(' ');
 }

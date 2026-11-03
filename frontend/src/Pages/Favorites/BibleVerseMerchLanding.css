@@ -87,6 +87,10 @@
   aspect-ratio: 2 / 3;
 }
 
+.bvm-preview--wide {
+  aspect-ratio: 16 / 9;
+}
+
 .bvm-preview-copy {
   position: absolute;
   inset: 0;
